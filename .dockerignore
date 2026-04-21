@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.git
+.env
+.env.local
+*.log
+coverage
+.nyc_output
+minio-data

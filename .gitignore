@@ -1,0 +1,47 @@
+# ========== Dependencies ==========
+node_modules/
+.pnpm-store/
+
+# ========== Build output ==========
+dist/
+build/
+*.tsbuildinfo
+
+# ========== Environment ==========
+.env
+.env.local
+.env.*.local
+
+# ========== IDE ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ========== OS ==========
+.DS_Store
+Thumbs.db
+
+# ========== Logs ==========
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ========== Docker ==========
+docker-compose.override.yml
+
+# ========== Prisma ==========
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# ========== MinIO data ==========
+minio-data/
+
+# ========== Coverage ==========
+coverage/
+.nyc_output/
+
+# ========== Misc ==========
+*.tgz
+.cache/
