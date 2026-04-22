@@ -22,6 +22,7 @@ WORKDIR /app
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
 COPY --from=base /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=base /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY --from=base /app/apps/api/dist ./apps/api/dist
 COPY --from=base /app/apps/api/package.json ./apps/api/package.json
 COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
