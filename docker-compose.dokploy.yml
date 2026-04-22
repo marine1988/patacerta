@@ -1,0 +1,121 @@
+version: '3.8'
+
+# ================================================
+# PataCerta — Docker Compose for Dokploy
+# ================================================
+# Deploy as "Docker Compose" resource in Dokploy.
+# Configure domain on the "web" service via Dokploy UI > Domains tab.
+#
+# Required env vars (set in Dokploy > Environment tab):
+#   POSTGRES_PASSWORD    — strong random password
+#   JWT_SECRET           — random 64-char string
+#   JWT_REFRESH_SECRET   — random 64-char string
+#   ADMIN_EMAIL          — super-admin email
+#   ADMIN_PASSWORD       — super-admin password (min 8 chars, upper+lower+number)
+#   MINIO_ROOT_PASSWORD  — strong random password for MinIO
+#   FRONTEND_URL         — your public URL (e.g. https://patacerta.rogeriofigueiredo.us)
+
+services:
+  # ── Frontend (nginx + SPA + /api reverse proxy) ──
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - '80'
+    networks:
+      - dokploy-network
+      - default
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend API ──
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    expose:
+      - '3001'
+    networks:
+      - default
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      DATABASE_URL: postgresql://patacerta:${POSTGRES_PASSWORD}@postgres:5432/patacerta?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: '15m'
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: '7d'
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: patacerta
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: patacerta-uploads
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@patacerta.pt}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
+      CORS_ORIGIN: '*'
+      FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.rogeriofigueiredo.us}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── PostgreSQL 16 ──
+  postgres:
+    image: postgres:16-alpine
+    networks:
+      - default
+    environment:
+      POSTGRES_USER: patacerta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: patacerta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U patacerta']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO (S3-compatible object storage) ──
+  minio:
+    image: minio/minio:latest
+    networks:
+      - default
+    environment:
+      MINIO_ROOT_USER: patacerta
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  dokploy-network:
+    external: true
