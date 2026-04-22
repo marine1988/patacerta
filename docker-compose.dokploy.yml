@@ -114,7 +114,9 @@ services:
 
 volumes:
   postgres_data:
+    name: patacerta_postgres_data
   minio_data:
+    name: patacerta_minio_data
 
 networks:
   dokploy-network:
