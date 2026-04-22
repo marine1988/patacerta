@@ -8,19 +8,21 @@ async function main() {
 
   // ---- Admin User ----
   console.log('Creating admin user...')
-  const passwordHash = await bcrypt.hash('AdminPass123!', 12)
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@patacerta.pt'
+  const adminPass = process.env.ADMIN_PASSWORD || 'AdminPass123!'
+  const passwordHash = await bcrypt.hash(adminPass, 12)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@patacerta.pt' },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: 'admin@patacerta.pt',
+      email: adminEmail,
       passwordHash,
       firstName: 'Admin',
       lastName: 'PataCerta',
       role: UserRole.ADMIN,
     },
   })
-  console.log(`  ✓ Admin user created (id: ${admin.id})`)
+  console.log(`  ✓ Admin user created (id: ${admin.id}, email: ${adminEmail})`)
 
   // ---- Districts ----
   console.log('\nSeeding districts...')

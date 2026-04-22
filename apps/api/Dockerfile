@@ -16,7 +16,7 @@ RUN pnpm --filter @patacerta/api db:generate
 RUN pnpm --filter @patacerta/api build
 
 FROM node:20-alpine AS runner
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 COPY --from=base /app/node_modules ./node_modules
@@ -26,7 +26,9 @@ COPY --from=base /app/apps/api/dist ./apps/api/dist
 COPY --from=base /app/apps/api/package.json ./apps/api/package.json
 COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
+COPY apps/api/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["node", "apps/api/dist/index.js"]
+ENTRYPOINT ["/app/entrypoint.sh"]
