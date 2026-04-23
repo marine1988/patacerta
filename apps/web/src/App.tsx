@@ -20,6 +20,11 @@ const ResetPasswordPage = lazy(() =>
     default: m.ResetPasswordPage,
   })),
 )
+const VerifyEmailPage = lazy(() =>
+  import('./pages/auth/VerifyEmailPage').then((m) => ({
+    default: m.VerifyEmailPage,
+  })),
+)
 const DirectoryPage = lazy(() =>
   import('./pages/directory/DirectoryPage').then((m) => ({
     default: m.DirectoryPage,
@@ -96,6 +101,7 @@ export function App() {
               path="/recuperar-palavra-passe"
               element={<ResetPasswordPage />}
             />
+            <Route path="/verificar-email" element={<VerifyEmailPage />} />
             <Route path="/diretorio" element={<DirectoryPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
             <Route

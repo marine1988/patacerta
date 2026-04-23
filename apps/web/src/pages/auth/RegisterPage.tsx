@@ -35,12 +35,12 @@ export function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [successEmail, setSuccessEmail] = useState<string | null>(null)
   const { register } = useAuth()
   const navigate = useNavigate()
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
-    // Clear the field error as user types
     if (fieldErrors[field]) {
       setFieldErrors((prev) => {
         const next = { ...prev }
@@ -76,14 +76,12 @@ export function RegisterPage() {
     e.preventDefault()
     setError('')
 
-    // Password validation
     const pwErr = validatePassword(form.password)
     if (pwErr) {
       setFieldErrors((prev) => ({ ...prev, password: pwErr }))
       return
     }
 
-    // Confirm password
     if (form.password !== form.confirmPassword) {
       setFieldErrors((prev) => ({
         ...prev,
@@ -94,22 +92,53 @@ export function RegisterPage() {
 
     const { confirmPassword: _cp, ...rest } = form
     const input = { ...rest, phone: form.phone || undefined }
-    const result = registerSchema.safeParse(input)
-    if (!result.success) {
-      setError(result.error.errors[0].message)
+    const parsed = registerSchema.safeParse(input)
+    if (!parsed.success) {
+      setError(parsed.error.errors[0].message)
       return
     }
 
     setLoading(true)
     try {
-      await register(result.data)
-      navigate('/')
+      const result = await register(parsed.data)
+      setSuccessEmail(result.email)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       setError(axiosErr.response?.data?.error || 'Erro ao criar conta')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (successEmail) {
+    return (
+      <div className="flex min-h-[calc(100vh-200px)] items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
+          <Card>
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-bold text-gray-900">Conta criada com sucesso</h1>
+              <p className="mt-3 text-sm text-gray-600">
+                Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no link
+                no email para ativar a sua conta antes de iniciar sessão.
+              </p>
+              <p className="mt-2 text-xs text-gray-500">
+                Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página de login.
+              </p>
+              <div className="mt-6">
+                <Button onClick={() => navigate('/entrar')} className="w-full">
+                  Ir para login
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (

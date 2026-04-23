@@ -5,12 +5,34 @@ import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
-import type { RegisterInput, LoginInput, ForgotPasswordInput, ResetPasswordInput } from '@patacerta/shared'
+import type {
+  RegisterInput,
+  LoginInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  VerifyEmailInput,
+  ResendVerificationInput,
+} from '@patacerta/shared'
+
+const EMAIL_VERIFICATION_EXPIRY_HOURS = 24
+const RESET_TOKEN_EXPIRY_HOURS = 1
+
+function buildVerificationUrl(token: string): string {
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173'
+  return `${base}/verificar-email?token=${token}`
+}
+
+function generateVerificationToken(): { token: string; expiresAt: Date } {
+  const token = crypto.randomBytes(32).toString('hex')
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000)
+  return { token, expiresAt }
+}
 
 export const register = asyncHandler(async (req, res) => {
   const data = req.body as RegisterInput
   const email = data.email.toLowerCase().trim()
   const passwordHash = await bcrypt.hash(data.password, 12)
+  const { token: verificationToken, expiresAt: verificationExpiresAt } = generateVerificationToken()
 
   let user
   try {
@@ -22,6 +44,9 @@ export const register = asyncHandler(async (req, res) => {
         lastName: data.lastName,
         role: data.role,
         phone: data.phone,
+        emailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
       },
       select: { id: true, email: true, role: true, firstName: true, lastName: true },
     })
@@ -32,11 +57,15 @@ export const register = asyncHandler(async (req, res) => {
     throw err
   }
 
-  const payload = { userId: user.id, email: user.email, role: user.role }
-  const accessToken = signAccessToken(payload)
-  const refreshToken = signRefreshToken(payload)
+  // MVP: log verification URL to console (no SMTP yet)
+  const verificationUrl = buildVerificationUrl(verificationToken)
+  console.log(`[EmailVerification] Link for ${user.email}: ${verificationUrl}`)
 
-  res.status(201).json({ user, accessToken, refreshToken })
+  res.status(201).json({
+    message:
+      'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
+    email: user.email,
+  })
 })
 
 export const login = asyncHandler(async (req, res) => {
@@ -49,6 +78,14 @@ export const login = asyncHandler(async (req, res) => {
 
   const valid = await bcrypt.compare(data.password, user.passwordHash)
   if (!valid) throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
+
+  if (!user.emailVerified) {
+    throw new AppError(
+      403,
+      'Verifique o seu email antes de iniciar sessão.',
+      'EMAIL_NOT_VERIFIED',
+    )
+  }
 
   const payload = { userId: user.id, email: user.email, role: user.role }
   const accessToken = signAccessToken(payload)
@@ -72,7 +109,59 @@ export const refresh = asyncHandler(async (req, res) => {
   res.json({ accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload) })
 })
 
-const RESET_TOKEN_EXPIRY_HOURS = 1
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.body as VerifyEmailInput
+
+  const user = await prisma.user.findUnique({ where: { emailVerificationToken: token } })
+  if (!user) throw new AppError(400, 'Token inválido ou já utilizado', 'INVALID_VERIFICATION_TOKEN')
+  if (user.emailVerified) {
+    res.json({ message: 'Email já estava verificado. Pode iniciar sessão.' })
+    return
+  }
+  if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+    throw new AppError(
+      400,
+      'Token expirado — solicite um novo email de verificação',
+      'EXPIRED_VERIFICATION_TOKEN',
+    )
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiresAt: null,
+    },
+  })
+
+  res.json({ message: 'Email verificado com sucesso. Pode agora iniciar sessão.' })
+})
+
+export const resendVerification = asyncHandler(async (req, res) => {
+  const { email } = req.body as ResendVerificationInput
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+  })
+
+  // Always 200 to avoid email enumeration
+  if (!user || !user.isActive || user.emailVerified) {
+    res.json({ message: 'Se o email existir e não estiver verificado, receberá um novo link.' })
+    return
+  }
+
+  const { token, expiresAt } = generateVerificationToken()
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerificationToken: token, emailVerificationExpiresAt: expiresAt },
+  })
+
+  const verificationUrl = buildVerificationUrl(token)
+  console.log(`[EmailVerification] Resent link for ${user.email}: ${verificationUrl}`)
+
+  res.json({ message: 'Se o email existir e não estiver verificado, receberá um novo link.' })
+})
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body as ForgotPasswordInput

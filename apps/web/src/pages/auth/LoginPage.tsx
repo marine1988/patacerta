@@ -10,6 +10,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [needsVerification, setNeedsVerification] = useState(false)
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setNeedsVerification(false)
 
     const result = loginSchema.safeParse({ email, password })
     if (!result.success) {
@@ -31,8 +33,10 @@ export function LoginPage() {
       await login(result.data)
       navigate(from, { replace: true })
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
+      const axiosErr = err as { response?: { data?: { error?: string; code?: string } } }
+      const code = axiosErr.response?.data?.code
       setError(axiosErr.response?.data?.error || 'Erro ao iniciar sessão')
+      if (code === 'EMAIL_NOT_VERIFIED') setNeedsVerification(true)
     } finally {
       setLoading(false)
     }
@@ -54,7 +58,19 @@ export function LoginPage() {
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                {error}
+                {needsVerification && (
+                  <div className="mt-2">
+                    <Link
+                      to={`/verificar-email?email=${encodeURIComponent(email)}`}
+                      className="font-medium text-primary-600 hover:text-primary-500"
+                    >
+                      Reenviar email de verificação →
+                    </Link>
+                  </div>
+                )}
+              </div>
             )}
 
             <Input

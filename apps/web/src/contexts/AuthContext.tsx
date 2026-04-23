@@ -17,7 +17,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   isLoading: boolean
   login: (data: LoginInput) => Promise<User>
-  register: (data: RegisterInput) => Promise<User>
+  register: (data: RegisterInput) => Promise<{ message: string; email: string }>
   logout: () => void
   updateUser: (user: User) => void
 }
@@ -100,14 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u
   }, [])
 
-  const register = useCallback(async (data: RegisterInput): Promise<User> => {
+  const register = useCallback(async (data: RegisterInput): Promise<{ message: string; email: string }> => {
     const res = await api.post('/auth/register', data)
-    const { user: u, accessToken, refreshToken } = res.data
-    localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('refresh_token', refreshToken)
-    localStorage.setItem('user', JSON.stringify(u))
-    setUser(u)
-    return u
+    return res.data as { message: string; email: string }
   }, [])
 
   const logout = useCallback(() => {
