@@ -21,7 +21,10 @@ import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { StarRating } from '../../components/shared/StarRating'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
+import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
+import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
+import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
 
 // ──────────────────────────── Types ────────────────────────────
 
@@ -74,6 +77,8 @@ interface ThreadSummary {
   subject: string
   unreadCount: number
   updatedAt: string
+  archivedByOwnerAt: string | null
+  archivedByBreederAt: string | null
   owner: ThreadUser
   breeder: {
     id: number
@@ -86,6 +91,7 @@ interface ThreadSummary {
     senderId: number
     readAt: string | null
     createdAt: string
+    deletedAt: string | null
   }>
 }
 
@@ -95,6 +101,8 @@ interface ThreadMessage {
   body: string
   readAt: string | null
   createdAt: string
+  editedAt: string | null
+  deletedAt: string | null
   sender: ThreadUser
 }
 
@@ -752,6 +760,20 @@ function MessagesTab() {
   const [sendError, setSendError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
+  // Archive filter (active vs archived threads)
+  const [showArchived, setShowArchived] = useState(false)
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchSubmitted, setSearchSubmitted] = useState('')
+
+  // Edit / delete / report UI state
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [editText, setEditText] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+  const [reportTargetId, setReportTargetId] = useState<number | null>(null)
+  const [reportError, setReportError] = useState<string | null>(null)
+
   const breederIdParam = searchParams.get('breederId')
   const pendingBreederId = breederIdParam ? Number(breederIdParam) : null
 
@@ -778,8 +800,11 @@ function MessagesTab() {
     data: ThreadSummary[]
     meta: PaginatedMeta
   }>({
-    queryKey: ['threads'],
-    queryFn: () => api.get('/messages/threads?page=1&limit=50').then((r) => r.data),
+    queryKey: ['threads', showArchived ? 'archived' : 'active'],
+    queryFn: () =>
+      api
+        .get(`/messages/threads?page=1&limit=50&archived=${showArchived ? 'true' : 'false'}`)
+        .then((r) => r.data),
     refetchInterval: 30_000,
   })
 
@@ -897,6 +922,8 @@ function MessagesTab() {
         body: data.body,
         readAt: null,
         createdAt: new Date().toISOString(),
+        editedAt: null,
+        deletedAt: null,
         sender: {
           id: user.id,
           firstName: user.firstName,
@@ -947,6 +974,83 @@ function MessagesTab() {
     onError: (err) => {
       setNewThreadError(getExtractedError(err, 'Erro ao criar conversa.'))
     },
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: ({ threadId, archive }: { threadId: number; archive: boolean }) =>
+      api.patch(`/messages/threads/${threadId}/${archive ? 'archive' : 'unarchive'}`),
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
+      // If the archived thread was open, close its detail view
+      if (variables.archive && selectedThreadId === variables.threadId) {
+        setSelectedThreadId(null)
+      }
+    },
+  })
+
+  const editMessageMutation = useMutation({
+    mutationFn: ({ messageId, body }: { messageId: number; body: string }) =>
+      api.patch(`/messages/messages/${messageId}`, { body }).then((r) => r.data),
+    onSuccess: () => {
+      setEditingMessageId(null)
+      setEditText('')
+      setEditError(null)
+      queryClient.invalidateQueries({ queryKey: ['thread', selectedThreadId] })
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+    },
+    onError: (err) => {
+      setEditError(getExtractedError(err, 'Erro ao editar mensagem.'))
+    },
+  })
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: (messageId: number) => api.delete(`/messages/messages/${messageId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['thread', selectedThreadId] })
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
+    },
+  })
+
+  const reportMessageMutation = useMutation({
+    mutationFn: ({ messageId, reason }: { messageId: number; reason: string }) =>
+      api.post(`/messages/messages/${messageId}/report`, { reason }).then((r) => r.data),
+    onSuccess: () => {
+      setReportTargetId(null)
+      setReportError(null)
+    },
+    onError: (err) => {
+      setReportError(getExtractedError(err, 'Erro ao denunciar mensagem.'))
+    },
+  })
+
+  // Search
+  interface SearchHit {
+    id: number
+    body: string
+    createdAt: string
+    senderId: number
+    threadId: number
+    sender: ThreadUser
+    thread: {
+      id: number
+      subject: string
+      owner: { id: number; firstName: string; lastName: string }
+      breeder: { id: number; businessName: string }
+    }
+  }
+  const { data: searchResults, isFetching: searchLoading } = useQuery<{
+    data: SearchHit[]
+    meta: PaginatedMeta
+  }>({
+    queryKey: ['messages', 'search', searchSubmitted],
+    queryFn: () =>
+      api
+        .get(`/messages/search?q=${encodeURIComponent(searchSubmitted)}&page=1&limit=20`)
+        .then((r) => r.data),
+    enabled: searchSubmitted.length >= 2,
+    staleTime: 10_000,
   })
 
   function openThread(threadId: number) {
@@ -1003,11 +1107,34 @@ function MessagesTab() {
 
     const canLoadOlder = !!hasNextPage
 
+    // Thread archive state from the current user's perspective
+    const currentThreadSummary = threads.find((t) => t.id === threadDetail.id)
+    const isArchivedForMe = currentThreadSummary
+      ? user && threadDetail.owner.id === user.id
+        ? !!currentThreadSummary.archivedByOwnerAt
+        : !!currentThreadSummary.archivedByBreederAt
+      : false
+
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
-          &larr; Voltar às conversas
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
+            &larr; Voltar às conversas
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={archiveMutation.isPending}
+            onClick={() =>
+              archiveMutation.mutate({
+                threadId: threadDetail.id,
+                archive: !isArchivedForMe,
+              })
+            }
+          >
+            {isArchivedForMe ? 'Desarquivar' : 'Arquivar'}
+          </Button>
+        </div>
 
         <Card hover={false}>
           <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
@@ -1038,34 +1165,131 @@ function MessagesTab() {
               const isOwn = msg.senderId === user?.id
               const senderName = `${msg.sender.firstName} ${msg.sender.lastName}`
               const isPending = msg.id < 0
+              const isDeleted = !!msg.deletedAt
+              const isEdited = !!msg.editedAt && !isDeleted
+              const ageMs = Date.now() - new Date(msg.createdAt).getTime()
+              const withinEditWindow = ageMs < MESSAGE_EDIT_WINDOW_MINUTES * 60_000
+              const canEdit = isOwn && !isDeleted && !isPending && withinEditWindow
+              const canDelete = canEdit
+              const canReport = !isOwn && !isDeleted && !isPending
+
+              if (isDeleted) {
+                return (
+                  <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div className="max-w-[75%] rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 italic text-gray-400">
+                      <p className="text-sm">(mensagem eliminada pelo autor)</p>
+                      <p className="mt-1 text-xs text-gray-400">{formatDateTime(msg.createdAt)}</p>
+                    </div>
+                  </div>
+                )
+              }
+
+              const isEditing = editingMessageId === msg.id
+
               return (
                 <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                    className={`group relative max-w-[75%] rounded-lg px-4 py-2 ${
                       isOwn ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
                     } ${isPending ? 'opacity-60' : ''}`}
                   >
-                    <p
-                      className={`mb-1 text-xs font-medium ${
-                        isOwn ? 'text-primary-100' : 'text-gray-500'
-                      }`}
-                    >
-                      {senderName}
-                    </p>
-                    <LinkifiedText
-                      text={msg.body}
-                      className="block whitespace-pre-wrap text-sm"
-                      linkClassName={
-                        isOwn
-                          ? 'underline decoration-primary-200 underline-offset-2 hover:text-white'
-                          : 'text-primary-700 underline decoration-dotted underline-offset-2 hover:decoration-solid'
-                      }
-                    />
+                    <div className="flex items-start justify-between gap-2">
+                      <p
+                        className={`mb-1 text-xs font-medium ${
+                          isOwn ? 'text-primary-100' : 'text-gray-500'
+                        }`}
+                      >
+                        {senderName}
+                      </p>
+                      {!isEditing && (
+                        <MessageActionsMenu
+                          variant={isOwn ? 'own' : 'other'}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
+                          canReport={canReport}
+                          onEdit={() => {
+                            setEditingMessageId(msg.id)
+                            setEditText(msg.body)
+                            setEditError(null)
+                          }}
+                          onDelete={() => {
+                            if (
+                              window.confirm(
+                                'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
+                              )
+                            ) {
+                              deleteMessageMutation.mutate(msg.id)
+                            }
+                          }}
+                          onReport={() => {
+                            setReportTargetId(msg.id)
+                            setReportError(null)
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <textarea
+                          className="input min-h-[60px] text-gray-900"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          maxLength={5000}
+                          autoFocus
+                        />
+                        {editError && <p className="text-xs text-red-200">{editError}</p>}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            type="button"
+                            onClick={() => {
+                              setEditingMessageId(null)
+                              setEditText('')
+                              setEditError(null)
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            loading={editMessageMutation.isPending}
+                            onClick={() => {
+                              const trimmed = editText.trim()
+                              if (!trimmed) {
+                                setEditError('Mensagem não pode estar vazia.')
+                                return
+                              }
+                              editMessageMutation.mutate({
+                                messageId: msg.id,
+                                body: trimmed,
+                              })
+                            }}
+                          >
+                            Guardar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <LinkifiedText
+                        text={msg.body}
+                        className="block whitespace-pre-wrap text-sm"
+                        linkClassName={
+                          isOwn
+                            ? 'underline decoration-primary-200 underline-offset-2 hover:text-white'
+                            : 'text-primary-700 underline decoration-dotted underline-offset-2 hover:decoration-solid'
+                        }
+                      />
+                    )}
+
                     <p
                       className={`mt-1 text-xs ${isOwn ? 'text-primary-200' : 'text-gray-400'}`}
                       title={formatDateTime(msg.createdAt)}
                     >
                       {formatDateTime(msg.createdAt)}
+                      {isEdited && ' · editada'}
                       {isOwn && msg.readAt && ' · lida'}
                     </p>
                   </div>
@@ -1095,17 +1319,140 @@ function MessagesTab() {
             </div>
           </form>
         </Card>
+
+        <ReportMessageModal
+          isOpen={reportTargetId !== null}
+          onClose={() => setReportTargetId(null)}
+          onSubmit={(reason) =>
+            reportTargetId !== null &&
+            reportMessageMutation.mutate({ messageId: reportTargetId, reason })
+          }
+          isSubmitting={reportMessageMutation.isPending}
+          errorMessage={reportError}
+        />
       </div>
     )
   }
 
   // Thread list
+  const hasSearch = searchSubmitted.length >= 2
   return (
     <>
-      {threads.length === 0 ? (
+      {/* Search bar */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          setSearchSubmitted(searchQuery.trim())
+        }}
+        className="mb-4 flex gap-2"
+      >
+        <input
+          type="search"
+          className="input flex-1"
+          placeholder="Pesquisar nas suas conversas..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          minLength={2}
+        />
+        <Button type="submit" variant="secondary" disabled={searchQuery.trim().length < 2}>
+          Pesquisar
+        </Button>
+        {hasSearch && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearchQuery('')
+              setSearchSubmitted('')
+            }}
+          >
+            Limpar
+          </Button>
+        )}
+      </form>
+
+      {/* Active/Archived tabs */}
+      {!hasSearch && (
+        <div className="mb-4 flex gap-1 border-b border-gray-200">
+          <button
+            type="button"
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+              !showArchived
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setShowArchived(false)}
+          >
+            Activas
+          </button>
+          <button
+            type="button"
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+              showArchived
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setShowArchived(true)}
+          >
+            Arquivadas
+          </button>
+        </div>
+      )}
+
+      {hasSearch ? (
+        searchLoading ? (
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        ) : !searchResults || searchResults.data.length === 0 ? (
+          <EmptyState
+            title="Sem resultados"
+            description={`Nenhuma mensagem corresponde a "${searchSubmitted}".`}
+          />
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">
+              {searchResults.meta.total} resultado(s) para{' '}
+              <strong>&ldquo;{searchSubmitted}&rdquo;</strong>
+            </p>
+            {searchResults.data.map((hit) => {
+              const isOwner = user?.id === hit.thread.owner.id
+              const otherName = isOwner
+                ? hit.thread.breeder.businessName
+                : `${hit.thread.owner.firstName} ${hit.thread.owner.lastName}`
+              return (
+                <Card
+                  key={hit.id}
+                  hover
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setSelectedThreadId(hit.threadId)
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar name={otherName} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="truncate text-sm font-semibold text-gray-900">
+                        {hit.thread.subject}
+                      </h4>
+                      <p className="text-xs text-gray-500">{otherName}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">{hit.body}</p>
+                      <p className="mt-1 text-xs text-gray-400">{formatDateTime(hit.createdAt)}</p>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )
+      ) : threads.length === 0 ? (
         <EmptyState
-          title="Sem mensagens"
-          description="Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui."
+          title={showArchived ? 'Sem conversas arquivadas' : 'Sem mensagens'}
+          description={
+            showArchived
+              ? 'As conversas que arquivar aparecerão aqui.'
+              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui.'
+          }
         />
       ) : (
         <div className="space-y-3">
@@ -1115,6 +1462,7 @@ function MessagesTab() {
               ? thread.breeder.businessName
               : `${thread.owner.firstName} ${thread.owner.lastName}`
             const lastMessage = thread.messages[0]
+            const lastBody = lastMessage?.deletedAt ? '(mensagem eliminada)' : lastMessage?.body
             return (
               <Card
                 key={thread.id}
@@ -1132,8 +1480,14 @@ function MessagesTab() {
                       {thread.unreadCount > 0 && <Badge variant="blue">{thread.unreadCount}</Badge>}
                     </div>
                     <p className="text-sm text-gray-500">{otherName}</p>
-                    {lastMessage && (
-                      <p className="truncate text-sm text-gray-400">{lastMessage.body}</p>
+                    {lastBody && (
+                      <p
+                        className={`truncate text-sm ${
+                          lastMessage?.deletedAt ? 'italic text-gray-400' : 'text-gray-400'
+                        }`}
+                      >
+                        {lastBody}
+                      </p>
                     )}
                   </div>
                   <span className="ml-4 shrink-0 text-xs text-gray-400">
