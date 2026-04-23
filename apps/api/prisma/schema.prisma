@@ -127,9 +127,11 @@ model BreederSpecies {
 }
 
 model District {
-  id     Int    @id @default(autoincrement())
-  code   String @unique @db.VarChar(5)
-  namePt String @map("name_pt") @db.VarChar(100)
+  id        Int    @id @default(autoincrement())
+  code      String @unique @db.VarChar(5)
+  namePt    String @map("name_pt") @db.VarChar(100)
+  latitude  Float?
+  longitude Float?
 
   municipalities Municipality[]
   breeders       Breeder[]

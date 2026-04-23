@@ -1,6 +1,6 @@
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
-import type { SearchBreedersInput } from '@patacerta/shared'
+import type { SearchBreedersInput, MapBreedersInput } from '@patacerta/shared'
 import { Prisma } from '@prisma/client'
 
 // P4: Simple in-memory TTL cache for static reference data
@@ -15,7 +15,8 @@ let districtsCache: CacheEntry<unknown[]> | null = null
 let statsCache: CacheEntry<Record<string, number>> | null = null
 
 export const searchBreeders = asyncHandler(async (req, res) => {
-  const { speciesId, districtId, municipalityId, query, page, limit } = req.query as unknown as SearchBreedersInput
+  const { speciesId, districtId, municipalityId, query, page, limit } =
+    req.query as unknown as SearchBreedersInput
 
   const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
 
@@ -51,7 +52,10 @@ export const searchBreeders = asyncHandler(async (req, res) => {
   // B-08: Explicit response shape — no internal fields leak through
   const data = breeders.map((b) => {
     const ratings = b.reviews.map((r) => r.rating)
-    const avgRating = ratings.length > 0 ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10 : null
+    const avgRating =
+      ratings.length > 0
+        ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10
+        : null
 
     return {
       id: b.id,
@@ -68,6 +72,81 @@ export const searchBreeders = asyncHandler(async (req, res) => {
   })
 
   res.json(paginatedResponse(data, total, page, limit))
+})
+
+// Map view: flat list with coordinates (herdadas do distrito). No pagination.
+export const mapBreeders = asyncHandler(async (req, res) => {
+  const { speciesId, districtId, municipalityId, query, minLat, maxLat, minLng, maxLng, limit } =
+    req.query as unknown as MapBreedersInput
+
+  const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
+
+  if (districtId) where.districtId = districtId
+  if (municipalityId) where.municipalityId = municipalityId
+  if (speciesId) where.species = { some: { speciesId } }
+  if (query) {
+    where.OR = [
+      { businessName: { contains: query, mode: 'insensitive' } },
+      { description: { contains: query, mode: 'insensitive' } },
+    ]
+  }
+
+  // Only breeders whose district has coordinates (all should, post-seed)
+  where.district = { latitude: { not: null }, longitude: { not: null } }
+
+  // Bbox filter applied at district level (breeders inherit district coords)
+  if (
+    minLat !== undefined &&
+    maxLat !== undefined &&
+    minLng !== undefined &&
+    maxLng !== undefined
+  ) {
+    where.district = {
+      ...where.district,
+      latitude: { gte: minLat, lte: maxLat, not: null },
+      longitude: { gte: minLng, lte: maxLng, not: null },
+    }
+  }
+
+  const breeders = await prisma.breeder.findMany({
+    where,
+    include: {
+      district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
+      municipality: { select: { id: true, namePt: true } },
+      species: { include: { species: { select: { id: true, namePt: true } } } },
+      reviews: {
+        where: { status: 'PUBLISHED' },
+        select: { rating: true },
+      },
+    },
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const data = breeders
+    .filter((b) => b.district.latitude !== null && b.district.longitude !== null)
+    .map((b) => {
+      const ratings = b.reviews.map((r) => r.rating)
+      const avgRating =
+        ratings.length > 0
+          ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10
+          : null
+
+      return {
+        id: b.id,
+        businessName: b.businessName,
+        status: b.status,
+        district: { id: b.district.id, namePt: b.district.namePt },
+        municipality: b.municipality,
+        species: b.species,
+        avgRating,
+        reviewCount: ratings.length,
+        latitude: b.district.latitude as number,
+        longitude: b.district.longitude as number,
+      }
+    })
+
+  res.json({ data, total: data.length })
 })
 
 // P4: Cached — species rarely change
@@ -90,7 +169,7 @@ export const listDistricts = asyncHandler(async (_req, res) => {
   if (!districtsCache || districtsCache.expiresAt < now) {
     const data = await prisma.district.findMany({
       orderBy: { namePt: 'asc' },
-      select: { id: true, code: true, namePt: true },
+      select: { id: true, code: true, namePt: true, latitude: true, longitude: true },
     })
     districtsCache = { data, expiresAt: now + TTL }
   }
@@ -121,7 +200,10 @@ export const getPublicStats = asyncHandler(async (_req, res) => {
       prisma.district.count(),
       prisma.review.count({ where: { status: 'PUBLISHED' } }),
     ])
-    statsCache = { data: { breederCount, speciesCount, districtCount, reviewCount }, expiresAt: now + TTL }
+    statsCache = {
+      data: { breederCount, speciesCount, districtCount, reviewCount },
+      expiresAt: now + TTL,
+    }
   }
   res.set('Cache-Control', 'public, max-age=3600')
   res.json(statsCache.data)

@@ -26,35 +26,36 @@ async function main() {
   console.log(`  ✓ Admin user created (id: ${admin.id}, email: ${adminEmail})`)
 
   // ---- Districts ----
+  // Centroides aproximados (capital de distrito / cidade principal da região)
   console.log('\nSeeding districts...')
   const districtsData = [
-    { code: '01', namePt: 'Aveiro' },
-    { code: '02', namePt: 'Beja' },
-    { code: '03', namePt: 'Braga' },
-    { code: '04', namePt: 'Bragança' },
-    { code: '05', namePt: 'Castelo Branco' },
-    { code: '06', namePt: 'Coimbra' },
-    { code: '07', namePt: 'Évora' },
-    { code: '08', namePt: 'Faro' },
-    { code: '09', namePt: 'Guarda' },
-    { code: '10', namePt: 'Leiria' },
-    { code: '11', namePt: 'Lisboa' },
-    { code: '12', namePt: 'Portalegre' },
-    { code: '13', namePt: 'Porto' },
-    { code: '14', namePt: 'Santarém' },
-    { code: '15', namePt: 'Setúbal' },
-    { code: '16', namePt: 'Viana do Castelo' },
-    { code: '17', namePt: 'Vila Real' },
-    { code: '18', namePt: 'Viseu' },
-    { code: '31', namePt: 'Região Autónoma dos Açores' },
-    { code: '32', namePt: 'Região Autónoma da Madeira' },
+    { code: '01', namePt: 'Aveiro', latitude: 40.6405, longitude: -8.6538 },
+    { code: '02', namePt: 'Beja', latitude: 38.015, longitude: -7.865 },
+    { code: '03', namePt: 'Braga', latitude: 41.5454, longitude: -8.4265 },
+    { code: '04', namePt: 'Bragança', latitude: 41.8061, longitude: -6.7567 },
+    { code: '05', namePt: 'Castelo Branco', latitude: 39.8222, longitude: -7.491 },
+    { code: '06', namePt: 'Coimbra', latitude: 40.2033, longitude: -8.4103 },
+    { code: '07', namePt: 'Évora', latitude: 38.5711, longitude: -7.9135 },
+    { code: '08', namePt: 'Faro', latitude: 37.0194, longitude: -7.9304 },
+    { code: '09', namePt: 'Guarda', latitude: 40.5371, longitude: -7.2683 },
+    { code: '10', namePt: 'Leiria', latitude: 39.7477, longitude: -8.8071 },
+    { code: '11', namePt: 'Lisboa', latitude: 38.7223, longitude: -9.1393 },
+    { code: '12', namePt: 'Portalegre', latitude: 39.2936, longitude: -7.4289 },
+    { code: '13', namePt: 'Porto', latitude: 41.1579, longitude: -8.6291 },
+    { code: '14', namePt: 'Santarém', latitude: 39.2369, longitude: -8.6852 },
+    { code: '15', namePt: 'Setúbal', latitude: 38.5244, longitude: -8.8882 },
+    { code: '16', namePt: 'Viana do Castelo', latitude: 41.6932, longitude: -8.8326 },
+    { code: '17', namePt: 'Vila Real', latitude: 41.3004, longitude: -7.7441 },
+    { code: '18', namePt: 'Viseu', latitude: 40.661, longitude: -7.9097 },
+    { code: '31', namePt: 'Região Autónoma dos Açores', latitude: 37.7412, longitude: -25.6756 },
+    { code: '32', namePt: 'Região Autónoma da Madeira', latitude: 32.6669, longitude: -16.9241 },
   ]
 
   const districts: Record<string, number> = {}
   for (const d of districtsData) {
     const district = await prisma.district.upsert({
       where: { code: d.code },
-      update: { namePt: d.namePt },
+      update: { namePt: d.namePt, latitude: d.latitude, longitude: d.longitude },
       create: d,
     })
     districts[d.code] = district.id
