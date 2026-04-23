@@ -60,7 +60,7 @@ function RequestResetForm() {
               </p>
               <Link
                 to="/entrar"
-                className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                className="text-sm font-medium text-caramel-600 hover:text-caramel-500"
               >
                 Voltar ao login
               </Link>
@@ -104,7 +104,7 @@ function RequestResetForm() {
         </Card>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          <Link to="/entrar" className="font-medium text-primary-600 hover:text-primary-500">
+          <Link to="/entrar" className="font-medium text-caramel-600 hover:text-caramel-500">
             Voltar ao login
           </Link>
         </p>
@@ -166,7 +166,7 @@ function SetNewPasswordForm({ token }: { token: string }) {
               </p>
               <Link
                 to="/entrar"
-                className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                className="inline-flex items-center rounded-lg bg-caramel-600 px-4 py-2 text-sm font-medium text-white hover:bg-caramel-700"
               >
                 Ir para o login
               </Link>

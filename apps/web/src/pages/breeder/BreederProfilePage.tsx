@@ -437,7 +437,7 @@ export function BreederProfilePage() {
                                 <button
                                   type="button"
                                   onClick={handleWriteReviewClick}
-                                  className="text-primary-600 hover:underline"
+                                  className="text-caramel-600 hover:underline"
                                 >
                                   Editar
                                 </button>

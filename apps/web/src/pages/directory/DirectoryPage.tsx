@@ -94,7 +94,7 @@ export function DirectoryPage() {
         <div className="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5">
           <button
             onClick={() => setViewMode('grid')}
-            className={`rounded-md p-1.5 ${viewMode === 'grid' ? 'bg-primary-100 text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`rounded-md p-1.5 ${viewMode === 'grid' ? 'bg-caramel-100 text-caramel-600' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Vista em grelha"
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -107,7 +107,7 @@ export function DirectoryPage() {
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`rounded-md p-1.5 ${viewMode === 'list' ? 'bg-primary-100 text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`rounded-md p-1.5 ${viewMode === 'list' ? 'bg-caramel-100 text-caramel-600' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Vista em lista"
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -200,7 +200,7 @@ export function DirectoryPage() {
                       onClick={() => goToPage(pageNum)}
                       className={`h-8 w-8 rounded-md text-sm font-medium ${
                         pageNum === page
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-caramel-600 text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >

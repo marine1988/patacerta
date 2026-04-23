@@ -92,7 +92,7 @@ export function PrivacyPolicyPage() {
             Para questões sobre privacidade, contacte-nos através de{' '}
             <a
               href="mailto:privacidade@patacerta.pt"
-              className="text-primary-600 hover:underline"
+              className="text-caramel-600 hover:underline"
             >
               privacidade@patacerta.pt
             </a>

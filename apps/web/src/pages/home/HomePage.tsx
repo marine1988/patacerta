@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
-import { StatsBar } from '../../components/shared/StatsBar'
 
 interface PublicStats {
   breederCount: number
@@ -11,13 +10,6 @@ interface PublicStats {
   reviewCount: number
 }
 
-const FALLBACK_STATS = [
-  { label: 'Criadores verificados', value: '...' },
-  { label: 'Espécies disponíveis', value: '...' },
-  { label: 'Distritos cobertos', value: '...' },
-  { label: 'Avaliações publicadas', value: '...' },
-]
-
 export function HomePage() {
   const { data: stats } = useQuery<PublicStats>({
     queryKey: ['public-stats'],
@@ -25,118 +17,156 @@ export function HomePage() {
     staleTime: 3600_000,
   })
 
-  const statsDisplay = stats
-    ? [
-        { label: 'Criadores verificados', value: String(stats.breederCount) },
-        { label: 'Espécies disponíveis', value: String(stats.speciesCount) },
-        { label: 'Distritos cobertos', value: String(stats.districtCount) },
-        { label: 'Avaliações publicadas', value: String(stats.reviewCount) },
-      ]
-    : FALLBACK_STATS
-
   return (
     <div>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 py-20 sm:py-28">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -left-4 -top-4 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute -bottom-8 right-10 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        </div>
+      {/* ============================================================
+       * HERO — editorial
+       * ============================================================ */}
+      <section className="relative">
+        <div className="mx-auto max-w-[72rem] px-6 pb-24 pt-20 lg:px-8">
+          <p className="eyebrow mb-8">◆ Criadores verificados · Portugal</p>
 
-        <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Criadores <span className="text-primary-200">verificados</span>
-            <br />
-            em Portugal
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-primary-100 sm:text-xl">
-            A PataCerta conecta donos de animais com criadores certificados pela DGAV.
-            Transparência, segurança e confiança.
-          </p>
+          <div className="grid gap-16 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+            <div>
+              <h1 className="display">
+                A arte de
+                <br />
+                <em>escolher bem.</em>
+              </h1>
+              <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted">
+                Uma curadoria rigorosa de criadores éticos em Portugal. Cada ficha verificada, cada
+                linhagem rastreável, cada cão com a família certa.
+              </p>
 
-          {/* Search bar */}
-          <div className="mx-auto mt-10 max-w-4xl">
-            <SearchBar />
+              <div className="mt-10 flex flex-wrap items-center gap-6">
+                <Link to="/diretorio" className="btn-primary">
+                  Explorar diretório
+                </Link>
+                <Link to="/registar" className="link-editorial">
+                  Sou criador →
+                </Link>
+              </div>
+            </div>
+
+            {/* Aside editorial — manifesto curto */}
+            <aside className="border-l border-line pl-10">
+              <p className="eyebrow-muted mb-4">— Manifesto</p>
+              <p className="font-serif text-xl italic leading-snug text-ink">
+                "Acreditamos que escolher um cão é escolher uma família. E que nenhuma família
+                merece menos do que rigor, transparência e cuidado."
+              </p>
+            </aside>
           </div>
 
-          {/* Stats */}
-          <div className="mx-auto mt-12 max-w-3xl">
-            <StatsBar stats={statsDisplay} />
+          {/* Stats editoriais */}
+          <div className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-4">
+            <Stat value={stats?.breederCount} label="Criadores" />
+            <Stat value={stats?.speciesCount} label="Espécies" />
+            <Stat value={stats?.districtCount} label="Distritos" />
+            <Stat value={stats?.reviewCount} label="Avaliações" />
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="page-container py-16 sm:py-24">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Porque escolher a PataCerta?
-          </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-gray-600">
-            Somos a primeira plataforma portuguesa dedicada à verificação de criadores.
-          </p>
+      {/* ============================================================
+       * SEARCH — barra integrada, não gritante
+       * ============================================================ */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
+          <div className="mb-8 flex items-baseline gap-3">
+            <span className="eyebrow">◆ Encontrar</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <SearchBar />
         </div>
+      </section>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="section text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100">
-              <svg className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Criadores Verificados</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Verificamos o registo DGAV, NIF e documentação de cada criador antes de aprovar o perfil.
-            </p>
+      {/* ============================================================
+       * PILLARS — 3 features em grelha editorial
+       * ============================================================ */}
+      <section className="border-t border-line bg-surface-alt/40">
+        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
+          <div className="mb-16 max-w-2xl">
+            <p className="eyebrow mb-6">— O que nos distingue</p>
+            <h2 className="font-serif text-h2 text-ink">
+              Três princípios que nos guiam em{' '}
+              <em className="italic text-caramel-500">cada verificação</em>.
+            </h2>
           </div>
 
-          <div className="section text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
-              <svg className="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Pesquisa Inteligente</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Encontre criadores por espécie, distrito ou nome. Filtros avançados para encontrar exatamente o que procura.
-            </p>
-          </div>
-
-          <div className="section text-center sm:col-span-2 lg:col-span-1">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100">
-              <svg className="h-7 w-7 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Contacto Direto</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Comunique diretamente com criadores verificados através do nosso sistema de mensagens seguro.
-            </p>
+          <div className="grid gap-12 md:grid-cols-3">
+            <Pillar
+              number="01"
+              title="Verificação documental"
+              description="Confirmamos registo DGAV, NIF e documentação de cada criador antes de aprovar o perfil. Sem exceções."
+            />
+            <Pillar
+              number="02"
+              title="Transparência de linhagem"
+              description="Progenitores identificados, histórico de ninhadas e testes de saúde visíveis para cada interessado."
+            />
+            <Pillar
+              number="03"
+              title="Comunicação direta"
+              description="Mensagens privadas entre famílias e criadores, com moderação e respeito pelo bem-estar animal."
+            />
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-gray-900 py-16">
-        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            É criador certificado?
+      {/* ============================================================
+       * CTA — registar criador
+       * ============================================================ */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-6 py-24 text-center lg:px-8">
+          <p className="eyebrow mb-6">◆ Criador certificado</p>
+          <h2 className="font-serif text-h2 mx-auto max-w-2xl text-ink">
+            Torne-se parte de uma rede <em className="italic text-caramel-500">selecta</em> de
+            criadores portugueses.
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-gray-400">
-            Registe-se na PataCerta e ganhe visibilidade junto de milhares de potenciais donos.
-            A verificação é gratuita.
+          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted">
+            Visibilidade junto de famílias que procuram rigor. Perfil curado. Processo gratuito.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-10 flex flex-col items-center justify-center gap-6 sm:flex-row">
             <Link to="/registar" className="btn-primary btn-lg">
-              Registar como Criador
+              Juntar-me à PataCerta
             </Link>
-            <Link to="/diretorio" className="btn-ghost text-gray-300 hover:text-white">
-              Explorar diretório
+            <Link to="/diretorio" className="link-editorial">
+              Ver diretório →
             </Link>
           </div>
         </div>
       </section>
     </div>
+  )
+}
+
+function Stat({ value, label }: { value: number | undefined; label: string }) {
+  return (
+    <div>
+      <p className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
+        {value ?? '—'}
+      </p>
+      <p className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</p>
+    </div>
+  )
+}
+
+function Pillar({
+  number,
+  title,
+  description,
+}: {
+  number: string
+  title: string
+  description: string
+}) {
+  return (
+    <article className="group">
+      <p className="font-serif text-5xl font-normal italic text-caramel-500">{number}</p>
+      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
+      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
+      <div className="mt-6 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
+    </article>
   )
 }

@@ -176,7 +176,7 @@ export function MapPage() {
         </p>
         <Link
           to={{ pathname: '/diretorio', search: searchParams.toString() }}
-          className="font-medium text-primary-600 hover:text-primary-700"
+          className="font-medium text-caramel-600 hover:text-caramel-700"
         >
           Ver em lista →
         </Link>

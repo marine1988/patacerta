@@ -310,7 +310,7 @@ function VerificacoesTab() {
                 <td className="px-3 py-2">{doc.docType}</td>
                 <td className="px-3 py-2">
                   <button
-                    className="text-primary-600 hover:underline"
+                    className="text-caramel-600 hover:underline"
                     onClick={() => handleViewDoc(doc.id)}
                   >
                     {doc.fileName}

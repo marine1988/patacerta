@@ -2,72 +2,78 @@ import { Link } from 'react-router-dom'
 
 export function Footer() {
   return (
-    <footer className="border-t border-gray-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Brand */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Link to="/" className="flex items-center gap-2 text-lg font-bold text-primary-600">
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 18c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm-4.5-8a2 2 0 100-4 2 2 0 000 4zm9 0a2 2 0 100-4 2 2 0 000 4zM5 13a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4z" />
-              </svg>
-              PataCerta
+    <footer className="mt-24 border-t border-line bg-bg">
+      <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
+        {/* Editorial top line */}
+        <div className="mb-12 flex items-baseline gap-3">
+          <span className="eyebrow">◆ PataCerta</span>
+          <span className="h-px flex-1 bg-line" />
+          <span className="eyebrow-muted">Est. 2025 · Portugal</span>
+        </div>
+
+        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          {/* Brand statement */}
+          <div>
+            <Link
+              to="/"
+              className="font-serif text-2xl tracking-tight text-ink transition-colors hover:text-caramel-700"
+            >
+              Pata<em className="italic text-caramel-500">Certa</em>
             </Link>
-            <p className="mt-3 text-sm text-gray-500">
-              A plataforma de referência para criadores verificados em Portugal.
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted">
+              Uma curadoria rigorosa de criadores éticos em Portugal. Cada ficha verificada, cada
+              linhagem rastreável.
             </p>
           </div>
 
-          {/* Platform */}
+          {/* Plataforma */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">Plataforma</h4>
-            <ul className="mt-3 space-y-2">
-              <li>
-                <Link to="/diretorio" className="text-sm text-gray-500 hover:text-gray-700">
-                  Diretório de Criadores
-                </Link>
-              </li>
-              <li>
-                <Link to="/registar" className="text-sm text-gray-500 hover:text-gray-700">
-                  Registar como Criador
-                </Link>
-              </li>
+            <h4 className="eyebrow mb-5">— Plataforma</h4>
+            <ul className="space-y-3">
+              <FooterLink to="/diretorio">Diretório</FooterLink>
+              <FooterLink to="/mapa">Mapa</FooterLink>
+              <FooterLink to="/registar">Juntar-me como criador</FooterLink>
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">Legal</h4>
-            <ul className="mt-3 space-y-2">
-              <li>
-                <Link to="/politica-privacidade" className="text-sm text-gray-500 hover:text-gray-700">
-                  Política de Privacidade
-                </Link>
-              </li>
-              <li>
-                <Link to="/termos" className="text-sm text-gray-500 hover:text-gray-700">
-                  Termos de Utilização
-                </Link>
-              </li>
+            <h4 className="eyebrow mb-5">— Legal</h4>
+            <ul className="space-y-3">
+              <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
+              <FooterLink to="/termos">Termos de Utilização</FooterLink>
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Contacto */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">Contacto</h4>
-            <ul className="mt-3 space-y-2">
-              <li className="text-sm text-gray-500">info@patacerta.pt</li>
-              <li className="text-sm text-gray-500">Lisboa, Portugal</li>
+            <h4 className="eyebrow mb-5">— Contacto</h4>
+            <ul className="space-y-3">
+              <li className="text-sm text-muted">info@patacerta.pt</li>
+              <li className="text-sm text-muted">Lisboa, Portugal</li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-gray-100 pt-6">
-          <p className="text-center text-xs text-gray-400">
-            &copy; {new Date().getFullYear()} PataCerta. Todos os direitos reservados.
+        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-line pt-6 sm:flex-row sm:items-center">
+          <p className="text-[11px] uppercase tracking-caps text-subtle">
+            © {new Date().getFullYear()} PataCerta — Todos os direitos reservados.
+          </p>
+          <p className="text-[11px] uppercase tracking-caps text-subtle">
+            Design editorial · Feito em Portugal
           </p>
         </div>
       </div>
     </footer>
+  )
+}
+
+function FooterLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <Link to={to} className="text-sm text-ink transition-colors hover:text-caramel-500">
+        {children}
+      </Link>
+    </li>
   )
 }

@@ -47,7 +47,7 @@ export function MessageActionsMenu({
 
   const btnColor =
     variant === 'own'
-      ? 'text-primary-100 hover:text-white hover:bg-white/10'
+      ? 'text-caramel-100 hover:text-white hover:bg-white/10'
       : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
 
   return (

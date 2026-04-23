@@ -148,7 +148,7 @@ export function RegisterPage() {
           <h1 className="text-2xl font-bold text-gray-900">Criar conta na PataCerta</h1>
           <p className="mt-2 text-sm text-gray-600">
             Já tem conta?{' '}
-            <Link to="/entrar" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link to="/entrar" className="font-medium text-caramel-600 hover:text-caramel-500">
               Entrar
             </Link>
           </p>

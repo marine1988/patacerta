@@ -606,7 +606,7 @@ function BreederTab() {
                       type="checkbox"
                       checked={form.speciesIds.includes(sp.id)}
                       onChange={() => toggleSpecies(sp.id)}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                     />
                     {sp.name}
                   </label>
@@ -714,7 +714,7 @@ function BreederTab() {
             <input
               ref={fileInputRef}
               type="file"
-              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
             />
           </div>
           <Button type="submit" loading={uploadMutation.isPending}>
@@ -1190,13 +1190,13 @@ function MessagesTab() {
                 <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`group relative max-w-[75%] rounded-lg px-4 py-2 ${
-                      isOwn ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
+                      isOwn ? 'bg-caramel-600 text-white' : 'bg-gray-100 text-gray-900'
                     } ${isPending ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p
                         className={`mb-1 text-xs font-medium ${
-                          isOwn ? 'text-primary-100' : 'text-gray-500'
+                          isOwn ? 'text-caramel-100' : 'text-gray-500'
                         }`}
                       >
                         {senderName}
@@ -1278,14 +1278,14 @@ function MessagesTab() {
                         className="block whitespace-pre-wrap text-sm"
                         linkClassName={
                           isOwn
-                            ? 'underline decoration-primary-200 underline-offset-2 hover:text-white'
-                            : 'text-primary-700 underline decoration-dotted underline-offset-2 hover:decoration-solid'
+                            ? 'underline decoration-caramel-200 underline-offset-2 hover:text-white'
+                            : 'text-caramel-700 underline decoration-dotted underline-offset-2 hover:decoration-solid'
                         }
                       />
                     )}
 
                     <p
-                      className={`mt-1 text-xs ${isOwn ? 'text-primary-200' : 'text-gray-400'}`}
+                      className={`mt-1 text-xs ${isOwn ? 'text-caramel-200' : 'text-gray-400'}`}
                       title={formatDateTime(msg.createdAt)}
                     >
                       {formatDateTime(msg.createdAt)}
@@ -1378,7 +1378,7 @@ function MessagesTab() {
             type="button"
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               !showArchived
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-caramel-600 text-caramel-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setShowArchived(false)}
@@ -1389,7 +1389,7 @@ function MessagesTab() {
             type="button"
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               showArchived
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-caramel-600 text-caramel-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setShowArchived(true)}
@@ -1721,7 +1721,7 @@ function ReviewsAboutMeTab() {
                     {r.status === 'PUBLISHED' && (
                       <button
                         type="button"
-                        className="text-xs text-primary-600 hover:underline"
+                        className="text-xs text-caramel-600 hover:underline"
                         onClick={() => {
                           setReplyError(null)
                           setReplyTarget(r)
@@ -1857,7 +1857,7 @@ function SettingsTab() {
               type="checkbox"
               checked={notifyMessages}
               onChange={toggleNotifyMessages}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
             />
           </label>
           <label className="flex items-center justify-between">
@@ -1871,7 +1871,7 @@ function SettingsTab() {
               type="checkbox"
               checked={notifyVerification}
               onChange={toggleNotifyVerification}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
             />
           </label>
         </div>

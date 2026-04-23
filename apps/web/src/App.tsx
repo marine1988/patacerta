@@ -49,7 +49,6 @@ const TermsPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 )
-
 function PageFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -70,12 +69,9 @@ function ErrorFallback({
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
-      <h2 className="text-xl font-semibold text-red-600">Algo correu mal</h2>
-      <p className="max-w-md text-gray-600">{message}</p>
-      <button
-        onClick={resetErrorBoundary}
-        className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-      >
+      <h2 className="text-xl font-semibold text-red-700">Algo correu mal</h2>
+      <p className="max-w-md text-muted">{message}</p>
+      <button onClick={resetErrorBoundary} className="btn-primary btn-sm">
         Tentar novamente
       </button>
     </div>

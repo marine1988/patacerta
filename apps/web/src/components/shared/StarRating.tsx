@@ -37,7 +37,7 @@ export function StarRating({
             aria-checked={star === rating}
             aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
             onClick={() => onChange?.(star)}
-            className="transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+            className="transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 rounded"
           >
             <svg
               className={`${cls} ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}

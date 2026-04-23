@@ -2,110 +2,365 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+ * PATACERTA DESIGN SYSTEM
+ * Editorial / Luxury — Caramelo #B8895F · Sage #4F5D4A
+ * Serif: Lora · Sans: Open Sans
+ * ============================================================ */
+
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+  :root.dark {
+    color-scheme: dark;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: 'ss01', 'ss02', 'cv11';
+  }
+
   body {
-    @apply min-h-screen bg-gray-50 text-gray-900 antialiased;
+    @apply min-h-screen bg-bg text-ink transition-colors duration-300;
+    font-family: 'Open Sans', system-ui, sans-serif;
+    font-weight: 400;
+  }
+
+  .dark body {
+    @apply bg-bg-dark text-ink-dark;
+  }
+
+  /* Dark mode text & background defaults on common surfaces */
+  .dark .bg-surface {
+    background-color: theme('colors.surface.dark');
+  }
+  .dark .bg-surface-alt {
+    background-color: theme('colors.surface-alt.dark');
+  }
+  .dark .text-ink {
+    color: theme('colors.ink.dark');
+  }
+  .dark .text-muted {
+    color: theme('colors.muted.dark');
+  }
+  .dark .text-subtle {
+    color: theme('colors.subtle.dark');
+  }
+  .dark .border-line {
+    border-color: theme('colors.line.dark');
+  }
+
+  /* ===== Typography — display serif ===== */
+  h1,
+  h2,
+  h3,
+  .heading {
+    font-family: 'Lora', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 
   h1 {
-    @apply text-3xl font-bold tracking-tight sm:text-4xl;
+    @apply text-h1;
   }
   h2 {
-    @apply text-2xl font-bold tracking-tight;
+    @apply text-h2;
   }
   h3 {
-    @apply text-xl font-semibold;
+    @apply text-2xl leading-tight;
+  }
+
+  /* Elements */
+  a {
+    @apply transition-colors;
+  }
+
+  ::selection {
+    background-color: theme('colors.caramel.500');
+    color: #fff;
   }
 }
 
 @layer components {
-  /* Buttons */
+  /* ============================================================
+   * EDITORIAL PRIMITIVES
+   * ============================================================ */
+
+  /* Eyebrow — 10px uppercase caramelo, tracking largo */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-caps text-caramel-500;
+  }
+  .eyebrow-muted {
+    @apply inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-caps text-muted;
+  }
+  .dark .eyebrow-muted {
+    color: theme('colors.muted.dark');
+  }
+
+  /* Display heading com itálico caramelo opcional */
+  .display {
+    @apply text-display font-normal;
+    font-family: 'Lora', Georgia, serif;
+  }
+  .display em,
+  .heading em {
+    @apply italic font-medium text-caramel-500;
+    font-style: italic;
+  }
+
+  /* Eyebrow divider (separador horizontal com label) */
+  .eyebrow-divider {
+    @apply flex items-baseline gap-3;
+  }
+  .eyebrow-divider::after {
+    content: '';
+    @apply h-px flex-1 bg-line;
+  }
+  .dark .eyebrow-divider::after {
+    background-color: theme('colors.line.dark');
+  }
+
+  /* ============================================================
+   * BUTTONS
+   * ============================================================ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[11px] font-semibold uppercase tracking-caps transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-40;
+    border-radius: 0;
   }
+  .dark .btn {
+    --tw-ring-offset-color: theme('colors.bg.dark');
+  }
+
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 active:bg-primary-800;
+    @apply btn bg-caramel-500 text-white hover:bg-caramel-700 active:bg-caramel-800;
   }
+  .dark .btn-primary {
+    @apply text-bg-dark;
+  }
+
   .btn-secondary {
-    @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500 active:bg-gray-100;
+    @apply btn border border-ink bg-transparent text-ink hover:bg-ink hover:text-bg;
   }
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:bg-red-800;
+  .dark .btn-secondary {
+    border-color: theme('colors.ink.dark');
+    color: theme('colors.ink.dark');
   }
+  .dark .btn-secondary:hover {
+    background-color: theme('colors.ink.dark');
+    color: theme('colors.bg.dark');
+  }
+
   .btn-ghost {
-    @apply btn text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-400;
+    @apply btn bg-transparent text-muted hover:text-ink;
   }
+  .dark .btn-ghost {
+    color: theme('colors.muted.dark');
+  }
+  .dark .btn-ghost:hover {
+    color: theme('colors.ink.dark');
+  }
+
+  .btn-danger {
+    @apply btn bg-red-700 text-white hover:bg-red-800 active:bg-red-900;
+  }
+
   .btn-sm {
-    @apply px-3 py-1.5 text-xs;
+    @apply px-5 py-2.5 text-[10px];
   }
   .btn-lg {
-    @apply px-6 py-3 text-base;
-  }
-  .btn-icon {
-    @apply inline-flex items-center justify-center rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply px-9 py-4 text-xs;
   }
 
-  /* Form elements */
+  .btn-icon {
+    @apply inline-flex items-center justify-center p-2 text-muted transition-colors hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500;
+  }
+  .dark .btn-icon {
+    color: theme('colors.muted.dark');
+  }
+  .dark .btn-icon:hover {
+    color: theme('colors.ink.dark');
+  }
+
+  /* Link editorial — sublinhado caramelo fino */
+  .link-editorial {
+    @apply inline-flex items-center gap-1.5 border-b border-caramel-500 pb-0.5 text-[11px] font-medium uppercase tracking-caps text-ink transition-colors hover:text-caramel-700;
+  }
+  .dark .link-editorial {
+    color: theme('colors.ink.dark');
+  }
+
+  /* ============================================================
+   * FORM ELEMENTS
+   * ============================================================ */
   .input {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500;
+    @apply block w-full border-0 border-b border-ink bg-transparent px-0 py-3 text-base text-ink placeholder:text-subtle focus:outline-none focus:border-caramel-500 disabled:cursor-not-allowed disabled:opacity-50;
+    border-radius: 0;
+  }
+  .dark .input {
+    border-color: theme('colors.ink.dark');
+    color: theme('colors.ink.dark');
   }
   .input-error {
-    @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+    @apply border-red-600 focus:border-red-700;
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1.5;
+    @apply mb-2 block text-[10px] font-medium uppercase tracking-caps text-caramel-500;
   }
   .select {
-    @apply input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10;
+    @apply input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%23B8895F%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_0.25rem_center] bg-no-repeat pr-8;
   }
   .textarea {
-    @apply input min-h-[100px] resize-y;
+    @apply block w-full border border-line bg-transparent p-4 text-base text-ink placeholder:text-subtle transition-colors focus:outline-none focus:border-caramel-500 resize-y min-h-[120px];
+    border-radius: 0;
+  }
+  .dark .textarea {
+    border-color: theme('colors.line.dark');
+    color: theme('colors.ink.dark');
   }
 
-  /* Cards */
+  /* ============================================================
+   * CARDS
+   * ============================================================ */
   .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md;
+    @apply border border-line bg-surface transition-colors duration-200;
+    border-radius: 0;
+  }
+  .dark .card {
+    background-color: theme('colors.surface.dark');
+    border-color: theme('colors.line.dark');
+  }
+  .card:hover {
+    border-color: theme('colors.caramel.500');
   }
   .card-body {
-    @apply p-5;
+    @apply p-6;
+  }
+  .card-editorial {
+    @apply card p-8;
   }
 
-  /* Badges */
+  /* ============================================================
+   * BADGES — moldura fina, não preenchida
+   * ============================================================ */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-medium uppercase tracking-caps;
+    border: 1px solid currentColor;
+    border-radius: 0;
+  }
+  .badge-verified {
+    @apply badge text-sage-500;
+  }
+  .badge-caramel {
+    @apply badge text-caramel-500;
+  }
+  .badge-muted {
+    @apply badge text-muted;
+  }
+  .dark .badge-muted {
+    color: theme('colors.muted.dark');
   }
   .badge-green {
-    @apply badge bg-green-100 text-green-700;
+    @apply badge text-sage-500;
   }
   .badge-yellow {
-    @apply badge bg-yellow-100 text-yellow-700;
+    @apply badge text-caramel-700;
   }
   .badge-red {
-    @apply badge bg-red-100 text-red-700;
+    @apply badge text-red-700;
   }
   .badge-blue {
-    @apply badge bg-blue-100 text-blue-700;
+    @apply badge text-ink;
+  }
+  .dark .badge-blue {
+    color: theme('colors.ink.dark');
   }
   .badge-gray {
-    @apply badge bg-gray-100 text-gray-600;
+    @apply badge-muted;
   }
 
-  /* Page layout */
+  /* ============================================================
+   * PAGE LAYOUT
+   * ============================================================ */
   .page-container {
-    @apply mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8;
+    @apply mx-auto max-w-[72rem] px-6 py-16 lg:px-8;
   }
   .page-header {
-    @apply mb-8;
+    @apply mb-12;
   }
   .page-title {
-    @apply text-2xl font-bold text-gray-900 sm:text-3xl;
+    @apply text-h1;
+    font-family: 'Lora', Georgia, serif;
+    font-weight: 400;
   }
   .page-subtitle {
-    @apply mt-2 text-base text-gray-600;
+    @apply mt-3 max-w-2xl text-base leading-relaxed text-muted;
+  }
+  .dark .page-subtitle {
+    color: theme('colors.muted.dark');
   }
 
-  /* Section */
+  /* Section — bloco editorial com espaçamento generoso */
   .section {
-    @apply rounded-xl border border-gray-200 bg-white p-6;
+    @apply border border-line bg-surface p-8;
+    border-radius: 0;
+  }
+  .dark .section {
+    background-color: theme('colors.surface.dark');
+    border-color: theme('colors.line.dark');
+  }
+
+  /* Separador horizontal editorial */
+  .divider {
+    @apply my-12 h-px w-full bg-line;
+  }
+  .dark .divider {
+    background-color: theme('colors.line.dark');
+  }
+}
+
+/* ============================================================
+ * UTILITIES EXTRA
+ * ============================================================ */
+@layer utilities {
+  .font-serif {
+    font-family: 'Lora', Georgia, serif;
+  }
+  .font-sans {
+    font-family: 'Open Sans', system-ui, sans-serif;
+  }
+
+  /* Text colours that respond to dark mode without explicit dark: prefix */
+  .text-ink {
+    color: theme('colors.ink.DEFAULT');
+  }
+  .dark .text-ink {
+    color: theme('colors.ink.dark');
+  }
+  .text-muted {
+    color: theme('colors.muted.DEFAULT');
+  }
+  .dark .text-muted {
+    color: theme('colors.muted.dark');
+  }
+  .text-subtle {
+    color: theme('colors.subtle.DEFAULT');
+  }
+  .dark .text-subtle {
+    color: theme('colors.subtle.dark');
+  }
+
+  .bg-bg {
+    background-color: theme('colors.bg.DEFAULT');
+  }
+  .dark .bg-bg {
+    background-color: theme('colors.bg.dark');
+  }
+
+  .border-line {
+    border-color: theme('colors.line.DEFAULT');
+  }
+  .dark .border-line {
+    border-color: theme('colors.line.dark');
   }
 }

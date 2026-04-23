@@ -49,7 +49,7 @@ export function LoginPage() {
           <h1 className="text-2xl font-bold text-gray-900">Entrar na PataCerta</h1>
           <p className="mt-2 text-sm text-gray-600">
             Ainda não tem conta?{' '}
-            <Link to="/registar" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link to="/registar" className="font-medium text-caramel-600 hover:text-caramel-500">
               Registar
             </Link>
           </p>
@@ -64,7 +64,7 @@ export function LoginPage() {
                   <div className="mt-2">
                     <Link
                       to={`/verificar-email?email=${encodeURIComponent(email)}`}
-                      className="font-medium text-primary-600 hover:text-primary-500"
+                      className="font-medium text-caramel-600 hover:text-caramel-500"
                     >
                       Reenviar email de verificação →
                     </Link>
@@ -99,7 +99,7 @@ export function LoginPage() {
             <p className="text-center text-sm text-gray-600">
               <Link
                 to="/recuperar-palavra-passe"
-                className="font-medium text-primary-600 hover:text-primary-500"
+                className="font-medium text-caramel-600 hover:text-caramel-500"
               >
                 Esqueceu a palavra-passe?
               </Link>

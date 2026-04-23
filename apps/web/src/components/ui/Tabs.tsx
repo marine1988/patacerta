@@ -33,7 +33,7 @@ export function Tabs({ tabs, defaultTab, onChange }: TabsProps) {
               onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'border-primary-600 text-primary-600'
+                  ? 'border-caramel-600 text-caramel-600'
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
               aria-selected={activeTab === tab.id}

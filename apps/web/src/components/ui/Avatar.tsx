@@ -23,7 +23,7 @@ function getInitials(name: string): string {
 
 function getColor(name: string): string {
   const colors = [
-    'bg-primary-500',
+    'bg-caramel-500',
     'bg-emerald-500',
     'bg-amber-500',
     'bg-rose-500',

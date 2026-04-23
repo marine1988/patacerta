@@ -110,7 +110,7 @@ export function TermsPage() {
             Para questões sobre estes termos, contacte-nos através de{' '}
             <a
               href="mailto:suporte@patacerta.pt"
-              className="text-primary-600 hover:underline"
+              className="text-caramel-600 hover:underline"
             >
               suporte@patacerta.pt
             </a>
