@@ -1,14 +1,23 @@
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
+import { formatDate } from '../../lib/dates'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
+import { StarRating } from '../../components/shared/StarRating'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
-
+import { Select } from '../../components/ui/Select'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
+import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
+import { RatingHistogram } from '../../components/reviews/RatingHistogram'
+import { NewThreadModal } from '../../components/messages/NewThreadModal'
 
 interface BreederDetail {
   id: number
@@ -19,6 +28,7 @@ interface BreederDetail {
   website: string | null
   phone: string | null
   status: string
+  userId: number
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
   species: { speciesId: number; species: { id: number; namePt: string } }[]
@@ -39,35 +49,45 @@ interface ReviewItem {
   createdAt: string
   author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
   breeder: { id: number; businessName: string }
+  authorId: number
 }
 
 interface ReviewsResponse {
   data: ReviewItem[]
   meta: { page: number; limit: number; total: number; totalPages: number }
-  summary: { avgRating: number | null; totalReviews: number } | null
+  summary: {
+    avgRating: number | null
+    totalReviews: number
+    distribution: Record<1 | 2 | 3 | 4 | 5, number>
+  } | null
 }
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <svg
-          key={star}
-          className={`h-4 w-4 ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  )
+type SortOption = 'recent' | 'oldest' | 'highest' | 'lowest'
+
+const PAGE_SIZE = 10
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: string; message?: string } | undefined
+    return data?.error ?? data?.message ?? err.message ?? fallback
+  }
+  return fallback
 }
 
 export function BreederProfilePage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const [sort, setSort] = useState<SortOption>('recent')
+  const [page, setPage] = useState(1)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [editingReview, setEditingReview] = useState<ReviewItem | null>(null)
+  const [flagTarget, setFlagTarget] = useState<ReviewItem | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [threadModalOpen, setThreadModalOpen] = useState(false)
+  const [threadError, setThreadError] = useState<string | null>(null)
 
   const {
     data: breeder,
@@ -79,25 +99,125 @@ export function BreederProfilePage() {
     enabled: !!id,
   })
 
-  const { data: reviewsData } = useQuery<ReviewsResponse>({
-    queryKey: ['reviews', { breederId: id }],
+  const isSelf = !!user && !!breeder && breeder.userId === user.id
+  const canWriteReview = !!user && user.role === 'OWNER' && !isSelf
+
+  const reviewsQuery = useQuery<ReviewsResponse>({
+    queryKey: ['reviews', { breederId: id, sort, page }],
     queryFn: () =>
       api
-        .get('/reviews', { params: { breederId: Number(id), page: 1, limit: 10 } })
+        .get('/reviews', {
+          params: { breederId: Number(id), page, limit: PAGE_SIZE, sort },
+        })
         .then((r) => r.data),
     enabled: !!id,
   })
 
-  const reviews = reviewsData?.data ?? []
-  const reviewSummary = reviewsData?.summary
+  const reviews = reviewsQuery.data?.data ?? []
+  const reviewSummary = reviewsQuery.data?.summary
+  const reviewMeta = reviewsQuery.data?.meta
 
-  function handleSendMessage() {
+  const myReview = user ? reviews.find((r) => r.authorId === user.id) : undefined
+
+  const createReviewMutation = useMutation({
+    mutationFn: (values: ReviewFormValues) =>
+      api.post('/reviews', { breederId: Number(id), ...values }).then((r) => r.data),
+    onSuccess: () => {
+      setReviewModalOpen(false)
+      setEditingReview(null)
+      setActionError(null)
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['breeder', id] })
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+    onError: (err) => {
+      setActionError(extractErrorMessage(err, 'Erro ao publicar avaliação.'))
+    },
+  })
+
+  const updateReviewMutation = useMutation({
+    mutationFn: ({ reviewId, values }: { reviewId: number; values: ReviewFormValues }) =>
+      api.patch(`/reviews/${reviewId}`, values).then((r) => r.data),
+    onSuccess: () => {
+      setReviewModalOpen(false)
+      setEditingReview(null)
+      setActionError(null)
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['breeder', id] })
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+    onError: (err) => {
+      setActionError(extractErrorMessage(err, 'Erro ao atualizar avaliação.'))
+    },
+  })
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['breeder', id] })
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+  })
+
+  const flagMutation = useMutation({
+    mutationFn: ({ reviewId, reason }: { reviewId: number; reason: string }) =>
+      api.post(`/reviews/${reviewId}/flag`, { reason }).then((r) => r.data),
+    onSuccess: () => {
+      setFlagTarget(null)
+      setActionError(null)
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+    },
+    onError: (err) => {
+      setActionError(extractErrorMessage(err, 'Erro ao denunciar avaliação.'))
+    },
+  })
+
+  const createThreadMutation = useMutation({
+    mutationFn: (values: { subject: string; body: string }) =>
+      api.post('/messages/threads', { breederId: Number(id), ...values }).then((r) => r.data),
+    onSuccess: (res) => {
+      setThreadModalOpen(false)
+      setThreadError(null)
+      navigate(`/painel?tab=mensagens&threadId=${res.threadId}`)
+    },
+    onError: (err) => {
+      setThreadError(extractErrorMessage(err, 'Erro ao enviar mensagem.'))
+    },
+  })
+
+  function handleSendMessageClick() {
     if (!user) {
-      navigate('/entrar')
+      navigate('/entrar?next=' + encodeURIComponent(`/criadores/${id}`))
       return
     }
-    // Navigate to dashboard messages tab — thread creation happens there
-    navigate(`/painel?tab=mensagens&breederId=${id}`)
+    if (isSelf) return
+    setThreadError(null)
+    setThreadModalOpen(true)
+  }
+
+  function handleWriteReviewClick() {
+    if (!user) {
+      navigate('/entrar?next=' + encodeURIComponent(`/criadores/${id}`))
+      return
+    }
+    setEditingReview(myReview ?? null)
+    setActionError(null)
+    setReviewModalOpen(true)
+  }
+
+  function handleReviewSubmit(values: ReviewFormValues) {
+    if (editingReview) {
+      updateReviewMutation.mutate({ reviewId: editingReview.id, values })
+    } else {
+      createReviewMutation.mutate(values)
+    }
+  }
+
+  function handleDeleteReview(reviewId: number) {
+    if (confirm('Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.')) {
+      deleteReviewMutation.mutate(reviewId)
+    }
   }
 
   if (isLoading) {
@@ -120,9 +240,10 @@ export function BreederProfilePage() {
     )
   }
 
+  const totalPages = reviewMeta?.totalPages ?? 1
+
   return (
     <div className="page-container">
-      {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gray-500">
         <Link to="/diretorio" className="hover:text-gray-700">
           Diretório
@@ -140,40 +261,20 @@ export function BreederProfilePage() {
               <Avatar name={breeder.businessName} size="xl" />
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {breeder.businessName}
-                  </h1>
+                  <h1 className="text-2xl font-bold text-gray-900">{breeder.businessName}</h1>
                   <VerificationBadge status={breeder.status} />
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0115 0z" />
-                    </svg>
+                  <span>
                     {breeder.municipality.namePt}, {breeder.district.namePt}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                    </svg>
-                    Membro desde{' '}
-                    {new Date(breeder.createdAt).toLocaleDateString('pt-PT', {
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </span>
-                  {reviewSummary && reviewSummary.avgRating != null && (
+                  <span>Membro desde {formatDate(breeder.createdAt)}</span>
+                  {breeder.avgRating != null && (
                     <span className="flex items-center gap-1">
-                      <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      <span className="font-semibold">{reviewSummary.avgRating}</span>
-                      <span className="text-gray-400">
-                        ({reviewSummary.totalReviews}{' '}
-                        {reviewSummary.totalReviews === 1 ? 'avaliação' : 'avaliações'})
-                      </span>
+                      <StarRating rating={Math.round(breeder.avgRating)} size="sm" />
+                      <span className="font-semibold">{breeder.avgRating.toFixed(1)}</span>
+                      <span className="text-gray-400">({breeder.reviewCount})</span>
                     </span>
                   )}
                 </div>
@@ -189,7 +290,6 @@ export function BreederProfilePage() {
             </div>
           </Card>
 
-          {/* Description */}
           {breeder.description && (
             <Card>
               <h2 className="text-lg font-semibold text-gray-900">Sobre</h2>
@@ -199,16 +299,13 @@ export function BreederProfilePage() {
             </Card>
           )}
 
-          {/* DGAV info */}
           {breeder.status === 'VERIFIED' && breeder.dgavNumber && (
             <Card>
               <h2 className="text-lg font-semibold text-gray-900">Certificação</h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-lg bg-green-50 p-4">
                   <p className="text-xs font-medium text-green-600">Registo DGAV</p>
-                  <p className="mt-1 text-sm font-semibold text-green-800">
-                    {breeder.dgavNumber}
-                  </p>
+                  <p className="mt-1 text-sm font-semibold text-green-800">{breeder.dgavNumber}</p>
                 </div>
                 <div className="rounded-lg bg-blue-50 p-4">
                   <p className="text-xs font-medium text-blue-600">NIF</p>
@@ -220,7 +317,7 @@ export function BreederProfilePage() {
 
           {/* Reviews section */}
           <Card>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-gray-900">
                 Avaliações
                 {reviewSummary && (
@@ -229,58 +326,160 @@ export function BreederProfilePage() {
                   </span>
                 )}
               </h2>
+              {canWriteReview && (
+                <Button size="sm" onClick={handleWriteReviewClick}>
+                  {myReview ? 'Editar avaliação' : 'Escrever avaliação'}
+                </Button>
+              )}
             </div>
 
+            {reviewSummary && reviewSummary.totalReviews > 0 && (
+              <div className="mt-6">
+                <RatingHistogram
+                  distribution={reviewSummary.distribution}
+                  total={reviewSummary.totalReviews}
+                  avgRating={reviewSummary.avgRating}
+                />
+              </div>
+            )}
+
+            {reviewSummary && reviewSummary.totalReviews > 0 && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="w-48">
+                  <Select
+                    label=""
+                    options={[
+                      { value: 'recent', label: 'Mais recentes' },
+                      { value: 'oldest', label: 'Mais antigas' },
+                      { value: 'highest', label: 'Melhor avaliação' },
+                      { value: 'lowest', label: 'Pior avaliação' },
+                    ]}
+                    value={sort}
+                    onChange={(e) => {
+                      setSort(e.target.value as SortOption)
+                      setPage(1)
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {reviews.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-gray-500">
-                  Este criador ainda não tem avaliações.
-                </p>
+              <div className="py-8">
+                <EmptyState
+                  title="Sem avaliações ainda"
+                  description={
+                    canWriteReview
+                      ? 'Seja o primeiro a avaliar este criador.'
+                      : 'Este criador ainda não tem avaliações.'
+                  }
+                />
               </div>
             ) : (
               <div className="mt-4 divide-y divide-gray-100">
-                {reviews.map((review) => (
-                  <div key={review.id} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-start gap-3">
-                      <Avatar
-                        name={`${review.author.firstName} ${review.author.lastName}`}
-                        imageUrl={review.author.avatarUrl ?? undefined}
-                        size="sm"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">
-                            {review.author.firstName} {review.author.lastName}
-                          </span>
-                          <StarRating rating={review.rating} />
-                        </div>
-                        <h4 className="mt-1 text-sm font-medium text-gray-800">
-                          {review.title}
-                        </h4>
-                        {review.body && (
-                          <p className="mt-1 text-sm text-gray-600">{review.body}</p>
-                        )}
-                        <p className="mt-1 text-xs text-gray-400">
-                          {new Date(review.createdAt).toLocaleDateString('pt-PT', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
-                        </p>
-
-                        {/* Breeder reply */}
-                        {review.reply && (
-                          <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                            <p className="text-xs font-medium text-gray-500">
-                              Resposta do criador
-                            </p>
-                            <p className="mt-1 text-sm text-gray-600">{review.reply}</p>
+                {reviews.map((review) => {
+                  const isOwn = user?.id === review.authorId
+                  return (
+                    <div key={review.id} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex items-start gap-3">
+                        <Avatar
+                          name={`${review.author.firstName} ${review.author.lastName}`}
+                          imageUrl={review.author.avatarUrl ?? undefined}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {review.author.firstName} {review.author.lastName}
+                            </span>
+                            <StarRating rating={review.rating} />
+                            {isOwn && <Badge variant="blue">A sua avaliação</Badge>}
                           </div>
-                        )}
+                          <h4 className="mt-1 text-sm font-medium text-gray-800">{review.title}</h4>
+                          {review.body && (
+                            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+                              {review.body}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-gray-400">
+                            {formatDate(review.createdAt)}
+                          </p>
+
+                          {review.reply && (
+                            <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                              <p className="text-xs font-medium text-gray-500">
+                                Resposta do criador
+                                {review.repliedAt && ` · ${formatDate(review.repliedAt)}`}
+                              </p>
+                              <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+                                {review.reply}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                            {isOwn ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleWriteReviewClick}
+                                  className="text-primary-600 hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteReview(review.id)}
+                                  className="text-red-600 hover:underline"
+                                  disabled={deleteReviewMutation.isPending}
+                                >
+                                  Eliminar
+                                </button>
+                              </>
+                            ) : (
+                              user && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionError(null)
+                                    setFlagTarget(review)
+                                  }}
+                                  className="text-gray-500 hover:text-red-600 hover:underline"
+                                >
+                                  Denunciar
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page <= 1 || reviewsQuery.isFetching}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <span className="text-xs text-gray-500">
+                  Página {page} de {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page >= totalPages || reviewsQuery.isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Seguinte
+                </Button>
               </div>
             )}
           </Card>
@@ -288,14 +487,16 @@ export function BreederProfilePage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Contact card */}
           <Card>
             <h3 className="text-base font-semibold text-gray-900">Contactar</h3>
             <div className="mt-4 space-y-3">
-              <Button variant="primary" className="w-full" onClick={handleSendMessage}>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleSendMessageClick}
+                disabled={isSelf}
+                title={isSelf ? 'Não pode enviar mensagem a si próprio' : undefined}
+              >
                 Enviar mensagem
               </Button>
 
@@ -304,9 +505,6 @@ export function BreederProfilePage() {
                   href={`tel:${breeder.phone.replace(/\s/g, '')}`}
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                  </svg>
                   {breeder.phone}
                 </a>
               )}
@@ -318,16 +516,12 @@ export function BreederProfilePage() {
                   rel="noopener noreferrer"
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-                  </svg>
                   Website
                 </a>
               )}
             </div>
           </Card>
 
-          {/* Map placeholder */}
           <Card>
             <h3 className="text-base font-semibold text-gray-900">Localização</h3>
             <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
@@ -339,6 +533,47 @@ export function BreederProfilePage() {
           </Card>
         </div>
       </div>
+
+      <ReviewForm
+        isOpen={reviewModalOpen}
+        onClose={() => {
+          setReviewModalOpen(false)
+          setEditingReview(null)
+        }}
+        onSubmit={handleReviewSubmit}
+        mode={editingReview ? 'edit' : 'create'}
+        initialValues={
+          editingReview
+            ? {
+                rating: editingReview.rating,
+                title: editingReview.title,
+                body: editingReview.body ?? '',
+              }
+            : undefined
+        }
+        isSubmitting={createReviewMutation.isPending || updateReviewMutation.isPending}
+        errorMessage={actionError}
+      />
+
+      <FlagReviewModal
+        isOpen={!!flagTarget}
+        onClose={() => setFlagTarget(null)}
+        onSubmit={(reason) =>
+          flagTarget && flagMutation.mutate({ reviewId: flagTarget.id, reason })
+        }
+        isSubmitting={flagMutation.isPending}
+        errorMessage={actionError}
+      />
+
+      <NewThreadModal
+        isOpen={threadModalOpen}
+        onClose={() => setThreadModalOpen(false)}
+        onSubmit={(values) => createThreadMutation.mutate(values)}
+        breederName={breeder.businessName}
+        defaultSubject={`Contacto sobre ${breeder.businessName}`}
+        isSubmitting={createThreadMutation.isPending}
+        errorMessage={threadError}
+      />
     </div>
   )
 }

@@ -23,14 +23,24 @@ export const replyToReviewSchema = z.object({
 
 export const listReviewsSchema = z.object({
   breederId: z.coerce.number().int().positive().optional(),
+  authorId: z.coerce.number().int().positive().optional(),
+  status: z.enum(['PUBLISHED', 'HIDDEN', 'FLAGGED']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
-  sort: z.enum(['recent', 'highest', 'lowest']).default('recent'),
+  sort: z.enum(['recent', 'oldest', 'highest', 'lowest']).default('recent'),
 })
 
 export const moderateReviewSchema = z.object({
   status: z.enum(['PUBLISHED', 'HIDDEN', 'FLAGGED']),
-  reason: z.string().max(500).optional(),
+  reason: z.string().trim().max(500).optional(),
+})
+
+export const flagReviewSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(10, 'Por favor descreva o motivo (mínimo 10 caracteres)')
+    .max(500, 'Motivo demasiado longo (máximo 500 caracteres)'),
 })
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>
@@ -38,3 +48,4 @@ export type UpdateReviewInput = z.infer<typeof updateReviewSchema>
 export type ReplyToReviewInput = z.infer<typeof replyToReviewSchema>
 export type ListReviewsInput = z.infer<typeof listReviewsSchema>
 export type ModerateReviewInput = z.infer<typeof moderateReviewSchema>
+export type FlagReviewInput = z.infer<typeof flagReviewSchema>

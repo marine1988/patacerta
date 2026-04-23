@@ -38,3 +38,16 @@ export function requireRole(...roles: string[]) {
     next()
   }
 }
+
+/** Attach user if a valid token is present; otherwise proceed anonymously. */
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) {
+    try {
+      req.user = verifyAccessToken(header.slice(7))
+    } catch {
+      // Ignore invalid tokens on optional auth; treat as anonymous.
+    }
+  }
+  next()
+}

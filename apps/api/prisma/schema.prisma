@@ -46,31 +46,32 @@ enum ReviewStatus {
 // ---- Models ----
 
 model User {
-  id           Int       @id @default(autoincrement())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  firstName    String    @map("first_name") @db.VarChar(100)
-  lastName     String    @map("last_name") @db.VarChar(100)
-  role         UserRole  @default(OWNER)
-  phone        String?   @db.VarChar(20)
-  avatarUrl    String?   @map("avatar_url") @db.VarChar(512)
-  isActive     Boolean   @default(true) @map("is_active")
-  suspendedAt  DateTime? @map("suspended_at")
-  resetToken   String?   @unique @map("reset_token") @db.VarChar(64)
-  resetTokenExpiresAt DateTime? @map("reset_token_expires_at")
-  emailVerified Boolean  @default(false) @map("email_verified")
-  emailVerificationToken String? @unique @map("email_verification_token") @db.VarChar(64)
+  id                         Int       @id @default(autoincrement())
+  email                      String    @unique @db.VarChar(255)
+  passwordHash               String    @map("password_hash") @db.VarChar(255)
+  firstName                  String    @map("first_name") @db.VarChar(100)
+  lastName                   String    @map("last_name") @db.VarChar(100)
+  role                       UserRole  @default(OWNER)
+  phone                      String?   @db.VarChar(20)
+  avatarUrl                  String?   @map("avatar_url") @db.VarChar(512)
+  isActive                   Boolean   @default(true) @map("is_active")
+  suspendedAt                DateTime? @map("suspended_at")
+  resetToken                 String?   @unique @map("reset_token") @db.VarChar(64)
+  resetTokenExpiresAt        DateTime? @map("reset_token_expires_at")
+  emailVerified              Boolean   @default(false) @map("email_verified")
+  emailVerificationToken     String?   @unique @map("email_verification_token") @db.VarChar(64)
   emailVerificationExpiresAt DateTime? @map("email_verification_expires_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
 
-  breeder         Breeder?
-  sentMessages    Message[]  @relation("sender")
-  threadsAsOwner  Thread[]   @relation("thread_owner")
-  reviewedDocs    VerificationDoc[] @relation("reviewer")
-  reviews         Review[]   @relation("review_author")
-  auditLogs       AuditLog[]
-  consentLogs     ConsentLog[]
+  breeder        Breeder?
+  sentMessages   Message[]         @relation("sender")
+  threadsAsOwner Thread[]          @relation("thread_owner")
+  reviewedDocs   VerificationDoc[] @relation("reviewer")
+  reviews        Review[]          @relation("review_author")
+  reviewFlags    ReviewFlag[]      @relation("review_flag_reporter")
+  auditLogs      AuditLog[]
+  consentLogs    ConsentLog[]
 
   @@map("users")
 }
@@ -90,13 +91,13 @@ model Breeder {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  district       District      @relation(fields: [districtId], references: [id])
-  municipality   Municipality  @relation(fields: [municipalityId], references: [id])
-  species        BreederSpecies[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  district         District          @relation(fields: [districtId], references: [id])
+  municipality     Municipality      @relation(fields: [municipalityId], references: [id])
+  species          BreederSpecies[]
   verificationDocs VerificationDoc[]
-  reviews          Review[]   @relation("reviewed_breeder")
-  threadsAsBreeder Thread[]    @relation("thread_breeder")
+  reviews          Review[]          @relation("reviewed_breeder")
+  threadsAsBreeder Thread[]          @relation("thread_breeder")
 
   @@index([districtId])
   @@index([status])
@@ -105,9 +106,9 @@ model Breeder {
 }
 
 model Species {
-  id       Int     @id @default(autoincrement())
-  nameSlug String  @unique @map("name_slug") @db.VarChar(50)
-  namePt   String  @map("name_pt") @db.VarChar(100)
+  id       Int    @id @default(autoincrement())
+  nameSlug String @unique @map("name_slug") @db.VarChar(50)
+  namePt   String @map("name_pt") @db.VarChar(100)
 
   breeders BreederSpecies[]
 
@@ -142,7 +143,7 @@ model Municipality {
   code       String @unique @db.VarChar(10)
   namePt     String @map("name_pt") @db.VarChar(100)
 
-  district District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  district District  @relation(fields: [districtId], references: [id], onDelete: Cascade)
   breeders Breeder[]
 
   @@index([districtId])
@@ -181,8 +182,10 @@ model Thread {
   breeder  Breeder   @relation("thread_breeder", fields: [breederId], references: [id], onDelete: Cascade)
   messages Message[]
 
+  @@unique([ownerId, breederId])
   @@index([ownerId])
   @@index([breederId])
+  @@index([updatedAt])
   @@map("threads")
 }
 
@@ -199,30 +202,51 @@ model Message {
 
   @@index([threadId])
   @@index([senderId])
+  @@index([threadId, createdAt])
+  @@index([threadId, senderId, readAt])
   @@map("messages")
 }
 
 model Review {
-  id        Int          @id @default(autoincrement())
-  breederId Int          @map("breeder_id")
-  authorId  Int          @map("author_id")
-  rating    Int          @db.SmallInt
-  title     String       @db.VarChar(200)
-  body      String?      @db.Text
-  status    ReviewStatus @default(PUBLISHED)
-  reply     String?      @db.Text
-  repliedAt DateTime?    @map("replied_at")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id               Int          @id @default(autoincrement())
+  breederId        Int          @map("breeder_id")
+  authorId         Int          @map("author_id")
+  rating           Int          @db.SmallInt
+  title            String       @db.VarChar(200)
+  body             String?      @db.Text
+  status           ReviewStatus @default(PUBLISHED)
+  moderationReason String?      @map("moderation_reason") @db.Text
+  reply            String?      @db.Text
+  repliedAt        DateTime?    @map("replied_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
-  breeder Breeder @relation("reviewed_breeder", fields: [breederId], references: [id], onDelete: Cascade)
-  author  User    @relation("review_author", fields: [authorId], references: [id], onDelete: Cascade)
+  breeder Breeder      @relation("reviewed_breeder", fields: [breederId], references: [id], onDelete: Cascade)
+  author  User         @relation("review_author", fields: [authorId], references: [id], onDelete: Cascade)
+  flags   ReviewFlag[]
 
   @@unique([breederId, authorId])
   @@index([breederId])
   @@index([authorId])
   @@index([status])
+  @@index([breederId, status, createdAt])
   @@map("reviews")
+}
+
+model ReviewFlag {
+  id         Int      @id @default(autoincrement())
+  reviewId   Int      @map("review_id")
+  reporterId Int      @map("reporter_id")
+  reason     String   @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter User   @relation("review_flag_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, reporterId])
+  @@index([reviewId])
+  @@index([reporterId])
+  @@map("review_flags")
 }
 
 model AuditLog {

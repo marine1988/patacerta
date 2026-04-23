@@ -45,3 +45,4 @@ coverage/
 # ========== Misc ==========
 *.tgz
 .cache/
+opencode.json

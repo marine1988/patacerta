@@ -1,7 +1,17 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import { Tabs, Card, Badge, Button, Spinner, EmptyState, Select } from '../../components/ui'
+import {
+  Tabs,
+  Card,
+  Badge,
+  Button,
+  Spinner,
+  EmptyState,
+  Select,
+  Modal,
+  Input,
+} from '../../components/ui'
 
 // Types
 
@@ -142,7 +152,12 @@ function PaginationBar({
         {Math.min(meta.page * meta.limit, meta.total)} de {meta.total} resultados
       </p>
       <div className="flex gap-2">
-        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+        >
           Anterior
         </Button>
         <Button
@@ -161,9 +176,13 @@ function PaginationBar({
 // ResumoTab
 
 function ResumoTab() {
-  const { data: stats, isLoading, isError } = useQuery<AdminStats>({
+  const {
+    data: stats,
+    isLoading,
+    isError,
+  } = useQuery<AdminStats>({
     queryKey: ['admin-stats'],
-    queryFn: () => api.get('/api/admin/stats').then((r) => r.data),
+    queryFn: () => api.get('/admin/stats').then((r) => r.data),
   })
 
   if (isLoading) {
@@ -175,7 +194,9 @@ function ResumoTab() {
   }
 
   if (isError || !stats) {
-    return <EmptyState title="Erro ao carregar estatísticas" description="Tente novamente mais tarde." />
+    return (
+      <EmptyState title="Erro ao carregar estatísticas" description="Tente novamente mais tarde." />
+    )
   }
 
   const cards = [
@@ -209,12 +230,12 @@ function VerificacoesTab() {
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
     queryKey: ['admin-verifications', page],
     queryFn: () =>
-      api.get(`/api/admin/verifications/pending?page=${page}&limit=20`).then((r) => r.data),
+      api.get(`/admin/verifications/pending?page=${page}&limit=20`).then((r) => r.data),
   })
 
   const approveMutation = useMutation({
     mutationFn: (breederId: number) =>
-      api.patch(`/api/admin/breeders/${breederId}/status`, { status: 'VERIFIED' }),
+      api.patch(`/admin/breeders/${breederId}/status`, { status: 'VERIFIED' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
@@ -228,7 +249,7 @@ function VerificacoesTab() {
 
   async function handleViewDoc(docId: number) {
     try {
-      const { data: result } = await api.get<{ url: string }>(`/api/verification/${docId}/view`)
+      const { data: result } = await api.get<{ url: string }>(`/verification/${docId}/view`)
       window.open(result.url, '_blank')
     } catch {
       // silently fail
@@ -244,7 +265,9 @@ function VerificacoesTab() {
   }
 
   if (isError) {
-    return <EmptyState title="Erro ao carregar verificações" description="Tente novamente mais tarde." />
+    return (
+      <EmptyState title="Erro ao carregar verificações" description="Tente novamente mais tarde." />
+    )
   }
 
   if (!data || data.data.length === 0) {
@@ -279,7 +302,8 @@ function VerificacoesTab() {
                 <td className="px-3 py-2">
                   <div className="font-medium text-gray-900">{doc.breeder.businessName}</div>
                   <div className="text-xs text-gray-500">
-                    {doc.breeder.user.firstName} {doc.breeder.user.lastName} {String.fromCharCode(8212)} {doc.breeder.user.email}
+                    {doc.breeder.user.firstName} {doc.breeder.user.lastName}{' '}
+                    {String.fromCharCode(8212)} {doc.breeder.user.email}
                   </div>
                 </td>
                 <td className="px-3 py-2">{doc.breeder.nif}</td>
@@ -324,12 +348,12 @@ function UtilizadoresTab() {
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (roleFilter) params.set('role', roleFilter)
-      return api.get(`/api/admin/users?${params}`).then((r) => r.data)
+      return api.get(`/admin/users?${params}`).then((r) => r.data)
     },
   })
 
   const suspendMutation = useMutation({
-    mutationFn: (userId: number) => api.patch(`/api/admin/users/${userId}/suspend`),
+    mutationFn: (userId: number) => api.patch(`/admin/users/${userId}/suspend`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
@@ -355,7 +379,9 @@ function UtilizadoresTab() {
   }
 
   if (isError) {
-    return <EmptyState title="Erro ao carregar utilizadores" description="Tente novamente mais tarde." />
+    return (
+      <EmptyState title="Erro ao carregar utilizadores" description="Tente novamente mais tarde." />
+    )
   }
 
   return (
@@ -460,13 +486,13 @@ function CriadoresTab() {
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (statusFilter) params.set('status', statusFilter)
-      return api.get(`/api/admin/breeders?${params}`).then((r) => r.data)
+      return api.get(`/admin/breeders?${params}`).then((r) => r.data)
     },
   })
 
   const statusChangeMutation = useMutation({
     mutationFn: ({ breederId, status }: { breederId: number; status: string }) =>
-      api.patch(`/api/admin/breeders/${breederId}/status`, { status }),
+      api.patch(`/admin/breeders/${breederId}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
@@ -493,7 +519,9 @@ function CriadoresTab() {
   }
 
   if (isError) {
-    return <EmptyState title="Erro ao carregar criadores" description="Tente novamente mais tarde." />
+    return (
+      <EmptyState title="Erro ao carregar criadores" description="Tente novamente mais tarde." />
+    )
   }
 
   return (
@@ -543,7 +571,9 @@ function CriadoresTab() {
                     </td>
                     <td className="px-3 py-2">{breeder.nif}</td>
                     <td className="px-3 py-2">{breeder.dgavNumber || String.fromCharCode(8212)}</td>
-                    <td className="px-3 py-2">{breeder.district?.namePt ?? String.fromCharCode(8212)}</td>
+                    <td className="px-3 py-2">
+                      {breeder.district?.namePt ?? String.fromCharCode(8212)}
+                    </td>
                     <td className="px-3 py-2">
                       <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
                         {statusLabel[breeder.status] ?? breeder.status}
@@ -581,23 +611,74 @@ function CriadoresTab() {
 
 // AvaliacoesTab
 
+interface ReviewFlag {
+  id: number
+  reason: string
+  detail: string | null
+  createdAt: string
+  reporter: { id: number; firstName: string; lastName: string; email: string }
+}
+
 function AvaliacoesTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [moderationTarget, setModerationTarget] = useState<{
+    review: Review
+    nextStatus: string
+  } | null>(null)
+  const [moderationReason, setModerationReason] = useState('')
+  const [flagsTarget, setFlagsTarget] = useState<Review | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Review | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<Review>>({
     queryKey: ['admin-flagged-reviews', page],
-    queryFn: () =>
-      api.get(`/api/admin/reviews/flagged?page=${page}&limit=20`).then((r) => r.data),
+    queryFn: () => api.get(`/admin/reviews/flagged?page=${page}&limit=20`).then((r) => r.data),
   })
 
+  function invalidateAll() {
+    queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] })
+    queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['reviews'] })
+  }
+
   const moderateMutation = useMutation({
-    mutationFn: ({ reviewId, status }: { reviewId: number; status: string }) =>
-      api.patch(`/api/reviews/${reviewId}/moderate`, { status }),
+    mutationFn: ({
+      reviewId,
+      status,
+      reason,
+    }: {
+      reviewId: number
+      status: string
+      reason?: string
+    }) =>
+      api.patch(`/reviews/${reviewId}/moderate`, {
+        status,
+        ...(reason ? { moderationReason: reason } : {}),
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      invalidateAll()
+      setModerationTarget(null)
+      setModerationReason('')
     },
+  })
+
+  const dismissFlagsMutation = useMutation({
+    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}/flags`),
+    onSuccess: () => invalidateAll(),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
+    onSuccess: () => {
+      invalidateAll()
+      setDeleteTarget(null)
+    },
+  })
+
+  const flagsQuery = useQuery<{ data: ReviewFlag[] }>({
+    queryKey: ['review-flags', flagsTarget?.id],
+    queryFn: () => api.get(`/reviews/${flagsTarget!.id}/flags`).then((r) => r.data),
+    enabled: !!flagsTarget,
   })
 
   if (isLoading) {
@@ -609,7 +690,9 @@ function AvaliacoesTab() {
   }
 
   if (isError) {
-    return <EmptyState title="Erro ao carregar avaliações" description="Tente novamente mais tarde." />
+    return (
+      <EmptyState title="Erro ao carregar avaliações" description="Tente novamente mais tarde." />
+    )
   }
 
   if (!data || data.data.length === 0) {
@@ -661,25 +744,37 @@ function AvaliacoesTab() {
                 </td>
                 <td className="px-3 py-2">{formatDate(review.createdAt)}</td>
                 <td className="px-3 py-2">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setFlagsTarget(review)}>
+                      Ver sinalizações
+                    </Button>
                     <Button
                       size="sm"
-                      disabled={moderateMutation.isPending}
-                      onClick={() =>
-                        moderateMutation.mutate({ reviewId: review.id, status: 'PUBLISHED' })
-                      }
+                      onClick={() => setModerationTarget({ review, nextStatus: 'PUBLISHED' })}
                     >
                       Publicar
                     </Button>
                     <Button
                       variant="danger"
                       size="sm"
-                      disabled={moderateMutation.isPending}
-                      onClick={() =>
-                        moderateMutation.mutate({ reviewId: review.id, status: 'HIDDEN' })
-                      }
+                      onClick={() => setModerationTarget({ review, nextStatus: 'HIDDEN' })}
                     >
                       Ocultar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={dismissFlagsMutation.isPending}
+                      onClick={() => {
+                        if (confirm('Descartar todas as sinalizações desta avaliação?')) {
+                          dismissFlagsMutation.mutate(review.id)
+                        }
+                      }}
+                    >
+                      Descartar sinalizações
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => setDeleteTarget(review)}>
+                      Eliminar
                     </Button>
                   </div>
                 </td>
@@ -689,6 +784,127 @@ function AvaliacoesTab() {
         </table>
       </div>
       <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+
+      {/* Moderation reason modal */}
+      <Modal
+        isOpen={!!moderationTarget}
+        onClose={() => {
+          setModerationTarget(null)
+          setModerationReason('')
+        }}
+        title={
+          moderationTarget?.nextStatus === 'PUBLISHED' ? 'Publicar avaliação' : 'Ocultar avaliação'
+        }
+      >
+        {moderationTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-gray-50 p-3 text-sm">
+              <div className="font-medium">{moderationTarget.review.title}</div>
+              <div className="text-gray-600">{moderationTarget.review.body}</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Motivo da moderação (opcional)
+              </label>
+              <Input
+                value={moderationReason}
+                onChange={(e) => setModerationReason(e.target.value)}
+                placeholder="ex.: Conteúdo impróprio, resolvido após análise…"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setModerationTarget(null)
+                  setModerationReason('')
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant={moderationTarget.nextStatus === 'HIDDEN' ? 'danger' : 'primary'}
+                disabled={moderateMutation.isPending}
+                onClick={() =>
+                  moderateMutation.mutate({
+                    reviewId: moderationTarget.review.id,
+                    status: moderationTarget.nextStatus,
+                    reason: moderationReason.trim() || undefined,
+                  })
+                }
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Flags list modal */}
+      <Modal
+        isOpen={!!flagsTarget}
+        onClose={() => setFlagsTarget(null)}
+        title="Sinalizações"
+        size="lg"
+      >
+        {flagsQuery.isLoading ? (
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
+        ) : flagsQuery.data && flagsQuery.data.data.length > 0 ? (
+          <ul className="space-y-3">
+            {flagsQuery.data.data.map((flag) => (
+              <li key={flag.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-900">{flag.reason}</span>
+                  <span className="text-xs text-gray-500">{formatDate(flag.createdAt)}</span>
+                </div>
+                {flag.detail && <p className="mt-1 text-gray-600">{flag.detail}</p>}
+                <p className="mt-1 text-xs text-gray-500">
+                  por {flag.reporter.firstName} {flag.reporter.lastName} ({flag.reporter.email})
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title="Sem sinalizações"
+            description="Não existem sinalizações para esta avaliação."
+          />
+        )}
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Eliminar avaliação"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">
+              Tem a certeza que pretende eliminar permanentemente esta avaliação? Esta ação não pode
+              ser revertida.
+            </p>
+            <div className="rounded-lg bg-gray-50 p-3 text-sm">
+              <div className="font-medium">{deleteTarget.title}</div>
+              <div className="text-gray-600">{deleteTarget.body}</div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+              >
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
@@ -706,7 +922,7 @@ function AuditoriaTab() {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (actionFilter) params.set('action', actionFilter)
       if (entityFilter) params.set('entity', entityFilter)
-      return api.get(`/api/admin/audit-logs?${params}`).then((r) => r.data)
+      return api.get(`/admin/audit-logs?${params}`).then((r) => r.data)
     },
   })
 
@@ -812,8 +1028,12 @@ function AuditoriaTab() {
                       <Badge variant="blue">{log.action}</Badge>
                     </td>
                     <td className="px-3 py-2">{log.entity}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{log.entityId ?? String.fromCharCode(8212)}</td>
-                    <td className="px-3 py-2 text-xs">{log.ipAddress ?? String.fromCharCode(8212)}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {log.entityId ?? String.fromCharCode(8212)}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {log.ipAddress ?? String.fromCharCode(8212)}
+                    </td>
                     <td className="px-3 py-2 max-w-xs truncate text-xs text-gray-500">
                       {log.details ? JSON.stringify(log.details) : String.fromCharCode(8212)}
                     </td>
@@ -837,7 +1057,13 @@ export function AdminPage() {
       id: 'resumo',
       label: 'Resumo',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -851,7 +1077,13 @@ export function AdminPage() {
       id: 'verificacoes',
       label: 'Verificações',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -865,7 +1097,13 @@ export function AdminPage() {
       id: 'utilizadores',
       label: 'Utilizadores',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -879,7 +1117,13 @@ export function AdminPage() {
       id: 'criadores',
       label: 'Criadores',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -893,7 +1137,13 @@ export function AdminPage() {
       id: 'avaliacoes',
       label: 'Avaliações',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -907,7 +1157,13 @@ export function AdminPage() {
       id: 'auditoria',
       label: 'Auditoria',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

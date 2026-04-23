@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { formatDate, formatDateTime, formatSmart } from '../../lib/dates'
 import {
   Tabs,
   Card,
@@ -16,6 +18,9 @@ import {
   Modal,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
+import { StarRating } from '../../components/shared/StarRating'
+import { NewThreadModal } from '../../components/messages/NewThreadModal'
+import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 
 // ──────────────────────────── Types ────────────────────────────
 
@@ -56,28 +61,86 @@ interface Municipality {
   name: string
 }
 
-interface Thread {
+interface ThreadUser {
   id: number
-  subject: string
-  otherPartyName: string
-  lastMessage: string
-  unreadCount: number
-  updatedAt: string
+  firstName: string
+  lastName: string
+  avatarUrl: string | null
 }
 
-interface Message {
+interface ThreadSummary {
+  id: number
+  subject: string
+  unreadCount: number
+  updatedAt: string
+  owner: ThreadUser
+  breeder: {
+    id: number
+    businessName: string
+    user: ThreadUser
+  }
+  messages: Array<{
+    id: number
+    body: string
+    senderId: number
+    readAt: string | null
+    createdAt: string
+  }>
+}
+
+interface ThreadMessage {
   id: number
   senderId: number
-  content: string
+  body: string
+  readAt: string | null
   createdAt: string
-  senderName: string
+  sender: ThreadUser
 }
 
 interface ThreadDetail {
   id: number
   subject: string
-  otherPartyName: string
-  messages: Message[]
+  owner: ThreadUser
+  breeder: {
+    id: number
+    businessName: string
+    status: string
+    user: ThreadUser
+  }
+  messages: ThreadMessage[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+interface ReviewItem {
+  id: number
+  breederId: number
+  authorId: number
+  rating: number
+  title: string
+  body: string | null
+  status: string
+  moderationReason: string | null
+  reply: string | null
+  repliedAt: string | null
+  createdAt: string
+  updatedAt: string
+  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
+  breeder: { id: number; businessName: string }
+}
+
+interface PaginatedMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+function getExtractedError(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: string; message?: string } | undefined
+    return data?.error ?? data?.message ?? err.message ?? fallback
+  }
+  return fallback
 }
 
 // ──────────────────────────── ProfileTab ────────────────────────────
@@ -88,7 +151,9 @@ function ProfileTab() {
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
   const [phone, setPhone] = useState('')
-  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  )
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -125,7 +190,10 @@ function ProfileTab() {
       setPwMsg({ type: 'success', text: 'Palavra-passe alterada com sucesso.' })
     },
     onError: () => {
-      setPwMsg({ type: 'error', text: 'Erro ao alterar palavra-passe. Verifique a palavra-passe atual.' })
+      setPwMsg({
+        type: 'error',
+        text: 'Erro ao alterar palavra-passe. Verifique a palavra-passe atual.',
+      })
     },
   })
 
@@ -151,8 +219,10 @@ function ProfileTab() {
 
   if (!user) return null
 
-  const roleBadgeVariant = user.role === 'BREEDER' ? 'green' : user.role === 'ADMIN' ? 'blue' : 'gray'
-  const roleLabel = user.role === 'BREEDER' ? 'Criador' : user.role === 'ADMIN' ? 'Administrador' : 'Utilizador'
+  const roleBadgeVariant =
+    user.role === 'BREEDER' ? 'green' : user.role === 'ADMIN' ? 'blue' : 'gray'
+  const roleLabel =
+    user.role === 'BREEDER' ? 'Criador' : user.role === 'ADMIN' ? 'Administrador' : 'Utilizador'
 
   return (
     <div className="space-y-6">
@@ -198,7 +268,9 @@ function ProfileTab() {
               type="tel"
             />
             {profileMsg && (
-              <p className={`text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+              <p
+                className={`text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+              >
                 {profileMsg.text}
               </p>
             )}
@@ -214,7 +286,9 @@ function ProfileTab() {
         )}
 
         {!editing && profileMsg && (
-          <p className={`mt-4 text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          <p
+            className={`mt-4 text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+          >
             {profileMsg.text}
           </p>
         )}
@@ -247,7 +321,9 @@ function ProfileTab() {
             />
           </div>
           {pwMsg && (
-            <p className={`text-sm ${pwMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            <p
+              className={`text-sm ${pwMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+            >
               {pwMsg.text}
             </p>
           )}
@@ -296,7 +372,9 @@ function BreederTab() {
 
   const [uploadDocType, setUploadDocType] = useState('NIF')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  )
 
   const isLocked = breeder?.status === 'VERIFIED' || breeder?.status === 'PENDING_VERIFICATION'
 
@@ -539,7 +617,10 @@ function BreederTab() {
               />
               <Select
                 label="Município"
-                options={(municipalities ?? []).map((m) => ({ value: String(m.id), label: m.name }))}
+                options={(municipalities ?? []).map((m) => ({
+                  value: String(m.id),
+                  label: m.name,
+                }))}
                 placeholder="Selecionar município"
                 value={form.municipalityId}
                 onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
@@ -548,7 +629,9 @@ function BreederTab() {
             </div>
 
             {msg && (
-              <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+              <p
+                className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+              >
                 {msg.text}
               </p>
             )}
@@ -629,7 +712,9 @@ function BreederTab() {
           </Button>
         </form>
         {uploadMsg && (
-          <p className={`mt-2 text-sm ${uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          <p
+            className={`mt-2 text-sm ${uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+          >
             {uploadMsg.text}
           </p>
         )}
@@ -653,48 +738,137 @@ function BreederTab() {
 function MessagesTab() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null)
-  const [replyText, setReplyText] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const { data: threadsData, isLoading: threadsLoading } = useQuery<{ data: Thread[] }>({
+  const [selectedThreadId, setSelectedThreadId] = useState<number | null>(() => {
+    const t = searchParams.get('threadId')
+    return t ? Number(t) : null
+  })
+  const [replyText, setReplyText] = useState('')
+  const [threadPage, setThreadPage] = useState(1)
+  const [newThreadOpen, setNewThreadOpen] = useState(false)
+  const [newThreadError, setNewThreadError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
+  const breederIdParam = searchParams.get('breederId')
+  const pendingBreederId = breederIdParam ? Number(breederIdParam) : null
+
+  const { data: targetBreeder } = useQuery<{ id: number; businessName: string; userId: number }>({
+    queryKey: ['breeder', pendingBreederId],
+    queryFn: () => api.get(`/breeders/${pendingBreederId}`).then((r) => r.data),
+    enabled: !!pendingBreederId,
+  })
+
+  // When ?breederId is present and valid, open the new-thread modal.
+  useEffect(() => {
+    if (!pendingBreederId || !targetBreeder) return
+    if (user && targetBreeder.userId === user.id) {
+      // self, clear silently
+      searchParams.delete('breederId')
+      setSearchParams(searchParams, { replace: true })
+      return
+    }
+    setNewThreadOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBreederId, targetBreeder?.id])
+
+  const { data: threadsData, isLoading: threadsLoading } = useQuery<{
+    data: ThreadSummary[]
+    meta: PaginatedMeta
+  }>({
     queryKey: ['threads'],
-    queryFn: () => api.get('/messages/threads?page=1&limit=20').then((r) => r.data),
+    queryFn: () => api.get('/messages/threads?page=1&limit=50').then((r) => r.data),
+    refetchInterval: 30_000,
   })
 
   const threads = threadsData?.data ?? []
 
-  const { data: threadDetail, isLoading: threadLoading } = useQuery<ThreadDetail>({
-    queryKey: ['thread', selectedThreadId],
-    queryFn: () => api.get(`/messages/threads/${selectedThreadId}`).then((r) => r.data),
+  const {
+    data: threadDetail,
+    isLoading: threadLoading,
+    isError: threadError,
+  } = useQuery<ThreadDetail>({
+    queryKey: ['thread', selectedThreadId, threadPage],
+    queryFn: () =>
+      api
+        .get(`/messages/threads/${selectedThreadId}?page=${threadPage}&limit=50`)
+        .then((r) => r.data),
     enabled: !!selectedThreadId,
   })
+
+  // Sync selectedThreadId to URL
+  useEffect(() => {
+    if (selectedThreadId) {
+      searchParams.set('threadId', String(selectedThreadId))
+    } else {
+      searchParams.delete('threadId')
+    }
+    setSearchParams(searchParams, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedThreadId])
+
+  // Auto-scroll to bottom when messages load/change
+  useEffect(() => {
+    if (!threadDetail) return
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    })
+  }, [threadDetail?.messages.length, threadDetail?.id])
 
   const markReadMutation = useMutation({
     mutationFn: (threadId: number) => api.patch(`/messages/threads/${threadId}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] })
     },
   })
 
   const replyMutation = useMutation({
-    mutationFn: (data: { threadId: number; content: string }) =>
-      api.post(`/messages/threads/${data.threadId}/messages`, { content: data.content }),
+    mutationFn: (data: { threadId: number; body: string }) =>
+      api.post(`/messages/threads/${data.threadId}/messages`, { body: data.body }),
     onSuccess: () => {
       setReplyText('')
+      setSendError(null)
       queryClient.invalidateQueries({ queryKey: ['thread', selectedThreadId] })
       queryClient.invalidateQueries({ queryKey: ['threads'] })
+    },
+    onError: (err) => {
+      setSendError(getExtractedError(err, 'Erro ao enviar mensagem.'))
+    },
+  })
+
+  const createThreadMutation = useMutation({
+    mutationFn: (values: { subject: string; body: string }) =>
+      api
+        .post('/messages/threads', { breederId: pendingBreederId!, ...values })
+        .then((r) => r.data),
+    onSuccess: (res) => {
+      setNewThreadOpen(false)
+      setNewThreadError(null)
+      searchParams.delete('breederId')
+      searchParams.set('threadId', String(res.threadId))
+      setSearchParams(searchParams, { replace: true })
+      setSelectedThreadId(res.threadId)
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] })
+    },
+    onError: (err) => {
+      setNewThreadError(getExtractedError(err, 'Erro ao criar conversa.'))
     },
   })
 
   function openThread(threadId: number) {
     setSelectedThreadId(threadId)
+    setThreadPage(1)
     markReadMutation.mutate(threadId)
   }
 
   function handleReply(e: FormEvent) {
     e.preventDefault()
+    setSendError(null)
     if (!replyText.trim() || !selectedThreadId) return
-    replyMutation.mutate({ threadId: selectedThreadId, content: replyText.trim() })
+    replyMutation.mutate({ threadId: selectedThreadId, body: replyText.trim() })
   }
 
   if (threadsLoading) {
@@ -715,67 +889,107 @@ function MessagesTab() {
       )
     }
 
-    if (!threadDetail) {
-      return <EmptyState title="Conversa não encontrada" />
+    if (threadError || !threadDetail) {
+      return (
+        <div className="space-y-4">
+          <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
+            &larr; Voltar
+          </Button>
+          <EmptyState title="Conversa não encontrada" />
+        </div>
+      )
     }
+
+    const otherParty =
+      user && threadDetail.owner.id === user.id
+        ? {
+            name: threadDetail.breeder.businessName,
+            avatarName: threadDetail.breeder.businessName,
+          }
+        : {
+            name: `${threadDetail.owner.firstName} ${threadDetail.owner.lastName}`,
+            avatarName: `${threadDetail.owner.firstName} ${threadDetail.owner.lastName}`,
+          }
+
+    const canLoadOlder =
+      threadDetail.pagination && threadDetail.pagination.page < threadDetail.pagination.totalPages
 
     return (
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
-          &larr; Voltar
+          &larr; Voltar às conversas
         </Button>
 
         <Card hover={false}>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{threadDetail.subject}</h3>
-          <p className="text-sm text-gray-500 mb-6">Com: {threadDetail.otherPartyName}</p>
+          <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+            <Avatar name={otherParty.avatarName} size="md" />
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-lg font-semibold text-gray-900">
+                {threadDetail.subject}
+              </h3>
+              <p className="text-sm text-gray-500">Com: {otherParty.name}</p>
+            </div>
+          </div>
 
-          <div className="space-y-4 max-h-[500px] overflow-y-auto">
+          <div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto">
+            {canLoadOlder && (
+              <div className="flex justify-center">
+                <Button size="sm" variant="secondary" onClick={() => setThreadPage((p) => p + 1)}>
+                  Carregar mensagens anteriores
+                </Button>
+              </div>
+            )}
+
             {threadDetail.messages.map((msg) => {
               const isOwn = msg.senderId === user?.id
+              const senderName = `${msg.sender.firstName} ${msg.sender.lastName}`
               return (
-                <div
-                  key={msg.id}
-                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                >
+                <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                      isOwn
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                    className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                      isOwn ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
                     }`}
                   >
                     <p
-                      className={`text-xs font-medium mb-1 ${
+                      className={`mb-1 text-xs font-medium ${
                         isOwn ? 'text-primary-100' : 'text-gray-500'
                       }`}
                     >
-                      {msg.senderName}
+                      {senderName}
                     </p>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap text-sm">{msg.body}</p>
                     <p
-                      className={`text-xs mt-1 ${
-                        isOwn ? 'text-primary-200' : 'text-gray-400'
-                      }`}
+                      className={`mt-1 text-xs ${isOwn ? 'text-primary-200' : 'text-gray-400'}`}
+                      title={formatDateTime(msg.createdAt)}
                     >
-                      {new Date(msg.createdAt).toLocaleString('pt-PT')}
+                      {formatDateTime(msg.createdAt)}
+                      {isOwn && msg.readAt && ' · lida'}
                     </p>
                   </div>
                 </div>
               )
             })}
+            <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleReply} className="mt-6 flex gap-3">
-            <textarea
-              className="input flex-1 min-h-[60px]"
-              placeholder="Escrever resposta..."
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              required
-            />
-            <Button type="submit" loading={replyMutation.isPending}>
-              Enviar
-            </Button>
+          <form onSubmit={handleReply} className="mt-6 space-y-2">
+            <div className="flex gap-3">
+              <textarea
+                className="input min-h-[60px] flex-1"
+                placeholder="Escrever resposta..."
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                maxLength={5000}
+                required
+              />
+              <Button type="submit" loading={replyMutation.isPending}>
+                Enviar
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-400">{replyText.length}/5000</p>
+              {sendError && <p className="text-xs text-red-600">{sendError}</p>}
+            </div>
           </form>
         </Card>
       </div>
@@ -783,43 +997,340 @@ function MessagesTab() {
   }
 
   // Thread list
-  if (threads.length === 0) {
+  return (
+    <>
+      {threads.length === 0 ? (
+        <EmptyState
+          title="Sem mensagens"
+          description="Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui."
+        />
+      ) : (
+        <div className="space-y-3">
+          {threads.map((thread) => {
+            const isOwner = user?.id === thread.owner.id
+            const otherName = isOwner
+              ? thread.breeder.businessName
+              : `${thread.owner.firstName} ${thread.owner.lastName}`
+            const lastMessage = thread.messages[0]
+            return (
+              <Card
+                key={thread.id}
+                hover
+                className="cursor-pointer"
+                onClick={() => openThread(thread.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar name={otherName} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="truncate text-sm font-semibold text-gray-900">
+                        {thread.subject}
+                      </h4>
+                      {thread.unreadCount > 0 && <Badge variant="blue">{thread.unreadCount}</Badge>}
+                    </div>
+                    <p className="text-sm text-gray-500">{otherName}</p>
+                    {lastMessage && (
+                      <p className="truncate text-sm text-gray-400">{lastMessage.body}</p>
+                    )}
+                  </div>
+                  <span className="ml-4 shrink-0 text-xs text-gray-400">
+                    {formatSmart(thread.updatedAt)}
+                  </span>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <NewThreadModal
+        isOpen={newThreadOpen}
+        onClose={() => {
+          setNewThreadOpen(false)
+          searchParams.delete('breederId')
+          setSearchParams(searchParams, { replace: true })
+        }}
+        onSubmit={(values) => createThreadMutation.mutate(values)}
+        breederName={targetBreeder?.businessName}
+        defaultSubject={targetBreeder ? `Contacto sobre ${targetBreeder.businessName}` : undefined}
+        isSubmitting={createThreadMutation.isPending}
+        errorMessage={newThreadError}
+      />
+    </>
+  )
+}
+
+// ──────────────────────────── MyReviewsTab ────────────────────────────
+
+function MyReviewsTab() {
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+
+  const { data, isLoading } = useQuery<{ data: ReviewItem[]; meta: PaginatedMeta }>({
+    queryKey: ['my-reviews', page],
+    queryFn: () => api.get(`/reviews/mine?page=${page}&limit=20`).then((r) => r.data),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  const reviews = data?.data ?? []
+
+  if (reviews.length === 0) {
     return (
       <EmptyState
-        title="Sem mensagens"
-        description="Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui."
+        title="Ainda não avaliou ninguém"
+        description="Avalie os criadores com quem teve contacto para ajudar a comunidade."
       />
     )
   }
 
+  const statusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
+    PUBLISHED: 'green',
+    FLAGGED: 'yellow',
+    HIDDEN: 'red',
+  }
+  const statusLabel: Record<string, string> = {
+    PUBLISHED: 'Publicada',
+    FLAGGED: 'Em revisão',
+    HIDDEN: 'Oculta',
+  }
+
   return (
     <div className="space-y-3">
-      {threads.map((thread) => (
-        <Card
-          key={thread.id}
-          hover
-          className="cursor-pointer"
-          onClick={() => openThread(thread.id)}
-        >
-          <div className="flex items-center justify-between">
+      {reviews.map((r) => (
+        <Card key={r.id} hover={false}>
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold text-gray-900 truncate">
-                  {thread.subject}
-                </h4>
-                {thread.unreadCount > 0 && (
-                  <Badge variant="blue">{thread.unreadCount}</Badge>
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                <StarRating rating={r.rating} />
+                <Badge variant={statusVariant[r.status] ?? 'gray'}>
+                  {statusLabel[r.status] ?? r.status}
+                </Badge>
               </div>
-              <p className="text-sm text-gray-500">{thread.otherPartyName}</p>
-              <p className="text-sm text-gray-400 truncate">{thread.lastMessage}</p>
+              <h4 className="mt-1 text-sm font-semibold text-gray-900">{r.title}</h4>
+              <p className="text-xs text-gray-500">Sobre: {r.breeder.businessName}</p>
+              {r.body && <p className="mt-2 whitespace-pre-line text-sm text-gray-600">{r.body}</p>}
+              {r.status === 'HIDDEN' && r.moderationReason && (
+                <p className="mt-2 rounded bg-red-50 p-2 text-xs text-red-700">
+                  <strong>Motivo da moderação:</strong> {r.moderationReason}
+                </p>
+              )}
+              {r.reply && (
+                <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-500">Resposta do criador</p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.reply}</p>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-gray-400">{formatDate(r.createdAt)}</p>
             </div>
-            <span className="ml-4 shrink-0 text-xs text-gray-400">
-              {new Date(thread.updatedAt).toLocaleDateString('pt-PT')}
-            </span>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="danger"
+                size="sm"
+                loading={deleteMutation.isPending}
+                onClick={() => {
+                  if (confirm('Eliminar esta avaliação?')) deleteMutation.mutate(r.id)
+                }}
+              >
+                Eliminar
+              </Button>
+            </div>
           </div>
         </Card>
       ))}
+
+      {data && data.meta.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-xs text-gray-500">
+            {page} / {data.meta.totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page >= data.meta.totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Seguinte
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────── ReviewsAboutMeTab ────────────────────────────
+
+function ReviewsAboutMeTab() {
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+  const [replyTarget, setReplyTarget] = useState<ReviewItem | null>(null)
+  const [replyError, setReplyError] = useState<string | null>(null)
+
+  const { data, isLoading } = useQuery<{ data: ReviewItem[]; meta: PaginatedMeta }>({
+    queryKey: ['reviews-about-me', page],
+    queryFn: () => api.get(`/reviews/about-me?page=${page}&limit=20`).then((r) => r.data),
+  })
+
+  const replyMutation = useMutation({
+    mutationFn: ({ reviewId, reply }: { reviewId: number; reply: string }) =>
+      api.post(`/reviews/${reviewId}/reply`, { reply }).then((r) => r.data),
+    onSuccess: () => {
+      setReplyTarget(null)
+      setReplyError(null)
+      queryClient.invalidateQueries({ queryKey: ['reviews-about-me'] })
+    },
+    onError: (err) => {
+      setReplyError(getExtractedError(err, 'Erro ao publicar resposta.'))
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  const reviews = data?.data ?? []
+
+  if (reviews.length === 0) {
+    return <EmptyState title="Sem avaliações" description="Ainda não recebeu avaliações." />
+  }
+
+  const statusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
+    PUBLISHED: 'green',
+    FLAGGED: 'yellow',
+    HIDDEN: 'red',
+  }
+  const statusLabel: Record<string, string> = {
+    PUBLISHED: 'Publicada',
+    FLAGGED: 'Em revisão',
+    HIDDEN: 'Oculta',
+  }
+
+  return (
+    <div className="space-y-3">
+      {reviews.map((r) => (
+        <Card key={r.id} hover={false}>
+          <div className="flex items-start gap-3">
+            <Avatar
+              name={`${r.author.firstName} ${r.author.lastName}`}
+              imageUrl={r.author.avatarUrl ?? undefined}
+              size="sm"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-gray-900">
+                  {r.author.firstName} {r.author.lastName}
+                </span>
+                <StarRating rating={r.rating} />
+                <Badge variant={statusVariant[r.status] ?? 'gray'}>
+                  {statusLabel[r.status] ?? r.status}
+                </Badge>
+              </div>
+              <h4 className="mt-1 text-sm font-semibold text-gray-900">{r.title}</h4>
+              {r.body && <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.body}</p>}
+              <p className="mt-1 text-xs text-gray-400">{formatDate(r.createdAt)}</p>
+
+              {r.reply ? (
+                <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-gray-500">
+                      A sua resposta
+                      {r.repliedAt && ` · ${formatDate(r.repliedAt)}`}
+                    </p>
+                    {r.status === 'PUBLISHED' && (
+                      <button
+                        type="button"
+                        className="text-xs text-primary-600 hover:underline"
+                        onClick={() => {
+                          setReplyError(null)
+                          setReplyTarget(r)
+                        }}
+                      >
+                        Editar
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.reply}</p>
+                </div>
+              ) : (
+                r.status === 'PUBLISHED' && (
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setReplyError(null)
+                        setReplyTarget(r)
+                      }}
+                    >
+                      Responder
+                    </Button>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {data && data.meta.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-xs text-gray-500">
+            {page} / {data.meta.totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page >= data.meta.totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Seguinte
+          </Button>
+        </div>
+      )}
+
+      <ReplyReviewModal
+        isOpen={!!replyTarget}
+        onClose={() => setReplyTarget(null)}
+        onSubmit={(reply) =>
+          replyTarget && replyMutation.mutate({ reviewId: replyTarget.id, reply })
+        }
+        initialValue={replyTarget?.reply ?? ''}
+        isSubmitting={replyMutation.isPending}
+        errorMessage={replyError}
+      />
     </div>
   )
 }
@@ -881,7 +1392,9 @@ function SettingsTab() {
           <label className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Novas mensagens</p>
-              <p className="text-xs text-gray-500">Receber notificação quando receber uma nova mensagem.</p>
+              <p className="text-xs text-gray-500">
+                Receber notificação quando receber uma nova mensagem.
+              </p>
             </div>
             <input
               type="checkbox"
@@ -893,7 +1406,9 @@ function SettingsTab() {
           <label className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Atualizações de verificação</p>
-              <p className="text-xs text-gray-500">Receber notificação sobre o estado da verificação.</p>
+              <p className="text-xs text-gray-500">
+                Receber notificação sobre o estado da verificação.
+              </p>
             </div>
             <input
               type="checkbox"
@@ -958,8 +1473,18 @@ export default function DashboardPage() {
       id: 'profile',
       label: 'Perfil',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+          />
         </svg>
       ),
       content: <ProfileTab />,
@@ -970,8 +1495,18 @@ export default function DashboardPage() {
             id: 'breeder',
             label: 'Criador',
             icon: (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 7.5h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 7.5h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                />
               </svg>
             ),
             content: <BreederTab />,
@@ -982,18 +1517,58 @@ export default function DashboardPage() {
       id: 'mensagens',
       label: 'Mensagens',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+          />
         </svg>
       ),
       content: <MessagesTab />,
     },
     {
+      id: 'avaliacoes',
+      label: isBreeder ? 'Avaliações sobre mim' : 'Minhas avaliações',
+      icon: (
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+          />
+        </svg>
+      ),
+      content: isBreeder ? <ReviewsAboutMeTab /> : <MyReviewsTab />,
+    },
+    {
       id: 'definicoes',
       label: 'Definições',
       icon: (
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+          />
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),

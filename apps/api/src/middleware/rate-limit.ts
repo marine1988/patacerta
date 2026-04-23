@@ -7,12 +7,15 @@ interface RateLimitStore {
 const store: RateLimitStore = {}
 
 // Clean up expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now()
-  for (const key of Object.keys(store)) {
-    if (store[key].resetAt <= now) delete store[key]
-  }
-}, 5 * 60 * 1000)
+setInterval(
+  () => {
+    const now = Date.now()
+    for (const key of Object.keys(store)) {
+      if (store[key].resetAt <= now) delete store[key]
+    }
+  },
+  5 * 60 * 1000,
+)
 
 interface RateLimitOptions {
   windowMs?: number
@@ -73,4 +76,38 @@ export const uploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   message: 'Limite de uploads atingido. Tente novamente em 1 hora.',
+})
+
+// Per-authenticated-user key generator. Falls back to IP for unauthenticated requests.
+const userKey = (req: Request) => {
+  const userId = (req as Request & { user?: { userId: number } }).user?.userId
+  return userId ? `user:${userId}` : `ip:${req.ip || 'unknown'}`
+}
+
+export const reviewCreateRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  message: 'Limite diário de avaliações atingido. Tente novamente amanhã.',
+  keyGenerator: userKey,
+})
+
+export const reviewFlagRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Demasiadas denúncias. Tente novamente mais tarde.',
+  keyGenerator: userKey,
+})
+
+export const messageSendRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: 'Está a enviar mensagens demasiado depressa. Aguarde um momento.',
+  keyGenerator: userKey,
+})
+
+export const threadCreateRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  message: 'Limite de novas conversas atingido. Tente novamente mais tarde.',
+  keyGenerator: userKey,
 })
