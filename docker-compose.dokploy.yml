@@ -31,10 +31,11 @@ services:
       - default
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost:80/']
+      test: ['CMD-SHELL', 'wget --spider -q http://localhost:80/ || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 10s
 
   # ── Backend API ──
   api:
