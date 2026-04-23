@@ -172,6 +172,18 @@ export const getThread = asyncHandler(async (req, res) => {
     prisma.message.count({ where: { threadId } }),
   ])
 
+  // Auto-mark incoming messages as read when the thread is fetched.
+  // Idempotent: only updates rows where readAt IS NULL and sender != userId.
+  // Fire-and-forget — failure to mark read should never block the GET response.
+  prisma.message
+    .updateMany({
+      where: { threadId, senderId: { not: userId }, readAt: null },
+      data: { readAt: new Date() },
+    })
+    .catch(() => {
+      // Swallow: mark-read is a side-effect; don't surface to caller.
+    })
+
   res.json({
     ...thread,
     messages: messages.reverse(),

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -20,6 +20,7 @@ import {
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { StarRating } from '../../components/shared/StarRating'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
+import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 
 // ──────────────────────────── Types ────────────────────────────
@@ -746,7 +747,6 @@ function MessagesTab() {
     return t ? Number(t) : null
   })
   const [replyText, setReplyText] = useState('')
-  const [threadPage, setThreadPage] = useState(1)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
   const [newThreadError, setNewThreadError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -786,17 +786,38 @@ function MessagesTab() {
   const threads = threadsData?.data ?? []
 
   const {
-    data: threadDetail,
+    data: threadPages,
     isLoading: threadLoading,
     isError: threadError,
-  } = useQuery<ThreadDetail>({
-    queryKey: ['thread', selectedThreadId, threadPage],
-    queryFn: () =>
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<ThreadDetail, Error>({
+    queryKey: ['thread', selectedThreadId],
+    queryFn: ({ pageParam = 1 }) =>
       api
-        .get(`/messages/threads/${selectedThreadId}?page=${threadPage}&limit=50`)
+        .get(`/messages/threads/${selectedThreadId}?page=${pageParam}&limit=50`)
         .then((r) => r.data),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      // Next page = older messages. Server page 1 = newest; page 2 = older; etc.
+      const p = lastPage.pagination
+      return p.page < p.totalPages ? p.page + 1 : undefined
+    },
     enabled: !!selectedThreadId,
+    refetchInterval: selectedThreadId ? 15_000 : false,
+    refetchOnWindowFocus: true,
   })
+
+  // Head page (newest messages) is always pages[0]; older pages append.
+  // Concatenate in ascending chronological order: oldest page first.
+  const threadDetail: ThreadDetail | undefined = threadPages?.pages[0]
+  const allMessages: ThreadMessage[] = threadPages
+    ? threadPages.pages
+        .slice()
+        .reverse()
+        .flatMap((p) => p.messages)
+    : []
 
   // Sync selectedThreadId to URL
   useEffect(() => {
@@ -809,32 +830,101 @@ function MessagesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThreadId])
 
-  // Auto-scroll to bottom when messages load/change
+  // Auto-scroll to bottom:
+  //  - when the thread changes (initial open)
+  //  - when a new message is appended at the tail (newest id changed)
+  // NOT when older pages are loaded via fetchNextPage.
+  const lastMessageIdRef = useRef<number | null>(null)
+  const lastThreadIdRef = useRef<number | null>(null)
   useEffect(() => {
     if (!threadDetail) return
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    })
-  }, [threadDetail?.messages.length, threadDetail?.id])
+    const newestId = allMessages.length > 0 ? allMessages[allMessages.length - 1].id : null
+    const threadChanged = lastThreadIdRef.current !== threadDetail.id
+    const tailChanged = lastMessageIdRef.current !== newestId
+    if (threadChanged || tailChanged) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: threadChanged ? 'auto' : 'smooth',
+          block: 'end',
+        })
+      })
+    }
+    lastThreadIdRef.current = threadDetail.id
+    lastMessageIdRef.current = newestId
+
+    // If a new incoming (not our own) message arrived while the thread is open,
+    // auto-mark it as read to clear the unread badge without requiring a click.
+    const newestMessage = allMessages[allMessages.length - 1]
+    if (
+      tailChanged &&
+      !threadChanged &&
+      newestMessage &&
+      newestMessage.senderId !== user?.id &&
+      newestMessage.id > 0 &&
+      !newestMessage.readAt
+    ) {
+      markReadMutation.mutate(threadDetail.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadDetail?.id, allMessages.length, allMessages[allMessages.length - 1]?.id])
 
   const markReadMutation = useMutation({
     mutationFn: (threadId: number) => api.patch(`/messages/threads/${threadId}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['threads'] })
-      queryClient.invalidateQueries({ queryKey: ['unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
     },
   })
 
   const replyMutation = useMutation({
     mutationFn: (data: { threadId: number; body: string }) =>
       api.post(`/messages/threads/${data.threadId}/messages`, { body: data.body }),
-    onSuccess: () => {
+    // Optimistic insert: append a temporary message with a negative id to the newest page
+    onMutate: async (data) => {
+      if (!user) return
+      const queryKey = ['thread', data.threadId]
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<{
+        pages: ThreadDetail[]
+        pageParams: number[]
+      }>(queryKey)
+      if (!previous) return { previous }
+
+      const tempId = -Date.now()
+      const optimisticMessage: ThreadMessage = {
+        id: tempId,
+        senderId: user.id,
+        body: data.body,
+        readAt: null,
+        createdAt: new Date().toISOString(),
+        sender: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatarUrl: null,
+        },
+      }
+
+      queryClient.setQueryData(queryKey, {
+        ...previous,
+        pages: previous.pages.map((p, idx) =>
+          idx === 0 ? { ...p, messages: [...p.messages, optimisticMessage] } : p,
+        ),
+      })
+      return { previous, tempId }
+    },
+    onSuccess: (res, _variables, _context) => {
       setReplyText('')
       setSendError(null)
+      // Replace optimistic entry (or just refetch) by invalidating
       queryClient.invalidateQueries({ queryKey: ['thread', selectedThreadId] })
       queryClient.invalidateQueries({ queryKey: ['threads'] })
+      void res
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
+      if (context?.previous && selectedThreadId) {
+        queryClient.setQueryData(['thread', selectedThreadId], context.previous)
+      }
       setSendError(getExtractedError(err, 'Erro ao enviar mensagem.'))
     },
   })
@@ -852,7 +942,7 @@ function MessagesTab() {
       setSearchParams(searchParams, { replace: true })
       setSelectedThreadId(res.threadId)
       queryClient.invalidateQueries({ queryKey: ['threads'] })
-      queryClient.invalidateQueries({ queryKey: ['unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
     },
     onError: (err) => {
       setNewThreadError(getExtractedError(err, 'Erro ao criar conversa.'))
@@ -861,7 +951,6 @@ function MessagesTab() {
 
   function openThread(threadId: number) {
     setSelectedThreadId(threadId)
-    setThreadPage(1)
     markReadMutation.mutate(threadId)
   }
 
@@ -912,8 +1001,7 @@ function MessagesTab() {
             avatarName: `${threadDetail.owner.firstName} ${threadDetail.owner.lastName}`,
           }
 
-    const canLoadOlder =
-      threadDetail.pagination && threadDetail.pagination.page < threadDetail.pagination.totalPages
+    const canLoadOlder = !!hasNextPage
 
     return (
       <div className="space-y-4">
@@ -935,21 +1023,27 @@ function MessagesTab() {
           <div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto">
             {canLoadOlder && (
               <div className="flex justify-center">
-                <Button size="sm" variant="secondary" onClick={() => setThreadPage((p) => p + 1)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => fetchNextPage()}
+                  loading={isFetchingNextPage}
+                >
                   Carregar mensagens anteriores
                 </Button>
               </div>
             )}
 
-            {threadDetail.messages.map((msg) => {
+            {allMessages.map((msg) => {
               const isOwn = msg.senderId === user?.id
               const senderName = `${msg.sender.firstName} ${msg.sender.lastName}`
+              const isPending = msg.id < 0
               return (
                 <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`max-w-[75%] rounded-lg px-4 py-2 ${
                       isOwn ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'
-                    }`}
+                    } ${isPending ? 'opacity-60' : ''}`}
                   >
                     <p
                       className={`mb-1 text-xs font-medium ${
@@ -958,7 +1052,15 @@ function MessagesTab() {
                     >
                       {senderName}
                     </p>
-                    <p className="whitespace-pre-wrap text-sm">{msg.body}</p>
+                    <LinkifiedText
+                      text={msg.body}
+                      className="block whitespace-pre-wrap text-sm"
+                      linkClassName={
+                        isOwn
+                          ? 'underline decoration-primary-200 underline-offset-2 hover:text-white'
+                          : 'text-primary-700 underline decoration-dotted underline-offset-2 hover:decoration-solid'
+                      }
+                    />
                     <p
                       className={`mt-1 text-xs ${isOwn ? 'text-primary-200' : 'text-gray-400'}`}
                       title={formatDateTime(msg.createdAt)}
