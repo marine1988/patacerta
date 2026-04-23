@@ -258,13 +258,14 @@ async function main() {
   for (const o of OWNERS) {
     const user = await prisma.user.upsert({
       where: { email: o.email },
-      update: {},
+      update: { emailVerified: true },
       create: {
         email: o.email,
         passwordHash,
         firstName: o.firstName,
         lastName: o.lastName,
         role: UserRole.OWNER,
+        emailVerified: true,
       },
     })
     ownerByEmail.set(o.email, user.id)
@@ -284,7 +285,7 @@ async function main() {
 
     const user = await prisma.user.upsert({
       where: { email: b.email },
-      update: { role: UserRole.BREEDER },
+      update: { role: UserRole.BREEDER, emailVerified: true },
       create: {
         email: b.email,
         passwordHash,
@@ -292,6 +293,7 @@ async function main() {
         lastName: b.lastName,
         role: UserRole.BREEDER,
         phone: b.phone,
+        emailVerified: true,
       },
     })
 
