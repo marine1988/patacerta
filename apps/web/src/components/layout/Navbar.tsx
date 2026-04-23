@@ -27,6 +27,37 @@ function UnreadBadge({ className = '' }: { className?: string }) {
   )
 }
 
+function AdminPendingBadge({ className = '' }: { className?: string }) {
+  const { data } = useQuery({
+    queryKey: ['admin', 'pending-counts'],
+    queryFn: async () => {
+      const res = await api.get<{
+        pendingDocs: number
+        pendingBreeders: number
+        flaggedReviews: number
+        total: number
+      }>('/admin/pending-counts')
+      return res.data
+    },
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+  const count = data?.total ?? 0
+  if (count <= 0) return null
+  const title = data
+    ? `${data.pendingDocs} documento(s), ${data.pendingBreeders} criador(es) e ${data.flaggedReviews} avaliação(ões) a rever`
+    : undefined
+  return (
+    <span
+      className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold leading-none text-white ${className}`}
+      aria-label={title}
+      title={title}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -71,8 +102,12 @@ export function Navbar() {
                 {isAuthenticated && <UnreadBadge />}
               </Link>
               {user?.role === 'ADMIN' && (
-                <Link to="/admin" className={navLinkClass('/admin')}>
+                <Link
+                  to="/admin"
+                  className={`${navLinkClass('/admin')} inline-flex items-center gap-1.5`}
+                >
                   Admin
+                  <AdminPendingBadge />
                 </Link>
               )}
               <div className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-1.5">
@@ -178,9 +213,10 @@ export function Navbar() {
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Admin
+                    <AdminPendingBadge />
                   </Link>
                 )}
                 <div className="border-t border-gray-100 pt-2">

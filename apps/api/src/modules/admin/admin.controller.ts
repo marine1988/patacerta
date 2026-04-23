@@ -3,17 +3,39 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
 
+export const getPendingCounts = asyncHandler(async (_req, res) => {
+  const [pendingDocs, pendingBreeders, flaggedReviews] = await Promise.all([
+    prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
+    prisma.breeder.count({ where: { status: 'PENDING_VERIFICATION' } }),
+    prisma.review.count({ where: { status: 'FLAGGED' } }),
+  ])
+
+  res.json({
+    pendingDocs,
+    pendingBreeders,
+    flaggedReviews,
+    total: pendingDocs + pendingBreeders + flaggedReviews,
+  })
+})
+
 export const getDashboardStats = asyncHandler(async (_req, res) => {
-  const [totalUsers, totalBreeders, verifiedBreeders, pendingVerifications, totalReviews, flaggedReviews, totalMessages] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.breeder.count(),
-      prisma.breeder.count({ where: { status: 'VERIFIED' } }),
-      prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
-      prisma.review.count(),
-      prisma.review.count({ where: { status: 'FLAGGED' } }),
-      prisma.message.count(),
-    ])
+  const [
+    totalUsers,
+    totalBreeders,
+    verifiedBreeders,
+    pendingVerifications,
+    totalReviews,
+    flaggedReviews,
+    totalMessages,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.breeder.count(),
+    prisma.breeder.count({ where: { status: 'VERIFIED' } }),
+    prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
+    prisma.review.count(),
+    prisma.review.count({ where: { status: 'FLAGGED' } }),
+    prisma.message.count(),
+  ])
 
   res.json({
     users: { total: totalUsers },
@@ -83,7 +105,8 @@ export const listAllUsers = asyncHandler(async (req, res) => {
 
 export const suspendUser = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
-  if (id === req.user!.userId) throw new AppError(400, 'Não pode suspender a sua própria conta', 'SELF_SUSPEND')
+  if (id === req.user!.userId)
+    throw new AppError(400, 'Não pode suspender a sua própria conta', 'SELF_SUSPEND')
 
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')

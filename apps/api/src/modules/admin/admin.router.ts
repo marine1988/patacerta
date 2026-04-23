@@ -9,6 +9,7 @@ adminRouter.use(requireAuth, requireRole('ADMIN'))
 
 // Dashboard stats
 adminRouter.get('/stats', ctrl.getDashboardStats)
+adminRouter.get('/pending-counts', ctrl.getPendingCounts)
 
 // Verification queue
 adminRouter.get('/verifications/pending', ctrl.getPendingVerifications)
