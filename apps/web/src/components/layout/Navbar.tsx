@@ -57,6 +57,9 @@ export function Navbar() {
           <Link to="/diretorio" className={navLinkClass('/diretorio')}>
             Diretório
           </Link>
+          <Link to="/mapa" className={navLinkClass('/mapa')}>
+            Mapa
+          </Link>
 
           {isAuthenticated ? (
             <div className="relative flex items-center gap-4">
@@ -152,6 +155,13 @@ export function Navbar() {
               className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Diretório
+            </Link>
+            <Link
+              to="/mapa"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Mapa
             </Link>
 
             {isAuthenticated ? (

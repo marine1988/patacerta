@@ -6,9 +6,7 @@ import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import { Spinner } from './components/ui/Spinner'
 
 // Lazy-loaded pages — code-split at route level
-const HomePage = lazy(() =>
-  import('./pages/home/HomePage').then((m) => ({ default: m.HomePage })),
-)
+const HomePage = lazy(() => import('./pages/home/HomePage').then((m) => ({ default: m.HomePage })))
 const LoginPage = lazy(() =>
   import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })),
 )
@@ -30,14 +28,13 @@ const DirectoryPage = lazy(() =>
     default: m.DirectoryPage,
   })),
 )
+const MapPage = lazy(() => import('./pages/map/MapPage').then((m) => ({ default: m.MapPage })))
 const BreederProfilePage = lazy(() =>
   import('./pages/breeder/BreederProfilePage').then((m) => ({
     default: m.BreederProfilePage,
   })),
 )
-const DashboardPage = lazy(
-  () => import('./pages/dashboard/DashboardPage'),
-)
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
 const AdminPage = lazy(() =>
   import('./pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
 )
@@ -73,9 +70,7 @@ function ErrorFallback({
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
-      <h2 className="text-xl font-semibold text-red-600">
-        Algo correu mal
-      </h2>
+      <h2 className="text-xl font-semibold text-red-600">Algo correu mal</h2>
       <p className="max-w-md text-gray-600">{message}</p>
       <button
         onClick={resetErrorBoundary}
@@ -97,17 +92,12 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/entrar" element={<LoginPage />} />
             <Route path="/registar" element={<RegisterPage />} />
-            <Route
-              path="/recuperar-palavra-passe"
-              element={<ResetPasswordPage />}
-            />
+            <Route path="/recuperar-palavra-passe" element={<ResetPasswordPage />} />
             <Route path="/verificar-email" element={<VerifyEmailPage />} />
             <Route path="/diretorio" element={<DirectoryPage />} />
+            <Route path="/mapa" element={<MapPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
-            <Route
-              path="/politica-privacidade"
-              element={<PrivacyPolicyPage />}
-            />
+            <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />
             <Route path="/termos" element={<TermsPage />} />
 
             {/* Protected — any authenticated user */}

@@ -1,0 +1,220 @@
+import { useMemo } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { MapContainer, TileLayer } from 'react-leaflet'
+import { api } from '../../lib/api'
+import { PORTUGAL_CENTER, PORTUGAL_ZOOM } from '../../lib/leaflet-setup'
+import { MarkerClusterLayer, type MapMarker } from '../../components/map/MarkerClusterLayer'
+import { Spinner } from '../../components/ui/Spinner'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { Select } from '../../components/ui/Select'
+import { Input } from '../../components/ui/Input'
+import { Button } from '../../components/ui/Button'
+
+interface MapBreederResult {
+  id: number
+  businessName: string
+  status: string
+  district: { id: number; namePt: string }
+  municipality: { id: number; namePt: string }
+  species: { speciesId: number; species: { id: number; namePt: string } }[]
+  avgRating: number | null
+  reviewCount: number
+  latitude: number
+  longitude: number
+}
+
+interface MapResponse {
+  data: MapBreederResult[]
+  total: number
+}
+
+interface SpeciesOption {
+  id: number
+  nameSlug: string
+  namePt: string
+}
+
+interface DistrictOption {
+  id: number
+  code: string
+  namePt: string
+}
+
+export function MapPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const speciesId = searchParams.get('speciesId') || ''
+  const districtId = searchParams.get('districtId') || ''
+  const query = searchParams.get('query') || ''
+
+  const { data: speciesList = [] } = useQuery<SpeciesOption[]>({
+    queryKey: ['species'],
+    queryFn: () => api.get('/search/species').then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  })
+
+  const { data: districtsList = [] } = useQuery<DistrictOption[]>({
+    queryKey: ['districts'],
+    queryFn: () => api.get('/search/districts').then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  })
+
+  const { data, isLoading, isError } = useQuery<MapResponse>({
+    queryKey: ['breeders-map', { speciesId, districtId, query }],
+    queryFn: () =>
+      api
+        .get('/search/breeders/map', {
+          params: {
+            speciesId: speciesId || undefined,
+            districtId: districtId || undefined,
+            query: query || undefined,
+          },
+        })
+        .then((r) => r.data),
+  })
+
+  const markers: MapMarker[] = useMemo(() => {
+    return (data?.data ?? []).map((b) => ({
+      id: b.id,
+      lat: b.latitude,
+      lng: b.longitude,
+      businessName: b.businessName,
+      districtName: b.district.namePt,
+      municipalityName: b.municipality.namePt,
+      avgRating: b.avgRating,
+      reviewCount: b.reviewCount,
+      speciesLabels: b.species.map((s) => s.species.namePt),
+    }))
+  }, [data])
+
+  function updateFilter(key: string, value: string) {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    setSearchParams(next)
+  }
+
+  function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const q = String(form.get('query') || '').trim()
+    updateFilter('query', q)
+  }
+
+  function clearFilters() {
+    setSearchParams(new URLSearchParams())
+  }
+
+  const hasFilters = Boolean(speciesId || districtId || query)
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Mapa de Criadores</h1>
+        <p className="page-subtitle">
+          Explore criadores verificados em Portugal. Markers agrupados por distrito.
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col gap-3 md:flex-row md:items-end"
+        >
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
+            <Input name="query" defaultValue={query} placeholder="Nome ou descrição..." />
+          </div>
+          <div className="md:w-48">
+            <label className="mb-1 block text-xs font-medium text-gray-700">Espécie</label>
+            <Select
+              value={speciesId}
+              onChange={(e) => updateFilter('speciesId', e.target.value)}
+              options={[
+                { value: '', label: 'Todas' },
+                ...speciesList.map((s) => ({ value: String(s.id), label: s.namePt })),
+              ]}
+            />
+          </div>
+          <div className="md:w-56">
+            <label className="mb-1 block text-xs font-medium text-gray-700">Distrito</label>
+            <Select
+              value={districtId}
+              onChange={(e) => updateFilter('districtId', e.target.value)}
+              options={[
+                { value: '', label: 'Todos' },
+                ...districtsList.map((d) => ({ value: String(d.id), label: d.namePt })),
+              ]}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary">
+              Pesquisar
+            </Button>
+            {hasFilters && (
+              <Button type="button" variant="secondary" onClick={clearFilters}>
+                Limpar
+              </Button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* Results count + link to directory */}
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <p className="text-gray-600">
+          {isLoading ? (
+            'A carregar...'
+          ) : (
+            <>
+              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> criadores no
+              mapa
+            </>
+          )}
+        </p>
+        <Link
+          to={{ pathname: '/diretorio', search: searchParams.toString() }}
+          className="font-medium text-primary-600 hover:text-primary-700"
+        >
+          Ver em lista →
+        </Link>
+      </div>
+
+      {/* Map */}
+      <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        {isError ? (
+          <div className="flex h-[500px] items-center justify-center">
+            <EmptyState
+              title="Erro ao carregar mapa"
+              description="Não foi possível carregar os criadores. Tente recarregar a página."
+            />
+          </div>
+        ) : (
+          <div className="relative h-[70vh] min-h-[500px] w-full">
+            {isLoading && (
+              <div className="pointer-events-none absolute right-4 top-4 z-[1000] rounded-md bg-white/90 px-3 py-2 shadow">
+                <Spinner size="sm" />
+              </div>
+            )}
+            <MapContainer
+              center={PORTUGAL_CENTER}
+              zoom={PORTUGAL_ZOOM}
+              minZoom={6}
+              maxZoom={18}
+              scrollWheelZoom
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MarkerClusterLayer markers={markers} />
+            </MapContainer>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
