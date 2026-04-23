@@ -44,6 +44,12 @@ app.listen(PORT, () => {
       '[PataCerta API] ⚠  AUTH_SKIP_EMAIL_VERIFICATION=true — email verification bypassed (do NOT use in production)',
     )
   }
+  const rlFlag = process.env.DISABLE_RATE_LIMITS
+  if (rlFlag === '1' || rlFlag === 'true' || rlFlag === 'TRUE') {
+    console.warn(
+      '[PataCerta API] ⚠  DISABLE_RATE_LIMITS=true — all rate limiters are no-ops (do NOT use in production)',
+    )
+  }
 })
 
 export { app }

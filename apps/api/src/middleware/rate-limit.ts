@@ -25,6 +25,15 @@ interface RateLimitOptions {
 }
 
 /**
+ * When true, all rate limiters become no-ops. Controlled by DISABLE_RATE_LIMITS
+ * env var. MUST remain false/unset in production.
+ */
+function rateLimitsDisabled(): boolean {
+  const v = process.env.DISABLE_RATE_LIMITS
+  return v === '1' || v === 'true' || v === 'TRUE'
+}
+
+/**
  * Simple in-memory rate limiter.
  * For production with multiple instances, use Redis-backed rate limiting.
  */
@@ -37,6 +46,11 @@ export function rateLimit(options: RateLimitOptions = {}) {
   } = options
 
   return (req: Request, res: Response, next: NextFunction): void => {
+    if (rateLimitsDisabled()) {
+      next()
+      return
+    }
+
     const key = keyGenerator(req)
     const now = Date.now()
 
