@@ -69,6 +69,11 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
       CORS_ORIGIN: '*'
       FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.rogeriofigueiredo.us}
+      # Lower-environment flags — do NOT enable in production
+      RESET_DB_ON_BOOT: ${RESET_DB_ON_BOOT:-false}
+      RUN_SEED_ON_BOOT: ${RUN_SEED_ON_BOOT:-false}
+      AUTH_SKIP_EMAIL_VERIFICATION: ${AUTH_SKIP_EMAIL_VERIFICATION:-false}
+      DISABLE_RATE_LIMITS: ${DISABLE_RATE_LIMITS:-false}
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/health']
