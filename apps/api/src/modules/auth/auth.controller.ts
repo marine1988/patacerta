@@ -17,6 +17,16 @@ import type {
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24
 const RESET_TOKEN_EXPIRY_HOURS = 1
 
+/**
+ * When true, registration auto-verifies the user and login does not require
+ * email verification. Controlled by AUTH_SKIP_EMAIL_VERIFICATION env var.
+ * MUST remain false/unset in production.
+ */
+function skipEmailVerification(): boolean {
+  const v = process.env.AUTH_SKIP_EMAIL_VERIFICATION
+  return v === '1' || v === 'true' || v === 'TRUE'
+}
+
 function buildVerificationUrl(token: string): string {
   const base = process.env.FRONTEND_URL || 'http://localhost:5173'
   return `${base}/verificar-email?token=${token}`
@@ -32,6 +42,7 @@ export const register = asyncHandler(async (req, res) => {
   const data = req.body as RegisterInput
   const email = data.email.toLowerCase().trim()
   const passwordHash = await bcrypt.hash(data.password, 12)
+  const skip = skipEmailVerification()
   const { token: verificationToken, expiresAt: verificationExpiresAt } = generateVerificationToken()
 
   let user
@@ -44,9 +55,9 @@ export const register = asyncHandler(async (req, res) => {
         lastName: data.lastName,
         role: data.role,
         phone: data.phone,
-        emailVerified: false,
-        emailVerificationToken: verificationToken,
-        emailVerificationExpiresAt: verificationExpiresAt,
+        emailVerified: skip,
+        emailVerificationToken: skip ? null : verificationToken,
+        emailVerificationExpiresAt: skip ? null : verificationExpiresAt,
       },
       select: { id: true, email: true, role: true, firstName: true, lastName: true },
     })
@@ -57,13 +68,23 @@ export const register = asyncHandler(async (req, res) => {
     throw err
   }
 
+  if (skip) {
+    console.log(
+      `[EmailVerification] SKIPPED for ${user.email} (AUTH_SKIP_EMAIL_VERIFICATION enabled)`,
+    )
+    res.status(201).json({
+      message: 'Conta criada. Pode iniciar sessão.',
+      email: user.email,
+    })
+    return
+  }
+
   // MVP: log verification URL to console (no SMTP yet)
   const verificationUrl = buildVerificationUrl(verificationToken)
   console.log(`[EmailVerification] Link for ${user.email}: ${verificationUrl}`)
 
   res.status(201).json({
-    message:
-      'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
+    message: 'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
     email: user.email,
   })
 })
@@ -74,17 +95,14 @@ export const login = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
-  if (!user.isActive) throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
+  if (!user.isActive)
+    throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
 
   const valid = await bcrypt.compare(data.password, user.passwordHash)
   if (!valid) throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
 
-  if (!user.emailVerified) {
-    throw new AppError(
-      403,
-      'Verifique o seu email antes de iniciar sessão.',
-      'EMAIL_NOT_VERIFIED',
-    )
+  if (!user.emailVerified && !skipEmailVerification()) {
+    throw new AppError(403, 'Verifique o seu email antes de iniciar sessão.', 'EMAIL_NOT_VERIFIED')
   }
 
   const payload = { userId: user.id, email: user.email, role: user.role }
@@ -92,7 +110,13 @@ export const login = asyncHandler(async (req, res) => {
   const refreshToken = signRefreshToken(payload)
 
   res.json({
-    user: { id: user.id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName },
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    },
     accessToken,
     refreshToken,
   })
@@ -103,7 +127,8 @@ export const refresh = asyncHandler(async (req, res) => {
   const decoded = verifyRefreshToken(refreshToken)
   const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
   if (!user) throw new AppError(401, 'Utilizador não encontrado', 'USER_NOT_FOUND')
-  if (!user.isActive) throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
+  if (!user.isActive)
+    throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
 
   const payload = { userId: user.id, email: user.email, role: user.role }
   res.json({ accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload) })
@@ -197,7 +222,8 @@ export const resetPassword = asyncHandler(async (req, res) => {
   if (!user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
     throw new AppError(400, 'Token expirado — solicite um novo', 'EXPIRED_RESET_TOKEN')
   }
-  if (!user.isActive) throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
+  if (!user.isActive)
+    throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
 
   const passwordHash = await bcrypt.hash(password, 12)
 

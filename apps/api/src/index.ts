@@ -38,6 +38,12 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   console.log(`[PataCerta API] Running on http://localhost:${PORT}`)
   console.log(`[PataCerta API] Environment: ${process.env.NODE_ENV || 'development'}`)
+  const skipFlag = process.env.AUTH_SKIP_EMAIL_VERIFICATION
+  if (skipFlag === '1' || skipFlag === 'true' || skipFlag === 'TRUE') {
+    console.warn(
+      '[PataCerta API] ⚠  AUTH_SKIP_EMAIL_VERIFICATION=true — email verification bypassed (do NOT use in production)',
+    )
+  }
 })
 
 export { app }
