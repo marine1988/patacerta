@@ -81,11 +81,12 @@ model Breeder {
   userId         Int           @unique @map("user_id")
   businessName   String        @map("business_name") @db.VarChar(200)
   nif            String        @unique @db.VarChar(9)
-  dgavNumber     String?       @map("dgav_number") @db.VarChar(50)
+  dgavNumber     String        @unique @map("dgav_number") @db.VarChar(50)
   description    String?       @db.Text
   website        String?       @db.VarChar(255)
   phone          String?       @db.VarChar(20)
   status         BreederStatus @default(DRAFT)
+  verifiedAt     DateTime?     @map("verified_at")
   districtId     Int           @map("district_id")
   municipalityId Int           @map("municipality_id")
   createdAt      DateTime      @default(now()) @map("created_at")
@@ -102,6 +103,7 @@ model Breeder {
   @@index([districtId])
   @@index([status])
   @@index([nif])
+  @@index([dgavNumber])
   @@map("breeders")
 }
 

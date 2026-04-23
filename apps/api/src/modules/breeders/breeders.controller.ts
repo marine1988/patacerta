@@ -45,6 +45,9 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
   const nifExists = await prisma.breeder.findFirst({ where: { nif: data.nif } })
   if (nifExists) throw new AppError(409, 'Este NIF já está registado', 'NIF_EXISTS')
 
+  const dgavExists = await prisma.breeder.findFirst({ where: { dgavNumber: data.dgavNumber } })
+  if (dgavExists) throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
+
   const district = await prisma.district.findUnique({ where: { id: data.districtId } })
   if (!district) throw new AppError(400, 'Distrito não encontrado', 'INVALID_DISTRICT')
 
@@ -77,6 +80,9 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const target = (err.meta?.target as string[] | undefined) ?? []
+      if (target.includes('dgav_number'))
+        throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
       throw new AppError(409, 'Este NIF já está registado', 'NIF_EXISTS')
     }
     throw err
@@ -110,7 +116,13 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     if (nifExists) throw new AppError(409, 'Este NIF já está registado', 'NIF_EXISTS')
     updateData.nif = data.nif
   }
-  if (data.dgavNumber !== undefined) updateData.dgavNumber = data.dgavNumber
+  if (data.dgavNumber !== undefined) {
+    const dgavExists = await prisma.breeder.findFirst({
+      where: { dgavNumber: data.dgavNumber, id: { not: breeder.id } },
+    })
+    if (dgavExists) throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
+    updateData.dgavNumber = data.dgavNumber
+  }
   if (data.description !== undefined) updateData.description = data.description
   if (data.website !== undefined) updateData.website = data.website
   if (data.phone !== undefined) updateData.phone = data.phone
@@ -190,6 +202,15 @@ export const submitForVerification = asyncHandler(async (req, res) => {
 
   if (breeder.verificationDocs.length === 0) {
     throw new AppError(400, 'Envie pelo menos um documento antes de submeter', 'NO_DOCUMENTS')
+  }
+
+  const hasDgavDoc = breeder.verificationDocs.some((d) => d.docType === 'DGAV')
+  if (!hasDgavDoc) {
+    throw new AppError(
+      400,
+      'Envie o certificado DGAV antes de submeter o perfil para verificação',
+      'DGAV_DOC_REQUIRED',
+    )
   }
 
   const updated = await prisma.breeder.update({
