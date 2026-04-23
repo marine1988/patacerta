@@ -564,6 +564,7 @@ function BreederTab() {
                 label="Número DGAV"
                 value={form.dgavNumber}
                 onChange={(e) => setForm((p) => ({ ...p, dgavNumber: e.target.value }))}
+                disabled={isLocked}
               />
               <Input
                 label="Website"

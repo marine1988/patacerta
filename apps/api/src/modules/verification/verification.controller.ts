@@ -56,7 +56,11 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   const breeder = await getBreederForUser(req.user!.userId)
 
   // Sanitize filename: use only the extension from path.extname, stripping path traversal
-  const ext = path.extname(req.file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.bin'
+  const ext =
+    path
+      .extname(req.file.originalname)
+      .toLowerCase()
+      .replace(/[^a-z0-9.]/g, '') || '.bin'
   const safeFileName = `${Date.now()}-${docType}${ext}`
   const objectName = `verification/${breeder.id}/${safeFileName}`
 
@@ -108,7 +112,8 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     where: { id: docId, breederId: breeder.id },
   })
   if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
-  if (doc.status !== 'PENDING') throw new AppError(400, 'Só pode eliminar documentos pendentes', 'DOC_NOT_PENDING')
+  if (doc.status !== 'PENDING')
+    throw new AppError(400, 'Só pode eliminar documentos pendentes', 'DOC_NOT_PENDING')
 
   // Delete from MinIO
   const objectName = doc.fileUrl.replace(/^\/[^/]+\//, '')
@@ -165,7 +170,7 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     if (allApproved) {
       await prisma.breeder.update({
         where: { id: doc.breederId },
-        data: { status: 'VERIFIED' },
+        data: { status: 'VERIFIED', verifiedAt: new Date() },
       })
     }
   }

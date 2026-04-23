@@ -28,6 +28,7 @@ interface BreederDetail {
   businessName: string
   nif: string
   dgavNumber: string | null
+  verifiedAt: string | null
   description: string | null
   website: string | null
   phone: string | null
@@ -266,7 +267,11 @@ export function BreederProfilePage() {
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl font-bold text-gray-900">{breeder.businessName}</h1>
-                  <VerificationBadge status={breeder.status} />
+                  <VerificationBadge
+                    status={breeder.status}
+                    dgavNumber={breeder.dgavNumber}
+                    verifiedAt={breeder.verifiedAt}
+                  />
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
@@ -316,6 +321,11 @@ export function BreederProfilePage() {
                   <p className="mt-1 text-sm font-semibold text-blue-800">{breeder.nif}</p>
                 </div>
               </div>
+              {breeder.verifiedAt && (
+                <p className="mt-3 text-xs text-gray-500">
+                  Verificado pela equipa PataCerta em {formatDate(breeder.verifiedAt)}
+                </p>
+              )}
             </Card>
           )}
 
