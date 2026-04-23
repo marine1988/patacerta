@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
@@ -19,6 +19,10 @@ import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 
+const MiniMap = lazy(() =>
+  import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
+)
+
 interface BreederDetail {
   id: number
   businessName: string
@@ -29,7 +33,7 @@ interface BreederDetail {
   phone: string | null
   status: string
   userId: number
-  district: { id: number; namePt: string }
+  district: { id: number; namePt: string; latitude: number | null; longitude: number | null }
   municipality: { id: number; namePt: string }
   species: { speciesId: number; species: { id: number; namePt: string } }[]
   user: { id: number; firstName: string; lastName: string; email: string }
@@ -524,9 +528,27 @@ export function BreederProfilePage() {
 
           <Card>
             <h3 className="text-base font-semibold text-gray-900">Localização</h3>
-            <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
-              Mapa — em breve
-            </div>
+            {breeder.district.latitude !== null && breeder.district.longitude !== null ? (
+              <div className="mt-3">
+                <Suspense
+                  fallback={
+                    <div className="flex h-48 items-center justify-center rounded-lg bg-gray-100">
+                      <Spinner size="sm" />
+                    </div>
+                  }
+                >
+                  <MiniMap
+                    latitude={breeder.district.latitude}
+                    longitude={breeder.district.longitude}
+                    label={`${breeder.businessName} · ${breeder.municipality.namePt}`}
+                  />
+                </Suspense>
+              </div>
+            ) : (
+              <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
+                Sem coordenadas disponíveis
+              </div>
+            )}
             <p className="mt-2 text-sm text-gray-500">
               {breeder.municipality.namePt}, {breeder.district.namePt}
             </p>

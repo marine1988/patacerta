@@ -6,7 +6,7 @@ import type { BreederProfileInput } from '@patacerta/shared'
 
 const BREEDER_INCLUDE = {
   user: { select: { id: true, firstName: true, lastName: true, email: true } },
-  district: { select: { id: true, namePt: true } },
+  district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
   municipality: { select: { id: true, namePt: true } },
   species: { include: { species: { select: { id: true, namePt: true, nameSlug: true } } } },
 }
