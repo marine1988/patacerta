@@ -2,19 +2,22 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import type { ResolveReportInput } from '@patacerta/shared'
 
 export const getPendingCounts = asyncHandler(async (_req, res) => {
-  const [pendingDocs, pendingBreeders, flaggedReviews] = await Promise.all([
+  const [pendingDocs, pendingBreeders, flaggedReviews, pendingMessageReports] = await Promise.all([
     prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
     prisma.breeder.count({ where: { status: 'PENDING_VERIFICATION' } }),
     prisma.review.count({ where: { status: 'FLAGGED' } }),
+    prisma.messageReport.count({ where: { status: 'PENDING' } }),
   ])
 
   res.json({
     pendingDocs,
     pendingBreeders,
     flaggedReviews,
-    total: pendingDocs + pendingBreeders + flaggedReviews,
+    pendingMessageReports,
+    total: pendingDocs + pendingBreeders + flaggedReviews + pendingMessageReports,
   })
 })
 
@@ -238,4 +241,132 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   ])
 
   res.json(paginatedResponse(logs, total, page, limit))
+})
+
+// ──────────────────────────────────────────────────────────────────────
+// Message reports moderation
+// ──────────────────────────────────────────────────────────────────────
+
+export const listMessageReports = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
+  const status = (req.query.status as string | undefined) ?? 'PENDING'
+  if (!['PENDING', 'RESOLVED', 'DISMISSED'].includes(status)) {
+    throw new AppError(400, 'Estado inválido', 'INVALID_STATUS')
+  }
+
+  const where = { status: status as 'PENDING' | 'RESOLVED' | 'DISMISSED' }
+
+  const [reports, total] = await Promise.all([
+    prisma.messageReport.findMany({
+      where,
+      include: {
+        reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        message: {
+          select: {
+            id: true,
+            body: true,
+            createdAt: true,
+            editedAt: true,
+            deletedAt: true,
+            senderId: true,
+            threadId: true,
+            sender: { select: { id: true, firstName: true, lastName: true, email: true } },
+          },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    }),
+    prisma.messageReport.count({ where }),
+  ])
+
+  res.json(paginatedResponse(reports, total, page, limit))
+})
+
+export const getMessageReport = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const report = await prisma.messageReport.findUnique({
+    where: { id },
+    include: {
+      reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+      reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
+      message: {
+        include: {
+          sender: { select: { id: true, firstName: true, lastName: true, email: true } },
+          thread: {
+            include: {
+              owner: { select: { id: true, firstName: true, lastName: true, email: true } },
+              breeder: {
+                select: {
+                  id: true,
+                  businessName: true,
+                  user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                },
+              },
+              messages: {
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  body: true,
+                  senderId: true,
+                  createdAt: true,
+                  editedAt: true,
+                  deletedAt: true,
+                  sender: { select: { id: true, firstName: true, lastName: true, email: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  if (!report) throw new AppError(404, 'Denúncia não encontrada', 'REPORT_NOT_FOUND')
+
+  // Audit trail: every admin view of private thread content is logged.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'MESSAGE_REPORT_VIEWED',
+    entity: 'message_report',
+    entityId: id,
+    details: `Admin opened report ${id} for thread ${report.message.threadId}`,
+    ipAddress: req.ip,
+  })
+
+  res.json(report)
+})
+
+export const resolveMessageReport = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const { action, resolution } = req.body as ResolveReportInput
+
+  const report = await prisma.messageReport.findUnique({ where: { id } })
+  if (!report) throw new AppError(404, 'Denúncia não encontrada', 'REPORT_NOT_FOUND')
+  if (report.status !== 'PENDING') {
+    throw new AppError(400, 'Denúncia já foi processada', 'REPORT_ALREADY_RESOLVED')
+  }
+
+  const updated = await prisma.messageReport.update({
+    where: { id },
+    data: {
+      status: action,
+      reviewedBy: req.user!.userId,
+      reviewedAt: new Date(),
+      resolution: resolution ?? null,
+    },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: action === 'RESOLVED' ? 'MESSAGE_REPORT_RESOLVED' : 'MESSAGE_REPORT_DISMISSED',
+    entity: 'message_report',
+    entityId: id,
+    details: resolution ? `Resolution: ${resolution.slice(0, 120)}` : undefined,
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
 })

@@ -4,8 +4,11 @@ import { validate } from '../../middleware/validate.js'
 import {
   createThreadSchema,
   sendMessageSchema,
+  editMessageSchema,
+  reportMessageSchema,
   listThreadsSchema,
   listThreadMessagesSchema,
+  searchMessagesSchema,
 } from '@patacerta/shared'
 import { messageSendRateLimit, threadCreateRateLimit } from '../../middleware/rate-limit.js'
 import * as ctrl from './messages.controller.js'
@@ -28,6 +31,10 @@ messagesRouter.get(
   ctrl.getThread,
 )
 
+// Archive / unarchive (per-side)
+messagesRouter.patch('/threads/:threadId/archive', ctrl.archiveThread)
+messagesRouter.patch('/threads/:threadId/unarchive', ctrl.unarchiveThread)
+
 // Messages within a thread
 messagesRouter.post(
   '/threads/:threadId/messages',
@@ -36,6 +43,18 @@ messagesRouter.post(
   ctrl.sendMessage,
 )
 messagesRouter.patch('/threads/:threadId/read', ctrl.markThreadAsRead)
+
+// Edit / delete / report a single message
+messagesRouter.patch('/messages/:messageId', validate(editMessageSchema), ctrl.editMessage)
+messagesRouter.delete('/messages/:messageId', ctrl.deleteMessage)
+messagesRouter.post(
+  '/messages/:messageId/report',
+  validate(reportMessageSchema),
+  ctrl.reportMessage,
+)
+
+// Search across own threads
+messagesRouter.get('/search', validate(searchMessagesSchema, 'query'), ctrl.searchMessages)
 
 // Unread count
 messagesRouter.get('/unread-count', ctrl.getUnreadCount)

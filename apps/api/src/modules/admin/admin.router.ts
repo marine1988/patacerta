@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
+import { validate } from '../../middleware/validate.js'
+import { resolveReportSchema } from '@patacerta/shared'
 import * as ctrl from './admin.controller.js'
 
 export const adminRouter = Router()
@@ -24,6 +26,15 @@ adminRouter.patch('/breeders/:id/status', ctrl.changeBreederStatus)
 
 // Reviews moderation
 adminRouter.get('/reviews/flagged', ctrl.getFlaggedReviews)
+
+// Message reports moderation
+adminRouter.get('/message-reports', ctrl.listMessageReports)
+adminRouter.get('/message-reports/:id', ctrl.getMessageReport)
+adminRouter.patch(
+  '/message-reports/:id/resolve',
+  validate(resolveReportSchema),
+  ctrl.resolveMessageReport,
+)
 
 // Audit logs
 adminRouter.get('/audit-logs', ctrl.getAuditLogs)

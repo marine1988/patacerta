@@ -64,14 +64,16 @@ model User {
   createdAt                  DateTime  @default(now()) @map("created_at")
   updatedAt                  DateTime  @updatedAt @map("updated_at")
 
-  breeder        Breeder?
-  sentMessages   Message[]         @relation("sender")
-  threadsAsOwner Thread[]          @relation("thread_owner")
-  reviewedDocs   VerificationDoc[] @relation("reviewer")
-  reviews        Review[]          @relation("review_author")
-  reviewFlags    ReviewFlag[]      @relation("review_flag_reporter")
-  auditLogs      AuditLog[]
-  consentLogs    ConsentLog[]
+  breeder                Breeder?
+  sentMessages           Message[]         @relation("sender")
+  threadsAsOwner         Thread[]          @relation("thread_owner")
+  reviewedDocs           VerificationDoc[] @relation("reviewer")
+  reviews                Review[]          @relation("review_author")
+  reviewFlags            ReviewFlag[]      @relation("review_flag_reporter")
+  messageReportsFiled    MessageReport[]   @relation("message_report_reporter")
+  messageReportsReviewed MessageReport[]   @relation("message_report_reviewer")
+  auditLogs              AuditLog[]
+  consentLogs            ConsentLog[]
 
   @@map("users")
 }
@@ -182,6 +184,9 @@ model Thread {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  archivedByOwnerAt   DateTime? @map("archived_by_owner_at")
+  archivedByBreederAt DateTime? @map("archived_by_breeder_at")
+
   owner    User      @relation("thread_owner", fields: [ownerId], references: [id], onDelete: Cascade)
   breeder  Breeder   @relation("thread_breeder", fields: [breederId], references: [id], onDelete: Cascade)
   messages Message[]
@@ -201,14 +206,46 @@ model Message {
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
-  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User   @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy Int?      @map("deleted_by")
+
+  thread  Thread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender  User            @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  reports MessageReport[]
 
   @@index([threadId])
   @@index([senderId])
   @@index([threadId, createdAt])
   @@index([threadId, senderId, readAt])
   @@map("messages")
+}
+
+model MessageReport {
+  id         Int                 @id @default(autoincrement())
+  messageId  Int                 @map("message_id")
+  reporterId Int                 @map("reporter_id")
+  reason     String              @db.VarChar(500)
+  status     MessageReportStatus @default(PENDING)
+  createdAt  DateTime            @default(now()) @map("created_at")
+  reviewedBy Int?                @map("reviewed_by")
+  reviewedAt DateTime?           @map("reviewed_at")
+  resolution String?             @db.VarChar(500)
+
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter User    @relation("message_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User?   @relation("message_report_reviewer", fields: [reviewedBy], references: [id])
+
+  @@index([messageId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("message_reports")
+}
+
+enum MessageReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
 }
 
 model Review {
