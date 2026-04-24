@@ -70,6 +70,10 @@ export function Navbar() {
 
   const isActive = (path: string) => location.pathname === path
 
+  const currentTipo = new URLSearchParams(location.search).get('tipo')
+  const isDirectoryCriadores = location.pathname === '/diretorio' && currentTipo !== 'servicos'
+  const isDirectoryServicos = location.pathname === '/diretorio' && currentTipo === 'servicos'
+
   const navLinkClass = (path: string) =>
     `text-[11px] font-medium uppercase tracking-caps transition-colors ${
       isActive(path) ? 'text-caramel-500' : 'text-muted hover:text-ink'
@@ -93,8 +97,21 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-10 md:flex">
-          <Link to="/diretorio" className={navLinkClass('/diretorio')}>
+          <Link
+            to="/diretorio"
+            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+              isDirectoryCriadores ? 'text-caramel-500' : 'text-muted hover:text-ink'
+            }`}
+          >
             Diretório
+          </Link>
+          <Link
+            to="/diretorio?tipo=servicos"
+            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+              isDirectoryServicos ? 'text-caramel-500' : 'text-muted hover:text-ink'
+            }`}
+          >
+            Serviços
           </Link>
           <Link to="/mapa" className={navLinkClass('/mapa')}>
             Mapa
@@ -229,6 +246,13 @@ export function Navbar() {
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >
               Diretório
+            </Link>
+            <Link
+              to="/diretorio?tipo=servicos"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
+            >
+              Serviços
             </Link>
             <Link
               to="/mapa"

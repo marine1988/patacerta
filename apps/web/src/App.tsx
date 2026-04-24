@@ -34,6 +34,11 @@ const BreederProfilePage = lazy(() =>
     default: m.BreederProfilePage,
   })),
 )
+const ServiceDetailPage = lazy(() =>
+  import('./pages/service/ServiceDetailPage').then((m) => ({
+    default: m.ServiceDetailPage,
+  })),
+)
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
 const AdminPage = lazy(() =>
   import('./pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
@@ -93,6 +98,7 @@ export function App() {
             <Route path="/diretorio" element={<DirectoryPage />} />
             <Route path="/mapa" element={<MapPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
+            <Route path="/servicos/:id" element={<ServiceDetailPage />} />
             <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />
             <Route path="/termos" element={<TermsPage />} />
 

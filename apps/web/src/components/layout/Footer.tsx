@@ -31,6 +31,7 @@ export function Footer() {
             <h4 className="eyebrow mb-5">— Plataforma</h4>
             <ul className="space-y-3">
               <FooterLink to="/diretorio">Diretório</FooterLink>
+              <FooterLink to="/diretorio?tipo=servicos">Serviços</FooterLink>
               <FooterLink to="/mapa">Mapa</FooterLink>
               <FooterLink to="/registar">Juntar-me como criador</FooterLink>
             </ul>
