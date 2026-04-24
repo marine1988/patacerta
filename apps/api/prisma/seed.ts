@@ -213,14 +213,39 @@ async function main() {
   }
   console.log(`  ✓ ${speciesData.length} species seeded`)
 
+  // ---- Service Categories ----
+  // Apenas passeio e pet-sitting activas no MVP; restantes na tabela para
+  // activar em iterações futuras sem migração.
+  console.log('\nSeeding service categories...')
+  const serviceCategoriesData = [
+    { nameSlug: 'passeio', namePt: 'Passeio de Cães', isActive: true },
+    { nameSlug: 'pet-sitting', namePt: 'Pet Sitting', isActive: true },
+    { nameSlug: 'veterinario', namePt: 'Veterinário', isActive: false },
+    { nameSlug: 'tosquia', namePt: 'Tosquia / Grooming', isActive: false },
+    { nameSlug: 'treino', namePt: 'Treino / Comportamento', isActive: false },
+    { nameSlug: 'transporte', namePt: 'Transporte de Animais', isActive: false },
+    { nameSlug: 'fotografia', namePt: 'Fotografia Animal', isActive: false },
+    { nameSlug: 'outro', namePt: 'Outro', isActive: false },
+  ]
+
+  for (const c of serviceCategoriesData) {
+    await prisma.serviceCategory.upsert({
+      where: { nameSlug: c.nameSlug },
+      update: { namePt: c.namePt, isActive: c.isActive },
+      create: c,
+    })
+  }
+  console.log(`  ✓ ${serviceCategoriesData.length} service categories seeded`)
+
   // ---- Summary ----
   console.log('\n========================================')
   console.log('  Seed completed successfully!')
   console.log('========================================')
-  console.log(`  Users:           1`)
-  console.log(`  Districts:       ${districtsData.length}`)
-  console.log(`  Municipalities:  ${municipalityCount}`)
-  console.log(`  Species:         ${speciesData.length}`)
+  console.log(`  Users:             1`)
+  console.log(`  Districts:         ${districtsData.length}`)
+  console.log(`  Municipalities:    ${municipalityCount}`)
+  console.log(`  Species:           ${speciesData.length}`)
+  console.log(`  Service categories: ${serviceCategoriesData.length}`)
   console.log('========================================\n')
 }
 

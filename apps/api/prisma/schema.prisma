@@ -13,6 +13,7 @@ datasource db {
 enum UserRole {
   OWNER
   BREEDER
+  SERVICE_PROVIDER
   ADMIN
 }
 
@@ -41,6 +42,25 @@ enum ReviewStatus {
   PUBLISHED
   HIDDEN
   FLAGGED
+}
+
+enum ServiceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  SUSPENDED
+}
+
+enum PriceUnit {
+  FIXED
+  HOURLY
+  PER_SESSION
+}
+
+enum ServiceReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
 }
 
 // ---- Models ----
@@ -72,6 +92,9 @@ model User {
   reviewFlags            ReviewFlag[]      @relation("review_flag_reporter")
   messageReportsFiled    MessageReport[]   @relation("message_report_reporter")
   messageReportsReviewed MessageReport[]   @relation("message_report_reviewer")
+  services               Service[]         @relation("service_provider")
+  serviceReportsFiled    ServiceReport[]   @relation("service_report_reporter")
+  serviceReportsReviewed ServiceReport[]   @relation("service_report_reviewer")
   auditLogs              AuditLog[]
   consentLogs            ConsentLog[]
 
@@ -139,6 +162,7 @@ model District {
 
   municipalities Municipality[]
   breeders       Breeder[]
+  services       Service[]
 
   @@map("districts")
 }
@@ -149,8 +173,10 @@ model Municipality {
   code       String @unique @db.VarChar(10)
   namePt     String @map("name_pt") @db.VarChar(100)
 
-  district District  @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  breeders Breeder[]
+  district        District          @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  breeders        Breeder[]
+  services        Service[]
+  serviceCoverage ServiceCoverage[]
 
   @@index([districtId])
   @@map("municipalities")
@@ -179,7 +205,8 @@ model VerificationDoc {
 model Thread {
   id        Int      @id @default(autoincrement())
   ownerId   Int      @map("owner_id")
-  breederId Int      @map("breeder_id")
+  breederId Int?     @map("breeder_id")
+  serviceId Int?     @map("service_id")
   subject   String   @db.VarChar(200)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -188,12 +215,15 @@ model Thread {
   archivedByBreederAt DateTime? @map("archived_by_breeder_at")
 
   owner    User      @relation("thread_owner", fields: [ownerId], references: [id], onDelete: Cascade)
-  breeder  Breeder   @relation("thread_breeder", fields: [breederId], references: [id], onDelete: Cascade)
+  breeder  Breeder?  @relation("thread_breeder", fields: [breederId], references: [id], onDelete: Cascade)
+  service  Service?  @relation("thread_service", fields: [serviceId], references: [id], onDelete: Cascade)
   messages Message[]
 
   @@unique([ownerId, breederId])
+  @@unique([ownerId, serviceId])
   @@index([ownerId])
   @@index([breederId])
+  @@index([serviceId])
   @@index([updatedAt])
   @@map("threads")
 }
@@ -322,4 +352,112 @@ model ConsentLog {
   @@index([userId])
   @@index([consentType])
   @@map("consent_logs")
+}
+
+// ---- Services (dog-walking, dog-sitting, ...) ----
+
+model ServiceCategory {
+  id       Int     @id @default(autoincrement())
+  nameSlug String  @unique @map("name_slug") @db.VarChar(50)
+  namePt   String  @map("name_pt") @db.VarChar(100)
+  isActive Boolean @default(false) @map("is_active")
+
+  services Service[]
+
+  @@map("service_categories")
+}
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  providerId      Int           @map("provider_id")
+  categoryId      Int           @map("category_id")
+  title           String        @db.VarChar(200)
+  description     String        @db.Text
+  priceCents      Int           @map("price_cents")
+  priceUnit       PriceUnit     @map("price_unit")
+  currency        String        @default("EUR") @db.VarChar(3)
+  districtId      Int           @map("district_id")
+  municipalityId  Int           @map("municipality_id")
+  addressLine     String?       @map("address_line") @db.VarChar(255)
+  latitude        Float?
+  longitude       Float?
+  geocodedAt      DateTime?     @map("geocoded_at")
+  geocodeSource   String?       @map("geocode_source") @db.VarChar(20)
+  serviceRadiusKm Int?          @map("service_radius_km")
+  status          ServiceStatus @default(DRAFT)
+  website         String?       @db.VarChar(255)
+  phone           String?       @db.VarChar(20)
+
+  avgRating   Decimal @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  reviewCount Int     @default(0) @map("review_count")
+
+  publishedAt   DateTime? @map("published_at")
+  removedAt     DateTime? @map("removed_at")
+  removedReason String?   @map("removed_reason") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  provider      User              @relation("service_provider", fields: [providerId], references: [id], onDelete: Cascade)
+  category      ServiceCategory   @relation(fields: [categoryId], references: [id])
+  district      District          @relation(fields: [districtId], references: [id])
+  municipality  Municipality      @relation(fields: [municipalityId], references: [id])
+  photos        ServicePhoto[]
+  coverageAreas ServiceCoverage[]
+  reports       ServiceReport[]
+  threads       Thread[]          @relation("thread_service")
+
+  @@index([providerId])
+  @@index([categoryId])
+  @@index([districtId])
+  @@index([status])
+  @@index([status, categoryId])
+  @@index([status, categoryId, districtId])
+  @@map("services")
+}
+
+model ServicePhoto {
+  id        Int      @id @default(autoincrement())
+  serviceId Int      @map("service_id")
+  url       String   @db.VarChar(512)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, sortOrder])
+  @@map("service_photos")
+}
+
+model ServiceCoverage {
+  serviceId      Int @map("service_id")
+  municipalityId Int @map("municipality_id")
+
+  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  municipality Municipality @relation(fields: [municipalityId], references: [id])
+
+  @@id([serviceId, municipalityId])
+  @@index([municipalityId])
+  @@map("service_coverage")
+}
+
+model ServiceReport {
+  id         Int                 @id @default(autoincrement())
+  serviceId  Int                 @map("service_id")
+  reporterId Int                 @map("reporter_id")
+  reason     String              @db.VarChar(500)
+  status     ServiceReportStatus @default(PENDING)
+  createdAt  DateTime            @default(now()) @map("created_at")
+  reviewedBy Int?                @map("reviewed_by")
+  reviewedAt DateTime?           @map("reviewed_at")
+  resolution String?             @db.VarChar(500)
+
+  service  Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  reporter User    @relation("service_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User?   @relation("service_report_reviewer", fields: [reviewedBy], references: [id])
+
+  @@index([serviceId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("service_reports")
 }
