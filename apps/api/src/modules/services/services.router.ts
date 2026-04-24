@@ -15,8 +15,10 @@ import { requireAuth } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import {
   serviceCreateRateLimit,
+  serviceMutationRateLimit,
   serviceReportRateLimit,
   threadCreateRateLimit,
+  uploadRateLimit,
 } from '../../middleware/rate-limit.js'
 import {
   createServiceSchema,
@@ -86,20 +88,33 @@ servicesRouter.post(
   validate(createServiceSchema),
   createService,
 )
-servicesRouter.patch('/:serviceId', requireAuth, validate(updateServiceSchema), updateService)
-servicesRouter.delete('/:serviceId', requireAuth, deleteService)
+servicesRouter.patch(
+  '/:serviceId',
+  requireAuth,
+  serviceMutationRateLimit,
+  validate(updateServiceSchema),
+  updateService,
+)
+servicesRouter.delete('/:serviceId', requireAuth, serviceMutationRateLimit, deleteService)
 
 // ── Status transitions ───────────────────────────────────────────────
 servicesRouter.post(
   '/:serviceId/publish',
   requireAuth,
+  serviceMutationRateLimit,
   validate(publishServiceSchema),
   publishService,
 )
-servicesRouter.post('/:serviceId/pause', requireAuth, validate(pauseServiceSchema), pauseService)
+servicesRouter.post(
+  '/:serviceId/pause',
+  requireAuth,
+  serviceMutationRateLimit,
+  validate(pauseServiceSchema),
+  pauseService,
+)
 
 // ── Photos ───────────────────────────────────────────────────────────
 // Multer parses the multipart body inside the controller so we can surface
 // user-friendly AppError messages consistent with the rest of the API.
-servicesRouter.post('/:serviceId/photos', requireAuth, uploadPhotos)
+servicesRouter.post('/:serviceId/photos', requireAuth, uploadRateLimit, uploadPhotos)
 servicesRouter.delete('/:serviceId/photos/:photoId', requireAuth, deletePhoto)

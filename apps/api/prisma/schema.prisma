@@ -413,6 +413,14 @@ model Service {
   @@index([status])
   @@index([status, categoryId])
   @@index([status, categoryId, districtId])
+  // Compostos adicionais para os orderBy/filtros mais frequentes do catalogo publico.
+  // Cada um cobre uma combinacao real observada em listServices/mapServices.
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([status, priceCents])
+  @@index([status, avgRating(sort: Desc)])
+  @@index([status, municipalityId])
+  @@index([status, latitude, longitude])
+  @@index([providerId, updatedAt(sort: Desc)])
   @@map("services")
 }
 
@@ -456,6 +464,9 @@ model ServiceReport {
   reporter User    @relation("service_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
   reviewer User?   @relation("service_report_reviewer", fields: [reviewedBy], references: [id])
 
+  // Garante dedupe de denuncias PENDING do mesmo autor contra o mesmo
+  // servico ao nivel da DB (elimina a race condition em reportService).
+  @@unique([serviceId, reporterId, status], name: "service_report_dedupe")
   @@index([serviceId])
   @@index([reporterId])
   @@index([status])

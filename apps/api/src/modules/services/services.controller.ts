@@ -121,11 +121,15 @@ async function loadOwnedService(serviceId: number, userId: number) {
 
 async function syncCoverageAreas(serviceId: number, municipalityIds: number[]): Promise<void> {
   // Replace-all strategy — small set (max 10), simpler than diffing.
-  await prisma.serviceCoverage.deleteMany({ where: { serviceId } })
-  if (municipalityIds.length === 0) return
-  await prisma.serviceCoverage.createMany({
-    data: municipalityIds.map((municipalityId) => ({ serviceId, municipalityId })),
-    skipDuplicates: true,
+  // Envolvido em $transaction para evitar estado inconsistente (coberturas
+  // apagadas mas novas por inserir) se a segunda query falhar.
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceCoverage.deleteMany({ where: { serviceId } })
+    if (municipalityIds.length === 0) return
+    await tx.serviceCoverage.createMany({
+      data: municipalityIds.map((municipalityId) => ({ serviceId, municipalityId })),
+      skipDuplicates: true,
+    })
   })
 }
 
@@ -464,15 +468,33 @@ export const deleteService = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/services/mine — list the authenticated user's own services
+ *
+ * Pagina pouco (default 50, max 100) apenas para impedir payloads gigantes
+ * em casos patologicos. Clientes existentes continuam a receber o envelope
+ * `{ data }`; `meta` e' informativo.
  */
 export const getMyServices = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
-  const services = await prisma.service.findMany({
-    where: { providerId: userId },
-    orderBy: { updatedAt: 'desc' },
-    select: publicServiceSelect(),
+  const rawPage = Number(req.query.page)
+  const rawLimit = Number(req.query.limit)
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 100) : 50
+
+  const [services, total] = await Promise.all([
+    prisma.service.findMany({
+      where: { providerId: userId },
+      orderBy: { updatedAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: publicServiceSelect(),
+    }),
+    prisma.service.count({ where: { providerId: userId } }),
+  ])
+
+  res.json({
+    data: services,
+    meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
   })
-  res.json({ data: services })
 })
 
 /**
@@ -936,18 +958,29 @@ export const reportService = asyncHandler(async (req, res) => {
   }
 
   // Dedupe pending reports by this reporter.
-  const existing = await prisma.serviceReport.findFirst({
-    where: { serviceId, reporterId: userId, status: 'PENDING' },
-  })
-  if (existing) {
-    res.status(200).json({ id: existing.id, duplicate: true })
-    return
+  // Usamos try/catch sobre o unique composto (serviceId, reporterId, status)
+  // em vez de findFirst+create para eliminar a race condition entre pedidos
+  // concorrentes. O unique foi adicionado em schema.prisma.
+  let report: { id: number; createdAt: Date; status: 'PENDING' | 'RESOLVED' | 'DISMISSED' }
+  try {
+    report = await prisma.serviceReport.create({
+      data: { serviceId, reporterId: userId, reason },
+      select: { id: true, createdAt: true, status: true },
+    })
+  } catch (err) {
+    // P2002 = unique constraint violation → denuncia PENDING ja existe.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const existing = await prisma.serviceReport.findFirst({
+        where: { serviceId, reporterId: userId, status: 'PENDING' },
+        select: { id: true },
+      })
+      if (existing) {
+        res.status(200).json({ id: existing.id, duplicate: true })
+        return
+      }
+    }
+    throw err
   }
-
-  const report = await prisma.serviceReport.create({
-    data: { serviceId, reporterId: userId, reason },
-    select: { id: true, createdAt: true, status: true },
-  })
 
   await logAudit({
     userId,

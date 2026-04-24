@@ -139,3 +139,12 @@ export const serviceReportRateLimit = rateLimit({
   message: 'Demasiadas denúncias. Tente novamente mais tarde.',
   keyGenerator: userKey,
 })
+
+// Protege as mutacoes owner-side de servicos (PATCH/DELETE/publish/pause)
+// de abuso ou scripts mal-comportados. Limite generoso — reflecte uso normal.
+export const serviceMutationRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: 'Demasiadas alterações ao anúncio. Aguarde um momento.',
+  keyGenerator: userKey,
+})
