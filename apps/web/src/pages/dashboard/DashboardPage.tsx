@@ -144,6 +144,53 @@ interface PaginatedMeta {
   totalPages: number
 }
 
+// ── Services types ─────────────────────────────────────────────────
+
+interface ServiceCategory {
+  id: number
+  nameSlug: string
+  namePt: string
+}
+
+interface ServicePhoto {
+  id: number
+  url: string
+  sortOrder: number
+}
+
+type ServicePriceUnit = 'FIXED' | 'HOURLY' | 'PER_SESSION'
+type ServiceStatusValue = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED'
+
+interface ServiceItem {
+  id: number
+  providerId: number
+  categoryId: number
+  title: string
+  description: string
+  priceCents: number
+  priceUnit: ServicePriceUnit
+  currency: string
+  districtId: number
+  municipalityId: number
+  addressLine: string | null
+  latitude: number | null
+  longitude: number | null
+  serviceRadiusKm: number | null
+  status: ServiceStatusValue
+  website: string | null
+  phone: string | null
+  avgRating: number | null
+  reviewCount: number
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  photos: ServicePhoto[]
+  coverageAreas: Array<{ municipalityId: number }>
+  category: ServiceCategory
+  district: { id: number; namePt: string }
+  municipality: { id: number; namePt: string }
+}
+
 function getExtractedError(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as { error?: string; message?: string } | undefined
@@ -1916,6 +1963,748 @@ function SettingsTab() {
   )
 }
 
+// ──────────────────────────── ServicesTab ────────────────────────────
+
+const SERVICE_MAX_PHOTOS = 8
+
+const priceUnitOptions: Array<{ value: ServicePriceUnit; label: string }> = [
+  { value: 'FIXED', label: 'Valor fixo' },
+  { value: 'HOURLY', label: 'Por hora' },
+  { value: 'PER_SESSION', label: 'Por sessão' },
+]
+
+const priceUnitSuffix: Record<ServicePriceUnit, string> = {
+  FIXED: '',
+  HOURLY: '/ hora',
+  PER_SESSION: '/ sessão',
+}
+
+const serviceStatusVariant: Record<ServiceStatusValue, 'green' | 'yellow' | 'red' | 'gray'> = {
+  DRAFT: 'yellow',
+  ACTIVE: 'green',
+  PAUSED: 'yellow',
+  SUSPENDED: 'red',
+}
+
+const serviceStatusLabel: Record<ServiceStatusValue, string> = {
+  DRAFT: 'Rascunho',
+  ACTIVE: 'Publicado',
+  PAUSED: 'Pausado',
+  SUSPENDED: 'Removido',
+}
+
+function formatPriceEUR(cents: number, unit: ServicePriceUnit): string {
+  const value = (cents / 100).toLocaleString('pt-PT', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const suffix = priceUnitSuffix[unit]
+  return suffix ? `${value}€ ${suffix}` : `${value}€`
+}
+
+interface ServiceFormState {
+  categoryId: string
+  title: string
+  description: string
+  price: string // input em € com vírgula ou ponto
+  priceUnit: ServicePriceUnit
+  districtId: string
+  municipalityId: string
+  addressLine: string
+  serviceRadiusKm: string
+  website: string
+  phone: string
+}
+
+const emptyServiceForm: ServiceFormState = {
+  categoryId: '',
+  title: '',
+  description: '',
+  price: '',
+  priceUnit: 'PER_SESSION',
+  districtId: '',
+  municipalityId: '',
+  addressLine: '',
+  serviceRadiusKm: '',
+  website: '',
+  phone: '',
+}
+
+function parsePriceToCents(raw: string): number | null {
+  const trimmed = raw.trim().replace(',', '.')
+  if (!trimmed) return null
+  const n = Number(trimmed)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return Math.round(n * 100)
+}
+
+function ServicesTab() {
+  const queryClient = useQueryClient()
+
+  const [mode, setMode] = useState<'list' | 'edit'>('list')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [form, setForm] = useState<ServiceFormState>(emptyServiceForm)
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // ── Queries ──────────────────────────────────────────────────────
+  const { data: services, isLoading } = useQuery<{ data: ServiceItem[] }>({
+    queryKey: ['services', 'mine'],
+    queryFn: () => api.get('/services/mine').then((r) => r.data),
+  })
+
+  const { data: categories } = useQuery<ServiceCategory[]>({
+    queryKey: ['service-categories'],
+    queryFn: () => api.get('/services/categories').then((r) => r.data),
+  })
+
+  const { data: districts } = useQuery<District[]>({
+    queryKey: ['districts'],
+    queryFn: () => api.get('/search/districts').then((r) => r.data),
+  })
+
+  const { data: municipalities } = useQuery<Municipality[]>({
+    queryKey: ['municipalities', form.districtId],
+    queryFn: () =>
+      api.get(`/search/districts/${form.districtId}/municipalities`).then((r) => r.data),
+    enabled: !!form.districtId,
+  })
+
+  const editingService =
+    editingId !== null ? (services?.data.find((s) => s.id === editingId) ?? null) : null
+
+  // ── Mutations ────────────────────────────────────────────────────
+  const createMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      api.post<ServiceItem>('/services', payload).then((r) => r.data),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setEditingId(created.id)
+      setMsg({
+        type: 'success',
+        text: 'Rascunho criado. Adicione pelo menos uma foto para publicar.',
+      })
+    },
+    onError: (err) => {
+      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao criar anúncio.') })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Record<string, unknown> }) =>
+      api.patch<ServiceItem>(`/services/${id}`, payload).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setMsg({ type: 'success', text: 'Anúncio atualizado com sucesso.' })
+    },
+    onError: (err) => {
+      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao atualizar anúncio.') })
+    },
+  })
+
+  const publishMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/services/${id}/publish`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setMsg({ type: 'success', text: 'Anúncio publicado.' })
+    },
+    onError: (err) => {
+      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao publicar anúncio.') })
+    },
+  })
+
+  const pauseMutation = useMutation({
+    mutationFn: (id: number) => api.post(`/services/${id}/pause`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setMsg({ type: 'success', text: 'Anúncio pausado.' })
+    },
+    onError: (err) => {
+      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao pausar anúncio.') })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/services/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setDeleteId(null)
+      if (mode === 'edit') {
+        setMode('list')
+        setEditingId(null)
+      }
+      setMsg({ type: 'success', text: 'Anúncio removido.' })
+    },
+    onError: (err) => {
+      setDeleteId(null)
+      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao remover anúncio.') })
+    },
+  })
+
+  const uploadPhotosMutation = useMutation({
+    mutationFn: ({ id, formData }: { id: number; formData: FormData }) =>
+      api.post(`/services/${id}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setPhotoMsg({ type: 'success', text: 'Fotos enviadas.' })
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    },
+    onError: (err) => {
+      setPhotoMsg({ type: 'error', text: getExtractedError(err, 'Erro ao enviar fotos.') })
+    },
+  })
+
+  const deletePhotoMutation = useMutation({
+    mutationFn: ({ serviceId, photoId }: { serviceId: number; photoId: number }) =>
+      api.delete(`/services/${serviceId}/photos/${photoId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+    },
+  })
+
+  // ── Populate form when entering edit mode ───────────────────────
+  useEffect(() => {
+    if (mode !== 'edit') return
+    if (!editingService) {
+      // novo anúncio
+      setForm(emptyServiceForm)
+      return
+    }
+    setForm({
+      categoryId: String(editingService.categoryId),
+      title: editingService.title,
+      description: editingService.description,
+      price: (editingService.priceCents / 100).toFixed(2).replace('.', ','),
+      priceUnit: editingService.priceUnit,
+      districtId: String(editingService.districtId),
+      municipalityId: String(editingService.municipalityId),
+      addressLine: editingService.addressLine ?? '',
+      serviceRadiusKm: editingService.serviceRadiusKm ? String(editingService.serviceRadiusKm) : '',
+      website: editingService.website ?? '',
+      phone: editingService.phone ?? '',
+    })
+  }, [mode, editingService])
+
+  // ── Handlers ─────────────────────────────────────────────────────
+  function startNew() {
+    setEditingId(null)
+    setForm(emptyServiceForm)
+    setMsg(null)
+    setPhotoMsg(null)
+    setMode('edit')
+  }
+
+  function startEdit(id: number) {
+    setEditingId(id)
+    setMsg(null)
+    setPhotoMsg(null)
+    setMode('edit')
+  }
+
+  function backToList() {
+    setMode('list')
+    setEditingId(null)
+    setForm(emptyServiceForm)
+    setMsg(null)
+    setPhotoMsg(null)
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setMsg(null)
+
+    if (!form.categoryId) {
+      setMsg({ type: 'error', text: 'Selecione uma categoria.' })
+      return
+    }
+    if (form.title.trim().length < 5) {
+      setMsg({ type: 'error', text: 'Título tem de ter pelo menos 5 caracteres.' })
+      return
+    }
+    if (form.description.trim().length < 20) {
+      setMsg({ type: 'error', text: 'Descrição tem de ter pelo menos 20 caracteres.' })
+      return
+    }
+    const priceCents = parsePriceToCents(form.price)
+    if (priceCents === null) {
+      setMsg({ type: 'error', text: 'Indique um preço válido (ex.: 15,00).' })
+      return
+    }
+    if (priceCents > 999999) {
+      setMsg({ type: 'error', text: 'Preço máximo é 9999,99€.' })
+      return
+    }
+    if (!form.districtId || !form.municipalityId) {
+      setMsg({ type: 'error', text: 'Selecione distrito e concelho.' })
+      return
+    }
+
+    const payload: Record<string, unknown> = {
+      categoryId: Number(form.categoryId),
+      title: form.title.trim(),
+      description: form.description.trim(),
+      priceCents,
+      priceUnit: form.priceUnit,
+      districtId: Number(form.districtId),
+      municipalityId: Number(form.municipalityId),
+      addressLine: form.addressLine.trim() || undefined,
+      serviceRadiusKm: form.serviceRadiusKm ? Number(form.serviceRadiusKm) : undefined,
+      website: form.website.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+    }
+
+    if (editingId === null) {
+      createMutation.mutate(payload)
+    } else {
+      updateMutation.mutate({ id: editingId, payload })
+    }
+  }
+
+  function handleUploadPhotos(e: ChangeEvent<HTMLInputElement>) {
+    setPhotoMsg(null)
+    if (editingId === null) {
+      setPhotoMsg({ type: 'error', text: 'Guarde o rascunho antes de enviar fotos.' })
+      return
+    }
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const current = editingService?.photos.length ?? 0
+    if (current + files.length > SERVICE_MAX_PHOTOS) {
+      setPhotoMsg({
+        type: 'error',
+        text: `Máximo ${SERVICE_MAX_PHOTOS} fotos (tem ${current}).`,
+      })
+      e.target.value = ''
+      return
+    }
+    const fd = new FormData()
+    for (let i = 0; i < files.length; i++) {
+      fd.append('photos', files[i])
+    }
+    uploadPhotosMutation.mutate({ id: editingId, formData: fd })
+  }
+
+  // ── Render: loading ─────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  // ── Render: edit/create form ────────────────────────────────────
+  if (mode === 'edit') {
+    const isNew = editingId === null
+    const s = editingService
+    const canPublish = s && s.status === 'DRAFT' && s.photos.length > 0
+    const canPause = s && s.status === 'ACTIVE'
+    const canResume = s && s.status === 'PAUSED'
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Button variant="secondary" onClick={backToList}>
+            ← Voltar à lista
+          </Button>
+          {s && (
+            <Badge variant={serviceStatusVariant[s.status]}>{serviceStatusLabel[s.status]}</Badge>
+          )}
+        </div>
+
+        <Card hover={false}>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            {isNew ? 'Novo anúncio de serviço' : 'Editar anúncio'}
+          </h3>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Select
+              label="Categoria"
+              options={(categories ?? []).map((c) => ({ value: String(c.id), label: c.namePt }))}
+              placeholder="Selecionar categoria"
+              value={form.categoryId}
+              onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
+            />
+
+            <Input
+              label="Título"
+              value={form.title}
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              placeholder="Ex.: Passeios no Parque da Cidade"
+              maxLength={200}
+            />
+
+            <div>
+              <label className="label">Descrição</label>
+              <textarea
+                className="input min-h-[120px]"
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Descreva o seu serviço com detalhe (mínimo 20 caracteres)."
+                maxLength={5000}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Preço (€)"
+                value={form.price}
+                onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
+                placeholder="Ex.: 15,00"
+                inputMode="decimal"
+              />
+              <Select
+                label="Unidade"
+                options={priceUnitOptions.map((o) => ({ value: o.value, label: o.label }))}
+                value={form.priceUnit}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, priceUnit: e.target.value as ServicePriceUnit }))
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Distrito"
+                options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
+                placeholder="Selecionar distrito"
+                value={form.districtId}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
+                }
+              />
+              <Select
+                label="Concelho"
+                options={(municipalities ?? []).map((m) => ({
+                  value: String(m.id),
+                  label: m.name,
+                }))}
+                placeholder="Selecionar concelho"
+                value={form.municipalityId}
+                onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
+                disabled={!form.districtId}
+              />
+            </div>
+
+            <Input
+              label="Morada (opcional)"
+              value={form.addressLine}
+              onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
+              placeholder="Rua, número, código postal"
+              maxLength={255}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Raio de deslocação (km, opcional)"
+                value={form.serviceRadiusKm}
+                onChange={(e) => setForm((p) => ({ ...p, serviceRadiusKm: e.target.value }))}
+                type="number"
+                min={1}
+                max={100}
+              />
+              <Input
+                label="Telefone (opcional)"
+                value={form.phone}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="+351 912 345 678"
+                type="tel"
+              />
+            </div>
+
+            <Input
+              label="Website (opcional)"
+              value={form.website}
+              onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
+              placeholder="https://..."
+              type="url"
+            />
+
+            {msg && (
+              <p
+                className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {msg.text}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" loading={createMutation.isPending || updateMutation.isPending}>
+                {isNew ? 'Criar rascunho' : 'Guardar alterações'}
+              </Button>
+              <Button variant="secondary" type="button" onClick={backToList}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* Fotos — só depois de criado */}
+        {s && (
+          <Card hover={false}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Fotos ({s.photos.length}/{SERVICE_MAX_PHOTOS})
+              </h3>
+            </div>
+
+            {s.photos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 mb-4">
+                {s.photos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    <img
+                      src={photo.url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        deletePhotoMutation.mutate({ serviceId: s.id, photoId: photo.id })
+                      }
+                      className="absolute top-1 right-1 rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-white"
+                      aria-label="Remover foto"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mb-4 text-sm text-gray-500">
+                Ainda não adicionou fotos. É necessária pelo menos uma para publicar.
+              </p>
+            )}
+
+            {s.photos.length < SERVICE_MAX_PHOTOS && (
+              <div>
+                <label className="label">Adicionar fotos (máx. 2MB cada)</label>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={handleUploadPhotos}
+                  disabled={uploadPhotosMutation.isPending}
+                  className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+                />
+              </div>
+            )}
+            {photoMsg && (
+              <p
+                className={`mt-2 text-sm ${
+                  photoMsg.type === 'success' ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {photoMsg.text}
+              </p>
+            )}
+          </Card>
+        )}
+
+        {/* Transições de estado */}
+        {s && s.status !== 'SUSPENDED' && (
+          <Card hover={false}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado do anúncio</h3>
+            <div className="flex flex-wrap gap-3">
+              {canPublish && (
+                <Button
+                  loading={publishMutation.isPending}
+                  onClick={() => publishMutation.mutate(s.id)}
+                >
+                  Publicar
+                </Button>
+              )}
+              {canResume && (
+                <Button
+                  loading={publishMutation.isPending}
+                  onClick={() => publishMutation.mutate(s.id)}
+                >
+                  Retomar publicação
+                </Button>
+              )}
+              {canPause && (
+                <Button
+                  variant="secondary"
+                  loading={pauseMutation.isPending}
+                  onClick={() => pauseMutation.mutate(s.id)}
+                >
+                  Pausar
+                </Button>
+              )}
+              <Button variant="danger" onClick={() => setDeleteId(s.id)}>
+                Remover anúncio
+              </Button>
+            </div>
+            {s.status === 'DRAFT' && s.photos.length === 0 && (
+              <p className="mt-3 text-sm text-gray-500">
+                Adicione pelo menos uma foto para poder publicar.
+              </p>
+            )}
+          </Card>
+        )}
+
+        {/* Delete confirmation */}
+        <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} title="Remover anúncio">
+          <p className="text-sm text-gray-700 mb-4">
+            Tem a certeza que pretende remover este anúncio? Deixará de aparecer nas pesquisas.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setDeleteId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={() => deleteId !== null && deleteMutation.mutate(deleteId)}
+            >
+              Remover
+            </Button>
+          </div>
+        </Modal>
+      </div>
+    )
+  }
+
+  // ── Render: list ────────────────────────────────────────────────
+  const items = services?.data ?? []
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Os meus anúncios</h3>
+          <p className="text-sm text-gray-500">
+            Crie e gira os seus anúncios de passeios e pet-sitting.
+          </p>
+        </div>
+        <Button onClick={startNew}>Novo anúncio</Button>
+      </div>
+
+      {msg && (
+        <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          {msg.text}
+        </p>
+      )}
+
+      {items.length === 0 ? (
+        <EmptyState
+          title="Ainda não tem anúncios"
+          description="Crie o seu primeiro anúncio para começar a receber contactos."
+          action={<Button onClick={startNew}>Criar anúncio</Button>}
+        />
+      ) : (
+        <div className="space-y-3">
+          {items.map((s) => {
+            const cover = s.photos[0]?.url ?? null
+            return (
+              <Card key={s.id} hover={false}>
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="h-24 w-full overflow-hidden rounded-lg bg-gray-100 sm:h-20 sm:w-28 shrink-0">
+                    {cover ? (
+                      <img
+                        src={cover}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                        sem foto
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-base font-semibold text-gray-900 truncate">{s.title}</h4>
+                      <Badge variant={serviceStatusVariant[s.status]}>
+                        {serviceStatusLabel[s.status]}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {s.category.namePt} · {s.municipality.namePt}, {s.district.namePt}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-gray-900">
+                      {formatPriceEUR(s.priceCents, s.priceUnit)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Atualizado {formatSmart(s.updatedAt)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
+                    <Button size="sm" variant="secondary" onClick={() => startEdit(s.id)}>
+                      Editar
+                    </Button>
+                    {s.status === 'ACTIVE' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={pauseMutation.isPending}
+                        onClick={() => pauseMutation.mutate(s.id)}
+                      >
+                        Pausar
+                      </Button>
+                    )}
+                    {s.status === 'PAUSED' && (
+                      <Button
+                        size="sm"
+                        loading={publishMutation.isPending}
+                        onClick={() => publishMutation.mutate(s.id)}
+                      >
+                        Retomar
+                      </Button>
+                    )}
+                    {s.status === 'DRAFT' && s.photos.length > 0 && (
+                      <Button
+                        size="sm"
+                        loading={publishMutation.isPending}
+                        onClick={() => publishMutation.mutate(s.id)}
+                      >
+                        Publicar
+                      </Button>
+                    )}
+                    {s.status !== 'SUSPENDED' && (
+                      <Button size="sm" variant="danger" onClick={() => setDeleteId(s.id)}>
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} title="Remover anúncio">
+        <p className="text-sm text-gray-700 mb-4">
+          Tem a certeza que pretende remover este anúncio? Deixará de aparecer nas pesquisas.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => setDeleteId(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            loading={deleteMutation.isPending}
+            onClick={() => deleteId !== null && deleteMutation.mutate(deleteId)}
+          >
+            Remover
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
 // ──────────────────────────── DashboardPage ────────────────────────────
 
 export default function DashboardPage() {
@@ -1924,6 +2713,7 @@ export default function DashboardPage() {
 
   const tabParam = searchParams.get('tab') ?? 'profile'
   const isBreeder = user?.role === 'BREEDER'
+  const showServicesTab = !!user && user.role !== 'ADMIN'
 
   const tabs = [
     {
@@ -1967,6 +2757,31 @@ export default function DashboardPage() {
               </svg>
             ),
             content: <BreederTab />,
+          },
+        ]
+      : []),
+    ...(showServicesTab
+      ? [
+          {
+            id: 'servicos',
+            label: 'Serviços',
+            icon: (
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+              </svg>
+            ),
+            content: <ServicesTab />,
           },
         ]
       : []),
