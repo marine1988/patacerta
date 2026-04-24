@@ -64,12 +64,20 @@ export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
+  const currentTab = new URLSearchParams(location.search).get('tab')
+  const isMessagesActive = location.pathname === '/painel' && currentTab === 'mensagens'
+  const isDashboardActive = location.pathname === '/painel' && currentTab !== 'mensagens'
 
   const isActive = (path: string) => location.pathname === path
 
   const navLinkClass = (path: string) =>
     `text-[11px] font-medium uppercase tracking-caps transition-colors ${
       isActive(path) ? 'text-caramel-500' : 'text-muted hover:text-ink'
+    }`
+
+  const tabLinkClass = (active: boolean) =>
+    `text-[11px] font-medium uppercase tracking-caps transition-colors ${
+      active ? 'text-caramel-500' : 'text-muted hover:text-ink'
     }`
 
   return (
@@ -96,7 +104,7 @@ export function Navbar() {
             <div className="flex items-center gap-6">
               <Link
                 to="/painel?tab=mensagens"
-                className={`${navLinkClass('/painel')} inline-flex items-center gap-2`}
+                className={`${tabLinkClass(isMessagesActive)} inline-flex items-center gap-2`}
                 aria-label="Mensagens"
               >
                 <svg
@@ -117,7 +125,7 @@ export function Navbar() {
               </Link>
               <Link
                 to="/painel"
-                className={`${navLinkClass('/painel')} inline-flex items-center gap-2`}
+                className={`${tabLinkClass(isDashboardActive)} inline-flex items-center gap-2`}
               >
                 Painel
               </Link>
