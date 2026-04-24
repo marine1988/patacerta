@@ -2,14 +2,25 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
-import type { ResolveReportInput } from '@patacerta/shared'
+import type {
+  ResolveReportInput,
+  ResolveServiceReportInput,
+  SuspendServiceInput,
+} from '@patacerta/shared'
 
 export const getPendingCounts = asyncHandler(async (_req, res) => {
-  const [pendingDocs, pendingBreeders, flaggedReviews, pendingMessageReports] = await Promise.all([
+  const [
+    pendingDocs,
+    pendingBreeders,
+    flaggedReviews,
+    pendingMessageReports,
+    pendingServiceReports,
+  ] = await Promise.all([
     prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
     prisma.breeder.count({ where: { status: 'PENDING_VERIFICATION' } }),
     prisma.review.count({ where: { status: 'FLAGGED' } }),
     prisma.messageReport.count({ where: { status: 'PENDING' } }),
+    prisma.serviceReport.count({ where: { status: 'PENDING' } }),
   ])
 
   res.json({
@@ -17,7 +28,13 @@ export const getPendingCounts = asyncHandler(async (_req, res) => {
     pendingBreeders,
     flaggedReviews,
     pendingMessageReports,
-    total: pendingDocs + pendingBreeders + flaggedReviews + pendingMessageReports,
+    pendingServiceReports,
+    total:
+      pendingDocs +
+      pendingBreeders +
+      flaggedReviews +
+      pendingMessageReports +
+      pendingServiceReports,
   })
 })
 
@@ -365,6 +382,199 @@ export const resolveMessageReport = asyncHandler(async (req, res) => {
     entity: 'message_report',
     entityId: id,
     details: resolution ? `Resolution: ${resolution.slice(0, 120)}` : undefined,
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})
+
+// ──────────────────────────────────────────────────────────────────────
+// Service reports moderation + service suspension
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/service-reports?status=PENDING
+ */
+export const listServiceReports = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
+  const status = (req.query.status as string | undefined) ?? 'PENDING'
+  if (!['PENDING', 'RESOLVED', 'DISMISSED'].includes(status)) {
+    throw new AppError(400, 'Estado inválido', 'INVALID_STATUS')
+  }
+
+  const where = { status: status as 'PENDING' | 'RESOLVED' | 'DISMISSED' }
+
+  const [reports, total] = await Promise.all([
+    prisma.serviceReport.findMany({
+      where,
+      include: {
+        reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        service: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            priceCents: true,
+            priceUnit: true,
+            providerId: true,
+            provider: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    }),
+    prisma.serviceReport.count({ where }),
+  ])
+
+  res.json(paginatedResponse(reports, total, page, limit))
+})
+
+/**
+ * GET /api/admin/service-reports/:id — full context for moderation.
+ */
+export const getServiceReport = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const report = await prisma.serviceReport.findUnique({
+    where: { id },
+    include: {
+      reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+      reviewer: { select: { id: true, firstName: true, lastName: true, email: true } },
+      service: {
+        include: {
+          provider: { select: { id: true, firstName: true, lastName: true, email: true } },
+          category: { select: { id: true, nameSlug: true, namePt: true } },
+          district: { select: { id: true, namePt: true } },
+          municipality: { select: { id: true, namePt: true } },
+          photos: { select: { id: true, url: true, sortOrder: true } },
+        },
+      },
+    },
+  })
+  if (!report) throw new AppError(404, 'Denúncia não encontrada', 'REPORT_NOT_FOUND')
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_REPORT_VIEWED',
+    entity: 'service_report',
+    entityId: id,
+    details: `Admin opened report ${id} for service ${report.serviceId}`,
+    ipAddress: req.ip,
+  })
+
+  res.json(report)
+})
+
+/**
+ * PATCH /api/admin/service-reports/:id/resolve
+ * Body: { resolution }. Marks the report RESOLVED; does not touch the service
+ * itself — use /admin/services/:id/suspend for that (separate, auditable step).
+ */
+export const resolveServiceReport = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const { resolution } = req.body as ResolveServiceReportInput
+
+  const report = await prisma.serviceReport.findUnique({ where: { id } })
+  if (!report) throw new AppError(404, 'Denúncia não encontrada', 'REPORT_NOT_FOUND')
+  if (report.status !== 'PENDING') {
+    throw new AppError(400, 'Denúncia já foi processada', 'REPORT_ALREADY_RESOLVED')
+  }
+
+  const updated = await prisma.serviceReport.update({
+    where: { id },
+    data: {
+      status: 'RESOLVED',
+      reviewedBy: req.user!.userId,
+      reviewedAt: new Date(),
+      resolution,
+    },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_REPORT_RESOLVED',
+    entity: 'service_report',
+    entityId: id,
+    details: `Resolution: ${resolution.slice(0, 120)}`,
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})
+
+/**
+ * PATCH /api/admin/service-reports/:id/dismiss
+ * Marks the report as DISMISSED (no action needed). Optional resolution note.
+ */
+export const dismissServiceReport = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const { resolution } = req.body as ResolveServiceReportInput
+
+  const report = await prisma.serviceReport.findUnique({ where: { id } })
+  if (!report) throw new AppError(404, 'Denúncia não encontrada', 'REPORT_NOT_FOUND')
+  if (report.status !== 'PENDING') {
+    throw new AppError(400, 'Denúncia já foi processada', 'REPORT_ALREADY_RESOLVED')
+  }
+
+  const updated = await prisma.serviceReport.update({
+    where: { id },
+    data: {
+      status: 'DISMISSED',
+      reviewedBy: req.user!.userId,
+      reviewedAt: new Date(),
+      resolution,
+    },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_REPORT_DISMISSED',
+    entity: 'service_report',
+    entityId: id,
+    details: `Dismissed: ${resolution.slice(0, 120)}`,
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})
+
+/**
+ * POST /api/admin/services/:id/suspend
+ * Body: { reason }. Moves a service to SUSPENDED and records the reason.
+ * This is the admin-side analogue of the owner soft-delete; it is final
+ * (no transition back, per SERVICE_STATUS_TRANSITIONS).
+ */
+export const adminSuspendService = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const { reason } = req.body as SuspendServiceInput
+
+  const service = await prisma.service.findUnique({ where: { id } })
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
+  if (service.status === 'SUSPENDED') {
+    throw new AppError(400, 'Anúncio já se encontra suspenso', 'ALREADY_SUSPENDED')
+  }
+
+  const updated = await prisma.service.update({
+    where: { id },
+    data: {
+      status: 'SUSPENDED',
+      removedAt: new Date(),
+      removedReason: reason,
+    },
+    select: { id: true, title: true, status: true, removedAt: true, removedReason: true },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_SUSPENDED',
+    entity: 'service',
+    entityId: id,
+    details: `Reason: ${reason.slice(0, 120)}`,
     ipAddress: req.ip,
   })
 

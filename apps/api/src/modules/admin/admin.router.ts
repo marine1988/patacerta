@@ -1,7 +1,11 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
-import { resolveReportSchema } from '@patacerta/shared'
+import {
+  resolveReportSchema,
+  resolveServiceReportSchema,
+  suspendServiceSchema,
+} from '@patacerta/shared'
 import * as ctrl from './admin.controller.js'
 
 export const adminRouter = Router()
@@ -35,6 +39,23 @@ adminRouter.patch(
   validate(resolveReportSchema),
   ctrl.resolveMessageReport,
 )
+
+// Service reports moderation
+adminRouter.get('/service-reports', ctrl.listServiceReports)
+adminRouter.get('/service-reports/:id', ctrl.getServiceReport)
+adminRouter.patch(
+  '/service-reports/:id/resolve',
+  validate(resolveServiceReportSchema),
+  ctrl.resolveServiceReport,
+)
+adminRouter.patch(
+  '/service-reports/:id/dismiss',
+  validate(resolveServiceReportSchema),
+  ctrl.dismissServiceReport,
+)
+
+// Service suspension (admin-initiated)
+adminRouter.post('/services/:id/suspend', validate(suspendServiceSchema), ctrl.adminSuspendService)
 
 // Audit logs
 adminRouter.get('/audit-logs', ctrl.getAuditLogs)

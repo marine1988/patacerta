@@ -49,9 +49,30 @@ export const listServicesQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   priceMin: z.coerce.number().int().nonnegative().optional(),
   priceMax: z.coerce.number().int().nonnegative().optional(),
+  // Raio geográfico opcional. Os três campos têm de ser fornecidos em conjunto.
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  radiusKm: z.coerce.number().positive().max(500).optional(),
   sort: z.enum(['recent', 'price_asc', 'price_desc', 'rating']).optional().default('recent'),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(50).optional().default(20),
+})
+
+/**
+ * Map view: lightweight payload with bounding box filter. No pagination.
+ */
+export const mapServicesQuerySchema = z.object({
+  categoryId: z.coerce.number().int().positive().optional(),
+  districtId: z.coerce.number().int().positive().optional(),
+  municipalityId: z.coerce.number().int().positive().optional(),
+  q: z.string().trim().max(200).optional(),
+  priceMin: z.coerce.number().int().nonnegative().optional(),
+  priceMax: z.coerce.number().int().nonnegative().optional(),
+  minLat: z.coerce.number().min(-90).max(90).optional(),
+  maxLat: z.coerce.number().min(-90).max(90).optional(),
+  minLng: z.coerce.number().min(-180).max(180).optional(),
+  maxLng: z.coerce.number().min(-180).max(180).optional(),
+  limit: z.coerce.number().int().positive().max(500).optional().default(200),
 })
 
 export const publishServiceSchema = z.object({}).strict()
@@ -80,6 +101,7 @@ export const suspendServiceSchema = z.object({
 export type CreateServiceInput = z.infer<typeof createServiceSchema>
 export type UpdateServiceInput = z.infer<typeof updateServiceSchema>
 export type ListServicesQuery = z.infer<typeof listServicesQuerySchema>
+export type MapServicesQuery = z.infer<typeof mapServicesQuerySchema>
 export type ReportServiceInput = z.infer<typeof reportServiceSchema>
 export type ContactServiceInput = z.infer<typeof contactServiceSchema>
 export type ResolveServiceReportInput = z.infer<typeof resolveServiceReportSchema>

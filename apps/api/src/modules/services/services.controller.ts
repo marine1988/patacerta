@@ -1,15 +1,16 @@
 // ============================================
-// PataCerta — Services Controller (owner-side)
+// PataCerta — Services Controller
 // ============================================
 //
-// Scope of this file (PR-2):
+// Scope (PR-2 + PR-3):
 //   - Owner/provider CRUD of their own service listings.
 //   - Status transitions: DRAFT → ACTIVE → PAUSED, ACTIVE/PAUSED → SUSPENDED (admin-only elsewhere).
 //   - Photo management (multer + sharp resize, MinIO storage).
 //   - Best-effort geocoding on create/update (via lib/geocoding).
+//   - Public listing / detail / map endpoints.
+//   - Contact (polymorphic Thread: serviceId branch) + reports.
 //
-// Public endpoints (listing, filters, contact, reports, admin moderation)
-// live in later PRs.
+// Admin moderation (list/resolve/dismiss/suspend) lives in the admin module.
 //
 // Convention notes (kept in sync with the other API modules):
 //   - No separate *.service.ts / *.dto.ts; controllers own the business
@@ -24,16 +25,21 @@ import sharp from 'sharp'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
-import { asyncHandler, parseId } from '../../lib/helpers.js'
+import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { uploadFile, deleteFile } from '../../lib/minio.js'
 import { logAudit } from '../../lib/audit.js'
 import { geocodeService } from '../../lib/geocoding.js'
 import {
   SERVICE_STATUS_TRANSITIONS,
   ServiceStatus,
+  type ContactServiceInput,
   type CreateServiceInput,
+  type ListServicesQuery,
+  type MapServicesQuery,
+  type ReportServiceInput,
   type UpdateServiceInput,
 } from '@patacerta/shared'
+import { Prisma } from '@prisma/client'
 
 const MAX_PHOTOS_PER_SERVICE = 8
 const PHOTO_MAX_DIMENSION = 1600
@@ -590,4 +596,367 @@ export const deletePhoto = asyncHandler(async (req, res) => {
   })
 
   res.status(204).send()
+})
+
+// ─────────────────────────────────────────────────────────────────────
+// Public endpoints (no auth required)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Haversine distance in kilometres between two WGS-84 points.
+ * Used for post-filter of the radius parameter. DB-level filtering by
+ * bounding box is handled separately (see `latLngBoxFor`).
+ */
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const toRad = (v: number) => (v * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/**
+ * Build a lat/lng bounding box around (lat, lng) of ~radiusKm in each
+ * direction. Latitude degrees are ~111km, longitude degrees contract
+ * by cos(lat). Use this to pre-filter in the DB before the exact
+ * Haversine check.
+ */
+function latLngBoxFor(lat: number, lng: number, radiusKm: number) {
+  const deltaLat = radiusKm / 111
+  const deltaLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1)
+  return {
+    minLat: lat - deltaLat,
+    maxLat: lat + deltaLat,
+    minLng: lng - deltaLng,
+    maxLng: lng + deltaLng,
+  }
+}
+
+function publicServicePublicSelect() {
+  return {
+    id: true,
+    providerId: true,
+    categoryId: true,
+    title: true,
+    description: true,
+    priceCents: true,
+    priceUnit: true,
+    currency: true,
+    districtId: true,
+    municipalityId: true,
+    latitude: true,
+    longitude: true,
+    serviceRadiusKm: true,
+    website: true,
+    phone: true,
+    avgRating: true,
+    reviewCount: true,
+    publishedAt: true,
+    createdAt: true,
+    photos: {
+      select: { id: true, url: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' as const },
+    },
+    category: { select: { id: true, nameSlug: true, namePt: true } },
+    district: { select: { id: true, namePt: true } },
+    municipality: { select: { id: true, namePt: true } },
+    provider: {
+      select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+    },
+  }
+}
+
+/**
+ * GET /api/services
+ * Public listing. Returns only ACTIVE services. All filters are optional.
+ *
+ * Geographic filtering (lat/lng/radiusKm) is applied in two stages:
+ *   1. Coarse bbox filter at the SQL level (uses the latitude/longitude index).
+ *   2. Exact Haversine distance check in JS after the query.
+ *
+ * This is good enough for national-scale use and avoids PostGIS.
+ */
+export const listServices = asyncHandler(async (req, res) => {
+  const q = req.query as unknown as ListServicesQuery
+
+  // Radius filter: require all three coordinates together.
+  const radiusFilterActive = q.lat !== undefined && q.lng !== undefined && q.radiusKm !== undefined
+
+  const where: Prisma.ServiceWhereInput = { status: 'ACTIVE' }
+  if (q.categoryId) where.categoryId = q.categoryId
+  if (q.districtId) where.districtId = q.districtId
+  if (q.municipalityId) where.municipalityId = q.municipalityId
+  if (q.priceMin !== undefined || q.priceMax !== undefined) {
+    where.priceCents = {}
+    if (q.priceMin !== undefined) (where.priceCents as Prisma.IntFilter).gte = q.priceMin
+    if (q.priceMax !== undefined) (where.priceCents as Prisma.IntFilter).lte = q.priceMax
+  }
+  if (q.q) {
+    where.OR = [
+      { title: { contains: q.q, mode: 'insensitive' } },
+      { description: { contains: q.q, mode: 'insensitive' } },
+    ]
+  }
+  if (radiusFilterActive) {
+    const box = latLngBoxFor(q.lat!, q.lng!, q.radiusKm!)
+    where.latitude = { gte: box.minLat, lte: box.maxLat, not: null }
+    where.longitude = { gte: box.minLng, lte: box.maxLng, not: null }
+  }
+
+  const orderBy: Prisma.ServiceOrderByWithRelationInput = (() => {
+    switch (q.sort) {
+      case 'price_asc':
+        return { priceCents: 'asc' }
+      case 'price_desc':
+        return { priceCents: 'desc' }
+      case 'rating':
+        return { avgRating: 'desc' }
+      case 'recent':
+      default:
+        return { publishedAt: 'desc' }
+    }
+  })()
+
+  // When a radius filter is active, we over-fetch and post-filter in JS.
+  // Using a wide cap (5x limit) keeps results correct without paginating
+  // inside the bounding box. For portugal-scale listings this is safe.
+  const fetchLimit = radiusFilterActive ? Math.max(q.limit * 5, 100) : q.limit
+  const skip = radiusFilterActive ? 0 : (q.page - 1) * q.limit
+
+  const [rowsRaw, totalRaw] = await Promise.all([
+    prisma.service.findMany({
+      where,
+      orderBy,
+      skip,
+      take: fetchLimit,
+      select: publicServicePublicSelect(),
+    }),
+    prisma.service.count({ where }),
+  ])
+
+  let rows = rowsRaw
+  let total = totalRaw
+
+  if (radiusFilterActive) {
+    const inside = rowsRaw.filter(
+      (s) =>
+        s.latitude !== null &&
+        s.longitude !== null &&
+        distanceKm(q.lat!, q.lng!, s.latitude, s.longitude) <= q.radiusKm!,
+    )
+    total = inside.length
+    const start = (q.page - 1) * q.limit
+    rows = inside.slice(start, start + q.limit)
+  }
+
+  res.json(paginatedResponse(rows, total, q.page, q.limit))
+})
+
+/**
+ * GET /api/services/map
+ * Lightweight payload for map markers. No pagination; filtered by bbox.
+ */
+export const mapServices = asyncHandler(async (req, res) => {
+  const q = req.query as unknown as MapServicesQuery
+
+  const where: Prisma.ServiceWhereInput = {
+    status: 'ACTIVE',
+    latitude: { not: null },
+    longitude: { not: null },
+  }
+  if (q.categoryId) where.categoryId = q.categoryId
+  if (q.districtId) where.districtId = q.districtId
+  if (q.municipalityId) where.municipalityId = q.municipalityId
+  if (q.priceMin !== undefined || q.priceMax !== undefined) {
+    where.priceCents = {}
+    if (q.priceMin !== undefined) (where.priceCents as Prisma.IntFilter).gte = q.priceMin
+    if (q.priceMax !== undefined) (where.priceCents as Prisma.IntFilter).lte = q.priceMax
+  }
+  if (q.q) {
+    where.OR = [
+      { title: { contains: q.q, mode: 'insensitive' } },
+      { description: { contains: q.q, mode: 'insensitive' } },
+    ]
+  }
+  if (
+    q.minLat !== undefined &&
+    q.maxLat !== undefined &&
+    q.minLng !== undefined &&
+    q.maxLng !== undefined
+  ) {
+    where.latitude = { gte: q.minLat, lte: q.maxLat, not: null }
+    where.longitude = { gte: q.minLng, lte: q.maxLng, not: null }
+  }
+
+  const rows = await prisma.service.findMany({
+    where,
+    take: q.limit,
+    orderBy: { publishedAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      priceCents: true,
+      priceUnit: true,
+      latitude: true,
+      longitude: true,
+      category: { select: { id: true, nameSlug: true, namePt: true } },
+    },
+  })
+
+  res.json({ data: rows, total: rows.length })
+})
+
+/**
+ * GET /api/services/:serviceId
+ * Public detail. Only ACTIVE services are exposed.
+ */
+export const getServiceById = asyncHandler(async (req, res) => {
+  const serviceId = parseId(req.params.serviceId)
+
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, status: 'ACTIVE' },
+    select: publicServicePublicSelect(),
+  })
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
+
+  res.json(service)
+})
+
+/**
+ * GET /api/services/categories
+ * Active categories only (the UI whitelist).
+ */
+export const listActiveCategories = asyncHandler(async (_req, res) => {
+  const categories = await prisma.serviceCategory.findMany({
+    where: { isActive: true },
+    orderBy: { namePt: 'asc' },
+    select: { id: true, nameSlug: true, namePt: true },
+  })
+  res.set('Cache-Control', 'public, max-age=3600')
+  res.json(categories)
+})
+
+// ─────────────────────────────────────────────────────────────────────
+// Contact (polymorphic Thread: service branch)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/services/:serviceId/contact
+ * Creates (or reuses) a Thread with serviceId set and posts the first message.
+ * The service provider is derived from Service.providerId.
+ *
+ * Rules:
+ *   - Requires auth (requireAuth on the router).
+ *   - Sender cannot be the service provider (no self-contact).
+ *   - Service must be ACTIVE.
+ *   - Unique (ownerId, serviceId) — upsert semantics.
+ */
+export const contactService = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+  const serviceId = parseId(req.params.serviceId)
+  const { subject, body } = req.body as ContactServiceInput
+
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: {
+      id: true,
+      providerId: true,
+      status: true,
+      title: true,
+      provider: { select: { isActive: true, suspendedAt: true } },
+    },
+  })
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
+  if (service.status !== 'ACTIVE') {
+    throw new AppError(400, 'Este anúncio não está activo', 'SERVICE_NOT_ACTIVE')
+  }
+  if (service.providerId === userId) {
+    throw new AppError(400, 'Não pode contactar o seu próprio anúncio', 'SELF_CONTACT')
+  }
+  if (!service.provider.isActive || service.provider.suspendedAt) {
+    throw new AppError(400, 'Este prestador não está a receber mensagens', 'PROVIDER_UNAVAILABLE')
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const thread = await tx.thread.upsert({
+      where: { ownerId_serviceId: { ownerId: userId, serviceId } },
+      create: { ownerId: userId, serviceId, subject },
+      update: { updatedAt: new Date() },
+    })
+    const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
+    const message = await tx.message.create({
+      data: { threadId: thread.id, senderId: userId, body },
+    })
+    if (!created) {
+      await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
+    }
+    return { thread, message, created }
+  })
+
+  await logAudit({
+    userId,
+    action: result.created ? 'service.contact.thread_created' : 'service.contact.message_sent',
+    entity: result.created ? 'thread' : 'message',
+    entityId: result.created ? result.thread.id : result.message.id,
+    details: `Service ${serviceId}: ${service.title}`,
+    ipAddress: req.ip,
+  })
+
+  res.status(201).json({
+    threadId: result.thread.id,
+    created: result.created,
+    message: result.message,
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────
+// Reports
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/services/:serviceId/report
+ * Users may report any service (ACTIVE or otherwise, except the ones they own).
+ * Deduplicates pending reports from the same reporter.
+ */
+export const reportService = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+  const serviceId = parseId(req.params.serviceId)
+  const { reason } = req.body as ReportServiceInput
+
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { id: true, providerId: true },
+  })
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
+  if (service.providerId === userId) {
+    throw new AppError(400, 'Não pode denunciar o próprio anúncio', 'SELF_REPORT')
+  }
+
+  // Dedupe pending reports by this reporter.
+  const existing = await prisma.serviceReport.findFirst({
+    where: { serviceId, reporterId: userId, status: 'PENDING' },
+  })
+  if (existing) {
+    res.status(200).json({ id: existing.id, duplicate: true })
+    return
+  }
+
+  const report = await prisma.serviceReport.create({
+    data: { serviceId, reporterId: userId, reason },
+    select: { id: true, createdAt: true, status: true },
+  })
+
+  await logAudit({
+    userId,
+    action: 'service.report.create',
+    entity: 'service_report',
+    entityId: report.id,
+    details: `Service ${serviceId} | Reason: ${reason.slice(0, 80)}`,
+    ipAddress: req.ip,
+  })
+
+  res.status(201).json(report)
 })

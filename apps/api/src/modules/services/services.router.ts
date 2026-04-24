@@ -1,20 +1,32 @@
 // ============================================
-// PataCerta — Services Router (owner-side)
+// PataCerta — Services Router
 // ============================================
 //
-// Mounts /api/services/*. Public listing/filters/contact/reports will
-// live in a later PR on separate sub-paths; this file is scoped to the
-// authenticated provider's own management endpoints.
+// Mounts /api/services/*. Routes are split into three layers:
+//   1. Public (no auth): listing, map, detail, categories.
+//   2. Authenticated (any role): contact, report — the router applies
+//      requireAuth here explicitly, not via .use(), because the public
+//      routes above must remain anonymous.
+//   3. Owner-side: create/edit/publish/pause/delete/photos. All ownership
+//      checks run inside the controller (see loadOwnedService).
 
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
-import { serviceCreateRateLimit } from '../../middleware/rate-limit.js'
+import {
+  serviceCreateRateLimit,
+  serviceReportRateLimit,
+  threadCreateRateLimit,
+} from '../../middleware/rate-limit.js'
 import {
   createServiceSchema,
   updateServiceSchema,
   publishServiceSchema,
   pauseServiceSchema,
+  listServicesQuerySchema,
+  mapServicesQuerySchema,
+  contactServiceSchema,
+  reportServiceSchema,
 } from '@patacerta/shared'
 import {
   createService,
@@ -26,29 +38,68 @@ import {
   getMyServiceById,
   uploadPhotos,
   deletePhoto,
+  listServices,
+  mapServices,
+  getServiceById,
+  listActiveCategories,
+  contactService,
+  reportService,
 } from './services.controller.js'
 
 export const servicesRouter = Router()
 
-// All endpoints below require authentication. The controller performs
-// ownership checks where relevant.
-servicesRouter.use(requireAuth)
+// ── Public (anonymous) ───────────────────────────────────────────────
+// Specific paths are registered before the dynamic ":serviceId" ones so
+// Express doesn't match "mine" / "map" / "categories" as an id.
+servicesRouter.get('/categories', listActiveCategories)
+servicesRouter.get('/map', validate(mapServicesQuerySchema, 'query'), mapServices)
+servicesRouter.get('/', validate(listServicesQuerySchema, 'query'), listServices)
 
-// ── Owner views ──────────────────────────────────────────────────────
-servicesRouter.get('/mine', getMyServices)
-servicesRouter.get('/mine/:serviceId', getMyServiceById)
+// ── Owner views (auth required) ──────────────────────────────────────
+servicesRouter.get('/mine', requireAuth, getMyServices)
+servicesRouter.get('/mine/:serviceId', requireAuth, getMyServiceById)
 
-// ── CRUD ─────────────────────────────────────────────────────────────
-servicesRouter.post('/', serviceCreateRateLimit, validate(createServiceSchema), createService)
-servicesRouter.patch('/:serviceId', validate(updateServiceSchema), updateService)
-servicesRouter.delete('/:serviceId', deleteService)
+// Public detail is placed after "/mine*" to avoid collision.
+servicesRouter.get('/:serviceId', getServiceById)
+
+// ── Contact / report (auth required, rate-limited) ───────────────────
+servicesRouter.post(
+  '/:serviceId/contact',
+  requireAuth,
+  threadCreateRateLimit,
+  validate(contactServiceSchema),
+  contactService,
+)
+servicesRouter.post(
+  '/:serviceId/report',
+  requireAuth,
+  serviceReportRateLimit,
+  validate(reportServiceSchema),
+  reportService,
+)
+
+// ── CRUD (auth + ownership) ──────────────────────────────────────────
+servicesRouter.post(
+  '/',
+  requireAuth,
+  serviceCreateRateLimit,
+  validate(createServiceSchema),
+  createService,
+)
+servicesRouter.patch('/:serviceId', requireAuth, validate(updateServiceSchema), updateService)
+servicesRouter.delete('/:serviceId', requireAuth, deleteService)
 
 // ── Status transitions ───────────────────────────────────────────────
-servicesRouter.post('/:serviceId/publish', validate(publishServiceSchema), publishService)
-servicesRouter.post('/:serviceId/pause', validate(pauseServiceSchema), pauseService)
+servicesRouter.post(
+  '/:serviceId/publish',
+  requireAuth,
+  validate(publishServiceSchema),
+  publishService,
+)
+servicesRouter.post('/:serviceId/pause', requireAuth, validate(pauseServiceSchema), pauseService)
 
 // ── Photos ───────────────────────────────────────────────────────────
 // Multer parses the multipart body inside the controller so we can surface
 // user-friendly AppError messages consistent with the rest of the API.
-servicesRouter.post('/:serviceId/photos', uploadPhotos)
-servicesRouter.delete('/:serviceId/photos/:photoId', deletePhoto)
+servicesRouter.post('/:serviceId/photos', requireAuth, uploadPhotos)
+servicesRouter.delete('/:serviceId/photos/:photoId', requireAuth, deletePhoto)
