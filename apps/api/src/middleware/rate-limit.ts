@@ -125,3 +125,17 @@ export const threadCreateRateLimit = rateLimit({
   message: 'Limite de novas conversas atingido. Tente novamente mais tarde.',
   keyGenerator: userKey,
 })
+
+export const serviceCreateRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 10,
+  message: 'Limite diário de novos anúncios atingido. Tente novamente amanhã.',
+  keyGenerator: userKey,
+})
+
+export const serviceReportRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Demasiadas denúncias. Tente novamente mais tarde.',
+  keyGenerator: userKey,
+})

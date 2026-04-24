@@ -5,6 +5,7 @@
 export enum UserRole {
   OWNER = 'OWNER',
   BREEDER = 'BREEDER',
+  SERVICE_PROVIDER = 'SERVICE_PROVIDER',
   ADMIN = 'ADMIN',
 }
 
@@ -27,4 +28,23 @@ export enum DocType {
   CARTAO_CIDADAO = 'CARTAO_CIDADAO',
   CITES = 'CITES',
   OTHER = 'OTHER',
+}
+
+export enum ServiceStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  PAUSED = 'PAUSED',
+  SUSPENDED = 'SUSPENDED',
+}
+
+export enum PriceUnit {
+  FIXED = 'FIXED',
+  HOURLY = 'HOURLY',
+  PER_SESSION = 'PER_SESSION',
+}
+
+export enum ServiceReportStatus {
+  PENDING = 'PENDING',
+  RESOLVED = 'RESOLVED',
+  DISMISSED = 'DISMISSED',
 }
