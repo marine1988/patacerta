@@ -7,6 +7,12 @@ interface ReportMessageModalProps {
   onSubmit: (reason: string) => void
   isSubmitting?: boolean
   errorMessage?: string | null
+  /** Override do titulo do modal (default = "Denunciar mensagem"). */
+  title?: string
+  /** Override do paragrafo introdutorio. */
+  description?: string
+  /** Override do placeholder do textarea. */
+  placeholder?: string
 }
 
 export function ReportMessageModal({
@@ -15,6 +21,9 @@ export function ReportMessageModal({
   onSubmit,
   isSubmitting,
   errorMessage,
+  title,
+  description,
+  placeholder,
 }: ReportMessageModalProps) {
   const [reason, setReason] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
@@ -42,11 +51,11 @@ export function ReportMessageModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Denunciar mensagem" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={title ?? 'Denunciar mensagem'} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-sm text-gray-600">
-          A sua denúncia será revista por um administrador. Indique o motivo com o máximo de detalhe
-          possível.
+          {description ??
+            'A sua denúncia será revista por um administrador. Indique o motivo com o máximo de detalhe possível.'}
         </p>
         <div>
           <label className="label">Motivo *</label>
@@ -54,7 +63,7 @@ export function ReportMessageModal({
             className="input min-h-[120px]"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex.: Conteúdo ofensivo, spam, fraude, etc."
+            placeholder={placeholder ?? 'Ex.: Conteúdo ofensivo, spam, fraude, etc.'}
             maxLength={500}
             required
           />

@@ -4,6 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
+import { usePageMeta } from '../../hooks/usePageMeta'
 import { formatDate } from '../../lib/dates'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -12,6 +13,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Avatar } from '../../components/ui/Avatar'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
+import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
@@ -69,12 +71,130 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
+/** Compoe uma descricao curta para meta description / og:description. */
+function buildMetaDescription(service: ServiceDetail): string {
+  const price = formatPrice(service.priceCents, service.priceUnit)
+  const location = `${service.municipality.namePt}, ${service.district.namePt}`
+  const summary = service.description.replace(/\s+/g, ' ').trim().slice(0, 140)
+  return `${service.category.namePt} em ${location} — ${price}. ${summary}`.slice(0, 200)
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────
+
+function ServiceDetailSkeleton() {
+  return (
+    <div className="page-container animate-pulse">
+      <div className="mb-6 h-4 w-64 rounded bg-gray-200" />
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card hover={false}>
+            <div className="aspect-[4/3] w-full rounded-lg bg-gray-200" />
+            <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="aspect-square rounded-md bg-gray-200" />
+              ))}
+            </div>
+          </Card>
+          <Card hover={false}>
+            <div className="h-5 w-24 rounded bg-gray-200" />
+            <div className="mt-3 h-7 w-3/4 rounded bg-gray-200" />
+            <div className="mt-2 h-4 w-1/2 rounded bg-gray-200" />
+          </Card>
+          <Card hover={false}>
+            <div className="h-5 w-32 rounded bg-gray-200" />
+            <div className="mt-3 space-y-2">
+              <div className="h-4 w-full rounded bg-gray-200" />
+              <div className="h-4 w-11/12 rounded bg-gray-200" />
+              <div className="h-4 w-4/5 rounded bg-gray-200" />
+            </div>
+          </Card>
+        </div>
+        <div className="space-y-6">
+          <Card hover={false}>
+            <div className="h-5 w-28 rounded bg-gray-200" />
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-gray-200" />
+              <div className="space-y-2">
+                <div className="h-4 w-32 rounded bg-gray-200" />
+                <div className="h-3 w-20 rounded bg-gray-200" />
+              </div>
+            </div>
+          </Card>
+          <Card hover={false}>
+            <div className="h-5 w-24 rounded bg-gray-200" />
+            <div className="mt-4 space-y-3">
+              <div className="h-10 w-full rounded bg-gray-200" />
+              <div className="h-10 w-full rounded bg-gray-200" />
+            </div>
+          </Card>
+          <Card hover={false}>
+            <div className="h-5 w-28 rounded bg-gray-200" />
+            <div className="mt-3 h-48 w-full rounded-lg bg-gray-200" />
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Bloco "Partilhar" ───────────────────────────────────────────────
+
+function ShareLinks({ title, url }: { title: string; url: string }) {
+  const [copied, setCopied] = useState(false)
+  const encodedUrl = encodeURIComponent(url)
+  const encodedTitle = encodeURIComponent(title)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback silencioso — o utilizador pode copiar manualmente.
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="btn-secondary flex-1 text-xs"
+        aria-label="Copiar link"
+      >
+        {copied ? 'Link copiado!' : 'Copiar link'}
+      </button>
+      <a
+        href={`https://wa.me/?text=${encodedTitle}%20${encodedUrl}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary flex-1 text-xs"
+        aria-label="Partilhar no WhatsApp"
+      >
+        WhatsApp
+      </a>
+      <a
+        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary flex-1 text-xs"
+        aria-label="Partilhar no Facebook"
+      >
+        Facebook
+      </a>
+    </div>
+  )
+}
+
+// ─── Pagina ──────────────────────────────────────────────────────────
+
 export function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [activePhoto, setActivePhoto] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [threadModalOpen, setThreadModalOpen] = useState(false)
   const [threadError, setThreadError] = useState<string | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -89,6 +209,15 @@ export function ServiceDetailPage() {
     queryKey: ['service', id],
     queryFn: () => api.get(`/services/${id}`).then((r) => r.data),
     enabled: !!id,
+  })
+
+  // SEO — so' actualiza o head depois de termos os dados; o titulo/descricao
+  // sao stable em re-renders gracas a' identidade dos campos.
+  usePageMeta({
+    title: service ? `${service.title} — PataCerta` : 'Anúncio — PataCerta',
+    description: service ? buildMetaDescription(service) : undefined,
+    imageUrl: service?.photos[0]?.url,
+    type: 'article',
   })
 
   const isSelf = !!user && !!service && service.providerId === user.id
@@ -139,40 +268,85 @@ export function ServiceDetailPage() {
     setReportModalOpen(true)
   }
 
+  function openLightbox(idx: number) {
+    setActivePhoto(idx)
+    setLightboxOpen(true)
+  }
+
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    )
+    return <ServiceDetailSkeleton />
   }
 
   if (isError || !service) {
     return (
-      <div className="page-container text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Anúncio não encontrado</h1>
-        <p className="mt-2 text-gray-600">
-          O anúncio que procura não existe ou já não está activo.
-        </p>
-        <Link to="/diretorio?tipo=servicos" className="btn-primary mt-6 inline-block">
-          Voltar aos serviços
-        </Link>
+      <div className="page-container">
+        <div className="mx-auto max-w-md text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <svg
+              className="h-8 w-8 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Anúncio não encontrado</h1>
+          <p className="mt-2 text-gray-600">
+            O anúncio que procura não existe, foi removido ou já não está activo.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link to="/diretorio?tipo=servicos" className="btn-primary">
+              Ver outros serviços
+            </Link>
+            <Link to="/" className="btn-secondary">
+              Ir para a página inicial
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   const photos = service.photos
-  const activeUrl = photos[activePhoto]?.url ?? null
+  const hasPhotos = photos.length > 0
+  const activeUrl = hasPhotos ? photos[activePhoto]?.url : null
   const providerName = `${service.provider.firstName} ${service.provider.lastName}`.trim()
+  const shareUrl =
+    typeof window !== 'undefined' ? window.location.href : `https://patacerta.pt/servicos/${id}`
+
+  const hasContactDetails = !!service.phone || !!service.website
 
   return (
     <div className="page-container">
-      <nav className="mb-6 text-sm text-gray-500">
+      {/* Breadcrumbs */}
+      <nav
+        className="mb-6 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+        aria-label="Breadcrumb"
+      >
+        <Link to="/" className="hover:text-gray-700">
+          Início
+        </Link>
+        <span aria-hidden="true">›</span>
         <Link to="/diretorio?tipo=servicos" className="hover:text-gray-700">
           Serviços
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-gray-900">{service.title}</span>
+        <span aria-hidden="true">›</span>
+        <Link
+          to={`/diretorio?tipo=servicos&categoria=${service.category.id}`}
+          className="hover:text-gray-700"
+        >
+          {service.category.namePt}
+        </Link>
+        <span aria-hidden="true">›</span>
+        <span className="truncate text-gray-900" title={service.title}>
+          {service.title}
+        </span>
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -182,10 +356,49 @@ export function ServiceDetailPage() {
           <Card hover={false}>
             <div className="aspect-[4/3] w-full overflow-hidden rounded-lg bg-gray-100">
               {activeUrl ? (
-                <img src={activeUrl} alt={service.title} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => openLightbox(activePhoto)}
+                  className="group relative block h-full w-full"
+                  aria-label="Ampliar foto"
+                >
+                  <img
+                    src={activeUrl}
+                    alt={service.title}
+                    className="h-full w-full object-cover transition group-hover:opacity-95"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/40 p-1.5 text-white opacity-0 transition group-hover:opacity-100">
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="2"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+                      />
+                    </svg>
+                  </span>
+                </button>
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
-                  Sem fotos
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-sm text-gray-400">
+                  <svg
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+                    />
+                  </svg>
+                  <span>Sem fotos disponíveis</span>
                 </div>
               )}
             </div>
@@ -196,6 +409,7 @@ export function ServiceDetailPage() {
                     key={p.id}
                     type="button"
                     onClick={() => setActivePhoto(idx)}
+                    onDoubleClick={() => openLightbox(idx)}
                     className={`aspect-square overflow-hidden rounded-md border-2 ${
                       idx === activePhoto ? 'border-caramel-600' : 'border-transparent'
                     }`}
@@ -274,7 +488,7 @@ export function ServiceDetailPage() {
                 disabled={isSelf}
                 title={isSelf ? 'Não pode contactar o seu próprio anúncio' : undefined}
               >
-                Enviar mensagem
+                {isSelf ? 'É o seu anúncio' : 'Enviar mensagem'}
               </Button>
 
               {service.phone && (
@@ -297,6 +511,13 @@ export function ServiceDetailPage() {
                 </a>
               )}
 
+              {!hasContactDetails && !isSelf && (
+                <p className="text-center text-xs text-gray-500">
+                  O anunciante não disponibilizou contacto directo. Use a mensagem para falar com
+                  ele.
+                </p>
+              )}
+
               {!isSelf && (
                 <button
                   type="button"
@@ -310,6 +531,15 @@ export function ServiceDetailPage() {
               {reportSuccess && (
                 <p className="text-center text-xs text-green-600">Denúncia registada. Obrigado.</p>
               )}
+            </div>
+          </Card>
+
+          {/* Share */}
+          <Card hover={false}>
+            <h3 className="text-base font-semibold text-gray-900">Partilhar</h3>
+            <p className="mt-1 text-xs text-gray-500">Conhece alguém que precise deste serviço?</p>
+            <div className="mt-3">
+              <ShareLinks title={service.title} url={shareUrl} />
             </div>
           </Card>
 
@@ -344,12 +574,22 @@ export function ServiceDetailPage() {
         </div>
       </div>
 
+      <PhotoLightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        photos={photos}
+        startIndex={activePhoto}
+        alt={service.title}
+      />
+
       <NewThreadModal
         isOpen={threadModalOpen}
         onClose={() => setThreadModalOpen(false)}
         onSubmit={(values) => contactMutation.mutate(values)}
-        breederName={service.title}
+        title={`Contactar sobre: ${service.title}`}
         defaultSubject={`Interesse em: ${service.title}`}
+        subjectPlaceholder="Ex.: Disponibilidade e tarifa"
+        bodyPlaceholder="Olá, gostava de saber mais sobre este serviço..."
         isSubmitting={contactMutation.isPending}
         errorMessage={threadError}
       />
@@ -358,6 +598,9 @@ export function ServiceDetailPage() {
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         onSubmit={(reason) => reportMutation.mutate(reason)}
+        title="Denunciar anúncio"
+        description="Indique o motivo desta denúncia. A nossa equipa vai rever o anúncio o mais depressa possível."
+        placeholder="Ex.: anúncio enganador, conteúdo impróprio, suspeita de fraude..."
         isSubmitting={reportMutation.isPending}
         errorMessage={reportError}
       />

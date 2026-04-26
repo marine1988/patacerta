@@ -9,6 +9,12 @@ interface NewThreadModalProps {
   isSubmitting?: boolean
   errorMessage?: string | null
   defaultSubject?: string
+  /** Override do placeholder do assunto. Default = exemplo de criadores. */
+  subjectPlaceholder?: string
+  /** Override do placeholder do corpo. Default = "Escreva a sua mensagem...". */
+  bodyPlaceholder?: string
+  /** Override do titulo do modal (default deriva de `breederName`). */
+  title?: string
 }
 
 export function NewThreadModal({
@@ -19,6 +25,9 @@ export function NewThreadModal({
   isSubmitting,
   errorMessage,
   defaultSubject,
+  subjectPlaceholder,
+  bodyPlaceholder,
+  title,
 }: NewThreadModalProps) {
   const [subject, setSubject] = useState(defaultSubject ?? '')
   const [body, setBody] = useState('')
@@ -54,7 +63,7 @@ export function NewThreadModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={breederName ? `Contactar ${breederName}` : 'Nova conversa'}
+      title={title ?? (breederName ? `Contactar ${breederName}` : 'Nova conversa')}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -62,7 +71,7 @@ export function NewThreadModal({
           label="Assunto *"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="Ex.: Disponibilidade de cachorros"
+          placeholder={subjectPlaceholder ?? 'Ex.: Disponibilidade de cachorros'}
           maxLength={200}
           required
         />
@@ -73,7 +82,7 @@ export function NewThreadModal({
             className="input min-h-[140px]"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Escreva a sua mensagem..."
+            placeholder={bodyPlaceholder ?? 'Escreva a sua mensagem...'}
             maxLength={5000}
             required
           />
