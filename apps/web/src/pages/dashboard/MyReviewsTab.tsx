@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { Button, EmptyState, Spinner } from '../../components/ui'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
+import type { PaginatedMeta } from '../../lib/pagination'
 
 interface ReviewItem {
   id: number
@@ -19,13 +20,6 @@ interface ReviewItem {
   updatedAt: string
   author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
   breeder: { id: number; businessName: string }
-}
-
-interface PaginatedMeta {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
 }
 
 /**

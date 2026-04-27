@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import type { Paginated, PaginatedMeta } from '../../lib/pagination'
 import {
   Tabs,
   Card,
@@ -21,18 +22,6 @@ interface AdminStats {
   verifications: { pending: number }
   reviews: { total: number; flagged: number }
   messages: { total: number }
-}
-
-interface PaginatedMeta {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
-}
-
-interface Paginated<T> {
-  data: T[]
-  meta: PaginatedMeta
 }
 
 interface VerificationDoc {

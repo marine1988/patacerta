@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
+import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDateTime, formatSmart } from '../../lib/dates'
 import {
@@ -120,13 +121,6 @@ interface ThreadDetail {
   }
   messages: ThreadMessage[]
   pagination: { page: number; limit: number; total: number; totalPages: number }
-}
-
-interface PaginatedMeta {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ProfileTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -5,6 +5,7 @@ import { extractApiError } from '../../lib/errors'
 import { Button, EmptyState, Spinner } from '../../components/ui'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
+import type { PaginatedMeta } from '../../lib/pagination'
 
 interface ServiceReviewItem {
   id: number
@@ -21,13 +22,6 @@ interface ServiceReviewItem {
   updatedAt: string
   author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
   service: { id: number; title: string; providerId: number }
-}
-
-interface PaginatedMeta {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
 }
 
 /**

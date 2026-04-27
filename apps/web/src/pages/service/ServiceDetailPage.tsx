@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
+import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { formatDate } from '../../lib/dates'
@@ -71,7 +72,7 @@ interface ServiceReviewItem {
 
 interface ServiceReviewsResponse {
   data: ServiceReviewItem[]
-  meta: { page: number; limit: number; total: number; totalPages: number }
+  meta: PaginatedMeta
   summary: {
     avgRating: number | null
     totalReviews: number
