@@ -8,6 +8,7 @@ import type { ServiceReviewItem } from '../../lib/reviews'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { formatDate } from '../../lib/dates'
+import { formatPrice } from '../../lib/format'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -25,36 +26,15 @@ import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { Pagination } from '../../components/ui/Pagination'
-import { formatPrice, type ServicePriceUnit } from '../../lib/format'
+import { type ServiceBase, type ServiceCategory, type ServicePhoto } from '../../lib/services'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
 )
 
-interface ServiceDetail {
-  id: number
-  providerId: number
-  categoryId: number
-  title: string
-  description: string
-  priceCents: number
-  priceUnit: ServicePriceUnit
-  currency: string
-  districtId: number
-  municipalityId: number
-  latitude: number | null
-  longitude: number | null
-  serviceRadiusKm: number | null
-  website: string | null
-  phone: string | null
-  avgRating: number | null
-  reviewCount: number
-  publishedAt: string | null
-  createdAt: string
-  photos: Array<{ id: number; url: string; sortOrder: number }>
-  category: { id: number; nameSlug: string; namePt: string }
-  district: { id: number; namePt: string }
-  municipality: { id: number; namePt: string }
+interface ServiceDetail extends ServiceBase {
+  photos: ServicePhoto[]
+  category: ServiceCategory
   provider: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
 }
 

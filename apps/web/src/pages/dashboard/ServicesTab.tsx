@@ -25,6 +25,12 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { extractApiError } from '../../lib/errors'
 import { formatPrice, parsePriceToCents, type ServicePriceUnit } from '../../lib/format'
+import {
+  type ServiceBase,
+  type ServiceCategory,
+  type ServicePhoto,
+  type ServiceStatusValue,
+} from '../../lib/services'
 import { api } from '../../lib/api'
 import { formatSmart } from '../../lib/dates'
 import {
@@ -42,48 +48,13 @@ import { ServiceCard, type ServiceCardData } from '../../components/shared/Servi
 
 // ── Types (espelham o que o backend devolve em /services/mine) ────────
 
-interface ServiceCategory {
-  id: number
-  nameSlug: string
-  namePt: string
-}
-
-interface ServicePhoto {
-  id: number
-  url: string
-  sortOrder: number
-}
-
-type ServiceStatusValue = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED'
-
-interface ServiceItem {
-  id: number
-  providerId: number
-  categoryId: number
-  title: string
-  description: string
-  priceCents: number
-  priceUnit: ServicePriceUnit
-  currency: string
-  districtId: number
-  municipalityId: number
+interface ServiceItem extends ServiceBase {
   addressLine: string | null
-  latitude: number | null
-  longitude: number | null
-  serviceRadiusKm: number | null
   status: ServiceStatusValue
-  website: string | null
-  phone: string | null
-  avgRating: number | null
-  reviewCount: number
-  publishedAt: string | null
-  createdAt: string
   updatedAt: string
   photos: ServicePhoto[]
   coverageAreas: Array<{ municipalityId: number }>
   category: ServiceCategory
-  district: { id: number; namePt: string }
-  municipality: { id: number; namePt: string }
 }
 
 interface DistrictOpt {
