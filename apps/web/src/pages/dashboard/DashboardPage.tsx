@@ -20,6 +20,7 @@ import {
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { StarRating } from '../../components/shared/StarRating'
 import { ServicesTab } from './ServicesTab'
+import { ServiceReviewsTab } from './ServiceReviewsTab'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
@@ -1897,8 +1898,8 @@ function SettingsTab() {
         size="sm"
       >
         <p className="text-sm text-gray-600 mb-6">
-          Tem a certeza de que deseja eliminar a sua conta? Esta aÃ§Ã£o Ã© irreversÃ­vel e todos os seus
-          dados serÃ£o permanentemente apagados.
+          Tem a certeza de que deseja eliminar a sua conta? Esta aÃ§Ã£o Ã© irreversÃ­vel e todos os
+          seus dados serÃ£o permanentemente apagados.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
@@ -1916,7 +1917,6 @@ function SettingsTab() {
     </div>
   )
 }
-
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DashboardPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -2038,6 +2038,30 @@ export default function DashboardPage() {
       ),
       content: isBreeder ? <ReviewsAboutMeTab /> : <MyReviewsTab />,
     },
+    ...(showServicesTab
+      ? [
+          {
+            id: 'avaliacoes-servicos',
+            label: 'Avaliações de serviços',
+            icon: (
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                />
+              </svg>
+            ),
+            content: <ServiceReviewsTab />,
+          },
+        ]
+      : []),
     {
       id: 'definicoes',
       label: 'DefiniÃ§Ãµes',
