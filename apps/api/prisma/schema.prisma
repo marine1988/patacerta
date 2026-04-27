@@ -90,6 +90,8 @@ model User {
   reviewedDocs           VerificationDoc[] @relation("reviewer")
   reviews                Review[]          @relation("review_author")
   reviewFlags            ReviewFlag[]      @relation("review_flag_reporter")
+  serviceReviews         ServiceReview[]   @relation("service_review_author")
+  serviceReviewFlags     ServiceReviewFlag[] @relation("service_review_flag_reporter")
   messageReportsFiled    MessageReport[]   @relation("message_report_reporter")
   messageReportsReviewed MessageReport[]   @relation("message_report_reviewer")
   services               Service[]         @relation("service_provider")
@@ -320,6 +322,48 @@ model ReviewFlag {
   @@map("review_flags")
 }
 
+model ServiceReview {
+  id               Int          @id @default(autoincrement())
+  serviceId        Int          @map("service_id")
+  authorId         Int          @map("author_id")
+  rating           Int          @db.SmallInt
+  title            String       @db.VarChar(200)
+  body             String?      @db.Text
+  status           ReviewStatus @default(PUBLISHED)
+  moderationReason String?      @map("moderation_reason") @db.Text
+  reply            String?      @db.Text
+  repliedAt        DateTime?    @map("replied_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  service Service              @relation("reviewed_service", fields: [serviceId], references: [id], onDelete: Cascade)
+  author  User                 @relation("service_review_author", fields: [authorId], references: [id], onDelete: Cascade)
+  flags   ServiceReviewFlag[]
+
+  @@unique([serviceId, authorId])
+  @@index([serviceId])
+  @@index([authorId])
+  @@index([status])
+  @@index([serviceId, status, createdAt])
+  @@map("service_reviews")
+}
+
+model ServiceReviewFlag {
+  id         Int      @id @default(autoincrement())
+  reviewId   Int      @map("review_id")
+  reporterId Int      @map("reporter_id")
+  reason     String   @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  review   ServiceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter User          @relation("service_review_flag_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, reporterId])
+  @@index([reviewId])
+  @@index([reporterId])
+  @@map("service_review_flags")
+}
+
 model AuditLog {
   id        Int      @id @default(autoincrement())
   userId    Int?     @map("user_id")
@@ -405,6 +449,7 @@ model Service {
   photos        ServicePhoto[]
   coverageAreas ServiceCoverage[]
   reports       ServiceReport[]
+  reviews       ServiceReview[]   @relation("reviewed_service")
   threads       Thread[]          @relation("thread_service")
 
   @@index([providerId])

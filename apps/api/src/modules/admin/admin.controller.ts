@@ -13,12 +13,14 @@ export const getPendingCounts = asyncHandler(async (_req, res) => {
     pendingDocs,
     pendingBreeders,
     flaggedReviews,
+    flaggedServiceReviews,
     pendingMessageReports,
     pendingServiceReports,
   ] = await Promise.all([
     prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
     prisma.breeder.count({ where: { status: 'PENDING_VERIFICATION' } }),
     prisma.review.count({ where: { status: 'FLAGGED' } }),
+    prisma.serviceReview.count({ where: { status: 'FLAGGED' } }),
     prisma.messageReport.count({ where: { status: 'PENDING' } }),
     prisma.serviceReport.count({ where: { status: 'PENDING' } }),
   ])
@@ -26,13 +28,16 @@ export const getPendingCounts = asyncHandler(async (_req, res) => {
   res.json({
     pendingDocs,
     pendingBreeders,
-    flaggedReviews,
+    flaggedReviews: flaggedReviews + flaggedServiceReviews,
+    flaggedBreederReviews: flaggedReviews,
+    flaggedServiceReviews,
     pendingMessageReports,
     pendingServiceReports,
     total:
       pendingDocs +
       pendingBreeders +
       flaggedReviews +
+      flaggedServiceReviews +
       pendingMessageReports +
       pendingServiceReports,
   })
@@ -46,6 +51,8 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
     pendingVerifications,
     totalReviews,
     flaggedReviews,
+    totalServiceReviews,
+    flaggedServiceReviews,
     totalMessages,
   ] = await Promise.all([
     prisma.user.count(),
@@ -54,6 +61,8 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
     prisma.verificationDoc.count({ where: { status: 'PENDING' } }),
     prisma.review.count(),
     prisma.review.count({ where: { status: 'FLAGGED' } }),
+    prisma.serviceReview.count(),
+    prisma.serviceReview.count({ where: { status: 'FLAGGED' } }),
     prisma.message.count(),
   ])
 
@@ -61,7 +70,12 @@ export const getDashboardStats = asyncHandler(async (_req, res) => {
     users: { total: totalUsers },
     breeders: { total: totalBreeders, verified: verifiedBreeders },
     verifications: { pending: pendingVerifications },
-    reviews: { total: totalReviews, flagged: flaggedReviews },
+    reviews: {
+      total: totalReviews + totalServiceReviews,
+      flagged: flaggedReviews + flaggedServiceReviews,
+      breeder: { total: totalReviews, flagged: flaggedReviews },
+      service: { total: totalServiceReviews, flagged: flaggedServiceReviews },
+    },
     messages: { total: totalMessages },
   })
 })
@@ -208,9 +222,64 @@ export const changeBreederStatus = asyncHandler(async (req, res) => {
 
 export const getFlaggedReviews = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
+  const type = (req.query.type as string | undefined) ?? 'breeder'
+  if (!['breeder', 'service', 'all'].includes(type)) {
+    throw new AppError(400, 'Tipo inválido', 'INVALID_TYPE')
+  }
   const where = { status: 'FLAGGED' as const }
 
-  const [reviews, total] = await Promise.all([
+  if (type === 'breeder') {
+    const [reviews, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          status: true,
+          createdAt: true,
+          author: { select: { id: true, firstName: true, lastName: true, email: true } },
+          breeder: { select: { id: true, businessName: true } },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.review.count({ where }),
+    ])
+    const items = reviews.map((r) => ({ ...r, type: 'breeder' as const }))
+    res.json(paginatedResponse(items, total, page, limit))
+    return
+  }
+
+  if (type === 'service') {
+    const [reviews, total] = await Promise.all([
+      prisma.serviceReview.findMany({
+        where,
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          status: true,
+          createdAt: true,
+          author: { select: { id: true, firstName: true, lastName: true, email: true } },
+          service: { select: { id: true, title: true } },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.serviceReview.count({ where }),
+    ])
+    const items = reviews.map((r) => ({ ...r, type: 'service' as const }))
+    res.json(paginatedResponse(items, total, page, limit))
+    return
+  }
+
+  // type === 'all' — merge both, sorted by createdAt desc
+  const [breederReviews, breederTotal, serviceReviews, serviceTotal] = await Promise.all([
     prisma.review.findMany({
       where,
       select: {
@@ -223,14 +292,34 @@ export const getFlaggedReviews = asyncHandler(async (req, res) => {
         author: { select: { id: true, firstName: true, lastName: true, email: true } },
         breeder: { select: { id: true, businessName: true } },
       },
-      skip,
-      take: limit,
       orderBy: { createdAt: 'desc' },
     }),
     prisma.review.count({ where }),
+    prisma.serviceReview.findMany({
+      where,
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        body: true,
+        status: true,
+        createdAt: true,
+        author: { select: { id: true, firstName: true, lastName: true, email: true } },
+        service: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.serviceReview.count({ where }),
   ])
 
-  res.json(paginatedResponse(reviews, total, page, limit))
+  const merged = [
+    ...breederReviews.map((r) => ({ ...r, type: 'breeder' as const })),
+    ...serviceReviews.map((r) => ({ ...r, type: 'service' as const })),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+
+  const total = breederTotal + serviceTotal
+  const paged = merged.slice(skip, skip + limit)
+  res.json(paginatedResponse(paged, total, page, limit))
 })
 
 export const getAuditLogs = asyncHandler(async (req, res) => {

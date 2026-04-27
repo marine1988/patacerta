@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -11,9 +11,16 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { Avatar } from '../../components/ui/Avatar'
+import { Select } from '../../components/ui/Select'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { StarRating } from '../../components/shared/StarRating'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
 import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
+import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
+import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
+import { RatingHistogram } from '../../components/reviews/RatingHistogram'
+import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
@@ -47,6 +54,34 @@ interface ServiceDetail {
   municipality: { id: number; namePt: string }
   provider: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
 }
+
+interface ServiceReviewItem {
+  id: number
+  serviceId: number
+  authorId: number
+  rating: number
+  title: string
+  body: string | null
+  status: string
+  reply: string | null
+  repliedAt: string | null
+  createdAt: string
+  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
+}
+
+interface ServiceReviewsResponse {
+  data: ServiceReviewItem[]
+  meta: { page: number; limit: number; total: number; totalPages: number }
+  summary: {
+    avgRating: number | null
+    totalReviews: number
+    distribution: Record<1 | 2 | 3 | 4 | 5, number>
+  } | null
+}
+
+type ReviewSort = 'recent' | 'oldest' | 'highest' | 'lowest'
+
+const REVIEWS_PAGE_SIZE = 10
 
 const priceUnitSuffix: Record<ServicePriceUnit, string> = {
   FIXED: '',
@@ -192,6 +227,7 @@ export function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const [activePhoto, setActivePhoto] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -200,6 +236,15 @@ export function ServiceDetailPage() {
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportError, setReportError] = useState<string | null>(null)
   const [reportSuccess, setReportSuccess] = useState(false)
+
+  // Reviews state
+  const [reviewSort, setReviewSort] = useState<ReviewSort>('recent')
+  const [reviewPage, setReviewPage] = useState(1)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [editingReview, setEditingReview] = useState<ServiceReviewItem | null>(null)
+  const [flagTarget, setFlagTarget] = useState<ServiceReviewItem | null>(null)
+  const [replyTarget, setReplyTarget] = useState<ServiceReviewItem | null>(null)
+  const [reviewActionError, setReviewActionError] = useState<string | null>(null)
 
   const {
     data: service,
@@ -221,6 +266,7 @@ export function ServiceDetailPage() {
   })
 
   const isSelf = !!user && !!service && service.providerId === user.id
+  const canWriteReview = !!user && !isSelf
 
   const contactMutation = useMutation({
     mutationFn: (values: { subject: string; body: string }) =>
@@ -248,6 +294,94 @@ export function ServiceDetailPage() {
     },
   })
 
+  // ─── Reviews ──────────────────────────────────────────────────────
+  const reviewsQuery = useQuery<ServiceReviewsResponse>({
+    queryKey: ['service-reviews', { serviceId: id, sort: reviewSort, page: reviewPage }],
+    queryFn: () =>
+      api
+        .get('/service-reviews', {
+          params: {
+            serviceId: Number(id),
+            page: reviewPage,
+            limit: REVIEWS_PAGE_SIZE,
+            sort: reviewSort,
+          },
+        })
+        .then((r) => r.data),
+    enabled: !!id,
+  })
+
+  const reviews = reviewsQuery.data?.data ?? []
+  const reviewSummary = reviewsQuery.data?.summary
+  const reviewMeta = reviewsQuery.data?.meta
+  const totalReviewPages = reviewMeta?.totalPages ?? 1
+  const myReview = user ? reviews.find((r) => r.authorId === user.id) : undefined
+
+  function invalidateReviews() {
+    queryClient.invalidateQueries({ queryKey: ['service-reviews', { serviceId: id }] })
+    queryClient.invalidateQueries({ queryKey: ['service', id] })
+    queryClient.invalidateQueries({ queryKey: ['my-service-reviews'] })
+  }
+
+  const createReviewMutation = useMutation({
+    mutationFn: (values: ReviewFormValues) =>
+      api.post('/service-reviews', { serviceId: Number(id), ...values }).then((r) => r.data),
+    onSuccess: () => {
+      setReviewModalOpen(false)
+      setEditingReview(null)
+      setReviewActionError(null)
+      invalidateReviews()
+    },
+    onError: (err) => {
+      setReviewActionError(extractErrorMessage(err, 'Erro ao publicar avaliação.'))
+    },
+  })
+
+  const updateReviewMutation = useMutation({
+    mutationFn: ({ reviewId, values }: { reviewId: number; values: ReviewFormValues }) =>
+      api.patch(`/service-reviews/${reviewId}`, values).then((r) => r.data),
+    onSuccess: () => {
+      setReviewModalOpen(false)
+      setEditingReview(null)
+      setReviewActionError(null)
+      invalidateReviews()
+    },
+    onError: (err) => {
+      setReviewActionError(extractErrorMessage(err, 'Erro ao atualizar avaliação.'))
+    },
+  })
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId: number) => api.delete(`/service-reviews/${reviewId}`),
+    onSuccess: () => invalidateReviews(),
+  })
+
+  const flagReviewMutation = useMutation({
+    mutationFn: ({ reviewId, reason }: { reviewId: number; reason: string }) =>
+      api.post(`/service-reviews/${reviewId}/flag`, { reason }).then((r) => r.data),
+    onSuccess: () => {
+      setFlagTarget(null)
+      setReviewActionError(null)
+      invalidateReviews()
+    },
+    onError: (err) => {
+      setReviewActionError(extractErrorMessage(err, 'Erro ao denunciar avaliação.'))
+    },
+  })
+
+  const replyMutation = useMutation({
+    mutationFn: ({ reviewId, reply }: { reviewId: number; reply: string }) =>
+      api.post(`/service-reviews/${reviewId}/reply`, { reply }).then((r) => r.data),
+    onSuccess: () => {
+      setReplyTarget(null)
+      setReviewActionError(null)
+      invalidateReviews()
+    },
+    onError: (err) => {
+      setReviewActionError(extractErrorMessage(err, 'Erro ao publicar resposta.'))
+    },
+  })
+
   function handleSendMessageClick() {
     if (!user) {
       navigate('/entrar?next=' + encodeURIComponent(`/servicos/${id}`))
@@ -266,6 +400,30 @@ export function ServiceDetailPage() {
     setReportError(null)
     setReportSuccess(false)
     setReportModalOpen(true)
+  }
+
+  function handleWriteReviewClick() {
+    if (!user) {
+      navigate('/entrar?next=' + encodeURIComponent(`/servicos/${id}`))
+      return
+    }
+    setEditingReview(myReview ?? null)
+    setReviewActionError(null)
+    setReviewModalOpen(true)
+  }
+
+  function handleReviewSubmit(values: ReviewFormValues) {
+    if (editingReview) {
+      updateReviewMutation.mutate({ reviewId: editingReview.id, values })
+    } else {
+      createReviewMutation.mutate(values)
+    }
+  }
+
+  function handleDeleteReview(reviewId: number) {
+    if (confirm('Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.')) {
+      deleteReviewMutation.mutate(reviewId)
+    }
   }
 
   function openLightbox(idx: number) {
@@ -434,6 +592,15 @@ export function ServiceDetailPage() {
                     <> · Desloca-se até {service.serviceRadiusKm} km</>
                   )}
                 </p>
+                {service.avgRating != null && service.reviewCount > 0 && (
+                  <div className="mt-2 flex items-center gap-2 text-sm">
+                    <StarRating rating={Math.round(Number(service.avgRating))} size="sm" />
+                    <span className="font-semibold text-gray-900">
+                      {Number(service.avgRating).toFixed(1)}
+                    </span>
+                    <span className="text-gray-500">({service.reviewCount})</span>
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-gray-900">
@@ -454,6 +621,190 @@ export function ServiceDetailPage() {
             <div className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-600">
               {service.description}
             </div>
+          </Card>
+
+          {/* Reviews */}
+          <Card hover={false}>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Avaliações
+                {reviewSummary && (
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({reviewSummary.totalReviews})
+                  </span>
+                )}
+              </h2>
+              {canWriteReview && (
+                <Button size="sm" onClick={handleWriteReviewClick}>
+                  {myReview ? 'Editar avaliação' : 'Escrever avaliação'}
+                </Button>
+              )}
+            </div>
+
+            {reviewSummary && reviewSummary.totalReviews > 0 && (
+              <div className="mt-6">
+                <RatingHistogram
+                  distribution={reviewSummary.distribution}
+                  total={reviewSummary.totalReviews}
+                  avgRating={reviewSummary.avgRating}
+                />
+              </div>
+            )}
+
+            {reviewSummary && reviewSummary.totalReviews > 0 && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="w-48">
+                  <Select
+                    label=""
+                    options={[
+                      { value: 'recent', label: 'Mais recentes' },
+                      { value: 'oldest', label: 'Mais antigas' },
+                      { value: 'highest', label: 'Melhor avaliação' },
+                      { value: 'lowest', label: 'Pior avaliação' },
+                    ]}
+                    value={reviewSort}
+                    onChange={(e) => {
+                      setReviewSort(e.target.value as ReviewSort)
+                      setReviewPage(1)
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {reviews.length === 0 ? (
+              <div className="py-8">
+                <EmptyState
+                  title="Sem avaliações ainda"
+                  description={
+                    canWriteReview
+                      ? 'Seja o primeiro a avaliar este serviço.'
+                      : isSelf
+                        ? 'O seu serviço ainda não tem avaliações.'
+                        : !user
+                          ? 'Inicie sessão para avaliar este serviço.'
+                          : 'Este serviço ainda não tem avaliações.'
+                  }
+                />
+              </div>
+            ) : (
+              <div className="mt-4 divide-y divide-gray-100">
+                {reviews.map((review) => {
+                  const isOwn = user?.id === review.authorId
+                  return (
+                    <div key={review.id} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex items-start gap-3">
+                        <Avatar
+                          name={`${review.author.firstName} ${review.author.lastName}`}
+                          imageUrl={review.author.avatarUrl ?? undefined}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {review.author.firstName} {review.author.lastName}
+                            </span>
+                            <StarRating rating={review.rating} />
+                            {isOwn && <Badge variant="blue">A sua avaliação</Badge>}
+                          </div>
+                          <h4 className="mt-1 text-sm font-medium text-gray-800">{review.title}</h4>
+                          {review.body && (
+                            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+                              {review.body}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-gray-400">
+                            {formatDate(review.createdAt)}
+                          </p>
+
+                          {review.reply && (
+                            <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                              <p className="text-xs font-medium text-gray-500">
+                                Resposta do anunciante
+                                {review.repliedAt && ` · ${formatDate(review.repliedAt)}`}
+                              </p>
+                              <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+                                {review.reply}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                            {isOwn ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleWriteReviewClick}
+                                  className="text-caramel-600 hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteReview(review.id)}
+                                  className="text-red-600 hover:underline"
+                                  disabled={deleteReviewMutation.isPending}
+                                >
+                                  Eliminar
+                                </button>
+                              </>
+                            ) : isSelf ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReviewActionError(null)
+                                  setReplyTarget(review)
+                                }}
+                                className="text-caramel-600 hover:underline"
+                              >
+                                {review.reply ? 'Editar resposta' : 'Responder'}
+                              </button>
+                            ) : (
+                              user && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReviewActionError(null)
+                                    setFlagTarget(review)
+                                  }}
+                                  className="text-gray-500 hover:text-red-600 hover:underline"
+                                >
+                                  Denunciar
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {totalReviewPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={reviewPage <= 1 || reviewsQuery.isFetching}
+                  onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <span className="text-xs text-gray-500">
+                  Página {reviewPage} de {totalReviewPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={reviewPage >= totalReviewPages || reviewsQuery.isFetching}
+                  onClick={() => setReviewPage((p) => p + 1)}
+                >
+                  Seguinte
+                </Button>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -603,6 +954,48 @@ export function ServiceDetailPage() {
         placeholder="Ex.: anúncio enganador, conteúdo impróprio, suspeita de fraude..."
         isSubmitting={reportMutation.isPending}
         errorMessage={reportError}
+      />
+
+      <ReviewForm
+        isOpen={reviewModalOpen}
+        onClose={() => {
+          setReviewModalOpen(false)
+          setEditingReview(null)
+        }}
+        onSubmit={handleReviewSubmit}
+        mode={editingReview ? 'edit' : 'create'}
+        initialValues={
+          editingReview
+            ? {
+                rating: editingReview.rating,
+                title: editingReview.title,
+                body: editingReview.body ?? '',
+              }
+            : undefined
+        }
+        isSubmitting={createReviewMutation.isPending || updateReviewMutation.isPending}
+        errorMessage={reviewActionError}
+      />
+
+      <FlagReviewModal
+        isOpen={!!flagTarget}
+        onClose={() => setFlagTarget(null)}
+        onSubmit={(reason) =>
+          flagTarget && flagReviewMutation.mutate({ reviewId: flagTarget.id, reason })
+        }
+        isSubmitting={flagReviewMutation.isPending}
+        errorMessage={reviewActionError}
+      />
+
+      <ReplyReviewModal
+        isOpen={!!replyTarget}
+        onClose={() => setReplyTarget(null)}
+        onSubmit={(reply) =>
+          replyTarget && replyMutation.mutate({ reviewId: replyTarget.id, reply })
+        }
+        initialValue={replyTarget?.reply ?? ''}
+        isSubmitting={replyMutation.isPending}
+        errorMessage={reviewActionError}
       />
     </div>
   )

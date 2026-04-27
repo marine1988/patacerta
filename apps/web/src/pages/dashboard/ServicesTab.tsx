@@ -655,6 +655,15 @@ export function ServicesTab() {
                         <p className="mt-1 text-sm font-medium text-gray-900">
                           {formatPriceEUR(s.priceCents, s.priceUnit)}
                         </p>
+                        {s.reviewCount > 0 && s.avgRating != null && (
+                          <p className="mt-1 text-xs text-gray-600">
+                            <span className="text-amber-500">★</span>{' '}
+                            <span className="font-medium">{Number(s.avgRating).toFixed(1)}</span>{' '}
+                            <span className="text-gray-500">
+                              ({s.reviewCount} {s.reviewCount === 1 ? 'avaliação' : 'avaliações'})
+                            </span>
+                          </p>
+                        )}
                         <p className="mt-1 text-xs text-gray-500">
                           Atualizado {formatSmart(s.updatedAt)}
                         </p>

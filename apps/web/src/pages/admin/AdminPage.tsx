@@ -80,7 +80,9 @@ interface Review {
   status: string
   createdAt: string
   author: { id: number; firstName: string; lastName: string; email: string }
-  breeder: { id: number; businessName: string }
+  breeder?: { id: number; businessName: string }
+  service?: { id: number; title: string }
+  type?: 'breeder' | 'service'
 }
 
 interface AuditLog {
@@ -619,9 +621,46 @@ interface ReviewFlag {
   reporter: { id: number; firstName: string; lastName: string; email: string }
 }
 
+function TypeFilterTabs({
+  typeFilter,
+  setTypeFilter,
+  setPage,
+}: {
+  typeFilter: 'all' | 'breeder' | 'service'
+  setTypeFilter: (t: 'all' | 'breeder' | 'service') => void
+  setPage: (p: number) => void
+}) {
+  const options: Array<{ value: 'all' | 'breeder' | 'service'; label: string }> = [
+    { value: 'all', label: 'Todas' },
+    { value: 'breeder', label: 'Criadores' },
+    { value: 'service', label: 'Serviços' },
+  ]
+  return (
+    <div className="mb-4 flex gap-2 border-b border-gray-200">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => {
+            setTypeFilter(opt.value)
+            setPage(1)
+          }}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+            typeFilter === opt.value
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function AvaliacoesTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [typeFilter, setTypeFilter] = useState<'all' | 'breeder' | 'service'>('all')
   const [moderationTarget, setModerationTarget] = useState<{
     review: Review
     nextStatus: string
@@ -631,29 +670,29 @@ function AvaliacoesTab() {
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<Review>>({
-    queryKey: ['admin-flagged-reviews', page],
-    queryFn: () => api.get(`/admin/reviews/flagged?page=${page}&limit=20`).then((r) => r.data),
+    queryKey: ['admin-flagged-reviews', page, typeFilter],
+    queryFn: () =>
+      api
+        .get(`/admin/reviews/flagged?page=${page}&limit=20&type=${typeFilter}`)
+        .then((r) => r.data),
   })
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] })
     queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
     queryClient.invalidateQueries({ queryKey: ['reviews'] })
+    queryClient.invalidateQueries({ queryKey: ['service-reviews'] })
+  }
+
+  function endpointFor(review: Review): string {
+    return review.type === 'service' ? `/service-reviews/${review.id}` : `/reviews/${review.id}`
   }
 
   const moderateMutation = useMutation({
-    mutationFn: ({
-      reviewId,
-      status,
-      reason,
-    }: {
-      reviewId: number
-      status: string
-      reason?: string
-    }) =>
-      api.patch(`/reviews/${reviewId}/moderate`, {
+    mutationFn: ({ review, status, reason }: { review: Review; status: string; reason?: string }) =>
+      api.patch(`${endpointFor(review)}/moderate`, {
         status,
-        ...(reason ? { moderationReason: reason } : {}),
+        ...(reason ? { reason } : {}),
       }),
     onSuccess: () => {
       invalidateAll()
@@ -663,12 +702,12 @@ function AvaliacoesTab() {
   })
 
   const dismissFlagsMutation = useMutation({
-    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}/flags`),
+    mutationFn: (review: Review) => api.delete(`${endpointFor(review)}/flags`),
     onSuccess: () => invalidateAll(),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
+    mutationFn: (review: Review) => api.delete(endpointFor(review)),
     onSuccess: () => {
       invalidateAll()
       setDeleteTarget(null)
@@ -676,8 +715,8 @@ function AvaliacoesTab() {
   })
 
   const flagsQuery = useQuery<{ data: ReviewFlag[] }>({
-    queryKey: ['review-flags', flagsTarget?.id],
-    queryFn: () => api.get(`/reviews/${flagsTarget!.id}/flags`).then((r) => r.data),
+    queryKey: ['review-flags', flagsTarget?.type, flagsTarget?.id],
+    queryFn: () => api.get(`${endpointFor(flagsTarget!)}/flags`).then((r) => r.data),
     enabled: !!flagsTarget,
   })
 
@@ -697,21 +736,26 @@ function AvaliacoesTab() {
 
   if (!data || data.data.length === 0) {
     return (
-      <EmptyState
-        title="Sem avaliações sinalizadas"
-        description="Não existem avaliações sinalizadas para moderar."
-      />
+      <div>
+        <TypeFilterTabs typeFilter={typeFilter} setTypeFilter={setTypeFilter} setPage={setPage} />
+        <EmptyState
+          title="Sem avaliações sinalizadas"
+          description="Não existem avaliações sinalizadas para moderar."
+        />
+      </div>
     )
   }
 
   return (
     <div>
+      <TypeFilterTabs typeFilter={typeFilter} setTypeFilter={setTypeFilter} setPage={setPage} />
       <div className="overflow-x-auto">
         <table className="table-auto w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-500">
               <th className="px-3 py-2">Avaliação</th>
-              <th className="px-3 py-2">Criador</th>
+              <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2">Alvo</th>
               <th className="px-3 py-2">Autor</th>
               <th className="px-3 py-2">Nota</th>
               <th className="px-3 py-2">Estado</th>
@@ -722,14 +766,23 @@ function AvaliacoesTab() {
           <tbody>
             {data.data.map((review, i) => (
               <tr
-                key={review.id}
+                key={`${review.type ?? 'breeder'}-${review.id}`}
                 className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
               >
                 <td className="px-3 py-2">
                   <div className="font-medium text-gray-900">{review.title}</div>
                   <div className="text-xs text-gray-500 max-w-xs truncate">{review.body}</div>
                 </td>
-                <td className="px-3 py-2">{review.breeder.businessName}</td>
+                <td className="px-3 py-2">
+                  <Badge variant={review.type === 'service' ? 'blue' : 'gray'}>
+                    {review.type === 'service' ? 'Serviço' : 'Criador'}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2">
+                  {review.type === 'service'
+                    ? (review.service?.title ?? '—')
+                    : (review.breeder?.businessName ?? '—')}
+                </td>
                 <td className="px-3 py-2">
                   <div>
                     {review.author.firstName} {review.author.lastName}
@@ -767,7 +820,7 @@ function AvaliacoesTab() {
                       disabled={dismissFlagsMutation.isPending}
                       onClick={() => {
                         if (confirm('Descartar todas as sinalizações desta avaliação?')) {
-                          dismissFlagsMutation.mutate(review.id)
+                          dismissFlagsMutation.mutate(review)
                         }
                       }}
                     >
@@ -827,7 +880,7 @@ function AvaliacoesTab() {
                 disabled={moderateMutation.isPending}
                 onClick={() =>
                   moderateMutation.mutate({
-                    reviewId: moderationTarget.review.id,
+                    review: moderationTarget.review,
                     status: moderationTarget.nextStatus,
                     reason: moderationReason.trim() || undefined,
                   })
@@ -897,7 +950,7 @@ function AvaliacoesTab() {
               <Button
                 variant="danger"
                 disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                onClick={() => deleteMutation.mutate(deleteTarget)}
               >
                 Eliminar
               </Button>
