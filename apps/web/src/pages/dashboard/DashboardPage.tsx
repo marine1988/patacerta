@@ -19,6 +19,7 @@ import {
   Modal,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
+import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import { ServicesTab } from './ServicesTab'
 import { ServiceReviewsTab } from './ServiceReviewsTab'
 import { MyReviewsTab } from './MyReviewsTab'
@@ -30,6 +31,13 @@ import { ReportMessageModal } from '../../components/messages/ReportMessageModal
 import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+interface BreederPhoto {
+  id: number
+  url: string
+  caption: string | null
+  sortOrder: number
+}
 
 interface BreederProfile {
   id: number
@@ -44,6 +52,26 @@ interface BreederProfile {
   municipalityId: number | null
   speciesIds: number[]
   verificationDocs: VerificationDoc[]
+  photos?: BreederPhoto[]
+  // Apresentacao publica
+  youtubeVideoId?: string | null
+  // Reconhecimentos oficiais
+  cpcMember?: boolean
+  fciAffiliated?: boolean
+  // Incluido com cada cachorro
+  vetCheckup?: boolean
+  microchip?: boolean
+  vaccinations?: boolean
+  lopRegistry?: boolean
+  kennelName?: boolean
+  salesInvoice?: boolean
+  food?: boolean
+  initialTraining?: boolean
+  // Recolha
+  pickupInPerson?: boolean
+  deliveryByCar?: boolean
+  deliveryByPlane?: boolean
+  pickupNotes?: string | null
 }
 
 interface VerificationDoc {
@@ -347,6 +375,21 @@ function BreederTab() {
     districtId: '',
     municipalityId: '',
     speciesIds: [] as number[],
+    youtubeVideoId: '',
+    cpcMember: false,
+    fciAffiliated: false,
+    vetCheckup: false,
+    microchip: false,
+    vaccinations: false,
+    lopRegistry: false,
+    kennelName: false,
+    salesInvoice: false,
+    food: false,
+    initialTraining: false,
+    pickupInPerson: true,
+    deliveryByCar: false,
+    deliveryByPlane: false,
+    pickupNotes: '',
   })
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -355,6 +398,11 @@ function BreederTab() {
   const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   )
+
+  // Galeria do criador
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const MAX_BREEDER_PHOTOS = 10
 
   const isLocked = breeder?.status === 'VERIFIED' || breeder?.status === 'PENDING_VERIFICATION'
 
@@ -370,6 +418,21 @@ function BreederTab() {
         districtId: breeder.districtId ? String(breeder.districtId) : '',
         municipalityId: breeder.municipalityId ? String(breeder.municipalityId) : '',
         speciesIds: breeder.speciesIds ?? [],
+        youtubeVideoId: breeder.youtubeVideoId ?? '',
+        cpcMember: breeder.cpcMember ?? false,
+        fciAffiliated: breeder.fciAffiliated ?? false,
+        vetCheckup: breeder.vetCheckup ?? false,
+        microchip: breeder.microchip ?? false,
+        vaccinations: breeder.vaccinations ?? false,
+        lopRegistry: breeder.lopRegistry ?? false,
+        kennelName: breeder.kennelName ?? false,
+        salesInvoice: breeder.salesInvoice ?? false,
+        food: breeder.food ?? false,
+        initialTraining: breeder.initialTraining ?? false,
+        pickupInPerson: breeder.pickupInPerson ?? true,
+        deliveryByCar: breeder.deliveryByCar ?? false,
+        deliveryByPlane: breeder.deliveryByPlane ?? false,
+        pickupNotes: breeder.pickupNotes ?? '',
       })
     }
   }, [breeder])
@@ -419,12 +482,86 @@ function BreederTab() {
     mutationFn: () => api.post('/breeders/me/submit-verification'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
-      setMsg({ type: 'success', text: 'Submetido para verificaÃ§Ã£o com sucesso.' })
+      setMsg({ type: 'success', text: 'Submetido para verificação com sucesso.' })
     },
     onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao submeter para verificaÃ§Ã£o.' })
+      setMsg({ type: 'error', text: 'Erro ao submeter para verificação.' })
     },
   })
+
+  // Galeria — uploads, delete, reorder
+  const uploadPhotosMutation = useMutation({
+    mutationFn: (formData: FormData) =>
+      api.post('/breeders/me/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+      setPhotoMsg({ type: 'success', text: 'Fotos enviadas com sucesso.' })
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    },
+    onError: (err) => {
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao enviar fotos.') })
+    },
+  })
+
+  const deletePhotoMutation = useMutation({
+    mutationFn: (photoId: number) => api.delete(`/breeders/me/photos/${photoId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+    },
+    onError: (err) => {
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao remover foto.') })
+    },
+  })
+
+  const reorderPhotosMutation = useMutation({
+    mutationFn: (photoIds: number[]) => api.patch('/breeders/me/photos/reorder', { photoIds }),
+    onMutate: async (photoIds) => {
+      await queryClient.cancelQueries({ queryKey: ['breeder-profile'] })
+      const previous = queryClient.getQueryData<BreederProfile>(['breeder-profile'])
+      if (previous?.photos) {
+        const map = new Map(previous.photos.map((p) => [p.id, p]))
+        const reordered = photoIds
+          .map((id, idx) => {
+            const p = map.get(id)
+            return p ? { ...p, sortOrder: idx } : null
+          })
+          .filter((p): p is BreederPhoto => p !== null)
+        queryClient.setQueryData<BreederProfile>(['breeder-profile'], {
+          ...previous,
+          photos: reordered,
+        })
+      }
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['breeder-profile'], context.previous)
+      }
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao reordenar fotos.') })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+    },
+  })
+
+  function handleUploadPhotos(e: ChangeEvent<HTMLInputElement>) {
+    setPhotoMsg(null)
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const existing = breeder?.photos?.length ?? 0
+    if (existing + files.length > MAX_BREEDER_PHOTOS) {
+      setPhotoMsg({
+        type: 'error',
+        text: `Máximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
+      })
+      return
+    }
+    const fd = new FormData()
+    Array.from(files).forEach((f) => fd.append('photos', f))
+    uploadPhotosMutation.mutate(fd)
+  }
 
   function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -439,6 +576,21 @@ function BreederTab() {
       districtId: form.districtId ? Number(form.districtId) : null,
       municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
       speciesIds: form.speciesIds,
+      youtubeVideoId: form.youtubeVideoId,
+      cpcMember: form.cpcMember,
+      fciAffiliated: form.fciAffiliated,
+      vetCheckup: form.vetCheckup,
+      microchip: form.microchip,
+      vaccinations: form.vaccinations,
+      lopRegistry: form.lopRegistry,
+      kennelName: form.kennelName,
+      salesInvoice: form.salesInvoice,
+      food: form.food,
+      initialTraining: form.initialTraining,
+      pickupInPerson: form.pickupInPerson,
+      deliveryByCar: form.deliveryByCar,
+      deliveryByPlane: form.deliveryByPlane,
+      pickupNotes: form.pickupNotes,
     })
   }
 
@@ -609,6 +761,126 @@ function BreederTab() {
               />
             </div>
 
+            {/* Vídeo de apresentação */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+                Vídeo de apresentação (YouTube)
+              </h4>
+              <Input
+                label="URL ou ID do vídeo YouTube"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={form.youtubeVideoId}
+                onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Cole o link completo ou apenas o ID. Deixe vazio para remover.
+              </p>
+            </div>
+
+            {/* Reconhecimentos oficiais */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+                Reconhecimentos oficiais
+              </h4>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.cpcMember}
+                    onChange={(e) => setForm((p) => ({ ...p, cpcMember: e.target.checked }))}
+                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Membro do CPC (Clube Português de Canicultura)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.fciAffiliated}
+                    onChange={(e) => setForm((p) => ({ ...p, fciAffiliated: e.target.checked }))}
+                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Filiado FCI (Fédération Cynologique Internationale)
+                </label>
+              </div>
+            </div>
+
+            {/* O que está incluído */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+                O que está incluído com cada cachorro
+              </h4>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    { key: 'vetCheckup', label: 'Check-up veterinário' },
+                    { key: 'microchip', label: 'Microchip implantado' },
+                    { key: 'vaccinations', label: 'Vacinação em dia' },
+                    { key: 'lopRegistry', label: 'Registo no LOP' },
+                    { key: 'kennelName', label: 'Nome de canil' },
+                    { key: 'salesInvoice', label: 'Factura de venda' },
+                    { key: 'food', label: 'Alimentação inicial' },
+                    { key: 'initialTraining', label: 'Treino inicial' },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={form[key]}
+                      onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))}
+                      className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Recolha / entrega */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+                Levar para casa
+              </h4>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.pickupInPerson}
+                    onChange={(e) => setForm((p) => ({ ...p, pickupInPerson: e.target.checked }))}
+                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Recolha presencial no canil
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.deliveryByCar}
+                    onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
+                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Entrega ao domicílio (carro)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.deliveryByPlane}
+                    onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
+                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Envio por avião
+                </label>
+              </div>
+              <div className="mt-3">
+                <label className="label">Notas sobre recolha / entrega</label>
+                <textarea
+                  className="input min-h-[80px]"
+                  value={form.pickupNotes}
+                  onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
+                  placeholder="Custos, condições, zonas cobertas..."
+                  maxLength={1000}
+                />
+              </div>
+            </div>
+
             {msg && (
               <p
                 className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
@@ -634,6 +906,20 @@ function BreederTab() {
           {msg.text}
         </p>
       )}
+
+      {/* Galeria de fotos do criador */}
+      <PhotoGalleryManager
+        photos={breeder.photos ?? []}
+        max={MAX_BREEDER_PHOTOS}
+        title="Galeria do criador"
+        emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
+        onUpload={handleUploadPhotos}
+        uploadInputRef={photoInputRef}
+        isUploading={uploadPhotosMutation.isPending}
+        uploadMsg={photoMsg}
+        onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
+        onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
+      />
 
       {/* Documents */}
       <Card hover={false}>
