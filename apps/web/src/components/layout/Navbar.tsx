@@ -156,6 +156,11 @@ export function Navbar() {
               >
                 Painel
               </Link>
+              {user?.role !== 'ADMIN' && (
+                <Link to="/publicar" className="btn-primary btn-sm">
+                  Publicar
+                </Link>
+              )}
               {user?.role === 'ADMIN' && (
                 <Link
                   to="/admin"
@@ -303,6 +308,15 @@ export function Navbar() {
                 >
                   Painel
                 </Link>
+                {user?.role !== 'ADMIN' && (
+                  <Link
+                    to="/publicar"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="btn-primary mt-2 w-full"
+                  >
+                    Publicar
+                  </Link>
+                )}
                 {user?.role === 'ADMIN' && (
                   <Link
                     to="/admin"

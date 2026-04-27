@@ -44,6 +44,9 @@ const BreederOnboardingPage = lazy(() =>
     default: m.BreederOnboardingPage,
   })),
 )
+const PublicarPage = lazy(() =>
+  import('./pages/publicar/PublicarPage').then((m) => ({ default: m.PublicarPage })),
+)
 const AdminPage = lazy(() =>
   import('./pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
 )
@@ -137,14 +140,32 @@ export function App() {
               }
             />
 
-            {/* Protected — breeder onboarding */}
+            {/* Protected — publish flow (any authenticated user) */}
             <Route
-              path="/onboarding/criador"
+              path="/publicar"
               element={
-                <ProtectedRoute roles={['BREEDER']}>
+                <ProtectedRoute>
+                  <PublicarPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/publicar/criador"
+              element={
+                <ProtectedRoute>
                   <BreederOnboardingPage />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/publicar/servico"
+              element={<Navigate to="/painel?tab=servicos&new=1" replace />}
+            />
+
+            {/* Legacy: /onboarding/criador → /publicar/criador */}
+            <Route
+              path="/onboarding/criador"
+              element={<Navigate to="/publicar/criador" replace />}
             />
 
             {/* Protected — admin only */}

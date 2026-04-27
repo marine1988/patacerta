@@ -1884,8 +1884,8 @@ function SettingsTab() {
         size="sm"
       >
         <p className="text-sm text-gray-600 mb-6">
-          Tem a certeza de que deseja eliminar a sua conta? Esta ação é irreversível e todos os
-          seus dados serão permanentemente apagados.
+          Tem a certeza de que deseja eliminar a sua conta? Esta ação é irreversível e todos os seus
+          dados serão permanentemente apagados.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
@@ -1910,9 +1910,41 @@ export default function DashboardPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
 
+  // Tabs derivam de "tem perfil/servicos?", nao do role. Permite ter
+  // simultaneamente perfil de criador e servicos no mesmo painel.
+  const { data: breederProbe } = useQuery<{ id: number } | null>({
+    queryKey: ['breeder-profile-probe', user?.id],
+    queryFn: () =>
+      api
+        .get('/breeders/me/profile')
+        .then((r) => r.data)
+        .catch(() => null),
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  })
+  const { data: servicesProbe } = useQuery<{ data: Array<{ id: number }> } | null>({
+    queryKey: ['my-services-probe', user?.id],
+    queryFn: () =>
+      api
+        .get('/services/mine')
+        .then((r) => r.data)
+        .catch(() => null),
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  })
+
   const tabParam = searchParams.get('tab') ?? 'profile'
-  const isBreeder = user?.role === 'BREEDER'
-  const showServicesTab = !!user && user.role !== 'ADMIN'
+  const hasBreederProfile = !!breederProbe?.id
+  const hasServices = !!servicesProbe?.data && servicesProbe.data.length > 0
+  const isBreeder = hasBreederProfile
+  // Tab de servicos aparece se ja presta servicos OU se e OWNER autenticado
+  // (para poder criar o primeiro). Admin nao tem painel de servicos.
+  const showServicesTab =
+    !!user &&
+    user.role !== 'ADMIN' &&
+    (hasServices || user.role === 'OWNER' || user.role === 'SERVICE_PROVIDER')
 
   const tabs = [
     {
