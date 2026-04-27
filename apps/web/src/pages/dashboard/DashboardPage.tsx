@@ -482,10 +482,10 @@ function BreederTab() {
     mutationFn: () => api.post('/breeders/me/submit-verification'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
-      setMsg({ type: 'success', text: 'Submetido para verifica──o com sucesso.' })
+      setMsg({ type: 'success', text: 'Submetido para verificação com sucesso.' })
     },
     onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao submeter para verifica──o.' })
+      setMsg({ type: 'error', text: 'Erro ao submeter para verificação.' })
     },
   })
 
@@ -554,7 +554,7 @@ function BreederTab() {
     if (existing + files.length > MAX_BREEDER_PHOTOS) {
       setPhotoMsg({
         type: 'error',
-        text: `M─ximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
+        text: `Máximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
       })
       return
     }
@@ -768,13 +768,13 @@ function BreederTab() {
               />
             </div>
 
-            {/* V─deo de apresenta──o */}
+            {/* Vídeo de apresentação */}
             <div className="border-t border-gray-200 pt-4">
               <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                V─deo de apresenta──o (YouTube)
+                Vídeo de apresentação (YouTube)
               </h4>
               <Input
-                label="URL ou ID do v─deo YouTube"
+                label="URL ou ID do vídeo YouTube"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={form.youtubeVideoId}
                 onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
@@ -797,7 +797,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, cpcMember: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Membro do CPC (Clube Portugu─s de Canicultura)
+                  Membro do CPC (Clube Português de Canicultura)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -806,26 +806,26 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, fciAffiliated: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Filiado FCI (F─d─ration Cynologique Internationale)
+                  Filiado FCI (Fédération Cynologique Internationale)
                 </label>
               </div>
             </div>
 
-            {/* O que est─ inclu─do */}
+            {/* O que está incluído */}
             <div className="border-t border-gray-200 pt-4">
               <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                O que est─ inclu─do com cada cachorro
+                O que está incluído com cada cachorro
               </h4>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(
                   [
-                    { key: 'vetCheckup', label: 'Check-up veterin─rio' },
+                    { key: 'vetCheckup', label: 'Check-up veterinário' },
                     { key: 'microchip', label: 'Microchip implantado' },
-                    { key: 'vaccinations', label: 'Vacina──o em dia' },
+                    { key: 'vaccinations', label: 'Vacinação em dia' },
                     { key: 'lopRegistry', label: 'Registo no LOP' },
                     { key: 'kennelName', label: 'Nome de canil' },
                     { key: 'salesInvoice', label: 'Factura de venda' },
-                    { key: 'food', label: 'Alimenta──o inicial' },
+                    { key: 'food', label: 'Alimentação inicial' },
                     { key: 'initialTraining', label: 'Treino inicial' },
                   ] as const
                 ).map(({ key, label }) => (
@@ -864,7 +864,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Entrega ao domic─lio (carro)
+                  Entrega ao domicílio (carro)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -873,7 +873,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Envio por avi─o
+                  Envio por avião
                 </label>
               </div>
               <div className="mt-3">
@@ -882,7 +882,7 @@ function BreederTab() {
                   className="input min-h-[80px]"
                   value={form.pickupNotes}
                   onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
-                  placeholder="Custos, condi──es, zonas cobertas..."
+                  placeholder="Custos, condições, zonas cobertas..."
                   maxLength={1000}
                 />
               </div>
@@ -919,7 +919,7 @@ function BreederTab() {
         photos={breeder.photos ?? []}
         max={MAX_BREEDER_PHOTOS}
         title="Galeria do criador"
-        emptyHint="Ainda n─o adicionou fotos. Mostre as suas instala──es, cuidados, ambiente."
+        emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
         onUpload={handleUploadPhotos}
         uploadInputRef={photoInputRef}
         isUploading={uploadPhotosMutation.isPending}
@@ -2060,7 +2060,7 @@ export default function DashboardPage() {
       ? [
           {
             id: 'avaliacoes-servicos',
-            label: 'Avalia──es de servi─os',
+            label: 'Avaliações de serviços',
             icon: (
               <svg
                 className="h-4 w-4"
