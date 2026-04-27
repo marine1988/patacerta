@@ -119,6 +119,24 @@ export function BreederProfilePage() {
   const isSelf = !!user && !!breeder && breeder.userId === user.id
   const canWriteReview = !!user && user.role === 'OWNER' && !isSelf
 
+  const eligibilityQuery = useQuery<{
+    eligible: boolean
+    reason: string | null
+    detail: {
+      threadFound: boolean
+      sentByAuthor: number
+      sentByCounterparty: number
+      windowDays: number
+      minPerSide: number
+    }
+  }>({
+    queryKey: ['review-eligibility', { breederId: id }],
+    queryFn: () =>
+      api.get('/reviews/eligibility', { params: { breederId: Number(id) } }).then((r) => r.data),
+    enabled: !!id && canWriteReview,
+    staleTime: 30_000,
+  })
+
   const reviewsQuery = useQuery<ReviewsResponse>({
     queryKey: ['reviews', { breederId: id, sort, page }],
     queryFn: () =>
@@ -519,12 +537,37 @@ export function BreederProfilePage() {
                   </span>
                 )}
               </h2>
-              {canWriteReview && (
-                <Button size="sm" onClick={handleWriteReviewClick}>
-                  {myReview ? 'Editar avaliação' : 'Escrever avaliação'}
-                </Button>
-              )}
+              {canWriteReview &&
+                (() => {
+                  // Editar uma avaliação já existente é sempre permitido — só
+                  // a criação inicial é bloqueada por falta de interação.
+                  if (myReview) {
+                    return (
+                      <Button size="sm" onClick={handleWriteReviewClick}>
+                        Editar avaliação
+                      </Button>
+                    )
+                  }
+                  const elig = eligibilityQuery.data
+                  const blocked = elig ? !elig.eligible : false
+                  return (
+                    <Button
+                      size="sm"
+                      onClick={handleWriteReviewClick}
+                      disabled={blocked || eligibilityQuery.isLoading}
+                      title={blocked ? (elig?.reason ?? undefined) : undefined}
+                    >
+                      Escrever avaliação
+                    </Button>
+                  )
+                })()}
             </div>
+            {canWriteReview &&
+              !myReview &&
+              eligibilityQuery.data &&
+              !eligibilityQuery.data.eligible && (
+                <p className="mt-2 text-sm text-gray-500">{eligibilityQuery.data.reason}</p>
+              )}
 
             {reviewSummary && reviewSummary.totalReviews > 0 && (
               <div className="mt-6">

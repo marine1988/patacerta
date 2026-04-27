@@ -214,6 +214,26 @@ export function ServiceDetailPage() {
   const isSelf = !!user && !!service && service.providerId === user.id
   const canWriteReview = !!user && !isSelf
 
+  const eligibilityQuery = useQuery<{
+    eligible: boolean
+    reason: string | null
+    detail: {
+      threadFound: boolean
+      sentByAuthor: number
+      sentByCounterparty: number
+      windowDays: number
+      minPerSide: number
+    }
+  }>({
+    queryKey: ['service-review-eligibility', { serviceId: id }],
+    queryFn: () =>
+      api
+        .get('/service-reviews/eligibility', { params: { serviceId: Number(id) } })
+        .then((r) => r.data),
+    enabled: !!id && canWriteReview,
+    staleTime: 30_000,
+  })
+
   const contactMutation = useMutation({
     mutationFn: (values: { subject: string; body: string }) =>
       api.post(`/services/${id}/contact`, values).then((r) => r.data),
@@ -580,12 +600,35 @@ export function ServiceDetailPage() {
                   </span>
                 )}
               </h2>
-              {canWriteReview && (
-                <Button size="sm" onClick={handleWriteReviewClick}>
-                  {myReview ? 'Editar avaliação' : 'Escrever avaliação'}
-                </Button>
-              )}
+              {canWriteReview &&
+                (() => {
+                  if (myReview) {
+                    return (
+                      <Button size="sm" onClick={handleWriteReviewClick}>
+                        Editar avaliação
+                      </Button>
+                    )
+                  }
+                  const elig = eligibilityQuery.data
+                  const blocked = elig ? !elig.eligible : false
+                  return (
+                    <Button
+                      size="sm"
+                      onClick={handleWriteReviewClick}
+                      disabled={blocked || eligibilityQuery.isLoading}
+                      title={blocked ? (elig?.reason ?? undefined) : undefined}
+                    >
+                      Escrever avaliação
+                    </Button>
+                  )
+                })()}
             </div>
+            {canWriteReview &&
+              !myReview &&
+              eligibilityQuery.data &&
+              !eligibilityQuery.data.eligible && (
+                <p className="mt-2 text-sm text-gray-500">{eligibilityQuery.data.reason}</p>
+              )}
 
             {reviewSummary && reviewSummary.totalReviews > 0 && (
               <div className="mt-6">
