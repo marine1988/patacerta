@@ -120,6 +120,29 @@ model Breeder {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
+  // Apresentacao publica adicional
+  youtubeVideoId String? @map("youtube_video_id") @db.VarChar(20)
+
+  // Reconhecimentos oficiais
+  cpcMember     Boolean @default(false) @map("cpc_member")
+  fciAffiliated Boolean @default(false) @map("fci_affiliated")
+
+  // Sao incluidos com cada cachorro
+  vetCheckup      Boolean @default(false) @map("incl_vet_checkup")
+  microchip       Boolean @default(false) @map("incl_microchip")
+  vaccinations    Boolean @default(false) @map("incl_vaccinations")
+  lopRegistry     Boolean @default(false) @map("incl_lop")
+  kennelName      Boolean @default(false) @map("incl_kennel_name")
+  salesInvoice    Boolean @default(false) @map("incl_sales_invoice")
+  food            Boolean @default(false) @map("incl_food")
+  initialTraining Boolean @default(false) @map("incl_initial_training")
+
+  // Recolha
+  pickupInPerson  Boolean @default(true) @map("pickup_in_person")
+  deliveryByCar   Boolean @default(false) @map("delivery_by_car")
+  deliveryByPlane Boolean @default(false) @map("delivery_by_plane")
+  pickupNotes     String? @map("pickup_notes") @db.Text
+
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   district         District          @relation(fields: [districtId], references: [id])
   municipality     Municipality      @relation(fields: [municipalityId], references: [id])
@@ -127,6 +150,7 @@ model Breeder {
   verificationDocs VerificationDoc[]
   reviews          Review[]          @relation("reviewed_breeder")
   threadsAsBreeder Thread[]          @relation("thread_breeder")
+  photos           BreederPhoto[]
 
   @@index([districtId])
   @@index([status])
@@ -484,6 +508,20 @@ model ServicePhoto {
 
   @@index([serviceId, sortOrder])
   @@map("service_photos")
+}
+
+model BreederPhoto {
+  id        Int      @id @default(autoincrement())
+  breederId Int      @map("breeder_id")
+  url       String   @db.VarChar(512)
+  caption   String?  @db.VarChar(200)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  breeder Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
+
+  @@index([breederId, sortOrder])
+  @@map("breeder_photos")
 }
 
 model ServiceCoverage {

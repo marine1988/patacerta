@@ -44,6 +44,45 @@ export const dgavNumberSchema = z
   .max(50, 'Número DGAV demasiado longo')
   .regex(/^[A-Za-z0-9\-\/]+$/, 'Número DGAV só pode conter letras, dígitos, hífens e barras')
 
+/**
+ * Aceita youtubeVideoId em diversas formas:
+ *  - id puro (11 chars):  "dQw4w9WgXcQ"
+ *  - youtu.be/...        => extrai
+ *  - youtube.com/watch?v=... => extrai
+ *
+ * Devolve apenas o id (11 chars) ou string vazia (limpar).
+ */
+export const youtubeVideoIdSchema = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((raw) => {
+    if (!raw) return ''
+    // ja e' um id puro
+    if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw
+    try {
+      const url = new URL(raw)
+      const host = url.hostname.replace(/^www\./, '')
+      if (host === 'youtu.be') {
+        const id = url.pathname.replace(/^\//, '')
+        if (/^[A-Za-z0-9_-]{11}$/.test(id)) return id
+      }
+      if (host === 'youtube.com' || host === 'm.youtube.com') {
+        const v = url.searchParams.get('v')
+        if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v
+        // /embed/ID, /shorts/ID
+        const m = url.pathname.match(/\/(?:embed|shorts)\/([A-Za-z0-9_-]{11})/)
+        if (m) return m[1]
+      }
+    } catch {
+      // not a URL — fall through
+    }
+    return null as unknown as string
+  })
+  .refine((v) => v === '' || /^[A-Za-z0-9_-]{11}$/.test(v), {
+    message: 'URL/ID YouTube invalido',
+  })
+
 export const breederProfileSchema = z.object({
   businessName: z.string().trim().min(2).max(200),
   nif: nifSchema,
@@ -57,9 +96,39 @@ export const breederProfileSchema = z.object({
     .string()
     .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
     .optional(),
+
+  // Apresentacao publica
+  youtubeVideoId: youtubeVideoIdSchema.optional(),
+
+  // Reconhecimentos oficiais
+  cpcMember: z.boolean().optional(),
+  fciAffiliated: z.boolean().optional(),
+
+  // Sao incluidos com cada cachorro
+  vetCheckup: z.boolean().optional(),
+  microchip: z.boolean().optional(),
+  vaccinations: z.boolean().optional(),
+  lopRegistry: z.boolean().optional(),
+  kennelName: z.boolean().optional(),
+  salesInvoice: z.boolean().optional(),
+  food: z.boolean().optional(),
+  initialTraining: z.boolean().optional(),
+
+  // Recolha
+  pickupInPerson: z.boolean().optional(),
+  deliveryByCar: z.boolean().optional(),
+  deliveryByPlane: z.boolean().optional(),
+  pickupNotes: z.string().trim().max(1000).optional(),
 })
 
 export const updateBreederProfileSchema = breederProfileSchema.partial()
+
+export const reorderBreederPhotosSchema = z.object({
+  photoIds: z
+    .array(z.number().int().positive())
+    .min(1, 'Indique pelo menos uma foto')
+    .max(10, 'Maximo 10 fotos'),
+})
 
 export const verificationDocUploadSchema = z.object({
   docType: z.nativeEnum(DocType),
@@ -72,5 +141,6 @@ export const verificationReviewSchema = z.object({
 
 export type BreederProfileInput = z.infer<typeof breederProfileSchema>
 export type UpdateBreederProfileInput = z.infer<typeof updateBreederProfileSchema>
+export type ReorderBreederPhotosInput = z.infer<typeof reorderBreederPhotosSchema>
 export type VerificationDocUploadInput = z.infer<typeof verificationDocUploadSchema>
 export type VerificationReviewInput = z.infer<typeof verificationReviewSchema>
