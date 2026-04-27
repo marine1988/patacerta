@@ -22,12 +22,11 @@ import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
+import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
 )
-
-type ServicePriceUnit = 'FIXED' | 'HOURLY' | 'PER_SESSION'
 
 interface ServiceDetail {
   id: number
@@ -83,21 +82,6 @@ interface ServiceReviewsResponse {
 type ReviewSort = 'recent' | 'oldest' | 'highest' | 'lowest'
 
 const REVIEWS_PAGE_SIZE = 10
-
-const priceUnitSuffix: Record<ServicePriceUnit, string> = {
-  FIXED: '',
-  HOURLY: '/ hora',
-  PER_SESSION: '/ sessão',
-}
-
-function formatPrice(cents: number, unit: ServicePriceUnit): string {
-  const value = (cents / 100).toLocaleString('pt-PT', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const suffix = priceUnitSuffix[unit]
-  return suffix ? `${value}€ ${suffix}` : `${value}€`
-}
 
 /** Compoe uma descricao curta para meta description / og:description. */
 function buildMetaDescription(service: ServiceDetail): string {

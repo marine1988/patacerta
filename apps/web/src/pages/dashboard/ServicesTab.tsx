@@ -24,6 +24,7 @@ import {
 } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { extractApiError } from '../../lib/errors'
+import { formatPrice, parsePriceToCents, type ServicePriceUnit } from '../../lib/format'
 import { api } from '../../lib/api'
 import { formatSmart } from '../../lib/dates'
 import {
@@ -53,7 +54,6 @@ interface ServicePhoto {
   sortOrder: number
 }
 
-type ServicePriceUnit = 'FIXED' | 'HOURLY' | 'PER_SESSION'
 type ServiceStatusValue = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED'
 
 interface ServiceItem {
@@ -108,12 +108,6 @@ const priceUnitOptions: Array<{ value: ServicePriceUnit; label: string }> = [
   { value: 'PER_SESSION', label: 'Por sessão' },
 ]
 
-const priceUnitSuffix: Record<ServicePriceUnit, string> = {
-  FIXED: '',
-  HOURLY: '/ hora',
-  PER_SESSION: '/ sessão',
-}
-
 const serviceStatusVariant: Record<ServiceStatusValue, 'green' | 'yellow' | 'red' | 'gray'> = {
   DRAFT: 'yellow',
   ACTIVE: 'green',
@@ -126,23 +120,6 @@ const serviceStatusLabel: Record<ServiceStatusValue, string> = {
   ACTIVE: 'Publicado',
   PAUSED: 'Pausado',
   SUSPENDED: 'Removido',
-}
-
-function formatPriceEUR(cents: number, unit: ServicePriceUnit): string {
-  const value = (cents / 100).toLocaleString('pt-PT', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const suffix = priceUnitSuffix[unit]
-  return suffix ? `${value}€ ${suffix}` : `${value}€`
-}
-
-function parsePriceToCents(raw: string): number | null {
-  const trimmed = raw.trim().replace(',', '.')
-  if (!trimmed) return null
-  const n = Number(trimmed)
-  if (!Number.isFinite(n) || n <= 0) return null
-  return Math.round(n * 100)
 }
 
 interface ServiceFormState {
@@ -645,7 +622,7 @@ export function ServicesTab() {
                           {s.category.namePt} · {s.municipality.namePt}, {s.district.namePt}
                         </p>
                         <p className="mt-1 text-sm font-medium text-gray-900">
-                          {formatPriceEUR(s.priceCents, s.priceUnit)}
+                          {formatPrice(s.priceCents, s.priceUnit)}
                         </p>
                         {s.reviewCount > 0 && s.avgRating != null && (
                           <p className="mt-1 text-xs text-gray-600">

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '../ui/Badge'
-
-type ServicePriceUnit = 'FIXED' | 'HOURLY' | 'PER_SESSION'
+import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 export interface ServiceCardData {
   id: number
@@ -17,21 +16,6 @@ export interface ServiceCardData {
   reviewCount?: number
   /** Distancia em km ao ponto de referencia, quando aplicavel. */
   distanceKm?: number | null
-}
-
-const priceUnitSuffix: Record<ServicePriceUnit, string> = {
-  FIXED: '',
-  HOURLY: '/ hora',
-  PER_SESSION: '/ sessão',
-}
-
-function formatPrice(cents: number, unit: ServicePriceUnit): string {
-  const value = (cents / 100).toLocaleString('pt-PT', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const suffix = priceUnitSuffix[unit]
-  return suffix ? `${value}€ ${suffix}` : `${value}€`
 }
 
 /** Formata distancia em km com pt-PT (1 casa decimal abaixo de 10 km). */

@@ -3,6 +3,7 @@ import { useMap } from 'react-leaflet'
 import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet.markercluster'
+import { formatPrice } from '../../lib/format'
 
 export interface ServiceMapMarker {
   id: number
@@ -16,21 +17,6 @@ export interface ServiceMapMarker {
 
 interface Props {
   markers: ServiceMapMarker[]
-}
-
-const priceUnitSuffix: Record<ServiceMapMarker['priceUnit'], string> = {
-  FIXED: '',
-  HOURLY: '/ hora',
-  PER_SESSION: '/ sessão',
-}
-
-function formatPrice(cents: number, unit: ServiceMapMarker['priceUnit']): string {
-  const value = (cents / 100).toLocaleString('pt-PT', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const suffix = priceUnitSuffix[unit]
-  return suffix ? `${value}€ ${suffix}` : `${value}€`
 }
 
 /**
