@@ -39,6 +39,11 @@ const ServiceDetailPage = lazy(() =>
   })),
 )
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
+const BreederOnboardingPage = lazy(() =>
+  import('./pages/onboarding/BreederOnboardingPage').then((m) => ({
+    default: m.BreederOnboardingPage,
+  })),
+)
 const AdminPage = lazy(() =>
   import('./pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
 )
@@ -128,6 +133,16 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Protected — breeder onboarding */}
+            <Route
+              path="/onboarding/criador"
+              element={
+                <ProtectedRoute roles={['BREEDER']}>
+                  <BreederOnboardingPage />
                 </ProtectedRoute>
               }
             />

@@ -626,10 +626,17 @@ function BreederTab() {
   }
 
   if (!breeder) {
+    // Should never happen — BreederOnboardingGuard redirects to /onboarding/criador
+    // before this tab can render. Keep as defensive fallback.
     return (
       <EmptyState
         title="Perfil de criador nÃ£o encontrado"
-        description="Contacte o suporte se acredita que isto Ã© um erro."
+        description="Vamos redirecionÃ¡-lo para completar o seu perfil."
+        action={
+          <Button onClick={() => (window.location.href = '/onboarding/criador')}>
+            Completar perfil
+          </Button>
+        }
       />
     )
   }
