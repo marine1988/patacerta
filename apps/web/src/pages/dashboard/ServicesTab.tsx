@@ -13,15 +13,7 @@
 // Extraído do DashboardPage.tsx para reduzir o tamanho do ficheiro
 // e manter o componente focado.
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  type FormEvent,
-  type ChangeEvent,
-  type DragEvent,
-} from 'react'
+import { useState, useEffect, useRef, useMemo, type FormEvent, type ChangeEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { extractApiError } from '../../lib/errors'
 import { formatPrice, parsePriceToCents, type ServicePriceUnit } from '../../lib/format'
@@ -33,6 +25,7 @@ import {
 } from '../../lib/services'
 import { api } from '../../lib/api'
 import { formatSmart } from '../../lib/dates'
+import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import {
   Card,
   Badge,
@@ -963,9 +956,11 @@ function ServiceEditView(props: ServiceEditViewProps) {
 
       {/* Fotos */}
       {s && (
-        <PhotosManager
-          serviceId={s.id}
+        <PhotoGalleryManager
           photos={s.photos}
+          max={SERVICE_MAX_PHOTOS}
+          title="Fotos"
+          emptyHint="Ainda não adicionou fotos. É necessária pelo menos uma para publicar."
           onUpload={onUploadPhotos}
           uploadInputRef={photoInputRef}
           isUploading={isUploadingPhotos}
@@ -1082,177 +1077,7 @@ function CharCounter({ value, max, min }: CharCounterProps) {
 }
 
 // ── Sub-componente: gestor de fotos com drag-reorder ─────────────────
-
-interface PhotosManagerProps {
-  serviceId: number
-  photos: ServicePhoto[]
-  onUpload: (e: ChangeEvent<HTMLInputElement>) => void
-  uploadInputRef: React.RefObject<HTMLInputElement>
-  isUploading: boolean
-  uploadMsg: { type: 'success' | 'error'; text: string } | null
-  onDelete: (photoId: number) => void
-  onReorder: (photoIds: number[]) => void
-}
-
-function PhotosManager({
-  photos,
-  onUpload,
-  uploadInputRef,
-  isUploading,
-  uploadMsg,
-  onDelete,
-  onReorder,
-}: PhotosManagerProps) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [overIndex, setOverIndex] = useState<number | null>(null)
-
-  function move(from: number, to: number) {
-    if (from === to || from < 0 || to < 0 || from >= photos.length || to >= photos.length) return
-    const next = photos.slice()
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    onReorder(next.map((p) => p.id))
-  }
-
-  function onDragStart(idx: number) {
-    return (e: DragEvent<HTMLDivElement>) => {
-      setDragIndex(idx)
-      // Necessário em alguns browsers para o drag arrancar.
-      e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', String(idx))
-    }
-  }
-  function onDragOver(idx: number) {
-    return (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'move'
-      if (overIndex !== idx) setOverIndex(idx)
-    }
-  }
-  function onDrop(idx: number) {
-    return (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      if (dragIndex !== null) move(dragIndex, idx)
-      setDragIndex(null)
-      setOverIndex(null)
-    }
-  }
-  function onDragEnd() {
-    setDragIndex(null)
-    setOverIndex(null)
-  }
-
-  return (
-    <Card hover={false}>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Fotos ({photos.length}/{SERVICE_MAX_PHOTOS})
-        </h3>
-        {photos.length > 1 && (
-          <p className="hidden text-xs text-gray-500 sm:block">
-            Arraste para reordenar · a primeira é a capa
-          </p>
-        )}
-      </div>
-
-      {photos.length > 0 ? (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {photos.map((photo, idx) => (
-            <div
-              key={photo.id}
-              draggable
-              onDragStart={onDragStart(idx)}
-              onDragOver={onDragOver(idx)}
-              onDrop={onDrop(idx)}
-              onDragEnd={onDragEnd}
-              className={`relative aspect-square overflow-hidden rounded-lg border bg-gray-50 transition-all ${
-                dragIndex === idx
-                  ? 'opacity-40'
-                  : overIndex === idx
-                    ? 'border-caramel-500 ring-2 ring-caramel-300'
-                    : 'border-gray-200'
-              }`}
-            >
-              <img
-                src={photo.url}
-                alt=""
-                className="h-full w-full cursor-move object-cover"
-                loading="lazy"
-                draggable={false}
-              />
-
-              {/* Badge "Capa" na primeira foto */}
-              {idx === 0 && (
-                <span className="absolute left-1 top-1 rounded-md bg-caramel-600 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
-                  Capa
-                </span>
-              )}
-
-              {/* Botões mover esquerda/direita (mobile-friendly) */}
-              <div className="absolute bottom-1 left-1 flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => move(idx, idx - 1)}
-                  disabled={idx === 0}
-                  className="rounded-md bg-white/90 px-1.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Mover para a esquerda"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(idx, idx + 1)}
-                  disabled={idx === photos.length - 1}
-                  className="rounded-md bg-white/90 px-1.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Mover para a direita"
-                >
-                  →
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onDelete(photo.id)}
-                className="absolute right-1 top-1 rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-white"
-                aria-label="Remover foto"
-              >
-                Remover
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mb-4 text-sm text-gray-500">
-          Ainda não adicionou fotos. É necessária pelo menos uma para publicar.
-        </p>
-      )}
-
-      {photos.length < SERVICE_MAX_PHOTOS && (
-        <div>
-          <label className="label">Adicionar fotos (máx. 2MB cada)</label>
-          <input
-            ref={uploadInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={onUpload}
-            disabled={isUploading}
-            className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
-          />
-        </div>
-      )}
-      {uploadMsg && (
-        <p
-          className={`mt-2 text-sm ${
-            uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'
-          }`}
-        >
-          {uploadMsg.text}
-        </p>
-      )}
-    </Card>
-  )
-}
+// Movido para components/shared/PhotoGalleryManager.tsx (reutilizado pelo BreederTab).
 
 // Re-export do `Tabs` para manter import compatível em ficheiros consumidores
 // (não usado aqui, mas evita que o tree-shaker descarte se for importado de fora).
