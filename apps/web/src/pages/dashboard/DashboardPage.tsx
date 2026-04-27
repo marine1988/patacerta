@@ -115,7 +115,12 @@ interface ThreadSummary {
     id: number
     businessName: string
     user: ThreadUser
-  }
+  } | null
+  service: {
+    id: number
+    title: string
+    provider: ThreadUser
+  } | null
   messages: Array<{
     id: number
     body: string
@@ -146,7 +151,13 @@ interface ThreadDetail {
     businessName: string
     status: string
     user: ThreadUser
-  }
+  } | null
+  service: {
+    id: number
+    title: string
+    status: string
+    provider: ThreadUser
+  } | null
   messages: ThreadMessage[]
   pagination: { page: number; limit: number; total: number; totalPages: number }
 }
@@ -1301,7 +1312,8 @@ function MessagesTab() {
       id: number
       subject: string
       owner: { id: number; firstName: string; lastName: string }
-      breeder: { id: number; businessName: string }
+      breeder: { id: number; businessName: string } | null
+      service: { id: number; title: string } | null
     }
   }
   const { data: searchResults, isFetching: searchLoading } = useQuery<{
@@ -1358,11 +1370,16 @@ function MessagesTab() {
       )
     }
 
+    const counterpartyName = threadDetail.breeder
+      ? threadDetail.breeder.businessName
+      : threadDetail.service
+        ? threadDetail.service.title
+        : 'Conversa'
     const otherParty =
       user && threadDetail.owner.id === user.id
         ? {
-            name: threadDetail.breeder.businessName,
-            avatarName: threadDetail.breeder.businessName,
+            name: counterpartyName,
+            avatarName: counterpartyName,
           }
         : {
             name: `${threadDetail.owner.firstName} ${threadDetail.owner.lastName}`,
@@ -1682,7 +1699,9 @@ function MessagesTab() {
             {searchResults.data.map((hit) => {
               const isOwner = user?.id === hit.thread.owner.id
               const otherName = isOwner
-                ? hit.thread.breeder.businessName
+                ? hit.thread.breeder
+                  ? hit.thread.breeder.businessName
+                  : (hit.thread.service?.title ?? 'Conversa')
                 : `${hit.thread.owner.firstName} ${hit.thread.owner.lastName}`
               return (
                 <Card
@@ -1723,7 +1742,9 @@ function MessagesTab() {
           {threads.map((thread) => {
             const isOwner = user?.id === thread.owner.id
             const otherName = isOwner
-              ? thread.breeder.businessName
+              ? thread.breeder
+                ? thread.breeder.businessName
+                : (thread.service?.title ?? 'Conversa')
               : `${thread.owner.firstName} ${thread.owner.lastName}`
             const lastMessage = thread.messages[0]
             const lastBody = lastMessage?.deletedAt ? '(mensagem eliminada)' : lastMessage?.body

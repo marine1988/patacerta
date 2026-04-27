@@ -4,11 +4,17 @@
 
 import { z } from 'zod'
 
-export const createThreadSchema = z.object({
-  breederId: z.number().int().positive(),
-  subject: z.string().trim().min(1, 'Assunto obrigatório').max(200),
-  body: z.string().trim().min(1, 'Mensagem não pode estar vazia').max(5000),
-})
+export const createThreadSchema = z
+  .object({
+    breederId: z.number().int().positive().optional(),
+    serviceId: z.number().int().positive().optional(),
+    subject: z.string().trim().min(1, 'Assunto obrigatório').max(200),
+    body: z.string().trim().min(1, 'Mensagem não pode estar vazia').max(5000),
+  })
+  .refine((d) => !!d.breederId !== !!d.serviceId, {
+    message: 'Indique exatamente um destinatário (breederId ou serviceId)',
+    path: ['breederId'],
+  })
 
 export const sendMessageSchema = z.object({
   body: z.string().trim().min(1, 'Mensagem não pode estar vazia').max(5000),

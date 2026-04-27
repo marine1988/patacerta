@@ -19,9 +19,15 @@ export const listThreads = asyncHandler(async (req, res) => {
   const { page, limit, archived } = req.query as unknown as ListThreadsInput
 
   const breeder = await prisma.breeder.findUnique({ where: { userId } })
+  // IDs of services owned by the user — needed to include service-side threads.
+  const ownServices = await prisma.service.findMany({
+    where: { providerId: userId },
+    select: { id: true },
+  })
+  const ownServiceIds = ownServices.map((s) => s.id)
 
   // A thread is "archived" relative to the current user: owner side checks
-  // archivedByOwnerAt, breeder side checks archivedByBreederAt. A single AND
+  // archivedByOwnerAt, breeder/service side checks archivedByBreederAt. A single AND
   // clause applied per OR branch is the cleanest way to express this.
   const ownerBranch: Prisma.ThreadWhereInput = {
     ownerId: userId,
@@ -33,10 +39,18 @@ export const listThreads = asyncHandler(async (req, res) => {
         archivedByBreederAt: archived ? { not: null } : null,
       }
     : null
+  const serviceBranch: Prisma.ThreadWhereInput | null =
+    ownServiceIds.length > 0
+      ? {
+          serviceId: { in: ownServiceIds },
+          archivedByBreederAt: archived ? { not: null } : null,
+        }
+      : null
 
-  const where: Prisma.ThreadWhereInput = {
-    OR: breederBranch ? [ownerBranch, breederBranch] : [ownerBranch],
-  }
+  const orBranches: Prisma.ThreadWhereInput[] = [ownerBranch]
+  if (breederBranch) orBranches.push(breederBranch)
+  if (serviceBranch) orBranches.push(serviceBranch)
+  const where: Prisma.ThreadWhereInput = { OR: orBranches }
 
   const [threads, total] = await Promise.all([
     prisma.thread.findMany({
@@ -48,6 +62,15 @@ export const listThreads = asyncHandler(async (req, res) => {
             id: true,
             businessName: true,
             user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            title: true,
+            provider: {
+              select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+            },
           },
         },
         messages: {
@@ -104,30 +127,79 @@ export const createThread = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
   const data = req.body as CreateThreadInput
 
-  const breeder = await prisma.breeder.findUnique({
-    where: { id: data.breederId },
-    include: { user: { select: { id: true, isActive: true, suspendedAt: true } } },
-  })
-  if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
-  if (breeder.userId === userId)
-    throw new AppError(400, 'Não pode enviar mensagem a si próprio', 'SELF_MESSAGE')
-  if (breeder.status === 'SUSPENDED' || !breeder.user.isActive || breeder.user.suspendedAt) {
-    throw new AppError(400, 'Este criador não está a receber mensagens', 'BREEDER_UNAVAILABLE')
+  // ── Branch A: thread sobre criador ──────────────────────────────────
+  if (data.breederId) {
+    const breeder = await prisma.breeder.findUnique({
+      where: { id: data.breederId },
+      include: { user: { select: { id: true, isActive: true, suspendedAt: true } } },
+    })
+    if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+    if (breeder.userId === userId)
+      throw new AppError(400, 'Não pode enviar mensagem a si próprio', 'SELF_MESSAGE')
+    if (breeder.status === 'SUSPENDED' || !breeder.user.isActive || breeder.user.suspendedAt) {
+      throw new AppError(400, 'Este criador não está a receber mensagens', 'BREEDER_UNAVAILABLE')
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const thread = await tx.thread.upsert({
+        where: { ownerId_breederId: { ownerId: userId, breederId: breeder.id } },
+        create: { ownerId: userId, breederId: breeder.id, subject: data.subject },
+        update: { updatedAt: new Date() },
+      })
+      const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
+      const message = await tx.message.create({
+        data: { threadId: thread.id, senderId: userId, body: data.body },
+      })
+      if (!created) {
+        await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
+      }
+      return { thread, message, created }
+    })
+
+    await logAudit({
+      userId,
+      action: result.created ? 'THREAD_CREATED' : 'MESSAGE_SENT',
+      entity: result.created ? 'thread' : 'message',
+      entityId: result.created ? result.thread.id : result.message.id,
+      details: result.created
+        ? `Criador: ${breeder.businessName} | Assunto: ${data.subject}`
+        : `Thread ${result.thread.id}`,
+      ipAddress: req.ip,
+    })
+
+    res
+      .status(201)
+      .json({ threadId: result.thread.id, created: result.created, message: result.message })
+    return
   }
 
-  // Use a transaction with upsert to atomically find-or-create thread,
-  // preventing race conditions / duplicate threads.
+  // ── Branch B: thread sobre serviço ──────────────────────────────────
+  if (!data.serviceId) {
+    // Defesa: o schema já o garante, mas mantemos contrato explícito.
+    throw new AppError(400, 'Destinatário em falta', 'INVALID_INPUT')
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id: data.serviceId },
+    include: { provider: { select: { id: true, isActive: true, suspendedAt: true } } },
+  })
+  if (!service) throw new AppError(404, 'Serviço não encontrado', 'SERVICE_NOT_FOUND')
+  if (service.providerId === userId)
+    throw new AppError(400, 'Não pode enviar mensagem a si próprio', 'SELF_MESSAGE')
+  if (service.status !== 'ACTIVE' || !service.provider.isActive || service.provider.suspendedAt) {
+    throw new AppError(400, 'Este serviço não está a receber mensagens', 'SERVICE_UNAVAILABLE')
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const thread = await tx.thread.upsert({
-      where: { ownerId_breederId: { ownerId: userId, breederId: breeder.id } },
-      create: { ownerId: userId, breederId: breeder.id, subject: data.subject },
+      where: { ownerId_serviceId: { ownerId: userId, serviceId: service.id } },
+      create: { ownerId: userId, serviceId: service.id, subject: data.subject },
       update: { updatedAt: new Date() },
     })
     const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
     const message = await tx.message.create({
       data: { threadId: thread.id, senderId: userId, body: data.body },
     })
-    // Ensure thread updatedAt reflects the new message
     if (!created) {
       await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
     }
@@ -140,30 +212,42 @@ export const createThread = asyncHandler(async (req, res) => {
     entity: result.created ? 'thread' : 'message',
     entityId: result.created ? result.thread.id : result.message.id,
     details: result.created
-      ? `Criador: ${breeder.businessName} | Assunto: ${data.subject}`
+      ? `Serviço: ${service.title} | Assunto: ${data.subject}`
       : `Thread ${result.thread.id}`,
     ipAddress: req.ip,
   })
 
-  res.status(201).json({
-    threadId: result.thread.id,
-    created: result.created,
-    message: result.message,
-  })
+  res
+    .status(201)
+    .json({ threadId: result.thread.id, created: result.created, message: result.message })
 })
 
 async function authorizeThreadAccess(threadId: number, userId: number) {
   const thread = await prisma.thread.findUnique({ where: { id: threadId } })
   if (!thread) throw new AppError(404, 'Conversa não encontrada', 'THREAD_NOT_FOUND')
 
-  let isBreeder = false
+  let isCounterparty = false
   if (thread.ownerId !== userId) {
-    const breeder = await prisma.breeder.findUnique({ where: { userId } })
-    isBreeder = !!breeder && thread.breederId === breeder.id
-    if (!isBreeder) throw new AppError(403, 'Sem permissão', 'FORBIDDEN')
+    if (thread.breederId != null) {
+      const breeder = await prisma.breeder.findUnique({ where: { userId } })
+      isCounterparty = !!breeder && thread.breederId === breeder.id
+    } else if (thread.serviceId != null) {
+      const service = await prisma.service.findUnique({
+        where: { id: thread.serviceId },
+        select: { providerId: true },
+      })
+      isCounterparty = !!service && service.providerId === userId
+    }
+    if (!isCounterparty) throw new AppError(403, 'Sem permissão', 'FORBIDDEN')
   }
 
-  return { thread, isOwner: thread.ownerId === userId, isBreeder }
+  return {
+    thread,
+    isOwner: thread.ownerId === userId,
+    // Mantém o nome `isBreeder` para compatibilidade — passa a significar
+    // "contraparte" (criador OU prestador de serviço).
+    isBreeder: isCounterparty,
+  }
 }
 
 export const getThread = asyncHandler(async (req, res) => {
@@ -184,6 +268,16 @@ export const getThread = asyncHandler(async (req, res) => {
             businessName: true,
             status: true,
             user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            provider: {
+              select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+            },
           },
         },
       },
@@ -251,6 +345,16 @@ export const sendMessage = asyncHandler(async (req, res) => {
       throw new AppError(403, 'Conta suspensa. Não pode enviar mensagens.', 'BREEDER_SUSPENDED')
     }
   }
+  // Block message sending if the underlying service was suspended/removed.
+  if (thread.serviceId != null) {
+    const s = await prisma.service.findUnique({
+      where: { id: thread.serviceId },
+      select: { status: true },
+    })
+    if (s?.status === 'SUSPENDED') {
+      throw new AppError(403, 'Serviço suspenso. Não pode enviar mensagens.', 'SERVICE_SUSPENDED')
+    }
+  }
 
   const [message] = await prisma.$transaction([
     prisma.message.create({
@@ -296,19 +400,24 @@ export const markThreadAsRead = asyncHandler(async (req, res) => {
 export const getUnreadCount = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
   const breeder = await prisma.breeder.findUnique({ where: { userId } })
+  const ownServices = await prisma.service.findMany({
+    where: { providerId: userId },
+    select: { id: true },
+  })
+  const ownServiceIds = ownServices.map((s) => s.id)
 
   // Count unread across non-archived threads only, excluding soft-deleted messages.
+  const orBranches: Prisma.ThreadWhereInput[] = [{ ownerId: userId, archivedByOwnerAt: null }]
+  if (breeder) orBranches.push({ breederId: breeder.id, archivedByBreederAt: null })
+  if (ownServiceIds.length > 0)
+    orBranches.push({ serviceId: { in: ownServiceIds }, archivedByBreederAt: null })
+
   const count = await prisma.message.count({
     where: {
       readAt: null,
       deletedAt: null,
       senderId: { not: userId },
-      thread: {
-        OR: [
-          { ownerId: userId, archivedByOwnerAt: null },
-          ...(breeder ? [{ breederId: breeder.id, archivedByBreederAt: null }] : []),
-        ],
-      },
+      thread: { OR: orBranches },
     },
   })
 
@@ -495,6 +604,15 @@ export const searchMessages = asyncHandler(async (req, res) => {
   const { q, page, limit } = req.query as unknown as SearchMessagesInput
 
   const breeder = await prisma.breeder.findUnique({ where: { userId } })
+  const ownServices = await prisma.service.findMany({
+    where: { providerId: userId },
+    select: { id: true },
+  })
+  const ownServiceIds = ownServices.map((s) => s.id)
+
+  const threadOr: Prisma.ThreadWhereInput[] = [{ ownerId: userId }]
+  if (breeder) threadOr.push({ breederId: breeder.id })
+  if (ownServiceIds.length > 0) threadOr.push({ serviceId: { in: ownServiceIds } })
 
   // We use case-insensitive substring search. Postgres `ILIKE` is expressed
   // via Prisma's `contains` + `mode: 'insensitive'`. Not indexed beyond
@@ -502,9 +620,7 @@ export const searchMessages = asyncHandler(async (req, res) => {
   const where: Prisma.MessageWhereInput = {
     deletedAt: null,
     body: { contains: q, mode: 'insensitive' },
-    thread: {
-      OR: [{ ownerId: userId }, ...(breeder ? [{ breederId: breeder.id }] : [])],
-    },
+    thread: { OR: threadOr },
   }
 
   const [messages, total] = await Promise.all([
@@ -523,6 +639,7 @@ export const searchMessages = asyncHandler(async (req, res) => {
             subject: true,
             owner: { select: { id: true, firstName: true, lastName: true } },
             breeder: { select: { id: true, businessName: true } },
+            service: { select: { id: true, title: true } },
           },
         },
       },

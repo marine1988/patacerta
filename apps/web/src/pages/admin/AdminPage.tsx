@@ -980,7 +980,12 @@ interface MessageReportDetail extends MessageReportSummary {
         id: number
         businessName: string
         user: { id: number; firstName: string; lastName: string; email: string }
-      }
+      } | null
+      service: {
+        id: number
+        title: string
+        provider: { id: number; firstName: string; lastName: string; email: string }
+      } | null
       messages: Array<{
         id: number
         body: string
@@ -1181,7 +1186,10 @@ function DenunciasTab() {
               </p>
               <p className="text-xs text-gray-400">
                 Entre {detail.message.thread.owner.firstName} {detail.message.thread.owner.lastName}{' '}
-                e {detail.message.thread.breeder.businessName}
+                e{' '}
+                {detail.message.thread.breeder
+                  ? detail.message.thread.breeder.businessName
+                  : (detail.message.thread.service?.title ?? '—')}
               </p>
               <div className="mt-2 max-h-[300px] space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
                 {detail.message.thread.messages.map((m) => {

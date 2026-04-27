@@ -412,6 +412,15 @@ export const getMessageReport = asyncHandler(async (req, res) => {
                   user: { select: { id: true, firstName: true, lastName: true, email: true } },
                 },
               },
+              service: {
+                select: {
+                  id: true,
+                  title: true,
+                  provider: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                  },
+                },
+              },
               messages: {
                 orderBy: { createdAt: 'asc' },
                 select: {
