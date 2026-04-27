@@ -17,6 +17,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
 import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
+import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 
 const MiniMap = lazy(() =>
@@ -394,80 +395,47 @@ export function BreederProfilePage() {
                 {reviews.map((review) => {
                   const isOwn = user?.id === review.authorId
                   return (
-                    <div key={review.id} className="py-4 first:pt-0 last:pb-0">
-                      <div className="flex items-start gap-3">
-                        <Avatar
-                          name={`${review.author.firstName} ${review.author.lastName}`}
-                          imageUrl={review.author.avatarUrl ?? undefined}
-                          size="sm"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-gray-900">
-                              {review.author.firstName} {review.author.lastName}
-                            </span>
-                            <StarRating rating={review.rating} />
-                            {isOwn && <Badge variant="blue">A sua avaliação</Badge>}
-                          </div>
-                          <h4 className="mt-1 text-sm font-medium text-gray-800">{review.title}</h4>
-                          {review.body && (
-                            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
-                              {review.body}
-                            </p>
-                          )}
-                          <p className="mt-1 text-xs text-gray-400">
-                            {formatDate(review.createdAt)}
-                          </p>
-
-                          {review.reply && (
-                            <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                              <p className="text-xs font-medium text-gray-500">
-                                Resposta do criador
-                                {review.repliedAt && ` · ${formatDate(review.repliedAt)}`}
-                              </p>
-                              <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
-                                {review.reply}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                            {isOwn ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleWriteReviewClick}
-                                  className="text-caramel-600 hover:underline"
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteReview(review.id)}
-                                  className="text-red-600 hover:underline"
-                                  disabled={deleteReviewMutation.isPending}
-                                >
-                                  Eliminar
-                                </button>
-                              </>
-                            ) : (
-                              user && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionError(null)
-                                    setFlagTarget(review)
-                                  }}
-                                  className="text-gray-500 hover:text-red-600 hover:underline"
-                                >
-                                  Denunciar
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <ReviewCard
+                      key={review.id}
+                      variant="list-item"
+                      review={review}
+                      ownLabel={isOwn ? 'A sua avaliação' : undefined}
+                      replyLabel="Resposta do criador"
+                      actions={
+                        isOwn ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleWriteReviewClick}
+                              className="text-caramel-600 hover:underline"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="text-red-600 hover:underline"
+                              disabled={deleteReviewMutation.isPending}
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        ) : (
+                          user && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActionError(null)
+                                setFlagTarget(review)
+                              }}
+                              className="text-gray-500 hover:text-red-600 hover:underline"
+                            >
+                              Denunciar
+                            </button>
+                          )
+                        )
+                      }
+                    />
                   )
                 })}
               </div>

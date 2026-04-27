@@ -6,9 +6,9 @@ import { Button, EmptyState, Spinner } from '../../components/ui'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 
-interface ServiceReviewItem {
+interface ReviewItem {
   id: number
-  serviceId: number
+  breederId: number
   authorId: number
   rating: number
   title: string
@@ -20,7 +20,7 @@ interface ServiceReviewItem {
   createdAt: string
   updatedAt: string
   author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
-  service: { id: number; title: string; providerId: number }
+  breeder: { id: number; businessName: string }
 }
 
 interface PaginatedMeta {
@@ -39,30 +39,30 @@ function getExtractedError(err: unknown, fallback: string): string {
 }
 
 /**
- * Tab "Avaliacoes de servicos" no painel.
+ * Tab "Avaliacoes sobre mim" no painel do criador.
  *
- * Lista todas as avaliacoes recebidas em qualquer servico do utilizador
- * (filtra por service.providerId no backend). Permite responder/editar
- * resposta — espelha a tab "Avaliacoes sobre mim" do criador.
+ * Lista todas as avaliacoes recebidas no perfil de criador. Permite
+ * responder e editar a resposta — sem outras accoes (denuncia/eliminacao
+ * sao nas paginas publicas / admin).
  */
-export function ServiceReviewsTab() {
+export function ReviewsAboutMeTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const [replyTarget, setReplyTarget] = useState<ServiceReviewItem | null>(null)
+  const [replyTarget, setReplyTarget] = useState<ReviewItem | null>(null)
   const [replyError, setReplyError] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery<{ data: ServiceReviewItem[]; meta: PaginatedMeta }>({
-    queryKey: ['service-reviews-about-me', page],
-    queryFn: () => api.get(`/service-reviews/about-me?page=${page}&limit=20`).then((r) => r.data),
+  const { data, isLoading } = useQuery<{ data: ReviewItem[]; meta: PaginatedMeta }>({
+    queryKey: ['reviews-about-me', page],
+    queryFn: () => api.get(`/reviews/about-me?page=${page}&limit=20`).then((r) => r.data),
   })
 
   const replyMutation = useMutation({
     mutationFn: ({ reviewId, reply }: { reviewId: number; reply: string }) =>
-      api.post(`/service-reviews/${reviewId}/reply`, { reply }).then((r) => r.data),
+      api.post(`/reviews/${reviewId}/reply`, { reply }).then((r) => r.data),
     onSuccess: () => {
       setReplyTarget(null)
       setReplyError(null)
-      queryClient.invalidateQueries({ queryKey: ['service-reviews-about-me'] })
+      queryClient.invalidateQueries({ queryKey: ['reviews-about-me'] })
     },
     onError: (err) => {
       setReplyError(getExtractedError(err, 'Erro ao publicar resposta.'))
@@ -80,12 +80,7 @@ export function ServiceReviewsTab() {
   const reviews = data?.data ?? []
 
   if (reviews.length === 0) {
-    return (
-      <EmptyState
-        title="Sem avaliações"
-        description="Ainda não recebeu avaliações nos seus serviços."
-      />
-    )
+    return <EmptyState title="Sem avaliações" description="Ainda não recebeu avaliações." />
   }
 
   return (
@@ -94,7 +89,6 @@ export function ServiceReviewsTab() {
         <ReviewCard
           key={r.id}
           review={r}
-          context={{ label: r.service.title, to: `/servicos/${r.service.id}` }}
           showStatusBadge
           replyLabel="A sua resposta"
           onReplyEdit={

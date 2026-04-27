@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import axios from 'axios'
 import { api } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatDate, formatDateTime, formatSmart } from '../../lib/dates'
+import { formatDateTime, formatSmart } from '../../lib/dates'
 import {
   Tabs,
   Card,
@@ -18,14 +18,14 @@ import {
   Modal,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
-import { StarRating } from '../../components/shared/StarRating'
 import { ServicesTab } from './ServicesTab'
 import { ServiceReviewsTab } from './ServiceReviewsTab'
+import { MyReviewsTab } from './MyReviewsTab'
+import { ReviewsAboutMeTab } from './ReviewsAboutMeTab'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
-import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -120,23 +120,6 @@ interface ThreadDetail {
   }
   messages: ThreadMessage[]
   pagination: { page: number; limit: number; total: number; totalPages: number }
-}
-
-interface ReviewItem {
-  id: number
-  breederId: number
-  authorId: number
-  rating: number
-  title: string
-  body: string | null
-  status: string
-  moderationReason: string | null
-  reply: string | null
-  repliedAt: string | null
-  createdAt: string
-  updatedAt: string
-  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
-  breeder: { id: number; businessName: string }
 }
 
 interface PaginatedMeta {
@@ -1518,282 +1501,6 @@ function MessagesTab() {
     </>
   )
 }
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MyReviewsTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function MyReviewsTab() {
-  const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-
-  const { data, isLoading } = useQuery<{ data: ReviewItem[]; meta: PaginatedMeta }>({
-    queryKey: ['my-reviews', page],
-    queryFn: () => api.get(`/reviews/mine?page=${page}&limit=20`).then((r) => r.data),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
-    },
-  })
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
-  const reviews = data?.data ?? []
-
-  if (reviews.length === 0) {
-    return (
-      <EmptyState
-        title="Ainda nÃ£o avaliou ninguÃ©m"
-        description="Avalie os criadores com quem teve contacto para ajudar a comunidade."
-      />
-    )
-  }
-
-  const statusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
-    PUBLISHED: 'green',
-    FLAGGED: 'yellow',
-    HIDDEN: 'red',
-  }
-  const statusLabel: Record<string, string> = {
-    PUBLISHED: 'Publicada',
-    FLAGGED: 'Em revisÃ£o',
-    HIDDEN: 'Oculta',
-  }
-
-  return (
-    <div className="space-y-3">
-      {reviews.map((r) => (
-        <Card key={r.id} hover={false}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <StarRating rating={r.rating} />
-                <Badge variant={statusVariant[r.status] ?? 'gray'}>
-                  {statusLabel[r.status] ?? r.status}
-                </Badge>
-              </div>
-              <h4 className="mt-1 text-sm font-semibold text-gray-900">{r.title}</h4>
-              <p className="text-xs text-gray-500">Sobre: {r.breeder.businessName}</p>
-              {r.body && <p className="mt-2 whitespace-pre-line text-sm text-gray-600">{r.body}</p>}
-              {r.status === 'HIDDEN' && r.moderationReason && (
-                <p className="mt-2 rounded bg-red-50 p-2 text-xs text-red-700">
-                  <strong>Motivo da moderaÃ§Ã£o:</strong> {r.moderationReason}
-                </p>
-              )}
-              {r.reply && (
-                <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                  <p className="text-xs font-medium text-gray-500">Resposta do criador</p>
-                  <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.reply}</p>
-                </div>
-              )}
-              <p className="mt-2 text-xs text-gray-400">{formatDate(r.createdAt)}</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="danger"
-                size="sm"
-                loading={deleteMutation.isPending}
-                onClick={() => {
-                  if (confirm('Eliminar esta avaliaÃ§Ã£o?')) deleteMutation.mutate(r.id)
-                }}
-              >
-                Eliminar
-              </Button>
-            </div>
-          </div>
-        </Card>
-      ))}
-
-      {data && data.meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </Button>
-          <span className="text-xs text-gray-500">
-            {page} / {data.meta.totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page >= data.meta.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Seguinte
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ReviewsAboutMeTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function ReviewsAboutMeTab() {
-  const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [replyTarget, setReplyTarget] = useState<ReviewItem | null>(null)
-  const [replyError, setReplyError] = useState<string | null>(null)
-
-  const { data, isLoading } = useQuery<{ data: ReviewItem[]; meta: PaginatedMeta }>({
-    queryKey: ['reviews-about-me', page],
-    queryFn: () => api.get(`/reviews/about-me?page=${page}&limit=20`).then((r) => r.data),
-  })
-
-  const replyMutation = useMutation({
-    mutationFn: ({ reviewId, reply }: { reviewId: number; reply: string }) =>
-      api.post(`/reviews/${reviewId}/reply`, { reply }).then((r) => r.data),
-    onSuccess: () => {
-      setReplyTarget(null)
-      setReplyError(null)
-      queryClient.invalidateQueries({ queryKey: ['reviews-about-me'] })
-    },
-    onError: (err) => {
-      setReplyError(getExtractedError(err, 'Erro ao publicar resposta.'))
-    },
-  })
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
-  const reviews = data?.data ?? []
-
-  if (reviews.length === 0) {
-    return <EmptyState title="Sem avaliaÃ§Ãµes" description="Ainda nÃ£o recebeu avaliaÃ§Ãµes." />
-  }
-
-  const statusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
-    PUBLISHED: 'green',
-    FLAGGED: 'yellow',
-    HIDDEN: 'red',
-  }
-  const statusLabel: Record<string, string> = {
-    PUBLISHED: 'Publicada',
-    FLAGGED: 'Em revisÃ£o',
-    HIDDEN: 'Oculta',
-  }
-
-  return (
-    <div className="space-y-3">
-      {reviews.map((r) => (
-        <Card key={r.id} hover={false}>
-          <div className="flex items-start gap-3">
-            <Avatar
-              name={`${r.author.firstName} ${r.author.lastName}`}
-              imageUrl={r.author.avatarUrl ?? undefined}
-              size="sm"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">
-                  {r.author.firstName} {r.author.lastName}
-                </span>
-                <StarRating rating={r.rating} />
-                <Badge variant={statusVariant[r.status] ?? 'gray'}>
-                  {statusLabel[r.status] ?? r.status}
-                </Badge>
-              </div>
-              <h4 className="mt-1 text-sm font-semibold text-gray-900">{r.title}</h4>
-              {r.body && <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.body}</p>}
-              <p className="mt-1 text-xs text-gray-400">{formatDate(r.createdAt)}</p>
-
-              {r.reply ? (
-                <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-gray-500">
-                      A sua resposta
-                      {r.repliedAt && ` Â· ${formatDate(r.repliedAt)}`}
-                    </p>
-                    {r.status === 'PUBLISHED' && (
-                      <button
-                        type="button"
-                        className="text-xs text-caramel-600 hover:underline"
-                        onClick={() => {
-                          setReplyError(null)
-                          setReplyTarget(r)
-                        }}
-                      >
-                        Editar
-                      </button>
-                    )}
-                  </div>
-                  <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{r.reply}</p>
-                </div>
-              ) : (
-                r.status === 'PUBLISHED' && (
-                  <div className="mt-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        setReplyError(null)
-                        setReplyTarget(r)
-                      }}
-                    >
-                      Responder
-                    </Button>
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-        </Card>
-      ))}
-
-      {data && data.meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </Button>
-          <span className="text-xs text-gray-500">
-            {page} / {data.meta.totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page >= data.meta.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Seguinte
-          </Button>
-        </div>
-      )}
-
-      <ReplyReviewModal
-        isOpen={!!replyTarget}
-        onClose={() => setReplyTarget(null)}
-        onSubmit={(reply) =>
-          replyTarget && replyMutation.mutate({ reviewId: replyTarget.id, reply })
-        }
-        initialValue={replyTarget?.reply ?? ''}
-        isSubmitting={replyMutation.isPending}
-        errorMessage={replyError}
-      />
-    </div>
-  )
-}
-
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SettingsTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SettingsTab() {
