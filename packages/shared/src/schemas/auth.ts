@@ -28,6 +28,9 @@ export const registerSchema = z.object({
     .string()
     .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
     .optional(),
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: 'Tem de aceitar os Termos e a Política de Privacidade' }),
+  }),
 })
 
 export const loginSchema = z.object({
@@ -40,24 +43,29 @@ export const refreshTokenSchema = z.object({
 })
 
 // B-12: Schema for user profile update (PATCH /users/me)
-export const updateUserSchema = z.object({
-  firstName: z.string().trim().min(1).max(100).optional(),
-  lastName: z.string().trim().min(1).max(100).optional(),
-  phone: z
-    .string()
-    .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-    .optional()
-    .nullable(),
-  currentPassword: z.string().min(1).optional(),
-  newPassword: passwordSchema.optional(),
-}).refine(
-  (data) => {
-    // If newPassword is provided, currentPassword must be too
-    if (data.newPassword && !data.currentPassword) return false
-    return true
-  },
-  { message: 'Palavra-passe atual é obrigatória para alterar a palavra-passe', path: ['currentPassword'] },
-)
+export const updateUserSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(100).optional(),
+    lastName: z.string().trim().min(1).max(100).optional(),
+    phone: z
+      .string()
+      .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
+      .optional()
+      .nullable(),
+    currentPassword: z.string().min(1).optional(),
+    newPassword: passwordSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // If newPassword is provided, currentPassword must be too
+      if (data.newPassword && !data.currentPassword) return false
+      return true
+    },
+    {
+      message: 'Palavra-passe atual é obrigatória para alterar a palavra-passe',
+      path: ['currentPassword'],
+    },
+  )
 
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>

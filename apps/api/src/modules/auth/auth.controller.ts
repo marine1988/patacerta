@@ -1,17 +1,20 @@
 import { prisma } from '../../lib/prisma.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js'
+import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
-import type {
-  RegisterInput,
-  LoginInput,
-  ForgotPasswordInput,
-  ResetPasswordInput,
-  VerifyEmailInput,
-  ResendVerificationInput,
+import {
+  CONSENT_TYPE,
+  TERMS_VERSION,
+  type RegisterInput,
+  type LoginInput,
+  type ForgotPasswordInput,
+  type ResetPasswordInput,
+  type VerifyEmailInput,
+  type ResendVerificationInput,
 } from '@patacerta/shared'
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24
@@ -44,22 +47,49 @@ export const register = asyncHandler(async (req, res) => {
   const passwordHash = await bcrypt.hash(data.password, 12)
   const skip = skipEmailVerification()
   const { token: verificationToken, expiresAt: verificationExpiresAt } = generateVerificationToken()
+  const ipAddress = req.ip ?? null
+  const userAgent = req.headers['user-agent']?.slice(0, 500) ?? null
 
   let user
   try {
-    user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-        phone: data.phone,
-        emailVerified: skip,
-        emailVerificationToken: skip ? null : verificationToken,
-        emailVerificationExpiresAt: skip ? null : verificationExpiresAt,
-      },
-      select: { id: true, email: true, role: true, firstName: true, lastName: true },
+    user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role,
+          phone: data.phone,
+          emailVerified: skip,
+          emailVerificationToken: skip ? null : verificationToken,
+          emailVerificationExpiresAt: skip ? null : verificationExpiresAt,
+        },
+        select: { id: true, email: true, role: true, firstName: true, lastName: true },
+      })
+
+      // RGPD: persist explicit consent for Terms + Privacy.
+      // consentType stored as `<TYPE>:<version>` so we can prove which text was accepted.
+      await tx.consentLog.createMany({
+        data: [
+          {
+            userId: created.id,
+            consentType: `${CONSENT_TYPE.TERMS}:${TERMS_VERSION}`,
+            granted: true,
+            ipAddress,
+            userAgent,
+          },
+          {
+            userId: created.id,
+            consentType: `${CONSENT_TYPE.PRIVACY}:${TERMS_VERSION}`,
+            granted: true,
+            ipAddress,
+            userAgent,
+          },
+        ],
+      })
+
+      return created
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -79,9 +109,8 @@ export const register = asyncHandler(async (req, res) => {
     return
   }
 
-  // MVP: log verification URL to console (no SMTP yet)
   const verificationUrl = buildVerificationUrl(verificationToken)
-  console.log(`[EmailVerification] Link for ${user.email}: ${verificationUrl}`)
+  await sendVerificationEmail(user.email, verificationUrl)
 
   res.status(201).json({
     message: 'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
@@ -183,7 +212,7 @@ export const resendVerification = asyncHandler(async (req, res) => {
   })
 
   const verificationUrl = buildVerificationUrl(token)
-  console.log(`[EmailVerification] Resent link for ${user.email}: ${verificationUrl}`)
+  await sendVerificationEmail(user.email, verificationUrl)
 
   res.json({ message: 'Se o email existir e não estiver verificado, receberá um novo link.' })
 })
@@ -207,9 +236,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     data: { resetToken: token, resetTokenExpiresAt: expiresAt },
   })
 
-  // MVP: Log to console — in production, send via SMTP
+  // Send via SMTP (no-op log fallback when SMTP not configured)
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/recuperar-palavra-passe?token=${token}`
-  console.log(`[PasswordReset] Reset link for ${user.email}: ${resetUrl}`)
+  await sendPasswordResetEmail(user.email, resetUrl)
 
   res.json({ message: 'Se o email existir, receberá instruções para repor a palavra-passe.' })
 })

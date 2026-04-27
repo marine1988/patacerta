@@ -10,6 +10,7 @@ import { Card } from '../../components/ui/Card'
 const ROLE_OPTIONS = [
   { value: UserRole.OWNER, label: 'Dono de Animal' },
   { value: UserRole.BREEDER, label: 'Criador' },
+  { value: UserRole.SERVICE_PROVIDER, label: 'Prestador de Serviços' },
 ]
 
 const PASSWORD_HINT = 'Mínimo 8 caracteres, com maiúscula, minúscula e número.'
@@ -32,6 +33,7 @@ export function RegisterPage() {
     role: UserRole.OWNER as string,
     phone: '',
   })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -91,7 +93,7 @@ export function RegisterPage() {
     }
 
     const { confirmPassword: _cp, ...rest } = form
-    const input = { ...rest, phone: form.phone || undefined }
+    const input = { ...rest, phone: form.phone || undefined, acceptedTerms }
     const parsed = registerSchema.safeParse(input)
     if (!parsed.success) {
       setError(parsed.error.errors[0].message)
@@ -235,7 +237,36 @@ export function RegisterPage() {
               autoComplete="tel"
             />
 
-            <Button type="submit" loading={loading} className="w-full">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                required
+              />
+              <span>
+                Li e aceito os{' '}
+                <Link
+                  to="/termos"
+                  target="_blank"
+                  className="font-medium text-caramel-600 hover:text-caramel-500"
+                >
+                  Termos de Utilização
+                </Link>{' '}
+                e a{' '}
+                <Link
+                  to="/politica-privacidade"
+                  target="_blank"
+                  className="font-medium text-caramel-600 hover:text-caramel-500"
+                >
+                  Política de Privacidade
+                </Link>
+                .
+              </span>
+            </label>
+
+            <Button type="submit" loading={loading} disabled={!acceptedTerms} className="w-full">
               Criar conta
             </Button>
           </form>

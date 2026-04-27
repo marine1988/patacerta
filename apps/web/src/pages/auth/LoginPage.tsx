@@ -15,7 +15,7 @@ export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -30,8 +30,15 @@ export function LoginPage() {
 
     setLoading(true)
     try {
-      await login(result.data)
-      navigate(from, { replace: true })
+      const u = await login(result.data)
+      // Default landing per role on first navigation; honour `from` if set.
+      let target = from
+      if (!target) {
+        if (u.role === 'SERVICE_PROVIDER') target = '/painel?tab=servicos'
+        else if (u.role === 'BREEDER') target = '/painel?tab=criador'
+        else target = '/'
+      }
+      navigate(target, { replace: true })
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; code?: string } } }
       const code = axiosErr.response?.data?.code

@@ -47,6 +47,9 @@ importers:
       multer:
         specifier: ^1.4.5-lts.1
         version: 1.4.5-lts.2
+      nodemailer:
+        specifier: ^8.0.7
+        version: 8.0.7
       sharp:
         specifier: ^0.33.5
         version: 0.33.5
@@ -69,6 +72,9 @@ importers:
       '@types/multer':
         specifier: ^1.4.11
         version: 1.4.13
+      '@types/nodemailer':
+        specifier: ^8.0.0
+        version: 8.0.0
       prisma:
         specifier: ^5.18.0
         version: 5.22.0
@@ -915,6 +921,9 @@ packages:
   '@types/node@20.19.39':
     resolution: {integrity: sha512-orrrD74MBUyK8jOAD/r0+lfa1I2MO6I+vAkmAWzMYbCcgrN4lCrmK52gRFQq/JRxfYPfonkr4b0jcY7Olqdqbw==}
 
+  '@types/nodemailer@8.0.0':
+    resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
+
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
 
@@ -1579,6 +1588,10 @@ packages:
 
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
+
+  nodemailer@8.0.7:
+    resolution: {integrity: sha512-pkjE4mkBzQjdJT4/UmlKl3pX0rC9fZmjh7c6C9o7lv66Ac6w9WCnzPzhbPNxwZAzlF4mdq4CSWB5+FbK6FWCow==}
+    engines: {node: '>=6.0.0'}
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -2661,6 +2674,10 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/nodemailer@8.0.0':
+    dependencies:
+      '@types/node': 20.19.39
+
   '@types/prop-types@15.7.15': {}
 
   '@types/qs@6.15.0': {}
@@ -3381,6 +3398,8 @@ snapshots:
   negotiator@0.6.3: {}
 
   node-releases@2.0.37: {}
+
+  nodemailer@8.0.7: {}
 
   normalize-path@3.0.0: {}
 
