@@ -15,6 +15,8 @@ export interface ServiceCardData {
   photos: Array<{ id: number; url: string; sortOrder: number }>
   avgRating?: number | null
   reviewCount?: number
+  /** Distancia em km ao ponto de referencia, quando aplicavel. */
+  distanceKm?: number | null
 }
 
 const priceUnitSuffix: Record<ServicePriceUnit, string> = {
@@ -32,6 +34,13 @@ function formatPrice(cents: number, unit: ServicePriceUnit): string {
   return suffix ? `${value}€ ${suffix}` : `${value}€`
 }
 
+/** Formata distancia em km com pt-PT (1 casa decimal abaixo de 10 km). */
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  if (km < 10) return `${km.toFixed(1).replace('.', ',')} km`
+  return `${Math.round(km)} km`
+}
+
 export function ServiceCard({
   id,
   title,
@@ -44,6 +53,7 @@ export function ServiceCard({
   photos,
   avgRating,
   reviewCount,
+  distanceKm,
 }: ServiceCardData) {
   const cover = photos[0]?.url ?? null
 
@@ -52,13 +62,18 @@ export function ServiceCard({
       to={`/servicos/${id}`}
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
-      <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         {cover ? (
           <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
             sem foto
           </div>
+        )}
+        {distanceKm != null && (
+          <span className="absolute right-2 top-2 rounded-full bg-white/95 px-2 py-1 text-xs font-medium text-gray-700 shadow-sm">
+            {formatDistance(distanceKm)}
+          </span>
         )}
       </div>
       <div className="card-body">
@@ -108,5 +123,29 @@ export function ServiceCard({
         <p className="mt-2 line-clamp-2 text-sm text-gray-600">{description}</p>
       </div>
     </Link>
+  )
+}
+
+/**
+ * Skeleton com a mesma shape do `ServiceCard` para usar enquanto o fetch
+ * inicial nao chegou (evita salto de layout vs spinner generico).
+ */
+export function ServiceCardSkeleton() {
+  return (
+    <div className="card block animate-pulse overflow-hidden">
+      <div className="aspect-[4/3] w-full bg-gray-200" />
+      <div className="card-body space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="h-5 w-20 rounded bg-gray-200" />
+          <div className="h-5 w-16 rounded bg-gray-200" />
+        </div>
+        <div className="h-5 w-3/4 rounded bg-gray-200" />
+        <div className="h-4 w-1/2 rounded bg-gray-200" />
+        <div className="space-y-1.5 pt-1">
+          <div className="h-3 w-full rounded bg-gray-200" />
+          <div className="h-3 w-4/5 rounded bg-gray-200" />
+        </div>
+      </div>
+    </div>
   )
 }

@@ -1,15 +1,20 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
 import { BreederCard } from '../../components/shared/BreederCard'
-import { ServiceCard, type ServiceCardData } from '../../components/shared/ServiceCard'
+import {
+  ServiceCard,
+  ServiceCardSkeleton,
+  type ServiceCardData,
+} from '../../components/shared/ServiceCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Spinner } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { useGeolocation } from '../../hooks/useGeolocation'
 
 type ExplorarTipo = 'criadores' | 'servicos'
 
@@ -287,8 +292,43 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
   const query = searchParams.get('query') || ''
   const priceMin = searchParams.get('priceMin') || ''
   const priceMax = searchParams.get('priceMax') || ''
-  const sort = (searchParams.get('sort') as 'recent' | 'price_asc' | 'price_desc') || 'recent'
-  const page = parseInt(searchParams.get('page') || '1') || 1
+  const sort =
+    (searchParams.get('sort') as 'recent' | 'price_asc' | 'price_desc' | 'distance') || 'recent'
+  const radiusKm = searchParams.get('radiusKm') || ''
+
+  // Geolocalizacao opcional. As coordenadas vivem so' em memoria — nao as
+  // gravamos no URL para nao "vazarmos" a localizacao via copy/paste.
+  const geo = useGeolocation()
+
+  // "Carregar mais": mantemos as paginas ja' fetchadas em estado local e
+  // acumulamos. Quando os filtros mudam, reset.
+  const [pages, setPages] = useState<ServiceCardData[][]>([])
+  const [page, setPage] = useState(1)
+  const limit = 12
+
+  // Chave estavel dos filtros — quando muda, resetamos o acumulado.
+  const filtersKey = useMemo(
+    () =>
+      JSON.stringify({
+        categoryId,
+        districtId,
+        municipalityId,
+        query,
+        priceMin,
+        priceMax,
+        sort,
+        radiusKm,
+        // Coordenadas com precisao ~100m chega para a chave de cache.
+        lat: geo.coords ? Math.round(geo.coords.lat * 1000) / 1000 : null,
+        lng: geo.coords ? Math.round(geo.coords.lng * 1000) / 1000 : null,
+      }),
+    [categoryId, districtId, municipalityId, query, priceMin, priceMax, sort, radiusKm, geo.coords],
+  )
+
+  useEffect(() => {
+    setPages([])
+    setPage(1)
+  }, [filtersKey])
 
   const { data: categories = [] } = useQuery<ServiceCategoryOption[]>({
     queryKey: ['service-categories'],
@@ -314,11 +354,11 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
     enabled: !!districtId,
   })
 
-  const { data, isLoading, isError } = useQuery<ServicesPaginatedResponse>({
-    queryKey: [
-      'services',
-      { categoryId, districtId, municipalityId, query, priceMin, priceMax, sort, page },
-    ],
+  const radiusActive = !!geo.coords && !!radiusKm && Number(radiusKm) > 0
+  const effectiveSort: typeof sort = !radiusActive && sort === 'distance' ? 'recent' : sort
+
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<ServicesPaginatedResponse>({
+    queryKey: ['services', filtersKey, page],
     queryFn: () =>
       api
         .get('/services', {
@@ -329,16 +369,32 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
             q: query || undefined,
             priceMin: priceMin ? Math.round(Number(priceMin) * 100) : undefined,
             priceMax: priceMax ? Math.round(Number(priceMax) * 100) : undefined,
-            sort,
+            lat: radiusActive ? geo.coords!.lat : undefined,
+            lng: radiusActive ? geo.coords!.lng : undefined,
+            radiusKm: radiusActive ? Number(radiusKm) : undefined,
+            sort: effectiveSort,
             page,
-            limit: 12,
+            limit,
           },
         })
         .then((r) => r.data),
   })
 
-  const services = data?.data ?? []
+  // Acumula a pagina recebida quando muda. Replicar para a primeira so' depois
+  // do reset acima ter corrido.
+  useEffect(() => {
+    if (!data) return
+    setPages((prev) => {
+      // Se ja' tinhamos esta posicao (ex: page 2 fetchada duas vezes), substitui.
+      const next = [...prev]
+      next[page - 1] = data.data
+      return next
+    })
+  }, [data, page])
+
   const meta = data?.meta
+  const accumulated = pages.flat()
+  const hasMore = !!meta && accumulated.length < meta.total
 
   function updateFilter(updates: Record<string, string>) {
     const next = new URLSearchParams(searchParams)
@@ -346,7 +402,6 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
       if (value) next.set(key, value)
       else next.delete(key)
     }
-    // Reset page quando filtros mudam
     next.delete('page')
     setSearchParams(next)
   }
@@ -364,17 +419,48 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
     const next = new URLSearchParams()
     next.set('tipo', 'servicos')
     setSearchParams(next)
+    geo.clear()
   }
 
-  function goToPage(p: number) {
-    const params = new URLSearchParams(searchParams)
-    params.set('page', String(p))
-    setSearchParams(params)
+  function handleUseLocation() {
+    if (geo.coords) {
+      // Toggle off — limpa coords e raio.
+      geo.clear()
+      const next = new URLSearchParams(searchParams)
+      next.delete('radiusKm')
+      // Se sort era 'distance', repor 'recent'.
+      if (sort === 'distance') next.set('sort', 'recent')
+      next.delete('page')
+      setSearchParams(next)
+      return
+    }
+    geo.request()
   }
+
+  // Quando geo.coords passa a estar disponivel pela primeira vez, garantir
+  // um raio default para o filtro nao ficar a meio.
+  useEffect(() => {
+    if (geo.coords && !radiusKm) {
+      const next = new URLSearchParams(searchParams)
+      next.set('radiusKm', '25')
+      next.delete('page')
+      setSearchParams(next)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.coords])
 
   const hasFilters = Boolean(
-    categoryId || districtId || municipalityId || query || priceMin || priceMax,
+    categoryId ||
+    districtId ||
+    municipalityId ||
+    query ||
+    priceMin ||
+    priceMax ||
+    radiusKm ||
+    geo.coords,
   )
+
+  const showInitialSkeleton = isLoading && pages.length === 0
 
   return (
     <>
@@ -406,6 +492,7 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
                   { value: 'recent', label: 'Mais recentes' },
                   { value: 'price_asc', label: 'Preço ↑' },
                   { value: 'price_desc', label: 'Preço ↓' },
+                  ...(geo.coords && radiusKm ? [{ value: 'distance', label: 'Mais perto' }] : []),
                 ]}
               />
             </div>
@@ -470,6 +557,42 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
               )}
             </div>
           </div>
+
+          {/* Linha de localizacao */}
+          <div className="flex flex-col gap-3 border-t border-gray-100 pt-3 md:flex-row md:items-end">
+            <div className="flex-1">
+              <Button
+                type="button"
+                variant={geo.coords ? 'primary' : 'secondary'}
+                onClick={handleUseLocation}
+                loading={geo.loading}
+              >
+                {geo.coords ? '✓ A usar a sua localização' : 'Usar a minha localização'}
+              </Button>
+              {geo.error && <p className="mt-1 text-xs text-red-600">{geo.error}</p>}
+              {!geo.coords && !geo.error && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Mostra anúncios perto de si. A localização não é guardada.
+                </p>
+              )}
+            </div>
+            {geo.coords && (
+              <div className="md:w-48">
+                <label className="mb-1 block text-xs font-medium text-gray-700">Raio</label>
+                <Select
+                  value={radiusKm || '25'}
+                  onChange={(e) => updateFilter({ radiusKm: e.target.value })}
+                  options={[
+                    { value: '5', label: '5 km' },
+                    { value: '10', label: '10 km' },
+                    { value: '25', label: '25 km' },
+                    { value: '50', label: '50 km' },
+                    { value: '100', label: '100 km' },
+                  ]}
+                />
+              </div>
+            )}
+          </div>
         </form>
       </div>
 
@@ -506,35 +629,62 @@ function ServicesView({ searchParams, setSearchParams, onGoToMap }: ViewProps) {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
+      {showInitialSkeleton ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ServiceCardSkeleton key={i} />
+          ))}
         </div>
-      ) : isError ? (
+      ) : isError && pages.length === 0 ? (
         <EmptyState
           title="Erro ao carregar anúncios"
           description="Ocorreu um erro ao pesquisar. Tente novamente."
-        />
-      ) : services.length === 0 ? (
-        <EmptyState
-          title="Nenhum anúncio encontrado"
-          description="Tente alterar os filtros de pesquisa."
           action={
-            <Link to="/painel?tab=servicos" className="btn-primary">
-              Criar o meu anúncio
-            </Link>
+            <Button variant="primary" onClick={() => refetch()}>
+              Tentar de novo
+            </Button>
           }
         />
+      ) : meta && meta.total === 0 ? (
+        hasFilters ? (
+          <EmptyState
+            title="Nenhum anúncio encontrado"
+            description="Tente alargar os filtros ou ver no mapa."
+            action={
+              <Button variant="secondary" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="Ainda não há anúncios disponíveis"
+            description="Seja o primeiro a anunciar um serviço para patudos."
+            action={
+              <Link to="/painel?tab=servicos" className="btn-primary">
+                Criar o meu anúncio
+              </Link>
+            }
+          />
+        )
       ) : (
         <>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
+            {accumulated.map((s) => (
               <ServiceCard key={s.id} {...s} />
             ))}
           </div>
 
-          {meta && meta.totalPages > 1 && (
-            <Pagination page={page} totalPages={meta.totalPages} onGoToPage={goToPage} />
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => setPage((p) => p + 1)}
+                loading={isFetching && page > 1}
+              >
+                Carregar mais
+              </Button>
+            </div>
           )}
         </>
       )}

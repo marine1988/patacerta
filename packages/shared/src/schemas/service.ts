@@ -41,6 +41,7 @@ export const updateServiceSchema = createServiceSchema.partial()
  * - recent: por publishedAt DESC
  * - price_asc / price_desc: priceCents
  * - rating: avgRating DESC (reserved — reviews fora do MVP)
+ * - distance: por distancia ao ponto (lat,lng) ASC. Requer lat+lng+radiusKm.
  */
 export const listServicesQuerySchema = z.object({
   categoryId: z.coerce.number().int().positive().optional(),
@@ -53,7 +54,10 @@ export const listServicesQuerySchema = z.object({
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   radiusKm: z.coerce.number().positive().max(500).optional(),
-  sort: z.enum(['recent', 'price_asc', 'price_desc', 'rating']).optional().default('recent'),
+  sort: z
+    .enum(['recent', 'price_asc', 'price_desc', 'rating', 'distance'])
+    .optional()
+    .default('recent'),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(50).optional().default(20),
 })

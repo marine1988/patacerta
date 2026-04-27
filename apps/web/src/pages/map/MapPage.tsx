@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapContainer, TileLayer } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, CircleMarker, useMap } from 'react-leaflet'
 import { api } from '../../lib/api'
 import { PORTUGAL_CENTER, PORTUGAL_ZOOM } from '../../lib/leaflet-setup'
 import { MarkerClusterLayer, type MapMarker } from '../../components/map/MarkerClusterLayer'
@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
+import { useGeolocation } from '../../hooks/useGeolocation'
 
 type MapTipo = 'criadores' | 'servicos'
 
@@ -310,6 +311,22 @@ function BreedersMapView({ searchParams, setSearchParams }: MapViewProps) {
 
 // ─────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Componente filho do MapContainer que centra o mapa
+ * sempre que `target` muda (ex: utilizador pediu "a minha localização").
+ */
+function MapAutoCenter({ target, zoom }: { target: [number, number] | null; zoom: number }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) {
+      map.setView(target, zoom, { animate: true })
+    }
+  }, [map, target, zoom])
+  return null
+}
+
 function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
   const categoryId = searchParams.get('categoryId') || ''
   const districtId = searchParams.get('districtId') || ''
@@ -317,6 +334,10 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
   const query = searchParams.get('query') || ''
   const priceMin = searchParams.get('priceMin') || ''
   const priceMax = searchParams.get('priceMax') || ''
+
+  const geo = useGeolocation()
+  // Raio em km para o círculo visual (quando temos coords).
+  const radiusKm = 25
 
   const { data: categories = [] } = useQuery<ServiceCategoryOption[]>({
     queryKey: ['service-categories'],
@@ -330,7 +351,7 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
     staleTime: 60 * 60 * 1000,
   })
 
-  const { data, isLoading, isError } = useQuery<MapServicesResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<MapServicesResponse>({
     queryKey: [
       'services-map',
       { categoryId, districtId, municipalityId, query, priceMin, priceMax },
@@ -389,6 +410,7 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
     const next = new URLSearchParams()
     next.set('tipo', 'servicos')
     setSearchParams(next)
+    geo.clear()
   }
 
   const hasFilters = Boolean(
@@ -401,6 +423,8 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
     next.set('tipo', 'servicos')
     return next.toString()
   })()
+
+  const userTarget: [number, number] | null = geo.coords ? [geo.coords.lat, geo.coords.lng] : null
 
   return (
     <>
@@ -460,10 +484,24 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
                 inputMode="decimal"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="submit" variant="primary">
                 Aplicar
               </Button>
+              {geo.coords ? (
+                <Button type="button" variant="secondary" onClick={() => geo.clear()}>
+                  Remover localização
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => geo.request()}
+                  disabled={geo.loading}
+                >
+                  {geo.loading ? 'A localizar...' : '📍 A minha localização'}
+                </Button>
+              )}
               {hasFilters && (
                 <Button type="button" variant="secondary" onClick={clearFilters}>
                   Limpar
@@ -471,6 +509,8 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
               )}
             </div>
           </div>
+
+          {geo.error && <p className="text-xs text-red-600">{geo.error}</p>}
         </form>
       </div>
 
@@ -498,7 +538,12 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
           <div className="flex h-[500px] items-center justify-center">
             <EmptyState
               title="Erro ao carregar mapa"
-              description="Não foi possível carregar os anúncios. Tente recarregar a página."
+              description="Não foi possível carregar os anúncios. Verifique a sua ligação e tente novamente."
+              action={
+                <Button onClick={() => refetch()} variant="primary">
+                  Tentar de novo
+                </Button>
+              }
             />
           </div>
         ) : (
@@ -508,6 +553,27 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
                 <Spinner size="sm" />
               </div>
             )}
+            {/* Legenda */}
+            <div className="pointer-events-none absolute bottom-4 left-4 z-[1000] rounded-md bg-white/95 px-3 py-2 text-xs shadow">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="inline-block h-3 w-3 rounded-full"
+                  style={{ background: '#5b8a72' }}
+                />
+                <span className="text-gray-700">Serviço</span>
+              </div>
+              {geo.coords && (
+                <div className="mt-1 flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="inline-block h-3 w-3 rounded-full ring-2 ring-white"
+                    style={{ background: '#2563eb' }}
+                  />
+                  <span className="text-gray-700">A sua localização</span>
+                </div>
+              )}
+            </div>
             <MapContainer
               center={PORTUGAL_CENTER}
               zoom={PORTUGAL_ZOOM}
@@ -520,7 +586,32 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <MapAutoCenter target={userTarget} zoom={11} />
               <ServiceMarkerClusterLayer markers={markers} />
+              {userTarget && (
+                <>
+                  <CircleMarker
+                    center={userTarget}
+                    radius={8}
+                    pathOptions={{
+                      color: '#fff',
+                      weight: 2,
+                      fillColor: '#2563eb',
+                      fillOpacity: 1,
+                    }}
+                  />
+                  <Circle
+                    center={userTarget}
+                    radius={radiusKm * 1000}
+                    pathOptions={{
+                      color: '#2563eb',
+                      weight: 1,
+                      fillColor: '#2563eb',
+                      fillOpacity: 0.05,
+                    }}
+                  />
+                </>
+              )}
             </MapContainer>
           </div>
         )}

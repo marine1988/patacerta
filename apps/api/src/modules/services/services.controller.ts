@@ -707,6 +707,15 @@ export const listServices = asyncHandler(async (req, res) => {
   // Radius filter: require all three coordinates together.
   const radiusFilterActive = q.lat !== undefined && q.lng !== undefined && q.radiusKm !== undefined
 
+  // sort='distance' so e' aceitavel quando temos um ponto de referencia.
+  if (q.sort === 'distance' && !radiusFilterActive) {
+    throw new AppError(
+      400,
+      'Para ordenar por distância, indique a sua localização e um raio.',
+      'DISTANCE_SORT_REQUIRES_RADIUS',
+    )
+  }
+
   const where: Prisma.ServiceWhereInput = { status: 'ACTIVE' }
   if (q.categoryId) where.categoryId = q.categoryId
   if (q.districtId) where.districtId = q.districtId
@@ -728,6 +737,9 @@ export const listServices = asyncHandler(async (req, res) => {
     where.longitude = { gte: box.minLng, lte: box.maxLng, not: null }
   }
 
+  // Quando ordenamos por distancia, o orderBy SQL e' irrelevante — vamos
+  // re-ordenar em JS depois do Haversine. Cai no default 'recent' so' para
+  // ter um criterio estavel ate a' re-ordenacao.
   const orderBy: Prisma.ServiceOrderByWithRelationInput = (() => {
     switch (q.sort) {
       case 'price_asc':
@@ -736,6 +748,7 @@ export const listServices = asyncHandler(async (req, res) => {
         return { priceCents: 'desc' }
       case 'rating':
         return { avgRating: 'desc' }
+      case 'distance':
       case 'recent':
       default:
         return { publishedAt: 'desc' }
@@ -759,19 +772,31 @@ export const listServices = asyncHandler(async (req, res) => {
     prisma.service.count({ where }),
   ])
 
-  let rows = rowsRaw
+  type Row = (typeof rowsRaw)[number]
+  type RowWithDistance = Row & { distanceKm: number | null }
+
+  let rows: RowWithDistance[] = rowsRaw.map((r) => ({ ...r, distanceKm: null }))
   let total = totalRaw
 
   if (radiusFilterActive) {
-    const inside = rowsRaw.filter(
-      (s) =>
-        s.latitude !== null &&
-        s.longitude !== null &&
-        distanceKm(q.lat!, q.lng!, s.latitude, s.longitude) <= q.radiusKm!,
-    )
-    total = inside.length
+    // Anota cada linha com a distancia exacta. Round a 1 casa decimal:
+    // suficiente para ordenar e para a UI ("3.4 km").
+    const annotated = rows
+      .map((s) => {
+        if (s.latitude === null || s.longitude === null) return null
+        const d = distanceKm(q.lat!, q.lng!, s.latitude, s.longitude)
+        if (d > q.radiusKm!) return null
+        return { ...s, distanceKm: Math.round(d * 10) / 10 }
+      })
+      .filter((s): s is RowWithDistance & { distanceKm: number } => s !== null)
+
+    if (q.sort === 'distance') {
+      annotated.sort((a, b) => a.distanceKm - b.distanceKm)
+    }
+
+    total = annotated.length
     const start = (q.page - 1) * q.limit
-    rows = inside.slice(start, start + q.limit)
+    rows = annotated.slice(start, start + q.limit)
   }
 
   res.json(paginatedResponse(rows, total, q.page, q.limit))
