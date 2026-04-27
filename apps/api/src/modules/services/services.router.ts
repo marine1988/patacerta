@@ -29,6 +29,7 @@ import {
   mapServicesQuerySchema,
   contactServiceSchema,
   reportServiceSchema,
+  reorderServicePhotosSchema,
 } from '@patacerta/shared'
 import {
   createService,
@@ -40,6 +41,7 @@ import {
   getMyServiceById,
   uploadPhotos,
   deletePhoto,
+  reorderPhotos,
   listServices,
   mapServices,
   getServiceById,
@@ -117,4 +119,11 @@ servicesRouter.post(
 // Multer parses the multipart body inside the controller so we can surface
 // user-friendly AppError messages consistent with the rest of the API.
 servicesRouter.post('/:serviceId/photos', requireAuth, uploadRateLimit, uploadPhotos)
+servicesRouter.patch(
+  '/:serviceId/photos/reorder',
+  requireAuth,
+  serviceMutationRateLimit,
+  validate(reorderServicePhotosSchema),
+  reorderPhotos,
+)
 servicesRouter.delete('/:serviceId/photos/:photoId', requireAuth, deletePhoto)

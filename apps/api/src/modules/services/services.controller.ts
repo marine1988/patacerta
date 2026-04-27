@@ -36,6 +36,7 @@ import {
   type CreateServiceInput,
   type ListServicesQuery,
   type MapServicesQuery,
+  type ReorderServicePhotosInput,
   type ReportServiceInput,
   type UpdateServiceInput,
 } from '@patacerta/shared'
@@ -618,6 +619,79 @@ export const deletePhoto = asyncHandler(async (req, res) => {
   })
 
   res.status(204).send()
+})
+
+/**
+ * PATCH /api/services/:serviceId/photos/reorder
+ *
+ * Aplica nova ordem (sortOrder=0..N) \u00e0s fotos do servi\u00e7o.
+ * O cliente envia a lista completa `photoIds` na ordem desejada;
+ * o backend valida que e' exactamente o mesmo conjunto que existe em DB
+ * (sem ids extras, sem duplicados, sem omiss\u00f5es) e aplica a transac\u00e7\u00e3o.
+ */
+export const reorderPhotos = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+  const serviceId = parseId(req.params.serviceId)
+  await loadOwnedService(serviceId, userId)
+
+  const { photoIds } = req.body as ReorderServicePhotosInput
+
+  // Detectar duplicados antes de tocar na DB.
+  const uniqueIds = new Set(photoIds)
+  if (uniqueIds.size !== photoIds.length) {
+    throw new AppError(400, 'A lista de fotos cont\u00e9m duplicados.', 'PHOTOS_REORDER_DUPLICATES')
+  }
+
+  const existing = await prisma.servicePhoto.findMany({
+    where: { serviceId },
+    select: { id: true },
+  })
+  const existingIds = new Set(existing.map((p) => p.id))
+
+  if (existing.length !== photoIds.length) {
+    throw new AppError(
+      400,
+      'A lista n\u00e3o corresponde \u00e0s fotos actuais. Recarregue a p\u00e1gina.',
+      'PHOTOS_REORDER_MISMATCH',
+    )
+  }
+  for (const id of photoIds) {
+    if (!existingIds.has(id)) {
+      throw new AppError(
+        400,
+        'A lista cont\u00e9m fotos que n\u00e3o pertencem a este an\u00fancio.',
+        'PHOTOS_REORDER_INVALID_ID',
+      )
+    }
+  }
+
+  // Aplica em transac\u00e7\u00e3o; usa offset tempor\u00e1rio para evitar colis\u00f5es
+  // ao subir o sortOrder se houvesse unique-key (n\u00e3o h\u00e1, mas mantemos atomicidade).
+  await prisma.$transaction(
+    photoIds.map((id, idx) =>
+      prisma.servicePhoto.update({
+        where: { id },
+        data: { sortOrder: idx },
+      }),
+    ),
+  )
+
+  await logAudit({
+    userId,
+    action: 'service.photos.reorder',
+    entity: 'service',
+    entityId: serviceId,
+    details: JSON.stringify({ count: photoIds.length }),
+    ipAddress: req.ip,
+  })
+
+  const updated = await prisma.servicePhoto.findMany({
+    where: { serviceId },
+    select: { id: true, url: true, sortOrder: true },
+    orderBy: { sortOrder: 'asc' },
+  })
+
+  res.json({ data: updated })
 })
 
 // ─────────────────────────────────────────────────────────────────────

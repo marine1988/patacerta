@@ -82,6 +82,19 @@ export const mapServicesQuerySchema = z.object({
 export const publishServiceSchema = z.object({}).strict()
 export const pauseServiceSchema = z.object({}).strict()
 
+/**
+ * Reorder photos of a service. The client envia a ordem completa desejada.
+ * Backend valida que photoIds correspondem exactamente \u00e0s fotos do servi\u00e7o
+ * (mesmo conjunto, sem duplicados, sem extras) e aplica os novos sortOrder
+ * em transac\u00e7\u00e3o.
+ */
+export const reorderServicePhotosSchema = z.object({
+  photoIds: z
+    .array(z.number().int().positive())
+    .min(1, 'Indique pelo menos uma foto')
+    .max(8, 'M\u00e1ximo 8 fotos'),
+})
+
 export const reportServiceSchema = z.object({
   reason: z.string().trim().min(10, 'Indique um motivo com pelo menos 10 caracteres').max(500),
 })
@@ -110,6 +123,7 @@ export type ReportServiceInput = z.infer<typeof reportServiceSchema>
 export type ContactServiceInput = z.infer<typeof contactServiceSchema>
 export type ResolveServiceReportInput = z.infer<typeof resolveServiceReportSchema>
 export type SuspendServiceInput = z.infer<typeof suspendServiceSchema>
+export type ReorderServicePhotosInput = z.infer<typeof reorderServicePhotosSchema>
 
 /** Runtime status transitions (guard in service layer). */
 export const SERVICE_STATUS_TRANSITIONS: Record<ServiceStatus, ServiceStatus[]> = {
