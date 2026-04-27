@@ -8,15 +8,15 @@ import { Button, Card, Input, Select, Spinner } from '../../components/ui'
 
 interface Species {
   id: number
-  name: string
+  namePt: string
 }
 interface District {
   id: number
-  name: string
+  namePt: string
 }
 interface Municipality {
   id: number
-  name: string
+  namePt: string
 }
 
 /**
@@ -185,7 +185,7 @@ export function BreederOnboardingPage() {
               }}
               options={[
                 { value: '', label: 'Selecione…' },
-                ...(districts ?? []).map((d) => ({ value: String(d.id), label: d.name })),
+                ...(districts ?? []).map((d) => ({ value: String(d.id), label: d.namePt })),
               ]}
               required
             />
@@ -195,7 +195,7 @@ export function BreederOnboardingPage() {
               onChange={(e) => update('municipalityId', e.target.value)}
               options={[
                 { value: '', label: 'Selecione…' },
-                ...(municipalities ?? []).map((m) => ({ value: String(m.id), label: m.name })),
+                ...(municipalities ?? []).map((m) => ({ value: String(m.id), label: m.namePt })),
               ]}
               disabled={!form.districtId}
               required
@@ -220,7 +220,7 @@ export function BreederOnboardingPage() {
                         : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    {s.name}
+                    {s.namePt}
                   </button>
                 )
               })}

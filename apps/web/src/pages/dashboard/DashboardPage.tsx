@@ -83,17 +83,17 @@ interface VerificationDoc {
 
 interface Species {
   id: number
-  name: string
+  namePt: string
 }
 
 interface District {
   id: number
-  name: string
+  namePt: string
 }
 
 interface Municipality {
   id: number
-  name: string
+  namePt: string
 }
 
 interface ThreadUser {
@@ -738,7 +738,7 @@ function BreederTab() {
                       onChange={() => toggleSpecies(sp.id)}
                       className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                     />
-                    {sp.name}
+                    {sp.namePt}
                   </label>
                 ))}
               </div>
@@ -748,7 +748,7 @@ function BreederTab() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
                 label="Distrito"
-                options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
+                options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.namePt }))}
                 placeholder="Selecionar distrito"
                 value={form.districtId}
                 onChange={(e) =>
@@ -759,7 +759,7 @@ function BreederTab() {
                 label="Município"
                 options={(municipalities ?? []).map((m) => ({
                   value: String(m.id),
-                  label: m.name,
+                  label: m.namePt,
                 }))}
                 placeholder="Selecionar município"
                 value={form.municipalityId}

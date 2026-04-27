@@ -52,12 +52,12 @@ interface ServiceItem extends ServiceBase {
 
 interface DistrictOpt {
   id: number
-  name: string
+  namePt: string
 }
 
 interface MunicipalityOpt {
   id: number
-  name: string
+  namePt: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -750,8 +750,8 @@ function ServiceEditView(props: ServiceEditViewProps) {
       description: form.description || 'Descrição do serviço',
       priceCents,
       priceUnit: form.priceUnit,
-      district: { id: previewDistrict.id, namePt: previewDistrict.name },
-      municipality: { id: previewMunicipality.id, namePt: previewMunicipality.name },
+      district: { id: previewDistrict.id, namePt: previewDistrict.namePt },
+      municipality: { id: previewMunicipality.id, namePt: previewMunicipality.namePt },
       category: {
         id: previewCategory.id,
         nameSlug: previewCategory.nameSlug,
@@ -848,7 +848,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Select
                   label="Distrito"
-                  options={districts.map((d) => ({ value: String(d.id), label: d.name }))}
+                  options={districts.map((d) => ({ value: String(d.id), label: d.namePt }))}
                   placeholder="Selecionar distrito"
                   value={form.districtId}
                   onChange={(e) =>
@@ -857,7 +857,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                 />
                 <Select
                   label="Concelho"
-                  options={municipalities.map((m) => ({ value: String(m.id), label: m.name }))}
+                  options={municipalities.map((m) => ({ value: String(m.id), label: m.namePt }))}
                   placeholder="Selecionar concelho"
                   value={form.municipalityId}
                   onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
