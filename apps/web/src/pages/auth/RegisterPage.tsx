@@ -1,17 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { registerSchema, UserRole } from '@patacerta/shared'
+import { registerSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
-
-const ROLE_OPTIONS = [
-  { value: UserRole.OWNER, label: 'Dono de Animal' },
-  { value: UserRole.BREEDER, label: 'Criador' },
-  { value: UserRole.SERVICE_PROVIDER, label: 'Prestador de Serviços' },
-]
 
 const PASSWORD_HINT = 'Mínimo 8 caracteres, com maiúscula, minúscula e número.'
 
@@ -23,6 +16,11 @@ function validatePassword(pw: string): string | null {
   return null
 }
 
+/**
+ * Registo simplificado: nao se escolhe tipo de conta. Todos comecam como
+ * OWNER. Ao criar perfil de criador ou um servico, o role e auto-promovido
+ * no servidor (BREEDER ou SERVICE_PROVIDER).
+ */
 export function RegisterPage() {
   const [form, setForm] = useState({
     email: '',
@@ -30,7 +28,6 @@ export function RegisterPage() {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: UserRole.OWNER as string,
     phone: '',
   })
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -221,13 +218,6 @@ export function RegisterPage() {
               error={fieldErrors.confirmPassword}
             />
 
-            <Select
-              label="Tipo de conta"
-              value={form.role}
-              onChange={(e) => update('role', e.target.value)}
-              options={ROLE_OPTIONS}
-            />
-
             <Input
               label="Telemóvel (opcional)"
               type="tel"
@@ -236,6 +226,11 @@ export function RegisterPage() {
               placeholder="+351 912 345 678"
               autoComplete="tel"
             />
+
+            <p className="rounded-lg bg-caramel-50 p-3 text-xs text-caramel-900">
+              Crie a sua conta agora. Mais tarde, se quiser anunciar como criador ou prestador de
+              serviços, basta publicar o seu primeiro anúncio a partir do painel.
+            </p>
 
             <label className="flex items-start gap-2 text-sm text-gray-700">
               <input

@@ -30,15 +30,11 @@ export function LoginPage() {
 
     setLoading(true)
     try {
-      const u = await login(result.data)
-      // Default landing per role on first navigation; honour `from` if set.
-      let target = from
-      if (!target) {
-        if (u.role === 'SERVICE_PROVIDER') target = '/painel?tab=servicos'
-        else if (u.role === 'BREEDER') target = '/painel?tab=criador'
-        else target = '/'
-      }
-      navigate(target, { replace: true })
+      await login(result.data)
+      // Pos-login vai sempre para `from` (rota original) ou /. O painel
+      // adapta-se ao que o utilizador tem (perfil de criador, servicos)
+      // sem depender do role.
+      navigate(from || '/', { replace: true })
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; code?: string } } }
       const code = axiosErr.response?.data?.code
