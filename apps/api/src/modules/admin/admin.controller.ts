@@ -580,3 +580,91 @@ export const adminSuspendService = asyncHandler(async (req, res) => {
 
   res.json(updated)
 })
+
+/**
+ * GET /api/admin/services
+ * Lists all services (any status) with optional filters: status, q, page, limit.
+ * Includes provider, category and basic location for moderation context.
+ */
+export const listAllServices = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
+  const status = req.query.status as string | undefined
+  const q = (req.query.q as string | undefined)?.trim()
+
+  const validStatuses = ['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED']
+  const where: Record<string, unknown> = {}
+  if (status && validStatuses.includes(status)) where.status = status
+  if (q && q.length > 0) {
+    where.OR = [
+      { title: { contains: q, mode: 'insensitive' } },
+      { description: { contains: q, mode: 'insensitive' } },
+    ]
+  }
+
+  const [services, total] = await Promise.all([
+    prisma.service.findMany({
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        category: { select: { id: true, nameSlug: true, namePt: true } },
+        district: { select: { id: true, namePt: true } },
+        municipality: { select: { id: true, namePt: true } },
+        photos: {
+          where: { sortOrder: 0 },
+          select: { url: true },
+          take: 1,
+        },
+        _count: { select: { reports: { where: { status: 'PENDING' } } } },
+      },
+      skip,
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+    }),
+    prisma.service.count({ where }),
+  ])
+
+  res.json(paginatedResponse(services, total, page, limit))
+})
+
+/**
+ * POST /api/admin/services/:id/reactivate
+ * Reactivates a SUSPENDED service back to ACTIVE. Clears removal metadata.
+ * Admin-only escape hatch outside the owner-facing transition rules.
+ */
+export const adminReactivateService = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const service = await prisma.service.findUnique({ where: { id } })
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
+  if (service.status !== 'SUSPENDED') {
+    throw new AppError(400, 'Apenas anúncios suspensos podem ser reactivados', 'NOT_SUSPENDED')
+  }
+
+  const updated = await prisma.service.update({
+    where: { id },
+    data: {
+      status: 'ACTIVE',
+      removedAt: null,
+      removedReason: null,
+    },
+    select: { id: true, title: true, status: true },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_REACTIVATED',
+    entity: 'service',
+    entityId: id,
+    details: `Reactivated by admin`,
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})

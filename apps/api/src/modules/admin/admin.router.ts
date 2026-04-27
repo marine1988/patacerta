@@ -55,7 +55,9 @@ adminRouter.patch(
 )
 
 // Service suspension (admin-initiated)
+adminRouter.get('/services', ctrl.listAllServices)
 adminRouter.post('/services/:id/suspend', validate(suspendServiceSchema), ctrl.adminSuspendService)
+adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 
 // Audit logs
 adminRouter.get('/audit-logs', ctrl.getAuditLogs)

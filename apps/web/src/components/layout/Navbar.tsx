@@ -37,6 +37,7 @@ function AdminPendingBadge({ className = '' }: { className?: string }) {
         pendingBreeders: number
         flaggedReviews: number
         pendingMessageReports: number
+        pendingServiceReports: number
         total: number
       }>('/admin/pending-counts')
       return res.data
@@ -47,7 +48,7 @@ function AdminPendingBadge({ className = '' }: { className?: string }) {
   const count = data?.total ?? 0
   if (count <= 0) return null
   const title = data
-    ? `${data.pendingDocs} documento(s), ${data.pendingBreeders} criador(es), ${data.flaggedReviews} avaliação(ões) e ${data.pendingMessageReports} denúncia(s) a rever`
+    ? `${data.pendingDocs} documento(s), ${data.pendingBreeders} criador(es), ${data.flaggedReviews} avaliação(ões), ${data.pendingMessageReports} denúncia(s) de mensagem e ${data.pendingServiceReports} denúncia(s) de serviço a rever`
     : undefined
   return (
     <span
