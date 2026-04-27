@@ -1,5 +1,10 @@
 import { Router } from 'express'
-import { requireAuth, requireRole, optionalAuth } from '../../middleware/auth.js'
+import {
+  requireAuth,
+  requireRole,
+  requireBreederProfile,
+  optionalAuth,
+} from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import {
   createReviewSchema,
@@ -16,7 +21,7 @@ export const reviewsRouter = Router()
 
 // Authenticated user scoped listings (must come before /:id)
 reviewsRouter.get('/mine', requireAuth, ctrl.listMyReviews)
-reviewsRouter.get('/about-me', requireAuth, requireRole('BREEDER'), ctrl.listReviewsAboutMe)
+reviewsRouter.get('/about-me', requireAuth, requireBreederProfile, ctrl.listReviewsAboutMe)
 
 // Public listing (admins get extra visibility via optionalAuth)
 reviewsRouter.get('/', optionalAuth, validate(listReviewsSchema, 'query'), ctrl.listReviews)
@@ -37,7 +42,7 @@ reviewsRouter.delete('/:id', requireAuth, ctrl.deleteReview)
 reviewsRouter.post(
   '/:id/reply',
   requireAuth,
-  requireRole('BREEDER'),
+  requireBreederProfile,
   validate(replyToReviewSchema),
   ctrl.replyToReview,
 )

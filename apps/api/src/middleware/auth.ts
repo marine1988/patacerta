@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { verifyAccessToken, type TokenPayload } from '../lib/jwt.js'
 import { AppError } from './error-handler.js'
+import { prisma } from '../lib/prisma.js'
 
 declare global {
   namespace Express {
@@ -48,6 +49,34 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
     } catch {
       // Ignore invalid tokens on optional auth; treat as anonymous.
     }
+  }
+  next()
+}
+
+/**
+ * Require that the authenticated user has a Breeder profile.
+ * Substitui o antigo requireRole('BREEDER'): com o novo modelo de registo
+ * unificado, ser criador deriva de ter um perfil, n\u00e3o de um campo role.
+ * Must be used AFTER requireAuth.
+ */
+export async function requireBreederProfile(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  if (!req.user) {
+    throw new AppError(401, 'N\u00e3o autenticado', 'UNAUTHORIZED')
+  }
+  const breeder = await prisma.breeder.findUnique({
+    where: { userId: req.user.userId },
+    select: { id: true },
+  })
+  if (!breeder) {
+    throw new AppError(
+      403,
+      'Necessita de criar um perfil de criador para esta ac\u00e7\u00e3o',
+      'BREEDER_PROFILE_REQUIRED',
+    )
   }
   next()
 }

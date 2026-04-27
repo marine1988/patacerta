@@ -51,6 +51,18 @@ const OPTIONAL_BREEDER_FIELDS = [
   'pickupNotes',
 ] as const
 
+// Auto-promove OWNER -> BREEDER quando cria o primeiro perfil de criador.
+// Admin e SERVICE_PROVIDER mantem o role actual (caso seja SP que tambem
+// quer ter perfil de criador, fica como SP — permissoes derivam de
+// ter-perfil/ter-servico, nao do role).
+async function promoteToBreederIfNeeded(userId: number): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+  if (!user) return
+  if (user.role === 'OWNER') {
+    await prisma.user.update({ where: { id: userId }, data: { role: 'BREEDER' } })
+  }
+}
+
 export const getBreederById = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
 
@@ -127,6 +139,8 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     }
     throw err
   }
+
+  await promoteToBreederIfNeeded(userId)
 
   res.status(201).json(breeder)
 })
