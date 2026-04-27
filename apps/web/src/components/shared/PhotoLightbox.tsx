@@ -77,7 +77,7 @@ export function PhotoLightbox({ isOpen, onClose, photos, startIndex, alt }: Phot
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose()
       }}
