@@ -126,6 +126,14 @@ export function Navbar() {
           >
             Mapa
           </Link>
+          <Link
+            to="/simulador-raca"
+            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+              isActive('/simulador-raca') ? 'text-caramel-500' : 'text-muted hover:text-ink'
+            }`}
+          >
+            Simulador
+          </Link>
 
           {isAuthenticated ? (
             <div className="flex items-center gap-6">
@@ -275,6 +283,13 @@ export function Navbar() {
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >
               Mapa
+            </Link>
+            <Link
+              to="/simulador-raca"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
+            >
+              Simulador
             </Link>
 
             {isAuthenticated ? (

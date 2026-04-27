@@ -61,6 +61,11 @@ const TermsPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 )
+const SimuladorRacaPage = lazy(() =>
+  import('./pages/simulador/SimuladorRacaPage').then((m) => ({
+    default: m.SimuladorRacaPage,
+  })),
+)
 function PageFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -125,6 +130,7 @@ export function App() {
             <Route path="/servicos" element={<RedirectToExplorar tipo="servicos" />} />
             <Route path="/mapa" element={<RedirectToExplorar vista="mapa" />} />
             <Route path="/explorar" element={<ExplorarPage />} />
+            <Route path="/simulador-raca" element={<SimuladorRacaPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
             <Route path="/servicos/:id" element={<ServiceDetailPage />} />
             <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />
