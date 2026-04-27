@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { useGeolocation } from '../../hooks/useGeolocation'
+import type { DistrictOption, MunicipalityOption, ServiceCategoryOption } from '../../lib/lookups'
 
 type ExplorarTipo = 'criadores' | 'servicos'
 
@@ -39,23 +40,6 @@ interface BreedersPaginatedResponse {
 interface ServicesPaginatedResponse {
   data: ServiceCardData[]
   meta: { page: number; limit: number; total: number; totalPages: number }
-}
-
-interface DistrictOption {
-  id: number
-  code: string
-  namePt: string
-}
-
-interface MunicipalityOption {
-  id: number
-  namePt: string
-}
-
-interface ServiceCategoryOption {
-  id: number
-  nameSlug: string
-  namePt: string
 }
 
 export function DirectoryPage() {

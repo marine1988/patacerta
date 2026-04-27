@@ -15,6 +15,7 @@ import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { useGeolocation } from '../../hooks/useGeolocation'
+import type { DistrictOption, ServiceCategoryOption, SpeciesOption } from '../../lib/lookups'
 
 type MapTipo = 'criadores' | 'servicos'
 
@@ -49,24 +50,6 @@ interface MapServiceResult {
 interface MapServicesResponse {
   data: MapServiceResult[]
   total: number
-}
-
-interface SpeciesOption {
-  id: number
-  nameSlug: string
-  namePt: string
-}
-
-interface DistrictOption {
-  id: number
-  code: string
-  namePt: string
-}
-
-interface ServiceCategoryOption {
-  id: number
-  nameSlug: string
-  namePt: string
 }
 
 export function MapPage() {

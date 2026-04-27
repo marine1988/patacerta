@@ -3,21 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { Button } from '../ui/Button'
+import type { DistrictOption, SpeciesOption } from '../../lib/lookups'
 
 interface SearchBarProps {
   compact?: boolean
-}
-
-interface SpeciesOption {
-  id: number
-  nameSlug: string
-  namePt: string
-}
-
-interface DistrictOption {
-  id: number
-  code: string
-  namePt: string
 }
 
 export function SearchBar({ compact = false }: SearchBarProps) {
@@ -72,11 +61,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="label">Espécie</label>
-          <select
-            className="select"
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-          >
+          <select className="select" value={species} onChange={(e) => setSpecies(e.target.value)}>
             <option value="">Todas as espécies</option>
             {speciesList.map((s) => (
               <option key={s.id} value={s.id}>
@@ -88,11 +73,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
 
         <div>
           <label className="label">Distrito</label>
-          <select
-            className="select"
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
-          >
+          <select className="select" value={district} onChange={(e) => setDistrict(e.target.value)}>
             <option value="">Todos os distritos</option>
             {districtList.map((d) => (
               <option key={d.id} value={d.id}>
@@ -115,8 +96,18 @@ export function SearchBar({ compact = false }: SearchBarProps) {
 
         <div className="flex items-end">
           <Button type="submit" variant="primary" className="w-full" size="lg">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
             </svg>
             Pesquisar
           </Button>
