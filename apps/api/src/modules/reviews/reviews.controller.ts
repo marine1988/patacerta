@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import { checkReviewEligibility } from '../../lib/review-eligibility.js'
 import type {
   CreateReviewInput,
   ListReviewsInput,
@@ -142,6 +143,22 @@ export const createReview = asyncHandler(async (req, res) => {
     throw new AppError(400, 'Não pode avaliar o seu próprio perfil', 'SELF_REVIEW')
   if (breeder.status !== 'VERIFIED')
     throw new AppError(400, 'Só pode avaliar criadores verificados', 'NOT_VERIFIED')
+
+  // Anti-fraude: requerer interação real (admins ignoram).
+  if (req.user!.role !== 'ADMIN') {
+    const elig = await checkReviewEligibility(authorId, {
+      kind: 'breeder',
+      breederId: breeder.id,
+      counterpartyUserId: breeder.userId,
+    })
+    if (!elig.eligible) {
+      throw new AppError(
+        403,
+        elig.reason ?? 'Sem permissão para avaliar este criador',
+        'INTERACTION_REQUIRED',
+      )
+    }
+  }
 
   let review
   try {
@@ -342,6 +359,57 @@ export const flagReview = asyncHandler(async (req, res) => {
   })
 
   res.status(201).json({ review: updated, flagCount })
+})
+
+/**
+ * GET /reviews/eligibility?breederId=X
+ * Devolve {eligible, reason, detail} para a UI desactivar o botão e
+ * explicar a razão. Admins recebem sempre eligible:true.
+ */
+export const getReviewEligibility = asyncHandler(async (req, res) => {
+  const authorId = req.user!.userId
+  const breederId = parseId(String(req.query.breederId ?? ''))
+
+  if (req.user!.role === 'ADMIN') {
+    res.json({
+      eligible: true,
+      reason: null,
+      detail: {
+        threadFound: true,
+        sentByAuthor: 0,
+        sentByCounterparty: 0,
+        windowDays: 30,
+        minPerSide: 2,
+      },
+    })
+    return
+  }
+
+  const breeder = await prisma.breeder.findUnique({ where: { id: breederId } })
+  if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+
+  // Auto-avaliação: também não elegível, mas razão diferente.
+  if (breeder.userId === authorId) {
+    res.json({
+      eligible: false,
+      reason: 'Não pode avaliar o seu próprio perfil.',
+      detail: {
+        threadFound: false,
+        sentByAuthor: 0,
+        sentByCounterparty: 0,
+        windowDays: 30,
+        minPerSide: 2,
+      },
+    })
+    return
+  }
+
+  const result = await checkReviewEligibility(authorId, {
+    kind: 'breeder',
+    breederId: breeder.id,
+    counterpartyUserId: breeder.userId,
+  })
+  res.json(result)
 })
 
 export const listMyReviews = asyncHandler(async (req, res) => {

@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
 import { recomputeServiceRating } from '../../lib/service-rating.js'
+import { checkReviewEligibility } from '../../lib/review-eligibility.js'
 import type {
   CreateServiceReviewInput,
   ListServiceReviewsInput,
@@ -142,6 +143,22 @@ export const createServiceReview = asyncHandler(async (req, res) => {
     throw new AppError(400, 'Não pode avaliar o seu próprio serviço', 'SELF_REVIEW')
   if (service.status !== 'ACTIVE')
     throw new AppError(400, 'Só pode avaliar serviços activos', 'SERVICE_NOT_ACTIVE')
+
+  // Anti-fraude: requerer interação real (admins ignoram).
+  if (req.user!.role !== 'ADMIN') {
+    const elig = await checkReviewEligibility(authorId, {
+      kind: 'service',
+      serviceId: service.id,
+      counterpartyUserId: service.providerId,
+    })
+    if (!elig.eligible) {
+      throw new AppError(
+        403,
+        elig.reason ?? 'Sem permissão para avaliar este serviço',
+        'INTERACTION_REQUIRED',
+      )
+    }
+  }
 
   let review
   try {
@@ -377,6 +394,72 @@ export const flagServiceReview = asyncHandler(async (req, res) => {
   })
 
   res.status(201).json({ review: updated, flagCount })
+})
+
+/**
+ * GET /service-reviews/eligibility?serviceId=X
+ * Devolve {eligible, reason, detail} para a UI desactivar o botão e
+ * explicar a razão. Admins recebem sempre eligible:true.
+ */
+export const getServiceReviewEligibility = asyncHandler(async (req, res) => {
+  const authorId = req.user!.userId
+  const serviceId = parseId(String(req.query.serviceId ?? ''))
+
+  if (req.user!.role === 'ADMIN') {
+    res.json({
+      eligible: true,
+      reason: null,
+      detail: {
+        threadFound: true,
+        sentByAuthor: 0,
+        sentByCounterparty: 0,
+        windowDays: 30,
+        minPerSide: 2,
+      },
+    })
+    return
+  }
+
+  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  if (!service) throw new AppError(404, 'Serviço não encontrado', 'SERVICE_NOT_FOUND')
+
+  // Auto-avaliação: também não elegível, mas razão diferente.
+  if (service.providerId === authorId) {
+    res.json({
+      eligible: false,
+      reason: 'Não pode avaliar o seu próprio serviço.',
+      detail: {
+        threadFound: false,
+        sentByAuthor: 0,
+        sentByCounterparty: 0,
+        windowDays: 30,
+        minPerSide: 2,
+      },
+    })
+    return
+  }
+
+  if (service.status !== 'ACTIVE') {
+    res.json({
+      eligible: false,
+      reason: 'Só pode avaliar serviços activos.',
+      detail: {
+        threadFound: false,
+        sentByAuthor: 0,
+        sentByCounterparty: 0,
+        windowDays: 30,
+        minPerSide: 2,
+      },
+    })
+    return
+  }
+
+  const result = await checkReviewEligibility(authorId, {
+    kind: 'service',
+    serviceId: service.id,
+    counterpartyUserId: service.providerId,
+  })
+  res.json(result)
 })
 
 export const listMyServiceReviews = asyncHandler(async (req, res) => {

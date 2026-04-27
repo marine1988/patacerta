@@ -22,6 +22,7 @@ export const reviewsRouter = Router()
 // Authenticated user scoped listings (must come before /:id)
 reviewsRouter.get('/mine', requireAuth, ctrl.listMyReviews)
 reviewsRouter.get('/about-me', requireAuth, requireBreederProfile, ctrl.listReviewsAboutMe)
+reviewsRouter.get('/eligibility', requireAuth, ctrl.getReviewEligibility)
 
 // Public listing (admins get extra visibility via optionalAuth)
 reviewsRouter.get('/', optionalAuth, validate(listReviewsSchema, 'query'), ctrl.listReviews)

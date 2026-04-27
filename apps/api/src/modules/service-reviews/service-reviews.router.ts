@@ -17,6 +17,7 @@ export const serviceReviewsRouter = Router()
 // Authenticated user scoped listings (must come before /:id)
 serviceReviewsRouter.get('/mine', requireAuth, ctrl.listMyServiceReviews)
 serviceReviewsRouter.get('/about-me', requireAuth, ctrl.listServiceReviewsAboutMe)
+serviceReviewsRouter.get('/eligibility', requireAuth, ctrl.getServiceReviewEligibility)
 
 // Public listing (admins get extra visibility via optionalAuth)
 serviceReviewsRouter.get(
