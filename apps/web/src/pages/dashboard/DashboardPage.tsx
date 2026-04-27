@@ -30,7 +30,7 @@ import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
 import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── Types ────────────────────────────
 
 interface BreederPhoto {
   id: number
@@ -151,7 +151,7 @@ interface ThreadDetail {
   pagination: { page: number; limit: number; total: number; totalPages: number }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ProfileTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── ProfileTab ────────────────────────────
 
 function ProfileTab() {
   const { user, updateUser } = useAuth()
@@ -215,7 +215,7 @@ function ProfileTab() {
     e.preventDefault()
     setPwMsg(null)
     if (newPassword !== confirmPassword) {
-      setPwMsg({ type: 'error', text: 'As palavras-passe nÃ£o coincidem.' })
+      setPwMsg({ type: 'error', text: 'As palavras-passe não coincidem.' })
       return
     }
     if (newPassword.length < 8) {
@@ -344,7 +344,7 @@ function ProfileTab() {
   )
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ BreederTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── BreederTab ────────────────────────────
 
 function BreederTab() {
   const queryClient = useQueryClient()
@@ -482,10 +482,10 @@ function BreederTab() {
     mutationFn: () => api.post('/breeders/me/submit-verification'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
-      setMsg({ type: 'success', text: 'Submetido para verificação com sucesso.' })
+      setMsg({ type: 'success', text: 'Submetido para verifica──o com sucesso.' })
     },
     onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao submeter para verificação.' })
+      setMsg({ type: 'error', text: 'Erro ao submeter para verifica──o.' })
     },
   })
 
@@ -554,7 +554,7 @@ function BreederTab() {
     if (existing + files.length > MAX_BREEDER_PHOTOS) {
       setPhotoMsg({
         type: 'error',
-        text: `Máximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
+        text: `M─ximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
       })
       return
     }
@@ -630,8 +630,8 @@ function BreederTab() {
     // before this tab can render. Keep as defensive fallback.
     return (
       <EmptyState
-        title="Perfil de criador nÃ£o encontrado"
-        description="Vamos redirecionÃ¡-lo para completar o seu perfil."
+        title="Perfil de criador não encontrado"
+        description="Vamos redirecioná-lo para completar o seu perfil."
         action={
           <Button onClick={() => (window.location.href = '/onboarding/criador')}>
             Completar perfil
@@ -644,7 +644,7 @@ function BreederTab() {
   const docTypeOptions = [
     { value: 'NIF', label: 'NIF' },
     { value: 'DGAV', label: 'DGAV' },
-    { value: 'CARTAO_CIDADAO', label: 'CartÃ£o de CidadÃ£o' },
+    { value: 'CARTAO_CIDADAO', label: 'Cartão de Cidadão' },
     { value: 'CITES', label: 'CITES' },
     { value: 'OTHER', label: 'Outro' },
   ]
@@ -700,7 +700,7 @@ function BreederTab() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
-                label="NÃºmero DGAV"
+                label="Número DGAV"
                 value={form.dgavNumber}
                 onChange={(e) => setForm((p) => ({ ...p, dgavNumber: e.target.value }))}
                 disabled={isLocked}
@@ -718,7 +718,7 @@ function BreederTab() {
               type="tel"
             />
             <div>
-              <label className="label">DescriÃ§Ã£o</label>
+              <label className="label">Descrição</label>
               <textarea
                 className="input min-h-[100px]"
                 value={form.description}
@@ -728,7 +728,7 @@ function BreederTab() {
 
             {/* Species */}
             <div>
-              <label className="label">EspÃ©cies</label>
+              <label className="label">Espécies</label>
               <div className="mt-1 flex flex-wrap gap-3">
                 {speciesList?.map((sp) => (
                   <label key={sp.id} className="flex items-center gap-1.5 text-sm text-gray-700">
@@ -756,25 +756,25 @@ function BreederTab() {
                 }
               />
               <Select
-                label="MunicÃ­pio"
+                label="Município"
                 options={(municipalities ?? []).map((m) => ({
                   value: String(m.id),
                   label: m.name,
                 }))}
-                placeholder="Selecionar municÃ­pio"
+                placeholder="Selecionar município"
                 value={form.municipalityId}
                 onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
                 disabled={!form.districtId}
               />
             </div>
 
-            {/* Vídeo de apresentação */}
+            {/* V─deo de apresenta──o */}
             <div className="border-t border-gray-200 pt-4">
               <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Vídeo de apresentação (YouTube)
+                V─deo de apresenta──o (YouTube)
               </h4>
               <Input
-                label="URL ou ID do vídeo YouTube"
+                label="URL ou ID do v─deo YouTube"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={form.youtubeVideoId}
                 onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
@@ -797,7 +797,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, cpcMember: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Membro do CPC (Clube Português de Canicultura)
+                  Membro do CPC (Clube Portugu─s de Canicultura)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -806,26 +806,26 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, fciAffiliated: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Filiado FCI (Fédération Cynologique Internationale)
+                  Filiado FCI (F─d─ration Cynologique Internationale)
                 </label>
               </div>
             </div>
 
-            {/* O que está incluído */}
+            {/* O que est─ inclu─do */}
             <div className="border-t border-gray-200 pt-4">
               <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                O que está incluído com cada cachorro
+                O que est─ inclu─do com cada cachorro
               </h4>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(
                   [
-                    { key: 'vetCheckup', label: 'Check-up veterinário' },
+                    { key: 'vetCheckup', label: 'Check-up veterin─rio' },
                     { key: 'microchip', label: 'Microchip implantado' },
-                    { key: 'vaccinations', label: 'Vacinação em dia' },
+                    { key: 'vaccinations', label: 'Vacina──o em dia' },
                     { key: 'lopRegistry', label: 'Registo no LOP' },
                     { key: 'kennelName', label: 'Nome de canil' },
                     { key: 'salesInvoice', label: 'Factura de venda' },
-                    { key: 'food', label: 'Alimentação inicial' },
+                    { key: 'food', label: 'Alimenta──o inicial' },
                     { key: 'initialTraining', label: 'Treino inicial' },
                   ] as const
                 ).map(({ key, label }) => (
@@ -864,7 +864,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Entrega ao domicílio (carro)
+                  Entrega ao domic─lio (carro)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -873,7 +873,7 @@ function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Envio por avião
+                  Envio por avi─o
                 </label>
               </div>
               <div className="mt-3">
@@ -882,7 +882,7 @@ function BreederTab() {
                   className="input min-h-[80px]"
                   value={form.pickupNotes}
                   onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
-                  placeholder="Custos, condições, zonas cobertas..."
+                  placeholder="Custos, condi──es, zonas cobertas..."
                   maxLength={1000}
                 />
               </div>
@@ -919,7 +919,7 @@ function BreederTab() {
         photos={breeder.photos ?? []}
         max={MAX_BREEDER_PHOTOS}
         title="Galeria do criador"
-        emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
+        emptyHint="Ainda n─o adicionou fotos. Mostre as suas instala──es, cuidados, ambiente."
         onUpload={handleUploadPhotos}
         uploadInputRef={photoInputRef}
         isUploading={uploadPhotosMutation.isPending}
@@ -930,7 +930,7 @@ function BreederTab() {
 
       {/* Documents */}
       <Card hover={false}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificaÃ§Ã£o</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
 
         {breeder.verificationDocs.length > 0 ? (
           <div className="space-y-3 mb-6">
@@ -1000,14 +1000,14 @@ function BreederTab() {
           loading={submitVerificationMutation.isPending}
           onClick={() => submitVerificationMutation.mutate()}
         >
-          Submeter para verificaÃ§Ã£o
+          Submeter para verificação
         </Button>
       )}
     </div>
   )
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MessagesTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── MessagesTab ────────────────────────────
 
 function MessagesTab() {
   const { user } = useAuth()
@@ -1353,7 +1353,7 @@ function MessagesTab() {
           <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
             &larr; Voltar
           </Button>
-          <EmptyState title="Conversa nÃ£o encontrada" />
+          <EmptyState title="Conversa não encontrada" />
         </div>
       )
     }
@@ -1383,7 +1383,7 @@ function MessagesTab() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
-            &larr; Voltar Ã s conversas
+            &larr; Voltar às conversas
           </Button>
           <Button
             variant="secondary"
@@ -1479,7 +1479,7 @@ function MessagesTab() {
                           onDelete={() => {
                             if (
                               window.confirm(
-                                'Eliminar esta mensagem? Esta aÃ§Ã£o nÃ£o pode ser desfeita.',
+                                'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
                               )
                             ) {
                               deleteMessageMutation.mutate(msg.id)
@@ -1523,7 +1523,7 @@ function MessagesTab() {
                             onClick={() => {
                               const trimmed = editText.trim()
                               if (!trimmed) {
-                                setEditError('Mensagem nÃ£o pode estar vazia.')
+                                setEditError('Mensagem não pode estar vazia.')
                                 return
                               }
                               editMessageMutation.mutate({
@@ -1553,8 +1553,8 @@ function MessagesTab() {
                       title={formatDateTime(msg.createdAt)}
                     >
                       {formatDateTime(msg.createdAt)}
-                      {isEdited && ' Â· editada'}
-                      {isOwn && msg.readAt && ' Â· lida'}
+                      {isEdited && ' · editada'}
+                      {isOwn && msg.readAt && ' · lida'}
                     </p>
                   </div>
                 </div>
@@ -1714,8 +1714,8 @@ function MessagesTab() {
           title={showArchived ? 'Sem conversas arquivadas' : 'Sem mensagens'}
           description={
             showArchived
-              ? 'As conversas que arquivar aparecerÃ£o aqui.'
-              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerÃ£o aqui.'
+              ? 'As conversas que arquivar aparecerão aqui.'
+              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui.'
           }
         />
       ) : (
@@ -1780,7 +1780,7 @@ function MessagesTab() {
     </>
   )
 }
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SettingsTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── SettingsTab ────────────────────────────
 
 function SettingsTab() {
   const { user, logout } = useAuth()
@@ -1832,13 +1832,13 @@ function SettingsTab() {
   return (
     <div className="space-y-6">
       <Card hover={false}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">NotificaÃ§Ãµes</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Notificações</h3>
         <div className="space-y-4">
           <label className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Novas mensagens</p>
               <p className="text-xs text-gray-500">
-                Receber notificaÃ§Ã£o quando receber uma nova mensagem.
+                Receber notificação quando receber uma nova mensagem.
               </p>
             </div>
             <input
@@ -1850,9 +1850,9 @@ function SettingsTab() {
           </label>
           <label className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900">AtualizaÃ§Ãµes de verificaÃ§Ã£o</p>
+              <p className="text-sm font-medium text-gray-900">Atualizações de verificação</p>
               <p className="text-xs text-gray-500">
-                Receber notificaÃ§Ã£o sobre o estado da verificaÃ§Ã£o.
+                Receber notificação sobre o estado da verificação.
               </p>
             </div>
             <input
@@ -1884,8 +1884,8 @@ function SettingsTab() {
         size="sm"
       >
         <p className="text-sm text-gray-600 mb-6">
-          Tem a certeza de que deseja eliminar a sua conta? Esta aÃ§Ã£o Ã© irreversÃ­vel e todos os
-          seus dados serÃ£o permanentemente apagados.
+          Tem a certeza de que deseja eliminar a sua conta? Esta ação é irreversível e todos os
+          seus dados serão permanentemente apagados.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
@@ -1904,7 +1904,7 @@ function SettingsTab() {
   )
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DashboardPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── DashboardPage ────────────────────────────
 
 export default function DashboardPage() {
   const [searchParams] = useSearchParams()
@@ -1963,7 +1963,7 @@ export default function DashboardPage() {
       ? [
           {
             id: 'servicos',
-            label: 'ServiÃ§os',
+            label: 'Serviços',
             icon: (
               <svg
                 className="h-4 w-4"
@@ -2006,7 +2006,7 @@ export default function DashboardPage() {
     },
     {
       id: 'avaliacoes',
-      label: isBreeder ? 'AvaliaÃ§Ãµes sobre mim' : 'Minhas avaliaÃ§Ãµes',
+      label: isBreeder ? 'Avaliações sobre mim' : 'Minhas avaliações',
       icon: (
         <svg
           className="h-4 w-4"
@@ -2028,7 +2028,7 @@ export default function DashboardPage() {
       ? [
           {
             id: 'avaliacoes-servicos',
-            label: 'Avaliações de serviços',
+            label: 'Avalia──es de servi─os',
             icon: (
               <svg
                 className="h-4 w-4"
@@ -2050,7 +2050,7 @@ export default function DashboardPage() {
       : []),
     {
       id: 'definicoes',
-      label: 'DefiniÃ§Ãµes',
+      label: 'Definições',
       icon: (
         <svg
           className="h-4 w-4"
@@ -2077,7 +2077,7 @@ export default function DashboardPage() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Painel de controlo</h1>
-        <p className="page-subtitle">Gerir o seu perfil, mensagens e definiÃ§Ãµes.</p>
+        <p className="page-subtitle">Gerir o seu perfil, mensagens e definições.</p>
       </div>
 
       <Tabs tabs={tabs} defaultTab={defaultTab} />
