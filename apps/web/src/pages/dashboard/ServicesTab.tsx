@@ -23,7 +23,7 @@ import {
   type DragEvent,
 } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { extractApiError } from '../../lib/errors'
 import { api } from '../../lib/api'
 import { formatSmart } from '../../lib/dates'
 import {
@@ -137,14 +137,6 @@ function formatPriceEUR(cents: number, unit: ServicePriceUnit): string {
   return suffix ? `${value}€ ${suffix}` : `${value}€`
 }
 
-function getExtractedError(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; message?: string } | undefined
-    return data?.error || data?.message || fallback
-  }
-  return fallback
-}
-
 function parsePriceToCents(raw: string): number | null {
   const trimmed = raw.trim().replace(',', '.')
   if (!trimmed) return null
@@ -244,7 +236,7 @@ export function ServicesTab() {
       })
     },
     onError: (err) => {
-      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao criar anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao criar anúncio.') })
     },
   })
 
@@ -256,7 +248,7 @@ export function ServicesTab() {
       setMsg({ type: 'success', text: 'Anúncio atualizado com sucesso.' })
     },
     onError: (err) => {
-      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao atualizar anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao atualizar anúncio.') })
     },
   })
 
@@ -267,7 +259,7 @@ export function ServicesTab() {
       setMsg({ type: 'success', text: 'Anúncio publicado.' })
     },
     onError: (err) => {
-      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao publicar anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao publicar anúncio.') })
     },
   })
 
@@ -278,7 +270,7 @@ export function ServicesTab() {
       setMsg({ type: 'success', text: 'Anúncio pausado.' })
     },
     onError: (err) => {
-      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao pausar anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao pausar anúncio.') })
     },
   })
 
@@ -295,7 +287,7 @@ export function ServicesTab() {
     },
     onError: (err) => {
       setDeleteId(null)
-      setMsg({ type: 'error', text: getExtractedError(err, 'Erro ao remover anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao remover anúncio.') })
     },
   })
 
@@ -310,7 +302,7 @@ export function ServicesTab() {
       if (photoInputRef.current) photoInputRef.current.value = ''
     },
     onError: (err) => {
-      setPhotoMsg({ type: 'error', text: getExtractedError(err, 'Erro ao enviar fotos.') })
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao enviar fotos.') })
     },
   })
 
@@ -353,7 +345,7 @@ export function ServicesTab() {
       if (ctx?.prev) {
         queryClient.setQueryData(['services', 'mine'], ctx.prev)
       }
-      setPhotoMsg({ type: 'error', text: getExtractedError(err, 'Erro ao reordenar fotos.') })
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao reordenar fotos.') })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })

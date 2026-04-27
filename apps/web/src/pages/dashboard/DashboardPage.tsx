@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { api } from '../../lib/api'
+import { extractApiError } from '../../lib/errors'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDateTime, formatSmart } from '../../lib/dates'
 import {
@@ -127,14 +127,6 @@ interface PaginatedMeta {
   limit: number
   total: number
   totalPages: number
-}
-
-function getExtractedError(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; message?: string } | undefined
-    return data?.error ?? data?.message ?? err.message ?? fallback
-  }
-  return fallback
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ProfileTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -937,7 +929,7 @@ function MessagesTab() {
       if (context?.previous && selectedThreadId) {
         queryClient.setQueryData(['thread', selectedThreadId], context.previous)
       }
-      setSendError(getExtractedError(err, 'Erro ao enviar mensagem.'))
+      setSendError(extractApiError(err, 'Erro ao enviar mensagem.'))
     },
   })
 
@@ -957,7 +949,7 @@ function MessagesTab() {
       queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
     },
     onError: (err) => {
-      setNewThreadError(getExtractedError(err, 'Erro ao criar conversa.'))
+      setNewThreadError(extractApiError(err, 'Erro ao criar conversa.'))
     },
   })
 
@@ -985,7 +977,7 @@ function MessagesTab() {
       queryClient.invalidateQueries({ queryKey: ['threads'] })
     },
     onError: (err) => {
-      setEditError(getExtractedError(err, 'Erro ao editar mensagem.'))
+      setEditError(extractApiError(err, 'Erro ao editar mensagem.'))
     },
   })
 
@@ -1006,7 +998,7 @@ function MessagesTab() {
       setReportError(null)
     },
     onError: (err) => {
-      setReportError(getExtractedError(err, 'Erro ao denunciar mensagem.'))
+      setReportError(extractApiError(err, 'Erro ao denunciar mensagem.'))
     },
   })
 

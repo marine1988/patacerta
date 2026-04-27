@@ -1,8 +1,8 @@
 import { useState, lazy, Suspense } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { api } from '../../lib/api'
+import { extractApiError } from '../../lib/errors'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDate } from '../../lib/dates'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
@@ -72,14 +72,6 @@ type SortOption = 'recent' | 'oldest' | 'highest' | 'lowest'
 
 const PAGE_SIZE = 10
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; message?: string } | undefined
-    return data?.error ?? data?.message ?? err.message ?? fallback
-  }
-  return fallback
-}
-
 export function BreederProfilePage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
@@ -137,7 +129,7 @@ export function BreederProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
     },
     onError: (err) => {
-      setActionError(extractErrorMessage(err, 'Erro ao publicar avaliação.'))
+      setActionError(extractApiError(err, 'Erro ao publicar avaliação.'))
     },
   })
 
@@ -153,7 +145,7 @@ export function BreederProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
     },
     onError: (err) => {
-      setActionError(extractErrorMessage(err, 'Erro ao atualizar avaliação.'))
+      setActionError(extractApiError(err, 'Erro ao atualizar avaliação.'))
     },
   })
 
@@ -175,7 +167,7 @@ export function BreederProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
     },
     onError: (err) => {
-      setActionError(extractErrorMessage(err, 'Erro ao denunciar avaliação.'))
+      setActionError(extractApiError(err, 'Erro ao denunciar avaliação.'))
     },
   })
 
@@ -188,7 +180,7 @@ export function BreederProfilePage() {
       navigate(`/painel?tab=mensagens&threadId=${res.threadId}`)
     },
     onError: (err) => {
-      setThreadError(extractErrorMessage(err, 'Erro ao enviar mensagem.'))
+      setThreadError(extractApiError(err, 'Erro ao enviar mensagem.'))
     },
   })
 

@@ -1,8 +1,8 @@
 import { useState, lazy, Suspense } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { api } from '../../lib/api'
+import { extractApiError } from '../../lib/errors'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { formatDate } from '../../lib/dates'
@@ -97,14 +97,6 @@ function formatPrice(cents: number, unit: ServicePriceUnit): string {
   })
   const suffix = priceUnitSuffix[unit]
   return suffix ? `${value}€ ${suffix}` : `${value}€`
-}
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; message?: string } | undefined
-    return data?.error ?? data?.message ?? err.message ?? fallback
-  }
-  return fallback
 }
 
 /** Compoe uma descricao curta para meta description / og:description. */
@@ -278,7 +270,7 @@ export function ServiceDetailPage() {
       navigate(`/painel?tab=mensagens&threadId=${res.threadId}`)
     },
     onError: (err) => {
-      setThreadError(extractErrorMessage(err, 'Erro ao enviar mensagem.'))
+      setThreadError(extractApiError(err, 'Erro ao enviar mensagem.'))
     },
   })
 
@@ -291,7 +283,7 @@ export function ServiceDetailPage() {
       setReportSuccess(true)
     },
     onError: (err) => {
-      setReportError(extractErrorMessage(err, 'Erro ao enviar denúncia.'))
+      setReportError(extractApiError(err, 'Erro ao enviar denúncia.'))
     },
   })
 
@@ -334,7 +326,7 @@ export function ServiceDetailPage() {
       invalidateReviews()
     },
     onError: (err) => {
-      setReviewActionError(extractErrorMessage(err, 'Erro ao publicar avaliação.'))
+      setReviewActionError(extractApiError(err, 'Erro ao publicar avaliação.'))
     },
   })
 
@@ -348,7 +340,7 @@ export function ServiceDetailPage() {
       invalidateReviews()
     },
     onError: (err) => {
-      setReviewActionError(extractErrorMessage(err, 'Erro ao atualizar avaliação.'))
+      setReviewActionError(extractApiError(err, 'Erro ao atualizar avaliação.'))
     },
   })
 
@@ -366,7 +358,7 @@ export function ServiceDetailPage() {
       invalidateReviews()
     },
     onError: (err) => {
-      setReviewActionError(extractErrorMessage(err, 'Erro ao denunciar avaliação.'))
+      setReviewActionError(extractApiError(err, 'Erro ao denunciar avaliação.'))
     },
   })
 
@@ -379,7 +371,7 @@ export function ServiceDetailPage() {
       invalidateReviews()
     },
     onError: (err) => {
-      setReviewActionError(extractErrorMessage(err, 'Erro ao publicar resposta.'))
+      setReviewActionError(extractApiError(err, 'Erro ao publicar resposta.'))
     },
   })
 

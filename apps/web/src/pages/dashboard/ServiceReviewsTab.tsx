@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { api } from '../../lib/api'
+import { extractApiError } from '../../lib/errors'
 import { Button, EmptyState, Spinner } from '../../components/ui'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
@@ -28,14 +28,6 @@ interface PaginatedMeta {
   limit: number
   total: number
   totalPages: number
-}
-
-function getExtractedError(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { error?: string; message?: string } | undefined
-    return data?.error ?? data?.message ?? err.message ?? fallback
-  }
-  return fallback
 }
 
 /**
@@ -65,7 +57,7 @@ export function ServiceReviewsTab() {
       queryClient.invalidateQueries({ queryKey: ['service-reviews-about-me'] })
     },
     onError: (err) => {
-      setReplyError(getExtractedError(err, 'Erro ao publicar resposta.'))
+      setReplyError(extractApiError(err, 'Erro ao publicar resposta.'))
     },
   })
 
