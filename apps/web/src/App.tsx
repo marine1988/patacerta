@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
@@ -23,12 +23,11 @@ const VerifyEmailPage = lazy(() =>
     default: m.VerifyEmailPage,
   })),
 )
-const DirectoryPage = lazy(() =>
-  import('./pages/directory/DirectoryPage').then((m) => ({
-    default: m.DirectoryPage,
+const ExplorarPage = lazy(() =>
+  import('./pages/explorar/ExplorarPage').then((m) => ({
+    default: m.ExplorarPage,
   })),
 )
-const MapPage = lazy(() => import('./pages/map/MapPage').then((m) => ({ default: m.MapPage })))
 const BreederProfilePage = lazy(() =>
   import('./pages/breeder/BreederProfilePage').then((m) => ({
     default: m.BreederProfilePage,
@@ -60,6 +59,25 @@ function PageFallback() {
       <Spinner size="lg" />
     </div>
   )
+}
+
+/**
+ * Redirige rotas legadas (/diretorio, /servicos, /mapa) para /explorar
+ * preservando a query string e injectando tipo/vista quando aplicavel.
+ */
+function RedirectToExplorar({
+  tipo,
+  vista,
+}: {
+  tipo?: 'criadores' | 'servicos'
+  vista?: 'lista' | 'mapa'
+}) {
+  const [searchParams] = useSearchParams()
+  const next = new URLSearchParams(searchParams)
+  if (tipo === 'servicos' && !next.get('tipo')) next.set('tipo', 'servicos')
+  if (vista === 'mapa' && !next.get('vista')) next.set('vista', 'mapa')
+  const qs = next.toString()
+  return <Navigate to={qs ? `/explorar?${qs}` : '/explorar'} replace />
 }
 
 function ErrorFallback({
@@ -95,9 +113,10 @@ export function App() {
             <Route path="/registar" element={<RegisterPage />} />
             <Route path="/recuperar-palavra-passe" element={<ResetPasswordPage />} />
             <Route path="/verificar-email" element={<VerifyEmailPage />} />
-            <Route path="/diretorio" element={<DirectoryPage />} />
-            <Route path="/servicos" element={<Navigate to="/diretorio?tipo=servicos" replace />} />
-            <Route path="/mapa" element={<MapPage />} />
+            <Route path="/diretorio" element={<RedirectToExplorar />} />
+            <Route path="/servicos" element={<RedirectToExplorar tipo="servicos" />} />
+            <Route path="/mapa" element={<RedirectToExplorar vista="mapa" />} />
+            <Route path="/explorar" element={<ExplorarPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
             <Route path="/servicos/:id" element={<ServiceDetailPage />} />
             <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />

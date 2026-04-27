@@ -33,7 +33,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     if (species) params.set('speciesId', species)
     if (district) params.set('districtId', district)
     if (query.trim()) params.set('query', query.trim())
-    navigate(`/diretorio?${params.toString()}`)
+    navigate(`/explorar?${params.toString()}`)
   }
 
   if (compact) {

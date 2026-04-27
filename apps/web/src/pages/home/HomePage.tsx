@@ -41,10 +41,10 @@ export function HomePage() {
               </p>
 
               <div className="mt-10 flex flex-wrap items-center gap-6">
-                <Link to="/diretorio" className="btn-primary">
+                <Link to="/explorar" className="btn-primary">
                   Explorar criadores
                 </Link>
-                <Link to="/servicos" className="btn-secondary">
+                <Link to="/explorar?tipo=servicos" className="btn-secondary">
                   Ver serviços
                 </Link>
               </div>
@@ -138,13 +138,13 @@ export function HomePage() {
               eyebrow="01"
               title="Passeios"
               description="Passeadores experientes para o dia-a-dia ou ocasiões pontuais. Horários flexíveis, encontros presenciais antes de começar."
-              href="/diretorio?tipo=servicos&categoria=passeio"
+              href="/explorar?tipo=servicos&categoria=passeio"
             />
             <ServiceCategoryCard
               eyebrow="02"
               title="Pet-sitting"
               description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem stress de canil."
-              href="/diretorio?tipo=servicos&categoria=pet-sitting"
+              href="/explorar?tipo=servicos&categoria=pet-sitting"
             />
           </div>
 
@@ -152,7 +152,7 @@ export function HomePage() {
             <p className="font-serif text-lg italic text-muted">
               Mais categorias a chegar — banhos, treino, transporte, veterinária.
             </p>
-            <Link to="/servicos" className="btn-primary">
+            <Link to="/explorar?tipo=servicos" className="btn-primary">
               Ver todos os serviços
             </Link>
           </div>

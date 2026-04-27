@@ -72,8 +72,12 @@ export function Navbar() {
   const isActive = (path: string) => location.pathname === path
 
   const currentTipo = new URLSearchParams(location.search).get('tipo')
-  const isDirectoryCriadores = location.pathname === '/diretorio' && currentTipo !== 'servicos'
-  const isDirectoryServicos = location.pathname === '/diretorio' && currentTipo === 'servicos'
+  const currentVista = new URLSearchParams(location.search).get('vista')
+  const isExplorarCriadores =
+    location.pathname === '/explorar' && currentTipo !== 'servicos' && currentVista !== 'mapa'
+  const isExplorarServicos =
+    location.pathname === '/explorar' && currentTipo === 'servicos' && currentVista !== 'mapa'
+  const isExplorarMapa = location.pathname === '/explorar' && currentVista === 'mapa'
 
   const navLinkClass = (path: string) =>
     `text-[11px] font-medium uppercase tracking-caps transition-colors ${
@@ -99,22 +103,27 @@ export function Navbar() {
         {/* Desktop nav */}
         <div className="hidden items-center gap-10 md:flex">
           <Link
-            to="/diretorio"
+            to="/explorar"
             className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
-              isDirectoryCriadores ? 'text-caramel-500' : 'text-muted hover:text-ink'
+              isExplorarCriadores ? 'text-caramel-500' : 'text-muted hover:text-ink'
             }`}
           >
-            Diretório
+            Criadores
           </Link>
           <Link
-            to="/servicos"
+            to="/explorar?tipo=servicos"
             className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
-              isDirectoryServicos ? 'text-caramel-500' : 'text-muted hover:text-ink'
+              isExplorarServicos ? 'text-caramel-500' : 'text-muted hover:text-ink'
             }`}
           >
             Serviços
           </Link>
-          <Link to="/mapa" className={navLinkClass('/mapa')}>
+          <Link
+            to="/explorar?vista=mapa"
+            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+              isExplorarMapa ? 'text-caramel-500' : 'text-muted hover:text-ink'
+            }`}
+          >
             Mapa
           </Link>
 
@@ -242,21 +251,21 @@ export function Navbar() {
         <div className="border-t border-line bg-bg px-6 pb-8 pt-4 md:hidden">
           <div className="flex flex-col gap-1">
             <Link
-              to="/diretorio"
+              to="/explorar"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >
-              Diretório
+              Criadores
             </Link>
             <Link
-              to="/servicos"
+              to="/explorar?tipo=servicos"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >
               Serviços
             </Link>
             <Link
-              to="/mapa"
+              to="/explorar?vista=mapa"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >

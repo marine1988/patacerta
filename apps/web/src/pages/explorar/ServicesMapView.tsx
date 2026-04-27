@@ -1,10 +1,8 @@
 import { useEffect, useMemo } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Circle, CircleMarker, useMap } from 'react-leaflet'
 import { api } from '../../lib/api'
 import { PORTUGAL_CENTER, PORTUGAL_ZOOM } from '../../lib/leaflet-setup'
-import { MarkerClusterLayer, type MapMarker } from '../../components/map/MarkerClusterLayer'
 import {
   ServiceMarkerClusterLayer,
   type ServiceMapMarker,
@@ -15,27 +13,7 @@ import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { useGeolocation } from '../../hooks/useGeolocation'
-import type { DistrictOption, ServiceCategoryOption, SpeciesOption } from '../../lib/lookups'
-
-type MapTipo = 'criadores' | 'servicos'
-
-interface MapBreederResult {
-  id: number
-  businessName: string
-  status: string
-  district: { id: number; namePt: string }
-  municipality: { id: number; namePt: string }
-  species: { speciesId: number; species: { id: number; namePt: string } }[]
-  avgRating: number | null
-  reviewCount: number
-  latitude: number
-  longitude: number
-}
-
-interface MapBreedersResponse {
-  data: MapBreederResult[]
-  total: number
-}
+import type { DistrictOption, ServiceCategoryOption } from '../../lib/lookups'
 
 interface MapServiceResult {
   id: number
@@ -52,249 +30,10 @@ interface MapServicesResponse {
   total: number
 }
 
-export function MapPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-
-  const tipo: MapTipo = searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores'
-
-  function setTipo(next: MapTipo) {
-    const params = new URLSearchParams(searchParams)
-    if (next === 'criadores') params.delete('tipo')
-    else params.set('tipo', next)
-    // Limpa filtros específicos do outro tipo
-    if (next === 'servicos') {
-      params.delete('speciesId')
-    } else {
-      params.delete('categoryId')
-      params.delete('priceMin')
-      params.delete('priceMax')
-      params.delete('municipalityId')
-    }
-    setSearchParams(params)
-  }
-
-  return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Mapa</h1>
-        <p className="page-subtitle">
-          Explore criadores e prestadores de serviços em Portugal. Markers agrupados por zona.
-        </p>
-      </div>
-
-      <div className="mt-4 border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tipo">
-          <button
-            type="button"
-            onClick={() => setTipo('criadores')}
-            className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-              tipo === 'criadores'
-                ? 'border-caramel-600 text-caramel-700'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-            }`}
-          >
-            Criadores
-          </button>
-          <button
-            type="button"
-            onClick={() => setTipo('servicos')}
-            className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-              tipo === 'servicos'
-                ? 'border-caramel-600 text-caramel-700'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-            }`}
-          >
-            Serviços
-          </button>
-        </nav>
-      </div>
-
-      {tipo === 'criadores' ? (
-        <BreedersMapView searchParams={searchParams} setSearchParams={setSearchParams} />
-      ) : (
-        <ServicesMapView searchParams={searchParams} setSearchParams={setSearchParams} />
-      )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────
-
-interface MapViewProps {
+interface Props {
   searchParams: URLSearchParams
   setSearchParams: (params: URLSearchParams) => void
 }
-
-function BreedersMapView({ searchParams, setSearchParams }: MapViewProps) {
-  const speciesId = searchParams.get('speciesId') || ''
-  const districtId = searchParams.get('districtId') || ''
-  const query = searchParams.get('query') || ''
-
-  const { data: speciesList = [] } = useQuery<SpeciesOption[]>({
-    queryKey: ['species'],
-    queryFn: () => api.get('/search/species').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
-
-  const { data: districtsList = [] } = useQuery<DistrictOption[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
-
-  const { data, isLoading, isError } = useQuery<MapBreedersResponse>({
-    queryKey: ['breeders-map', { speciesId, districtId, query }],
-    queryFn: () =>
-      api
-        .get('/search/breeders/map', {
-          params: {
-            speciesId: speciesId || undefined,
-            districtId: districtId || undefined,
-            query: query || undefined,
-          },
-        })
-        .then((r) => r.data),
-  })
-
-  const markers: MapMarker[] = useMemo(() => {
-    return (data?.data ?? []).map((b) => ({
-      id: b.id,
-      lat: b.latitude,
-      lng: b.longitude,
-      businessName: b.businessName,
-      districtName: b.district.namePt,
-      municipalityName: b.municipality.namePt,
-      avgRating: b.avgRating,
-      reviewCount: b.reviewCount,
-      speciesLabels: b.species.map((s) => s.species.namePt),
-    }))
-  }, [data])
-
-  function updateFilter(key: string, value: string) {
-    const next = new URLSearchParams(searchParams)
-    if (value) next.set(key, value)
-    else next.delete(key)
-    setSearchParams(next)
-  }
-
-  function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    const q = String(form.get('query') || '').trim()
-    updateFilter('query', q)
-  }
-
-  function clearFilters() {
-    const next = new URLSearchParams()
-    setSearchParams(next)
-  }
-
-  const hasFilters = Boolean(speciesId || districtId || query)
-
-  return (
-    <>
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <form
-          onSubmit={handleSearchSubmit}
-          className="flex flex-col gap-3 md:flex-row md:items-end"
-        >
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
-            <Input name="query" defaultValue={query} placeholder="Nome ou descrição..." />
-          </div>
-          <div className="md:w-48">
-            <label className="mb-1 block text-xs font-medium text-gray-700">Espécie</label>
-            <Select
-              value={speciesId}
-              onChange={(e) => updateFilter('speciesId', e.target.value)}
-              options={[
-                { value: '', label: 'Todas' },
-                ...speciesList.map((s) => ({ value: String(s.id), label: s.namePt })),
-              ]}
-            />
-          </div>
-          <div className="md:w-56">
-            <label className="mb-1 block text-xs font-medium text-gray-700">Distrito</label>
-            <Select
-              value={districtId}
-              onChange={(e) => updateFilter('districtId', e.target.value)}
-              options={[
-                { value: '', label: 'Todos' },
-                ...districtsList.map((d) => ({ value: String(d.id), label: d.namePt })),
-              ]}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary">
-              Pesquisar
-            </Button>
-            {hasFilters && (
-              <Button type="button" variant="secondary" onClick={clearFilters}>
-                Limpar
-              </Button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <p className="text-gray-600">
-          {isLoading ? (
-            'A carregar...'
-          ) : (
-            <>
-              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> criadores no
-              mapa
-            </>
-          )}
-        </p>
-        <Link
-          to={{ pathname: '/diretorio', search: searchParams.toString() }}
-          className="font-medium text-caramel-600 hover:text-caramel-700"
-        >
-          Ver em lista →
-        </Link>
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {isError ? (
-          <div className="flex h-[500px] items-center justify-center">
-            <EmptyState
-              title="Erro ao carregar mapa"
-              description="Não foi possível carregar os criadores. Tente recarregar a página."
-            />
-          </div>
-        ) : (
-          <div className="relative h-[70vh] min-h-[500px] w-full">
-            {isLoading && (
-              <div className="pointer-events-none absolute right-4 top-4 z-[1000] rounded-md bg-white/90 px-3 py-2 shadow">
-                <Spinner size="sm" />
-              </div>
-            )}
-            <MapContainer
-              center={PORTUGAL_CENTER}
-              zoom={PORTUGAL_ZOOM}
-              minZoom={6}
-              maxZoom={18}
-              scrollWheelZoom
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <MarkerClusterLayer markers={markers} />
-            </MapContainer>
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────
 
 /**
  * Componente filho do MapContainer que centra o mapa
@@ -310,7 +49,7 @@ function MapAutoCenter({ target, zoom }: { target: [number, number] | null; zoom
   return null
 }
 
-function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
+export function ServicesMapView({ searchParams, setSearchParams }: Props) {
   const categoryId = searchParams.get('categoryId') || ''
   const districtId = searchParams.get('districtId') || ''
   const municipalityId = searchParams.get('municipalityId') || ''
@@ -319,7 +58,6 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
   const priceMax = searchParams.get('priceMax') || ''
 
   const geo = useGeolocation()
-  // Raio em km para o círculo visual (quando temos coords).
   const radiusKm = 25
 
   const { data: categories = [] } = useQuery<ServiceCategoryOption[]>({
@@ -392,6 +130,7 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
   function clearFilters() {
     const next = new URLSearchParams()
     next.set('tipo', 'servicos')
+    if (searchParams.get('vista')) next.set('vista', searchParams.get('vista')!)
     setSearchParams(next)
     geo.clear()
   }
@@ -399,13 +138,6 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
   const hasFilters = Boolean(
     categoryId || districtId || municipalityId || query || priceMin || priceMax,
   )
-
-  // Preserve o tipo=servicos no link para a lista
-  const listSearch = (() => {
-    const next = new URLSearchParams(searchParams)
-    next.set('tipo', 'servicos')
-    return next.toString()
-  })()
 
   const userTarget: [number, number] | null = geo.coords ? [geo.coords.lat, geo.coords.lng] : null
 
@@ -508,12 +240,6 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
             </>
           )}
         </p>
-        <Link
-          to={{ pathname: '/diretorio', search: listSearch }}
-          className="font-medium text-caramel-600 hover:text-caramel-700"
-        >
-          Ver em lista →
-        </Link>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -536,7 +262,6 @@ function ServicesMapView({ searchParams, setSearchParams }: MapViewProps) {
                 <Spinner size="sm" />
               </div>
             )}
-            {/* Legenda */}
             <div className="pointer-events-none absolute bottom-4 left-4 z-[1000] rounded-md bg-white/95 px-3 py-2 text-xs shadow">
               <div className="flex items-center gap-2">
                 <span
