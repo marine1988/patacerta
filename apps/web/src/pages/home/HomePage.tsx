@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
+import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
+import { Avatar } from '../../components/ui/Avatar'
+import { Badge } from '../../components/ui/Badge'
+import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 interface PublicStats {
   breederCount: number
@@ -11,11 +15,50 @@ interface PublicStats {
   serviceCount: number
 }
 
+interface FeaturedService {
+  id: number
+  title: string
+  priceCents: number
+  priceUnit: ServicePriceUnit
+  currency: string
+  avgRating: number | null
+  reviewCount: number
+  featuredUntil: string | null
+  photos: { id: number; url: string; sortOrder: number }[]
+  category: { id: number; nameSlug: string; namePt: string }
+  district: { id: number; namePt: string }
+  municipality: { id: number; namePt: string }
+}
+
+interface FeaturedBreeder {
+  id: number
+  businessName: string
+  description: string | null
+  avgRating: number | null
+  reviewCount: number
+  featuredUntil: string | null
+  district: { id: number; namePt: string }
+  municipality: { id: number; namePt: string }
+  species: { species: { id: number; namePt: string } }[]
+}
+
+interface FeaturedResponse {
+  services: FeaturedService[]
+  breeders: FeaturedBreeder[]
+}
+
 export function HomePage() {
   const { data: stats } = useQuery<PublicStats>({
     queryKey: ['public-stats'],
     queryFn: () => api.get('/search/stats').then((r) => r.data),
     staleTime: 3600_000,
+  })
+
+  const { data: featured, isLoading: featuredLoading } = useQuery<FeaturedResponse>({
+    queryKey: ['home-featured'],
+    queryFn: () => api.get('/home/featured').then((r) => r.data),
+    // Cache curto para nao reembaralhar a cada navegacao mas variar entre sessoes.
+    staleTime: 30_000,
   })
 
   return (
@@ -81,6 +124,37 @@ export function HomePage() {
             <span className="h-px flex-1 bg-line" />
           </div>
           <SearchBar />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * DESTAQUES — dois carrosseis horizontais (estilo OLX)
+       * ============================================================ */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] space-y-16 px-6 py-16 lg:px-8">
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Serviços"
+            title="Serviços em foco"
+            isLoading={featuredLoading}
+            emptyMessage="Sem serviços em destaque de momento."
+            skeleton={<FeaturedServiceSkeleton />}
+          >
+            {featured?.services.map((s) => (
+              <FeaturedServiceItem key={s.id} service={s} />
+            ))}
+          </FeaturedCarousel>
+
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Criadores"
+            title="Criadores em foco"
+            isLoading={featuredLoading}
+            emptyMessage="Sem criadores em destaque de momento."
+            skeleton={<FeaturedBreederSkeleton />}
+          >
+            {featured?.breeders.map((b) => (
+              <FeaturedBreederItem key={b.id} breeder={b} />
+            ))}
+          </FeaturedCarousel>
         </div>
       </section>
 
@@ -242,5 +316,126 @@ function ServiceCategoryCard({
         <span className="h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
       </div>
     </Link>
+  )
+}
+
+/* ============================================================
+ * Cards horizontais para os carrosseis de destaques
+ * ============================================================ */
+
+const ITEM_CLASSES = 'relative w-72 flex-shrink-0 snap-start sm:w-80'
+
+function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
+  const cover = s.photos[0]?.url ?? null
+  const isPromoted = s.featuredUntil != null && new Date(s.featuredUntil) > new Date()
+
+  return (
+    <Link
+      to={`/servicos/${s.id}`}
+      className={`${ITEM_CLASSES} group block border border-line bg-surface transition-colors hover:border-caramel-500`}
+    >
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
+        {cover ? (
+          <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs italic text-muted">
+            sem foto
+          </div>
+        )}
+        {isPromoted && <FeaturedBadge />}
+      </div>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <Badge variant="blue">{s.category.namePt}</Badge>
+          <span className="whitespace-nowrap text-sm font-semibold text-ink">
+            {formatPrice(s.priceCents, s.priceUnit)}
+          </span>
+        </div>
+        <h3 className="mt-3 line-clamp-2 font-serif text-base text-ink">{s.title}</h3>
+        <p className="mt-2 text-xs text-muted">
+          {s.municipality.namePt}, {s.district.namePt}
+        </p>
+        {s.avgRating != null && s.reviewCount > 0 && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="font-semibold text-yellow-600">{s.avgRating.toFixed(1)}</span>
+            <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span className="text-muted">({s.reviewCount})</span>
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
+  const isPromoted = b.featuredUntil != null && new Date(b.featuredUntil) > new Date()
+
+  return (
+    <Link
+      to={`/criador/${b.id}`}
+      className={`${ITEM_CLASSES} group block border border-line bg-surface p-5 transition-colors hover:border-caramel-500`}
+    >
+      {isPromoted && <FeaturedBadge />}
+      <div className="flex items-start gap-3">
+        <Avatar name={b.businessName} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-serif text-base text-ink">{b.businessName}</h3>
+          <p className="mt-1 text-xs text-muted">
+            {b.municipality.namePt}, {b.district.namePt}
+          </p>
+          {b.avgRating != null && b.reviewCount > 0 && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+              <span className="font-semibold text-yellow-600">{b.avgRating.toFixed(1)}</span>
+              <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span className="text-muted">({b.reviewCount})</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {b.description && (
+        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted">{b.description}</p>
+      )}
+      {b.species.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {b.species.slice(0, 3).map((s) => (
+            <Badge key={s.species.id} variant="blue">
+              {s.species.namePt}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </Link>
+  )
+}
+
+function FeaturedServiceSkeleton() {
+  return (
+    <div className="border border-line bg-surface">
+      <div className="aspect-[4/3] w-full animate-pulse bg-surface-alt" />
+      <div className="space-y-2 p-4">
+        <div className="h-4 w-1/3 animate-pulse bg-surface-alt" />
+        <div className="h-5 w-3/4 animate-pulse bg-surface-alt" />
+        <div className="h-3 w-1/2 animate-pulse bg-surface-alt" />
+      </div>
+    </div>
+  )
+}
+
+function FeaturedBreederSkeleton() {
+  return (
+    <div className="border border-line bg-surface p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-12 w-12 animate-pulse rounded-full bg-surface-alt" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-3/4 animate-pulse bg-surface-alt" />
+          <div className="h-3 w-1/2 animate-pulse bg-surface-alt" />
+          <div className="h-3 w-1/3 animate-pulse bg-surface-alt" />
+        </div>
+      </div>
+    </div>
   )
 }

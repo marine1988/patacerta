@@ -114,6 +114,7 @@ model Breeder {
   phone          String?       @db.VarChar(20)
   status         BreederStatus @default(DRAFT)
   verifiedAt     DateTime?     @map("verified_at")
+  featuredUntil  DateTime?     @map("featured_until")
   districtId     Int           @map("district_id")
   municipalityId Int           @map("municipality_id")
   createdAt      DateTime      @default(now()) @map("created_at")
@@ -131,6 +132,7 @@ model Breeder {
   @@index([status])
   @@index([nif])
   @@index([dgavNumber])
+  @@index([featuredUntil])
   @@map("breeders")
 }
 
@@ -438,6 +440,7 @@ model Service {
   publishedAt   DateTime? @map("published_at")
   removedAt     DateTime? @map("removed_at")
   removedReason String?   @map("removed_reason") @db.VarChar(500)
+  featuredUntil DateTime? @map("featured_until")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -466,6 +469,7 @@ model Service {
   @@index([status, municipalityId])
   @@index([status, latitude, longitude])
   @@index([providerId, updatedAt(sort: Desc)])
+  @@index([featuredUntil])
   @@map("services")
 }
 

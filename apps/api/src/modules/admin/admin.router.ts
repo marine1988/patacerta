@@ -61,3 +61,7 @@ adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 
 // Audit logs
 adminRouter.get('/audit-logs', ctrl.getAuditLogs)
+
+// Featured / homepage destaques
+adminRouter.patch('/services/:id/featured', ctrl.setServiceFeatured)
+adminRouter.patch('/breeders/:id/featured', ctrl.setBreederFeatured)

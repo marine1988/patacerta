@@ -58,6 +58,7 @@ interface Breeder {
   dgavNumber: string
   status: string
   createdAt: string
+  featuredUntil: string | null
   user: { id: number; firstName: string; lastName: string; email: string }
   district: { namePt: string } | null
   _count: { verificationDocs: number; reviews: number }
@@ -450,6 +451,20 @@ function CriadoresTab() {
     },
   })
 
+  const featureBreederMutation = useMutation({
+    mutationFn: ({
+      breederId,
+      body,
+    }: {
+      breederId: number
+      body: { days?: number; until?: string | null }
+    }) => api.patch(`/admin/breeders/${breederId}/featured`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
+      queryClient.invalidateQueries({ queryKey: ['home-featured'] })
+    },
+  })
+
   function handleStatusChange(breeder: Breeder, newStatus: string) {
     if (newStatus === breeder.status) return
     if (
@@ -506,6 +521,7 @@ function CriadoresTab() {
                   <th className="px-3 py-2">Docs / Avaliações</th>
                   <th className="px-3 py-2">Data</th>
                   <th className="px-3 py-2">Alterar estado</th>
+                  <th className="px-3 py-2">Destaque</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,6 +563,24 @@ function CriadoresTab() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <FeatureToggle
+                        featuredUntil={breeder.featuredUntil}
+                        isPending={
+                          featureBreederMutation.isPending &&
+                          featureBreederMutation.variables?.breederId === breeder.id
+                        }
+                        onSet={(days) =>
+                          featureBreederMutation.mutate({ breederId: breeder.id, body: { days } })
+                        }
+                        onClear={() =>
+                          featureBreederMutation.mutate({
+                            breederId: breeder.id,
+                            body: { until: null },
+                          })
+                        }
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1261,6 +1295,7 @@ interface AdminServiceItem {
   publishedAt: string | null
   createdAt: string
   updatedAt: string
+  featuredUntil: string | null
   provider: { id: number; firstName: string; lastName: string; email: string }
   category: { id: number; nameSlug: string; namePt: string }
   district: { id: number; namePt: string } | null
@@ -1712,6 +1747,15 @@ function ServicosTodosView() {
     },
   })
 
+  const featureServiceMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { days?: number; until?: string | null } }) =>
+      api.patch(`/admin/services/${id}/featured`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-services'] })
+      queryClient.invalidateQueries({ queryKey: ['home-featured'] })
+    },
+  })
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -1800,6 +1844,23 @@ function ServicosTodosView() {
                       <p className="mt-1 text-xs text-red-600">
                         <strong>Motivo:</strong> {s.removedReason}
                       </p>
+                    )}
+                    {s.status === 'ACTIVE' && (
+                      <div className="mt-2">
+                        <FeatureToggle
+                          featuredUntil={s.featuredUntil}
+                          isPending={
+                            featureServiceMutation.isPending &&
+                            featureServiceMutation.variables?.id === s.id
+                          }
+                          onSet={(days) =>
+                            featureServiceMutation.mutate({ id: s.id, body: { days } })
+                          }
+                          onClear={() =>
+                            featureServiceMutation.mutate({ id: s.id, body: { until: null } })
+                          }
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
@@ -2202,6 +2263,75 @@ export function AdminPage() {
       </div>
 
       <Tabs tabs={tabs} defaultTab="resumo" />
+    </div>
+  )
+}
+
+/* ============================================================
+ * FeatureToggle — controlo de promocao na homepage
+ *
+ * Permite ao admin promover (1/7/30/90 dias) ou despromover.
+ * Usado tanto na tabela de criadores como na de servicos.
+ * ============================================================ */
+
+const FEATURE_PRESETS: Array<{ days: number; label: string }> = [
+  { days: 1, label: '1 dia' },
+  { days: 7, label: '7 dias' },
+  { days: 30, label: '30 dias' },
+  { days: 90, label: '90 dias' },
+]
+
+function FeatureToggle({
+  featuredUntil,
+  isPending,
+  onSet,
+  onClear,
+  size = 'sm',
+}: {
+  featuredUntil: string | null | undefined
+  isPending: boolean
+  onSet: (days: number) => void
+  onClear: () => void
+  size?: 'sm' | 'md'
+}) {
+  const isPromoted = featuredUntil != null && new Date(featuredUntil) > new Date()
+  const sizeClasses = size === 'sm' ? 'text-xs' : 'text-sm'
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${sizeClasses}`}>
+      {isPromoted ? (
+        <>
+          <span className="inline-flex items-center gap-1 rounded bg-caramel-50 px-2 py-0.5 font-medium text-caramel-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+            Destaque até {new Date(featuredUntil!).toLocaleDateString('pt-PT')}
+          </span>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              if (window.confirm('Remover destaque agora?')) onClear()
+            }}
+            className="text-red-600 underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            Remover
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="text-gray-500">Promover:</span>
+          {FEATURE_PRESETS.map((p) => (
+            <button
+              key={p.days}
+              type="button"
+              disabled={isPending}
+              onClick={() => onSet(p.days)}
+              className="rounded border border-gray-300 px-2 py-0.5 hover:border-caramel-500 hover:text-caramel-700 disabled:opacity-50"
+            >
+              {p.label}
+            </button>
+          ))}
+        </>
+      )}
     </div>
   )
 }

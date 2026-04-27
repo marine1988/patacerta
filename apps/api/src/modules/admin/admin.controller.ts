@@ -757,3 +757,85 @@ export const adminReactivateService = asyncHandler(async (req, res) => {
 
   res.json(updated)
 })
+
+// ─────────────────────────────────────────────────────────────────────
+// Featured (homepage destaques) — admin-controlado
+// ─────────────────────────────────────────────────────────────────────
+
+const FEATURE_DURATION_DAYS_MAX = 365
+
+function parseFeaturedUntil(body: unknown): Date | null {
+  if (!body || typeof body !== 'object') {
+    throw new AppError(400, 'Body invalido', 'INVALID_BODY')
+  }
+  const b = body as { until?: unknown; days?: unknown }
+
+  // Permite payload { until: ISOString | null } ou { days: number }
+  if (b.until === null) return null
+  if (typeof b.until === 'string') {
+    const d = new Date(b.until)
+    if (isNaN(d.getTime())) {
+      throw new AppError(400, 'Data invalida', 'INVALID_DATE')
+    }
+    return d
+  }
+  if (typeof b.days === 'number' && Number.isFinite(b.days)) {
+    if (b.days <= 0 || b.days > FEATURE_DURATION_DAYS_MAX) {
+      throw new AppError(400, 'Numero de dias invalido', 'INVALID_DAYS')
+    }
+    const d = new Date()
+    d.setDate(d.getDate() + b.days)
+    return d
+  }
+  throw new AppError(400, 'Forneca { until: ISO } ou { days: number }', 'INVALID_PAYLOAD')
+}
+
+export const setServiceFeatured = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const featuredUntil = parseFeaturedUntil(req.body)
+
+  const service = await prisma.service.findUnique({ where: { id }, select: { id: true } })
+  if (!service) throw new AppError(404, 'Servico nao encontrado', 'SERVICE_NOT_FOUND')
+
+  const updated = await prisma.service.update({
+    where: { id },
+    data: { featuredUntil },
+    select: { id: true, title: true, featuredUntil: true },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_FEATURED',
+    entity: 'service',
+    entityId: id,
+    details: featuredUntil ? `Promoted until ${featuredUntil.toISOString()}` : 'Promotion removed',
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})
+
+export const setBreederFeatured = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+  const featuredUntil = parseFeaturedUntil(req.body)
+
+  const breeder = await prisma.breeder.findUnique({ where: { id }, select: { id: true } })
+  if (!breeder) throw new AppError(404, 'Criador nao encontrado', 'BREEDER_NOT_FOUND')
+
+  const updated = await prisma.breeder.update({
+    where: { id },
+    data: { featuredUntil },
+    select: { id: true, businessName: true, featuredUntil: true },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'BREEDER_FEATURED',
+    entity: 'Breeder',
+    entityId: id,
+    details: featuredUntil ? `Promoted until ${featuredUntil.toISOString()}` : 'Promotion removed',
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})

@@ -14,6 +14,7 @@ import { messagesRouter } from './modules/messages/messages.router.js'
 import { adminRouter } from './modules/admin/admin.router.js'
 import { servicesRouter } from './modules/services/services.router.js'
 import { serviceReviewsRouter } from './modules/service-reviews/service-reviews.router.js'
+import { homeRouter } from './modules/home/home.router.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -34,6 +35,7 @@ app.use('/api/reviews', reviewsRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/services', servicesRouter)
 app.use('/api/service-reviews', serviceReviewsRouter)
+app.use('/api/home', homeRouter)
 app.use('/api/admin', adminRouter)
 
 // ---- Error handler (must be last) ----
