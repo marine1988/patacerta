@@ -3,7 +3,6 @@
 // ============================================
 
 import { z } from 'zod'
-import { UserRole } from '../enums.js'
 
 // I-06: .trim() on all user-facing string fields
 export const emailSchema = z.string().trim().email('Email inválido').max(255)
@@ -16,14 +15,14 @@ export const passwordSchema = z
   .regex(/[a-z]/, 'Deve conter pelo menos uma letra minúscula')
   .regex(/[0-9]/, 'Deve conter pelo menos um número')
 
+// Registo simplificado: nao se escolhe role no signup. Todos comecam como
+// OWNER. O role e auto-promovido ao criar perfil de criador (BREEDER) ou
+// um servico (SERVICE_PROVIDER).
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
-  role: z.nativeEnum(UserRole).refine((v) => v !== UserRole.ADMIN, {
-    message: 'Não é possível registar como administrador',
-  }),
   phone: z
     .string()
     .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')

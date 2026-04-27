@@ -59,7 +59,10 @@ export const register = asyncHandler(async (req, res) => {
           passwordHash,
           firstName: data.firstName,
           lastName: data.lastName,
-          role: data.role,
+          // Registo simplificado: todos comecam como OWNER. Role
+          // auto-promove ao criar perfil de criador (BREEDER) ou um
+          // servico (SERVICE_PROVIDER).
+          role: 'OWNER',
           phone: data.phone,
           emailVerified: skip,
           emailVerificationToken: skip ? null : verificationToken,
