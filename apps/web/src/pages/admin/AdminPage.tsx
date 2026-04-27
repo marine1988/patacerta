@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { formatDateShort } from '../../lib/dates'
 import type { Paginated, PaginatedMeta } from '../../lib/pagination'
 import {
   Tabs,
@@ -120,10 +121,6 @@ const roleLabel: Record<string, string> = {
   ADMIN: 'Administrador',
   BREEDER: 'Criador',
   OWNER: 'Utilizador',
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-PT')
 }
 
 function PaginationBar({
@@ -307,7 +304,7 @@ function VerificacoesTab() {
                     {doc.fileName}
                   </button>
                 </td>
-                <td className="px-3 py-2">{formatDate(doc.createdAt)}</td>
+                <td className="px-3 py-2">{formatDateShort(doc.createdAt)}</td>
                 <td className="px-3 py-2">
                   <Button
                     size="sm"
@@ -435,7 +432,7 @@ function UtilizadoresTab() {
                         <span className="text-gray-400">{String.fromCharCode(8212)}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">{formatDate(user.createdAt)}</td>
+                    <td className="px-3 py-2">{formatDateShort(user.createdAt)}</td>
                     <td className="px-3 py-2">
                       <Button
                         variant="danger"
@@ -573,7 +570,7 @@ function CriadoresTab() {
                     <td className="px-3 py-2">
                       {breeder._count.verificationDocs} / {breeder._count.reviews}
                     </td>
-                    <td className="px-3 py-2">{formatDate(breeder.createdAt)}</td>
+                    <td className="px-3 py-2">{formatDateShort(breeder.createdAt)}</td>
                     <td className="px-3 py-2">
                       <select
                         className="rounded border border-gray-300 px-2 py-1 text-sm"
@@ -784,7 +781,7 @@ function AvaliacoesTab() {
                     {statusLabel[review.status] ?? review.status}
                   </Badge>
                 </td>
-                <td className="px-3 py-2">{formatDate(review.createdAt)}</td>
+                <td className="px-3 py-2">{formatDateShort(review.createdAt)}</td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="secondary" onClick={() => setFlagsTarget(review)}>
@@ -899,7 +896,7 @@ function AvaliacoesTab() {
               <li key={flag.id} className="rounded-lg border border-gray-200 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">{flag.reason}</span>
-                  <span className="text-xs text-gray-500">{formatDate(flag.createdAt)}</span>
+                  <span className="text-xs text-gray-500">{formatDateShort(flag.createdAt)}</span>
                 </div>
                 {flag.detail && <p className="mt-1 text-gray-600">{flag.detail}</p>}
                 <p className="mt-1 text-xs text-gray-500">
@@ -1114,7 +1111,7 @@ function DenunciasTab() {
                       </Badge>
                       <span className="text-xs text-gray-500">
                         Denunciada por {r.reporter.firstName} {r.reporter.lastName} &middot;{' '}
-                        {formatDate(r.createdAt)}
+                        {formatDateShort(r.createdAt)}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-gray-900">
@@ -1123,7 +1120,7 @@ function DenunciasTab() {
                     <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="text-xs text-gray-500">
                         Mensagem de {r.message.sender.firstName} {r.message.sender.lastName}{' '}
-                        &middot; {formatDate(r.message.createdAt)}
+                        &middot; {formatDateShort(r.message.createdAt)}
                         {r.message.deletedAt && ' (eliminada)'}
                       </p>
                       <p
@@ -1177,7 +1174,7 @@ function DenunciasTab() {
               <p className="mt-1 text-sm text-gray-900">{detail.reason}</p>
               <p className="mt-1 text-xs text-gray-400">
                 Por {detail.reporter.firstName} {detail.reporter.lastName} ({detail.reporter.email})
-                &middot; {formatDate(detail.createdAt)}
+                &middot; {formatDateShort(detail.createdAt)}
               </p>
             </div>
 
@@ -1202,7 +1199,8 @@ function DenunciasTab() {
                       }`}
                     >
                       <p className="text-xs font-medium text-gray-500">
-                        {m.sender.firstName} {m.sender.lastName} &middot; {formatDate(m.createdAt)}
+                        {m.sender.firstName} {m.sender.lastName} &middot;{' '}
+                        {formatDateShort(m.createdAt)}
                         {m.editedAt && ' (editada)'}
                         {m.deletedAt && ' (eliminada)'}
                         {isReported && ' — mensagem denunciada'}
@@ -1268,7 +1266,7 @@ function DenunciasTab() {
                   <strong>Estado:</strong> {reportStatusLabel[detail.status] ?? detail.status}
                   {detail.reviewer &&
                     ` por ${detail.reviewer.firstName} ${detail.reviewer.lastName}`}
-                  {detail.reviewedAt && ` em ${formatDate(detail.reviewedAt)}`}
+                  {detail.reviewedAt && ` em ${formatDateShort(detail.reviewedAt)}`}
                 </p>
                 {detail.resolution && (
                   <p className="mt-2">
@@ -1497,7 +1495,7 @@ function ServicosDenunciasView() {
                       </Badge>
                       <span className="text-xs text-gray-500">
                         Por {r.reporter.firstName} {r.reporter.lastName} &middot;{' '}
-                        {formatDate(r.createdAt)}
+                        {formatDateShort(r.createdAt)}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-gray-900">
@@ -1562,7 +1560,7 @@ function ServicosDenunciasView() {
               <p className="mt-1 text-sm text-gray-900">{openReport.reason}</p>
               <p className="mt-1 text-xs text-gray-400">
                 Por {openReport.reporter.firstName} {openReport.reporter.lastName} (
-                {openReport.reporter.email}) &middot; {formatDate(openReport.createdAt)}
+                {openReport.reporter.email}) &middot; {formatDateShort(openReport.createdAt)}
               </p>
             </div>
 
@@ -1631,7 +1629,7 @@ function ServicosDenunciasView() {
                 <p>
                   <strong>Estado:</strong>{' '}
                   {reportStatusLabel[openReport.status] ?? openReport.status}
-                  {openReport.reviewedAt && ` em ${formatDate(openReport.reviewedAt)}`}
+                  {openReport.reviewedAt && ` em ${formatDateShort(openReport.reviewedAt)}`}
                 </p>
                 {openReport.resolution && (
                   <p className="mt-2">

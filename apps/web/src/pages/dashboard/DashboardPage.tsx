@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { formatDateTime, formatSmart } from '../../lib/dates'
 import {
   Tabs,

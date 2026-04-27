@@ -1,4 +1,5 @@
 import { Badge } from '../ui/Badge'
+import { formatDateShort } from '../../lib/dates'
 
 interface VerificationBadgeProps {
   status: string
@@ -20,24 +21,12 @@ const statusConfig: Record<
   REJECTED: { variant: 'red', label: 'Rejeitado' },
 }
 
-function formatDatePt(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('pt-PT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
-
 export function VerificationBadge({ status, dgavNumber, verifiedAt }: VerificationBadgeProps) {
   const config = statusConfig[status] || { variant: 'gray' as const, label: status }
 
   const tooltip =
     status === 'VERIFIED' && dgavNumber
-      ? `DGAV: ${dgavNumber}${verifiedAt ? ` · verificado em ${formatDatePt(verifiedAt)}` : ''}`
+      ? `DGAV: ${dgavNumber}${verifiedAt ? ` · verificado em ${formatDateShort(verifiedAt)}` : ''}`
       : undefined
 
   return (

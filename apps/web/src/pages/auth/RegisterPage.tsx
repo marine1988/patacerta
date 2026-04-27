@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { registerSchema, UserRole } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -117,17 +117,28 @@ export function RegisterPage() {
           <Card>
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <h1 className="text-xl font-bold text-gray-900">Conta criada com sucesso</h1>
               <p className="mt-3 text-sm text-gray-600">
-                Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no link
-                no email para ativar a sua conta antes de iniciar sessão.
+                Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no
+                link no email para ativar a sua conta antes de iniciar sessão.
               </p>
               <p className="mt-2 text-xs text-gray-500">
-                Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página de login.
+                Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página de
+                login.
               </p>
               <div className="mt-6">
                 <Button onClick={() => navigate('/entrar')} className="w-full">
@@ -156,9 +167,7 @@ export function RegisterPage() {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-            )}
+            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
             <div className="grid grid-cols-2 gap-4">
               <Input

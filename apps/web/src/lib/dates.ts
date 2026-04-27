@@ -4,6 +4,12 @@ const PT_DATE_FORMAT = new Intl.DateTimeFormat('pt-PT', {
   year: 'numeric',
 })
 
+const PT_DATE_SHORT_FORMAT = new Intl.DateTimeFormat('pt-PT', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
+
 const PT_DATETIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
   day: 'numeric',
   month: 'short',
@@ -19,6 +25,15 @@ const PT_TIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
 
 export function formatDate(value: string | Date): string {
   return PT_DATE_FORMAT.format(new Date(value))
+}
+
+/** Formato curto pt-PT, dd/mm/yyyy (ex.: 27/04/2026). */
+export function formatDateShort(value: string | Date): string {
+  try {
+    return PT_DATE_SHORT_FORMAT.format(new Date(value))
+  } catch {
+    return String(value)
+  }
 }
 
 export function formatDateTime(value: string | Date): string {
