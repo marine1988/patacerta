@@ -177,6 +177,51 @@ function ScoreBadge({ score }: { score: number }) {
   )
 }
 
+// Imagem da raça com fallback gracioso. As raças autóctones portuguesas
+// não têm URL no seed (Dog CEO não as cobre) — mostramos uma silhueta
+// editorial em vez de uma imagem partida.
+function BreedImage({
+  src,
+  name,
+  className = '',
+}: {
+  src: string | null
+  name: string
+  className?: string
+}) {
+  const [errored, setErrored] = useState(false)
+  const showPlaceholder = !src || errored
+
+  if (showPlaceholder) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-caramel-100/50 ${className}`}
+        aria-label={name}
+      >
+        {/* Silhueta minimal de cão — mantém o tom editorial */}
+        <svg
+          className="h-12 w-12 text-caramel-500/50"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M4.5 9.5c0-1.5 1-3 2.5-3.5l1-2c.2-.4.6-.5 1-.3l1.2.6c.3.2.5.5.5.9v1.4c.6-.2 1.3-.3 2.3-.3s1.7.1 2.3.3V5c0-.4.2-.7.5-.9l1.2-.6c.4-.2.8 0 1 .3l1 2c1.5.5 2.5 2 2.5 3.5v6c0 1.7-.8 3.2-2.1 4.1-.5.4-1.1.6-1.7.7l-.7.1c-.5.1-1 .1-1.5.1H10c-.5 0-1 0-1.5-.1l-.7-.1c-.6-.1-1.2-.3-1.7-.7C4.8 18.7 4 17.2 4 15.5v-6h.5z" />
+        </svg>
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={src}
+      alt={name}
+      onError={() => setErrored(true)}
+      className={`object-cover ${className}`}
+      loading="lazy"
+    />
+  )
+}
+
 // ─── Página ───────────────────────────────────────────────────────
 
 export function SimuladorRacaPage() {
@@ -246,6 +291,12 @@ export function SimuladorRacaPage() {
             {results.map((r, idx) => (
               <Card key={r.breed.id}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  {/* Imagem da raça (à esquerda em desktop, no topo em mobile) */}
+                  <BreedImage
+                    src={r.breed.imageUrl}
+                    name={r.breed.namePt}
+                    className="h-40 w-full shrink-0 md:h-32 md:w-32"
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <span className="font-serif text-2xl text-caramel-500">#{idx + 1}</span>

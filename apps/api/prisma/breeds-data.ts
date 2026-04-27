@@ -1176,3 +1176,64 @@ export const BREEDS: BreedSeed[] = [
     heatTolerance: 3,
   },
 ]
+
+// ─── Imagens das raças ──────────────────────────────────────────────
+//
+// URLs estáveis do CDN do projecto Dog CEO (https://dog.ceo/dog-api/),
+// público e gratuito. Foram fixadas (não geradas em runtime) para o
+// resultado ser determinístico e o seed idempotente.
+//
+// As 4 raças autóctones portuguesas (Estrela, Cão de Água, Podengo,
+// Rafeiro) não estão cobertas pelo Dog CEO. Ficam com `null` e o
+// frontend mostra um placeholder. A adicionar manualmente quando
+// tivermos imagens próprias com licença clara.
+
+const BREED_IMAGES: Record<string, string | null> = {
+  'akita-inu': 'https://images.dog.ceo/breeds/akita/Akita_inu_blanc.jpg',
+  beagle: 'https://images.dog.ceo/breeds/beagle/n02088364_17553.jpg',
+  'bichon-maltes': 'https://images.dog.ceo/breeds/maltese/n02085936_352.jpg',
+  'border-collie': 'https://images.dog.ceo/breeds/collie-border/n02106166_6545.jpg',
+  boxer: 'https://images.dog.ceo/breeds/boxer/n02108089_625.jpg',
+  'bulldog-frances': 'https://images.dog.ceo/breeds/bulldog-french/n02108915_4214.jpg',
+  'bulldog-ingles': 'https://images.dog.ceo/breeds/bulldog-english/jager-1.jpg',
+  'cao-da-serra-da-estrela': null,
+  'cao-de-agua-portugues': null,
+  'cavalier-king-charles': 'https://images.dog.ceo/breeds/spaniel-blenheim/n02086646_2725.jpg',
+  chihuahua: 'https://images.dog.ceo/breeds/chihuahua/n02085620_4919.jpg',
+  'cocker-spaniel-ingles': 'https://images.dog.ceo/breeds/spaniel-cocker/n02102318_10226.jpg',
+  dalmata: 'https://images.dog.ceo/breeds/dalmatian/cooper2.jpg',
+  dachshund: 'https://images.dog.ceo/breeds/dachshund/dog-1018408_640.jpg',
+  doberman: 'https://images.dog.ceo/breeds/doberman/n02107142_788.jpg',
+  'galgo-portugues': null, // Podengo Português — sem imagem em dog.ceo
+  'golden-retriever': 'https://images.dog.ceo/breeds/retriever-golden/n02099601_3666.jpg',
+  'husky-siberiano': 'https://images.dog.ceo/breeds/husky/n02110185_4115.jpg',
+  'jack-russell-terrier': 'https://images.dog.ceo/breeds/terrier-russell/jack-koda-2.jpg',
+  'labrador-retriever': 'https://images.dog.ceo/breeds/labrador/n02099712_4403.jpg',
+  'lulu-da-pomerania': 'https://images.dog.ceo/breeds/pomeranian/n02112018_6832.jpg',
+  'mastim-napolitano': 'https://images.dog.ceo/breeds/mastiff-english/2.jpg',
+  'pastor-alemao': 'https://images.dog.ceo/breeds/german-shepherd/n02106662_13123.jpg',
+  'pastor-australiano': 'https://images.dog.ceo/breeds/australian-shepherd/pepper2.jpg',
+  'pequenino-papillon': 'https://images.dog.ceo/breeds/papillon/n02086910_2380.jpg',
+  'pinscher-miniatura': 'https://images.dog.ceo/breeds/pinscher-miniature/n02107312_2893.jpg',
+  'poodle-medio': 'https://images.dog.ceo/breeds/poodle-medium/PXL_20210220_100624962.jpg',
+  pug: 'https://images.dog.ceo/breeds/pug/n02110958_9642.jpg',
+  'rafeiro-do-alentejo': null,
+  rottweiler: 'https://images.dog.ceo/breeds/rottweiler/n02106550_4254.jpg',
+  samoiedo: 'https://images.dog.ceo/breeds/samoyed/n02111889_6622.jpg',
+  'sao-bernardo': 'https://images.dog.ceo/breeds/stbernard/n02109525_523.jpg',
+  'schnauzer-miniatura': 'https://images.dog.ceo/breeds/schnauzer-miniature/n02097047_1545.jpg',
+  'shar-pei': 'https://images.dog.ceo/breeds/sharpei/noel.jpg',
+  'shiba-inu': 'https://images.dog.ceo/breeds/shiba/shiba_20.jpg',
+  'shih-tzu': 'https://images.dog.ceo/breeds/shihtzu/n02086240_963.jpg',
+  'staffordshire-bull-terrier':
+    'https://images.dog.ceo/breeds/bullterrier-staffordshire/n02093256_5646.jpg',
+  weimaraner: 'https://images.dog.ceo/breeds/weimaraner/n02092339_7224.jpg',
+  'yorkshire-terrier': 'https://images.dog.ceo/breeds/terrier-yorkshire/n02094433_3881.jpg',
+}
+
+// Aplica as imagens uma única vez no carregamento do módulo.
+for (const breed of BREEDS) {
+  if (breed.imageUrl == null) {
+    breed.imageUrl = BREED_IMAGES[breed.nameSlug] ?? null
+  }
+}
