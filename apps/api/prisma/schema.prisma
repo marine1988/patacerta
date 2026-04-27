@@ -166,8 +166,69 @@ model Species {
   namePt   String @map("name_pt") @db.VarChar(100)
 
   breeders BreederSpecies[]
+  breeds   Breed[]
 
   @@map("species")
+}
+
+// ─── Breed ──────────────────────────────────────────────────────────
+//
+// Catálogo editorial de raças usado pelo simulador "encontrar a raça
+// ideal". Os atributos numéricos usam a escala 1-5 (1 = baixíssimo,
+// 5 = altíssimo), os booleanos são auto-explicativos. Os campos size,
+// coatLength e barkLevel usam enums string para legibilidade.
+//
+// Os valores são fontes editoriais nossas (inspiradas em FCI / Purina
+// / AKC / Wikipedia pt) — ver apps/api/prisma/seed-breeds.ts.
+model Breed {
+  id          Int    @id @default(autoincrement())
+  speciesId   Int    @map("species_id")
+  nameSlug    String @unique @map("name_slug") @db.VarChar(80)
+  namePt      String @map("name_pt") @db.VarChar(120)
+  fciGroup    String? @map("fci_group") @db.VarChar(80)
+  origin      String? @db.VarChar(120)
+  summaryPt   String  @map("summary_pt") @db.VarChar(500)
+
+  // ─ Atributos físicos ─
+  size            String @db.VarChar(10)    // "small" | "medium" | "large" | "giant"
+  weightMinKg     Float  @map("weight_min_kg")
+  weightMaxKg     Float  @map("weight_max_kg")
+  lifespanMinYrs  Int    @map("lifespan_min_yrs")
+  lifespanMaxYrs  Int    @map("lifespan_max_yrs")
+  coatLength      String @map("coat_length") @db.VarChar(10) // "short" | "medium" | "long"
+  shedding        Int    // 1-5
+  hypoallergenic  Boolean @default(false)
+
+  // ─ Necessidades / temperamento ─
+  energyLevel       Int @map("energy_level")        // 1-5
+  exerciseDailyMin  Int @map("exercise_daily_min")  // minutos por dia
+  trainability      Int                              // 1-5
+  barkLevel         String @map("bark_level") @db.VarChar(10) // "low" | "medium" | "high"
+  groomingLevel     Int @map("grooming_level")     // 1-5
+
+  // ─ Compatibilidades ─
+  goodWithKids      Int @map("good_with_kids")      // 1-5
+  goodWithDogs      Int @map("good_with_dogs")      // 1-5
+  goodWithStrangers Int @map("good_with_strangers") // 1-5
+  apartmentFriendly Boolean @default(false) @map("apartment_friendly")
+  noviceFriendly    Boolean @default(false) @map("novice_friendly")
+  toleratesAlone    Int @map("tolerates_alone")     // 1-5
+
+  // ─ Ambiente ─
+  coldTolerance     Int @map("cold_tolerance")      // 1-5
+  heatTolerance     Int @map("heat_tolerance")      // 1-5
+
+  // ─ Imagem ilustrativa (opcional) ─
+  imageUrl   String? @map("image_url") @db.VarChar(500)
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  species Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+
+  @@index([speciesId])
+  @@index([size])
+  @@map("breeds")
 }
 
 model BreederSpecies {

@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { BREEDS } from './breeds-data.js'
 
 const prisma = new PrismaClient()
 
@@ -213,6 +214,21 @@ async function main() {
   }
   console.log(`  ✓ ${speciesData.length} species seeded`)
 
+  // ---- Breeds (catálogo editorial para o simulador) ----
+  console.log('\nSeeding dog breeds...')
+  const dogSpecies = await prisma.species.findUnique({ where: { nameSlug: 'cao' } })
+  if (!dogSpecies) {
+    throw new Error('Espécie "cao" não encontrada — seed das espécies falhou?')
+  }
+  for (const b of BREEDS) {
+    await prisma.breed.upsert({
+      where: { nameSlug: b.nameSlug },
+      update: { ...b, speciesId: dogSpecies.id },
+      create: { ...b, speciesId: dogSpecies.id },
+    })
+  }
+  console.log(`  ✓ ${BREEDS.length} breeds seeded`)
+
   // ---- Service Categories ----
   // Apenas passeio e pet-sitting activas no MVP; restantes na tabela para
   // activar em iterações futuras sem migração.
@@ -245,6 +261,7 @@ async function main() {
   console.log(`  Districts:         ${districtsData.length}`)
   console.log(`  Municipalities:    ${municipalityCount}`)
   console.log(`  Species:           ${speciesData.length}`)
+  console.log(`  Breeds:            ${BREEDS.length}`)
   console.log(`  Service categories: ${serviceCategoriesData.length}`)
   console.log('========================================\n')
 }
