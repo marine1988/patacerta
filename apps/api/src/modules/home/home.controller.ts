@@ -11,8 +11,7 @@ import { asyncHandler } from '../../lib/helpers.js'
  * Regra: anuncios "promovidos" (featuredUntil > now()) aparecem sempre
  * primeiro, em ordem aleatoria entre si. Se nao chegarem a 12, completamos
  * com items nao-promovidos tambem em ordem aleatoria. Cada page-load
- * produz uma ordem diferente — assim quem paga tem garantia de aparecer
- * mas a posicao nao e' fixa.
+ * produz uma ordem diferente.
  *
  * Sem cache HTTP: o conteudo varia a cada request.
  */
@@ -57,11 +56,51 @@ export const getFeatured = asyncHandler(async (_req, res) => {
       }),
     ])
 
-  res.json({
-    services: pickRandom([...shuffle(featuredServices), ...shuffle(fallbackServices)], SLOT_COUNT),
-    breeders: pickRandom([...shuffle(featuredBreeders), ...shuffle(fallbackBreeders)], SLOT_COUNT),
-  })
+  const services = pickRandom(
+    [...shuffle(featuredServices), ...shuffle(fallbackServices)],
+    SLOT_COUNT,
+  )
+  const breedersRaw = pickRandom(
+    [...shuffle(featuredBreeders), ...shuffle(fallbackBreeders)],
+    SLOT_COUNT,
+  )
+
+  // Breeders nao tem avgRating/reviewCount no model — agregamos a partir de Review.
+  const breeders = await attachBreederRatings(breedersRaw)
+
+  res.json({ services, breeders })
 })
+
+async function attachBreederRatings<T extends { id: number }>(
+  breeders: T[],
+): Promise<Array<T & { avgRating: number | null; reviewCount: number }>> {
+  if (breeders.length === 0) return []
+
+  const ids = breeders.map((b) => b.id)
+  const aggs = await prisma.review.groupBy({
+    by: ['breederId'],
+    where: { breederId: { in: ids }, status: 'PUBLISHED' },
+    _avg: { rating: true },
+    _count: { id: true },
+  })
+
+  const byId = new Map<number, { avg: number | null; count: number }>()
+  for (const a of aggs) {
+    byId.set(a.breederId, {
+      avg: a._avg.rating != null ? Math.round(a._avg.rating * 10) / 10 : null,
+      count: a._count.id,
+    })
+  }
+
+  return breeders.map((b) => {
+    const r = byId.get(b.id)
+    return {
+      ...b,
+      avgRating: r?.avg ?? null,
+      reviewCount: r?.count ?? 0,
+    }
+  })
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -102,8 +141,6 @@ function featuredBreederSelect() {
     id: true,
     businessName: true,
     description: true,
-    avgRating: true,
-    reviewCount: true,
     featuredUntil: true,
     district: { select: { id: true, namePt: true } },
     municipality: { select: { id: true, namePt: true } },
