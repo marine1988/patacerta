@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
+import { createPortal } from 'react-dom'
 
 interface PhotoLightboxProps {
   isOpen: boolean
@@ -70,7 +71,10 @@ export function PhotoLightbox({ isOpen, onClose, photos, startIndex, alt }: Phot
     touchStartX.current = null
   }
 
-  return (
+  // Renderizado em portal para evitar que ancestrais com transform/filter
+  // confinem o `position: fixed` ou criem um stacking context que esconda
+  // o overlay por tras de elementos da pagina.
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
@@ -155,6 +159,7 @@ export function PhotoLightbox({ isOpen, onClose, photos, startIndex, alt }: Phot
           </svg>
         </button>
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
