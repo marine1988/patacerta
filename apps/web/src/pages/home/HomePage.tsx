@@ -160,6 +160,62 @@ export function HomePage() {
       </section>
 
       {/* ============================================================
+       * SIMULADOR — banner editorial para o quiz de raça
+       * ============================================================ */}
+      <section className="border-t border-line bg-caramel-100/40">
+        <div className="mx-auto max-w-[72rem] px-6 py-20 lg:px-8">
+          <div className="grid items-center gap-12 md:grid-cols-[1.4fr_1fr]">
+            <div>
+              <p className="eyebrow mb-6">◆ Simulador de raça</p>
+              <h2 className="font-serif text-h2 text-ink">
+                Escolha o <em className="italic text-caramel-500">companheiro ideal</em> para si.
+              </h2>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+                Onze perguntas, dois minutos. Indicamos as cinco raças que melhor se adaptam ao seu
+                espaço, ao seu ritmo e ao seu agregado familiar — para começar a procurar com mais
+                confiança.
+              </p>
+              <div className="mt-10 flex flex-wrap items-center gap-6">
+                <Link to="/simulador-raca" className="btn-primary btn-lg">
+                  Começar simulador
+                </Link>
+                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                  Gratuito · sem registo
+                </span>
+              </div>
+              <p className="mt-8 max-w-xl text-xs leading-relaxed text-muted">
+                <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma
+                ferramenta de orientação. Cada cão é único e a escolha final deve ser feita em
+                conjunto com criadores, veterinários ou associações de adopção.
+              </p>
+            </div>
+
+            {/* Aside editorial — 3 sinais visuais sobre o que o simulador avalia */}
+            <aside className="border-l border-line pl-10">
+              <p className="eyebrow-muted mb-6">— O que avaliamos</p>
+              <ul className="space-y-5">
+                <SimuladorTopic
+                  number="01"
+                  title="Espaço e clima"
+                  description="Apartamento, casa com jardim, calor do Algarve ou serra fria."
+                />
+                <SimuladorTopic
+                  number="02"
+                  title="Ritmo e tempo"
+                  description="Quanto exercício faz e quanto tempo o cão fica sozinho."
+                />
+                <SimuladorTopic
+                  number="03"
+                  title="Casa e experiência"
+                  description="Crianças, outros cães, alergias, primeira vez como dono."
+                />
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt/40">
@@ -288,6 +344,26 @@ function Pillar({
       <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
       <div className="mt-6 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
     </article>
+  )
+}
+
+function SimuladorTopic({
+  number,
+  title,
+  description,
+}: {
+  number: string
+  title: string
+  description: string
+}) {
+  return (
+    <li className="flex gap-4">
+      <span className="font-serif text-2xl italic text-caramel-500">{number}</span>
+      <div>
+        <h4 className="font-serif text-base text-ink">{title}</h4>
+        <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
+      </div>
+    </li>
   )
 }
 

@@ -339,6 +339,31 @@ export function SimuladorRacaPage() {
           </div>
         )}
 
+        <div className="mt-10 border-t border-line pt-8">
+          <p className="eyebrow-muted mb-3">— Aviso importante</p>
+          <div className="space-y-3 text-xs leading-relaxed text-muted">
+            <p>
+              Este simulador é uma{' '}
+              <em className="not-italic font-medium text-ink">ferramenta orientativa</em>, baseada
+              em características gerais de cada raça. Os resultados representam tendências e não
+              garantem comportamento, saúde ou compatibilidade individual de qualquer cão em
+              concreto.
+            </p>
+            <p>
+              Cada cão é único — o temperamento depende de genética, socialização, treino e
+              ambiente. Antes de adquirir ou adoptar, recomendamos vivamente conhecer o animal
+              pessoalmente e consultar criadores responsáveis, associações de adopção, veterinários
+              ou treinadores qualificados.
+            </p>
+            <p>
+              A PataCerta <em className="not-italic font-medium text-ink">não se responsabiliza</em>{' '}
+              por decisões tomadas com base nos resultados deste simulador, nem por questões
+              relacionadas com saúde, comportamento ou adaptação do animal escolhido. A escolha e a
+              responsabilidade pelo cuidado do cão são sempre do tutor.
+            </p>
+          </div>
+        </div>
+
         <div className="mt-10 flex flex-col items-center gap-4 border-t border-line pt-8">
           <p className="text-center text-muted">
             Já sabe o que procura? Encontre criadores verificados perto de si.
@@ -393,6 +418,9 @@ export function SimuladorRacaPage() {
         </h1>
         <p className="mt-3 text-muted">
           Responda a {totalSteps} perguntas curtas. Demora menos de 2 minutos.
+        </p>
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Ferramenta orientativa — os resultados são sugestões, não recomendações profissionais.
         </p>
       </header>
 
