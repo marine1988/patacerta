@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { formatDateShort } from '../../lib/dates'
-import type { Paginated, PaginatedMeta } from '../../lib/pagination'
+import { Pagination } from '../../components/ui/Pagination'
+import type { Paginated } from '../../lib/pagination'
 import {
   Tabs,
   Card,
@@ -121,44 +122,6 @@ const roleLabel: Record<string, string> = {
   ADMIN: 'Administrador',
   BREEDER: 'Criador',
   OWNER: 'Utilizador',
-}
-
-function PaginationBar({
-  meta,
-  page,
-  setPage,
-}: {
-  meta: PaginatedMeta
-  page: number
-  setPage: (p: number) => void
-}) {
-  return (
-    <div className="flex items-center justify-between pt-4">
-      <p className="text-sm text-gray-500">
-        A mostrar {meta.total === 0 ? 0 : (meta.page - 1) * meta.limit + 1}
-        {String.fromCharCode(8211)}
-        {Math.min(meta.page * meta.limit, meta.total)} de {meta.total} resultados
-      </p>
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-        >
-          Anterior
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={page >= meta.totalPages}
-          onClick={() => setPage(page + 1)}
-        >
-          Próximo
-        </Button>
-      </div>
-    </div>
-  )
 }
 
 // ResumoTab
@@ -319,7 +282,7 @@ function VerificacoesTab() {
           </tbody>
         </table>
       </div>
-      <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+      <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
     </div>
   )
 }
@@ -448,7 +411,7 @@ function UtilizadoresTab() {
               </tbody>
             </table>
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
     </div>
@@ -590,7 +553,7 @@ function CriadoresTab() {
               </tbody>
             </table>
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
     </div>
@@ -822,7 +785,7 @@ function AvaliacoesTab() {
           </tbody>
         </table>
       </div>
-      <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+      <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
 
       {/* Moderation reason modal */}
       <Modal
@@ -1147,7 +1110,7 @@ function DenunciasTab() {
               </Card>
             ))}
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
 
@@ -1538,7 +1501,7 @@ function ServicosDenunciasView() {
               </Card>
             ))}
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
 
@@ -1875,7 +1838,7 @@ function ServicosTodosView() {
               </Card>
             ))}
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
 
@@ -2056,7 +2019,7 @@ function AuditoriaTab() {
               </tbody>
             </table>
           </div>
-          <PaginationBar meta={data.meta} page={page} setPage={setPage} />
+          <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
     </div>
