@@ -15,6 +15,7 @@ import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Pagination } from '../../components/ui/Pagination'
 import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
 import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
@@ -434,29 +435,14 @@ export function BreederProfilePage() {
               </div>
             )}
 
-            {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={page <= 1 || reviewsQuery.isFetching}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Anterior
-                </Button>
-                <span className="text-xs text-gray-500">
-                  Página {page} de {totalPages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={page >= totalPages || reviewsQuery.isFetching}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Seguinte
-                </Button>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={setPage}
+              disabled={reviewsQuery.isFetching}
+              format="full"
+              withBorder
+            />
           </Card>
         </div>
 

@@ -23,6 +23,7 @@ import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
+import { Pagination } from '../../components/ui/Pagination'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 const MiniMap = lazy(() =>
@@ -727,29 +728,14 @@ export function ServiceDetailPage() {
               </div>
             )}
 
-            {totalReviewPages > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={reviewPage <= 1 || reviewsQuery.isFetching}
-                  onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
-                >
-                  Anterior
-                </Button>
-                <span className="text-xs text-gray-500">
-                  Página {reviewPage} de {totalReviewPages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={reviewPage >= totalReviewPages || reviewsQuery.isFetching}
-                  onClick={() => setReviewPage((p) => p + 1)}
-                >
-                  Seguinte
-                </Button>
-              </div>
-            )}
+            <Pagination
+              page={reviewPage}
+              totalPages={totalReviewPages}
+              onChange={setReviewPage}
+              disabled={reviewsQuery.isFetching}
+              format="full"
+              withBorder
+            />
           </Card>
         </div>
 

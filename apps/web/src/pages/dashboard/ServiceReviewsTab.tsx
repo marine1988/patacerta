@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import { Button, EmptyState, Spinner } from '../../components/ui'
+import { Pagination } from '../../components/ui/Pagination'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import type { PaginatedMeta } from '../../lib/pagination'
@@ -108,29 +109,7 @@ export function ServiceReviewsTab() {
         />
       ))}
 
-      {data && data.meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </Button>
-          <span className="text-xs text-gray-500">
-            {page} / {data.meta.totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={page >= data.meta.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Seguinte
-          </Button>
-        </div>
-      )}
+      {data && <Pagination page={page} totalPages={data.meta.totalPages} onChange={setPage} />}
 
       <ReplyReviewModal
         isOpen={!!replyTarget}
