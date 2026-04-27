@@ -57,7 +57,59 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-line pt-6 sm:flex-row sm:items-center">
+        {/* Adopção responsável */}
+        <div className="mt-16 border-t border-line pt-10">
+          <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:items-start md:gap-12">
+            <div>
+              <h4 className="eyebrow mb-3">◆ Adopção responsável</h4>
+              <p className="font-serif text-lg leading-snug text-ink">
+                Comprar a um criador ético é legítimo —{' '}
+                <em className="italic text-caramel-500">adoptar também</em>.
+              </p>
+            </div>
+            <div>
+              <p className="text-sm leading-relaxed text-muted">
+                Antes de procurar um criador, considere visitar uma associação. Muitos cães à espera
+                de família encaixam no mesmo perfil que o simulador sugere — incluindo cachorros,
+                raças puras e mestiços com excelentes temperamentos.
+              </p>
+              <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                <li>
+                  <a
+                    href="https://www.uniaozoofila.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-ink underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500"
+                  >
+                    União Zoófila
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://animaisderua.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-ink underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500"
+                  >
+                    Animais de Rua
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.sosanimal.pt"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-ink underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500"
+                  >
+                    SOS Animal
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-line pt-6 sm:flex-row sm:items-center">
           <p className="text-[11px] uppercase tracking-caps text-subtle">
             © {new Date().getFullYear()} PataCerta — Todos os direitos reservados.
           </p>
