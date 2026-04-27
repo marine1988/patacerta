@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
@@ -96,6 +96,7 @@ export function App() {
             <Route path="/recuperar-palavra-passe" element={<ResetPasswordPage />} />
             <Route path="/verificar-email" element={<VerifyEmailPage />} />
             <Route path="/diretorio" element={<DirectoryPage />} />
+            <Route path="/servicos" element={<Navigate to="/diretorio?tipo=servicos" replace />} />
             <Route path="/mapa" element={<MapPage />} />
             <Route path="/criador/:id" element={<BreederProfilePage />} />
             <Route path="/servicos/:id" element={<ServiceDetailPage />} />

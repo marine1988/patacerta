@@ -135,7 +135,41 @@ export function DirectoryPage() {
           }}
         />
       )}
+
+      <CrossPromoBanner currentTipo={tipo} />
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Cross-promotion banner — sugere a outra vertical no rodape da lista
+// ─────────────────────────────────────────────────────────────────────
+
+function CrossPromoBanner({ currentTipo }: { currentTipo: 'criadores' | 'servicos' }) {
+  const isCriadores = currentTipo === 'criadores'
+  const eyebrow = isCriadores ? '◆ Também temos serviços' : '◆ Também temos criadores'
+  const title = isCriadores
+    ? 'Precisa de quem cuide do seu patudo?'
+    : 'À procura de um patudo para a sua família?'
+  const description = isCriadores
+    ? 'Passeadores, pet-sitters e mais profissionais verificados em Portugal.'
+    : 'Criadores éticos verificados, com linhagem rastreável e documentação confirmada.'
+  const linkTo = isCriadores ? '/servicos' : '/diretorio'
+  const linkLabel = isCriadores ? 'Ver serviços' : 'Ver criadores'
+
+  return (
+    <section className="mt-16 border-t border-line pt-12">
+      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="eyebrow mb-3">{eyebrow}</p>
+          <h2 className="font-serif text-2xl text-ink">{title}</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">{description}</p>
+        </div>
+        <Link to={linkTo} className="btn-secondary shrink-0">
+          {linkLabel} →
+        </Link>
+      </div>
+    </section>
   )
 }
 

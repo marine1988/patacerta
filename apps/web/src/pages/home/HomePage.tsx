@@ -8,6 +8,7 @@ interface PublicStats {
   speciesCount: number
   districtCount: number
   reviewCount: number
+  serviceCount: number
 }
 
 export function HomePage() {
@@ -20,30 +21,31 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * HERO — editorial
+       * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative">
         <div className="mx-auto max-w-[72rem] px-6 pb-24 pt-20 lg:px-8">
-          <p className="eyebrow mb-8">◆ Criadores verificados · Portugal</p>
+          <p className="eyebrow mb-8">◆ Criadores e Serviços · Portugal</p>
 
           <div className="grid gap-16 lg:grid-cols-[1.3fr_1fr] lg:items-end">
             <div>
               <h1 className="display">
-                A arte de
+                O portal dos
                 <br />
-                <em>escolher bem.</em>
+                <em>patudos</em> em Portugal.
               </h1>
               <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted">
-                Uma curadoria rigorosa de criadores éticos em Portugal. Cada ficha verificada, cada
-                linhagem rastreável, cada cão com a família certa.
+                Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
+                passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
+                informadas.
               </p>
 
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link to="/diretorio" className="btn-primary">
-                  Explorar diretório
+                  Explorar criadores
                 </Link>
-                <Link to="/registar" className="link-editorial">
-                  Sou criador →
+                <Link to="/servicos" className="btn-secondary">
+                  Ver serviços
                 </Link>
               </div>
             </div>
@@ -52,15 +54,16 @@ export function HomePage() {
             <aside className="border-l border-line pl-10">
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
-                "Acreditamos que escolher um cão é escolher uma família. E que nenhuma família
-                merece menos do que rigor, transparência e cuidado."
+                "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
+                o passeia, quem o acompanha. Rigor, transparência e cuidado em cada passo."
               </p>
             </aside>
           </div>
 
           {/* Stats editoriais */}
-          <div className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-4">
+          <div className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={stats?.breederCount} label="Criadores" />
+            <Stat value={stats?.serviceCount} label="Serviços" />
             <Stat value={stats?.speciesCount} label="Espécies" />
             <Stat value={stats?.districtCount} label="Distritos" />
             <Stat value={stats?.reviewCount} label="Avaliações" />
@@ -74,7 +77,7 @@ export function HomePage() {
       <section className="border-t border-line">
         <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
           <div className="mb-8 flex items-baseline gap-3">
-            <span className="eyebrow">◆ Encontrar</span>
+            <span className="eyebrow">◆ Encontrar criadores</span>
             <span className="h-px flex-1 bg-line" />
           </div>
           <SearchBar />
@@ -115,14 +118,56 @@ export function HomePage() {
       </section>
 
       {/* ============================================================
-       * CTA — registar criador
+       * SERVIÇOS — nova vertical em destaque
        * ============================================================ */}
       <section className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
+          <div className="mb-16 max-w-2xl">
+            <p className="eyebrow mb-6">◆ Serviços para patudos</p>
+            <h2 className="font-serif text-h2 text-ink">
+              Profissionais de confiança, <em className="italic text-caramel-500">perto de si</em>.
+            </h2>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+              Anúncios verificados de prestadores em Portugal. Procure por categoria, distrito ou
+              proximidade — e fale directamente com quem vai cuidar do seu animal.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2">
+            <ServiceCategoryCard
+              eyebrow="01"
+              title="Passeios"
+              description="Passeadores experientes para o dia-a-dia ou ocasiões pontuais. Horários flexíveis, encontros presenciais antes de começar."
+              href="/diretorio?tipo=servicos&categoria=passeio"
+            />
+            <ServiceCategoryCard
+              eyebrow="02"
+              title="Pet-sitting"
+              description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem stress de canil."
+              href="/diretorio?tipo=servicos&categoria=pet-sitting"
+            />
+          </div>
+
+          <div className="mt-12 flex flex-col items-start gap-6 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-serif text-lg italic text-muted">
+              Mais categorias a chegar — banhos, treino, transporte, veterinária.
+            </p>
+            <Link to="/servicos" className="btn-primary">
+              Ver todos os serviços
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+       * CTA — registar criador
+       * ============================================================ */}
+      <section className="border-t border-line bg-surface-alt/40">
         <div className="mx-auto max-w-[72rem] px-6 py-24 text-center lg:px-8">
-          <p className="eyebrow mb-6">◆ Criador certificado</p>
+          <p className="eyebrow mb-6">◆ Criador ou prestador certificado</p>
           <h2 className="font-serif text-h2 mx-auto max-w-2xl text-ink">
-            Torne-se parte de uma rede <em className="italic text-caramel-500">selecta</em> de
-            criadores portugueses.
+            Faça parte de uma rede <em className="italic text-caramel-500">selecta</em> de
+            profissionais portugueses.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted">
             Visibilidade junto de famílias que procuram rigor. Perfil curado. Processo gratuito.
@@ -131,8 +176,8 @@ export function HomePage() {
             <Link to="/registar" className="btn-primary btn-lg">
               Juntar-me à PataCerta
             </Link>
-            <Link to="/diretorio" className="link-editorial">
-              Ver diretório →
+            <Link to="/painel?tab=servicos" className="link-editorial">
+              Oferecer serviços →
             </Link>
           </div>
         </div>
@@ -168,5 +213,34 @@ function Pillar({
       <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
       <div className="mt-6 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
     </article>
+  )
+}
+
+function ServiceCategoryCard({
+  eyebrow,
+  title,
+  description,
+  href,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+  href: string
+}) {
+  return (
+    <Link
+      to={href}
+      className="group block border border-line bg-surface p-10 transition-colors duration-200 hover:border-caramel-500"
+    >
+      <p className="font-serif text-4xl font-normal italic text-caramel-500">{eyebrow}</p>
+      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
+      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
+      <div className="mt-8 flex items-center gap-3">
+        <span className="text-[11px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:text-caramel-700">
+          Explorar
+        </span>
+        <span className="h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
+      </div>
+    </Link>
   )
 }

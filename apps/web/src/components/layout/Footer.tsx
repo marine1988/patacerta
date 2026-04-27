@@ -21,8 +21,8 @@ export function Footer() {
               Pata<em className="italic text-caramel-500">Certa</em>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted">
-              Uma curadoria rigorosa de criadores éticos em Portugal. Cada ficha verificada, cada
-              linhagem rastreável.
+              O portal dos patudos em Portugal — criadores éticos verificados e serviços de
+              confiança, com rigor e transparência.
             </p>
           </div>
 
@@ -31,9 +31,10 @@ export function Footer() {
             <h4 className="eyebrow mb-5">— Plataforma</h4>
             <ul className="space-y-3">
               <FooterLink to="/diretorio">Diretório</FooterLink>
-              <FooterLink to="/diretorio?tipo=servicos">Serviços</FooterLink>
+              <FooterLink to="/servicos">Serviços</FooterLink>
               <FooterLink to="/mapa">Mapa</FooterLink>
               <FooterLink to="/registar">Juntar-me como criador</FooterLink>
+              <FooterLink to="/painel?tab=servicos">Oferecer serviços</FooterLink>
             </ul>
           </div>
 

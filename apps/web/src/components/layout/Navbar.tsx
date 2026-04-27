@@ -106,7 +106,7 @@ export function Navbar() {
             Diretório
           </Link>
           <Link
-            to="/diretorio?tipo=servicos"
+            to="/servicos"
             className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
               isDirectoryServicos ? 'text-caramel-500' : 'text-muted hover:text-ink'
             }`}
@@ -248,7 +248,7 @@ export function Navbar() {
               Diretório
             </Link>
             <Link
-              to="/diretorio?tipo=servicos"
+              to="/servicos"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
             >
