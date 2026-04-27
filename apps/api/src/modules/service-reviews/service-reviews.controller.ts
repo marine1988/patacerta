@@ -3,7 +3,11 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
 import { recomputeServiceRating } from '../../lib/service-rating.js'
-import { checkReviewEligibility } from '../../lib/review-eligibility.js'
+import {
+  checkReviewEligibility,
+  isReviewEligibilityBypassed,
+  bypassedEligibility,
+} from '../../lib/review-eligibility.js'
 import type {
   CreateServiceReviewInput,
   ListServiceReviewsInput,
@@ -405,18 +409,22 @@ export const getServiceReviewEligibility = asyncHandler(async (req, res) => {
   const authorId = req.user!.userId
   const serviceId = parseId(String(req.query.serviceId ?? ''))
 
-  if (req.user!.role === 'ADMIN') {
-    res.json({
-      eligible: true,
-      reason: null,
-      detail: {
-        threadFound: true,
-        sentByAuthor: 0,
-        sentByCounterparty: 0,
-        windowDays: 30,
-        minPerSide: 2,
-      },
-    })
+  if (req.user!.role === 'ADMIN' || isReviewEligibilityBypassed()) {
+    res.json(
+      req.user!.role === 'ADMIN'
+        ? {
+            eligible: true,
+            reason: null,
+            detail: {
+              threadFound: true,
+              sentByAuthor: 0,
+              sentByCounterparty: 0,
+              windowDays: 30,
+              minPerSide: 2,
+            },
+          }
+        : bypassedEligibility(),
+    )
     return
   }
 

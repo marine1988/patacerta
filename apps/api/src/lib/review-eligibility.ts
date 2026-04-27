@@ -8,11 +8,42 @@
 // Mensagens soft-deleted não contam.
 //
 // Admins ignoram esta regra (útil para seed/QA/intervenção).
+//
+// Bypass para QA: a env var REVIEW_ELIGIBILITY_BYPASS=1 desliga a regra.
+// Por segurança o bypass só é honrado quando NODE_ENV !== 'production'
+// (i.e. em stage/dev). Em produção a flag é silenciosamente ignorada.
 
 import { prisma } from './prisma.js'
 
 export const REVIEW_INTERACTION_WINDOW_DAYS = 30
 export const REVIEW_INTERACTION_MIN_PER_SIDE = 2
+
+const BYPASS_REASON =
+  'Bypass de QA: REVIEW_ELIGIBILITY_BYPASS está activo neste ambiente (não-produção).'
+
+/**
+ * Devolve true quando a regra de elegibilidade deve ser ignorada.
+ * Apenas activo se REVIEW_ELIGIBILITY_BYPASS=1 E NODE_ENV !== 'production'.
+ */
+export function isReviewEligibilityBypassed(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.REVIEW_ELIGIBILITY_BYPASS === '1'
+}
+
+/** Resposta canónica para devolver quando o bypass está activo. */
+export function bypassedEligibility(): EligibilityResult {
+  return {
+    eligible: true,
+    reason: BYPASS_REASON,
+    detail: {
+      threadFound: true,
+      sentByAuthor: 0,
+      sentByCounterparty: 0,
+      windowDays: REVIEW_INTERACTION_WINDOW_DAYS,
+      minPerSide: REVIEW_INTERACTION_MIN_PER_SIDE,
+      bypass: true,
+    },
+  }
+}
 
 export interface EligibilityResult {
   eligible: boolean
@@ -25,6 +56,8 @@ export interface EligibilityResult {
     sentByCounterparty: number
     windowDays: number
     minPerSide: number
+    /** True quando a regra foi contornada via env var de QA. */
+    bypass?: boolean
   }
 }
 
@@ -57,6 +90,10 @@ export async function checkReviewEligibility(
   authorId: number,
   target: EligibilityTarget,
 ): Promise<EligibilityResult> {
+  if (isReviewEligibilityBypassed()) {
+    return bypassedEligibility()
+  }
+
   const since = new Date(Date.now() - REVIEW_INTERACTION_WINDOW_DAYS * 24 * 60 * 60 * 1000)
 
   // Localizar a thread relevante. O modelo Thread tem unique (ownerId, breederId)

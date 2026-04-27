@@ -2,7 +2,11 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
-import { checkReviewEligibility } from '../../lib/review-eligibility.js'
+import {
+  checkReviewEligibility,
+  isReviewEligibilityBypassed,
+  bypassedEligibility,
+} from '../../lib/review-eligibility.js'
 import type {
   CreateReviewInput,
   ListReviewsInput,
@@ -370,18 +374,22 @@ export const getReviewEligibility = asyncHandler(async (req, res) => {
   const authorId = req.user!.userId
   const breederId = parseId(String(req.query.breederId ?? ''))
 
-  if (req.user!.role === 'ADMIN') {
-    res.json({
-      eligible: true,
-      reason: null,
-      detail: {
-        threadFound: true,
-        sentByAuthor: 0,
-        sentByCounterparty: 0,
-        windowDays: 30,
-        minPerSide: 2,
-      },
-    })
+  if (req.user!.role === 'ADMIN' || isReviewEligibilityBypassed()) {
+    res.json(
+      req.user!.role === 'ADMIN'
+        ? {
+            eligible: true,
+            reason: null,
+            detail: {
+              threadFound: true,
+              sentByAuthor: 0,
+              sentByCounterparty: 0,
+              windowDays: 30,
+              minPerSide: 2,
+            },
+          }
+        : bypassedEligibility(),
+    )
     return
   }
 
