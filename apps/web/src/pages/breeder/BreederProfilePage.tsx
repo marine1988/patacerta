@@ -13,6 +13,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatDate } from '../../lib/dates'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { StarRating } from '../../components/shared/StarRating'
+import { YouTubeEmbed } from '../../components/shared/YouTubeEmbed'
+import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
 import { Avatar } from '../../components/ui/Avatar'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -30,6 +32,13 @@ import { NewThreadModal } from '../../components/messages/NewThreadModal'
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
 )
+
+interface BreederPhoto {
+  id: number
+  url: string
+  caption: string | null
+  sortOrder: number
+}
 
 interface BreederDetail {
   id: number
@@ -49,6 +58,22 @@ interface BreederDetail {
   avgRating: number | null
   reviewCount: number
   createdAt: string
+  photos?: BreederPhoto[]
+  youtubeVideoId?: string | null
+  cpcMember?: boolean
+  fciAffiliated?: boolean
+  vetCheckup?: boolean
+  microchip?: boolean
+  vaccinations?: boolean
+  lopRegistry?: boolean
+  kennelName?: boolean
+  salesInvoice?: boolean
+  food?: boolean
+  initialTraining?: boolean
+  pickupInPerson?: boolean
+  deliveryByCar?: boolean
+  deliveryByPlane?: boolean
+  pickupNotes?: string | null
 }
 
 interface ReviewsResponse {
@@ -79,6 +104,7 @@ export function BreederProfilePage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [threadModalOpen, setThreadModalOpen] = useState(false)
   const [threadError, setThreadError] = useState<string | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const {
     data: breeder,
@@ -179,7 +205,7 @@ export function BreederProfilePage() {
 
   function handleSendMessageClick() {
     if (!user) {
-      navigate('/entrar?next=' + encodeURIComponent(`/criadores/${id}`))
+      navigate('/entrar?next=' + encodeURIComponent(`/criador/${id}`))
       return
     }
     if (isSelf) return
@@ -189,7 +215,7 @@ export function BreederProfilePage() {
 
   function handleWriteReviewClick() {
     if (!user) {
-      navigate('/entrar?next=' + encodeURIComponent(`/criadores/${id}`))
+      navigate('/entrar?next=' + encodeURIComponent(`/criador/${id}`))
       return
     }
     setEditingReview(myReview ?? null)
@@ -285,14 +311,181 @@ export function BreederProfilePage() {
             </div>
           </Card>
 
+          {/* Galeria */}
+          {breeder.photos && breeder.photos.length > 0 && (
+            <Card>
+              {/* Hero: foto de capa grande + miniaturas */}
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(0)}
+                className="block w-full overflow-hidden rounded-lg"
+                aria-label="Abrir galeria"
+              >
+                <div className="aspect-[16/9] w-full bg-gray-100">
+                  <img
+                    src={breeder.photos[0].url}
+                    alt={`${breeder.businessName} — foto principal`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </button>
+              {breeder.photos.length > 1 && (
+                <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {breeder.photos.slice(1, 7).map((photo, idx) => (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      onClick={() => setLightboxIndex(idx + 1)}
+                      className="relative aspect-square overflow-hidden rounded-md bg-gray-100"
+                      aria-label={`Abrir foto ${idx + 2}`}
+                    >
+                      <img
+                        src={photo.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                      {idx === 5 && breeder.photos!.length > 7 && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-semibold text-white">
+                          +{breeder.photos!.length - 7}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+
           {breeder.description && (
             <Card>
-              <h2 className="text-lg font-semibold text-gray-900">Sobre</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Conheça {breeder.businessName}
+              </h2>
               <div className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-600">
                 {breeder.description}
               </div>
             </Card>
           )}
+
+          {breeder.youtubeVideoId && (
+            <Card>
+              <h2 className="text-lg font-semibold text-gray-900">Vídeo de apresentação</h2>
+              <div className="mt-3">
+                <YouTubeEmbed videoId={breeder.youtubeVideoId} title={breeder.businessName} />
+              </div>
+            </Card>
+          )}
+
+          {/* Reconhecimentos oficiais */}
+          {(breeder.cpcMember || breeder.fciAffiliated) && (
+            <Card>
+              <h2 className="text-lg font-semibold text-gray-900">Reconhecimentos oficiais</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {breeder.cpcMember && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Membro CPC
+                    </p>
+                    <p className="mt-1 text-sm text-blue-900">Clube Português de Canicultura</p>
+                  </div>
+                )}
+                {breeder.fciAffiliated && (
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                      Filiado FCI
+                    </p>
+                    <p className="mt-1 text-sm text-purple-900">
+                      Fédération Cynologique Internationale
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* O que está incluído */}
+          {(() => {
+            const items = [
+              { key: 'vetCheckup', label: 'Check-up veterinário', icon: '🩺', col: 'health' },
+              { key: 'microchip', label: 'Microchip implantado', icon: '🔬', col: 'health' },
+              { key: 'vaccinations', label: 'Vacinação em dia', icon: '💉', col: 'health' },
+              { key: 'lopRegistry', label: 'Registo no LOP', icon: '📜', col: 'docs' },
+              { key: 'kennelName', label: 'Nome de canil', icon: '🏷️', col: 'docs' },
+              { key: 'salesInvoice', label: 'Factura de venda', icon: '🧾', col: 'docs' },
+              { key: 'food', label: 'Alimentação inicial', icon: '🥣', col: 'extras' },
+              { key: 'initialTraining', label: 'Treino inicial', icon: '🐾', col: 'extras' },
+            ] as const
+            const active = items.filter((it) => breeder[it.key])
+            if (active.length === 0) return null
+            const groups: Record<string, { title: string; rows: typeof active }> = {
+              health: { title: 'Saúde', rows: [] },
+              docs: { title: 'Documentação', rows: [] },
+              extras: { title: 'Extras', rows: [] },
+            }
+            for (const it of active) groups[it.col].rows.push(it)
+            return (
+              <Card>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  O que está incluído com cada cachorro
+                </h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                  {Object.entries(groups).map(([key, g]) =>
+                    g.rows.length > 0 ? (
+                      <div key={key}>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {g.title}
+                        </h3>
+                        <ul className="space-y-1.5">
+                          {g.rows.map((it) => (
+                            <li
+                              key={it.key}
+                              className="flex items-center gap-2 text-sm text-gray-700"
+                            >
+                              <span aria-hidden="true">{it.icon}</span>
+                              <span>{it.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null,
+                  )}
+                </div>
+              </Card>
+            )
+          })()}
+
+          {/* Levar para casa */}
+          {(() => {
+            const opts = [
+              { key: 'pickupInPerson', label: 'Recolha presencial no canil', icon: '🏠' },
+              { key: 'deliveryByCar', label: 'Entrega ao domicílio (carro)', icon: '🚗' },
+              { key: 'deliveryByPlane', label: 'Envio por avião', icon: '✈️' },
+            ] as const
+            const active = opts.filter((o) => breeder[o.key])
+            if (active.length === 0 && !breeder.pickupNotes) return null
+            return (
+              <Card>
+                <h2 className="text-lg font-semibold text-gray-900">Levar para casa</h2>
+                {active.length > 0 && (
+                  <ul className="mt-3 space-y-1.5">
+                    {active.map((o) => (
+                      <li key={o.key} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span aria-hidden="true">{o.icon}</span>
+                        <span>{o.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {breeder.pickupNotes && (
+                  <p className="mt-3 whitespace-pre-line text-sm text-gray-600">
+                    {breeder.pickupNotes}
+                  </p>
+                )}
+              </Card>
+            )
+          })()}
 
           {breeder.status === 'VERIFIED' && breeder.dgavNumber && (
             <Card>
@@ -503,6 +696,14 @@ export function BreederProfilePage() {
           </Card>
         </div>
       </div>
+
+      <PhotoLightbox
+        isOpen={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+        photos={breeder.photos ?? []}
+        startIndex={lightboxIndex ?? 0}
+        alt={breeder.businessName}
+      />
 
       <ReviewForm
         isOpen={reviewModalOpen}
