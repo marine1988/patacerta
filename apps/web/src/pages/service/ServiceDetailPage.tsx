@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
+import type { ServiceReviewItem } from '../../lib/reviews'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { formatDate } from '../../lib/dates'
@@ -55,20 +56,6 @@ interface ServiceDetail {
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
   provider: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
-}
-
-interface ServiceReviewItem {
-  id: number
-  serviceId: number
-  authorId: number
-  rating: number
-  title: string
-  body: string | null
-  status: string
-  reply: string | null
-  repliedAt: string | null
-  createdAt: string
-  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
 }
 
 interface ServiceReviewsResponse {

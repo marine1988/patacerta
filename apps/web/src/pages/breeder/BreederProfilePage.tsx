@@ -4,6 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
+import type { ReviewItem as ReviewItemBase } from '../../lib/reviews'
+
+type ReviewItem = ReviewItemBase & {
+  breeder: { id: number; businessName: string }
+}
 import { useAuth } from '../../hooks/useAuth'
 import { formatDate } from '../../lib/dates'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
@@ -44,20 +49,6 @@ interface BreederDetail {
   avgRating: number | null
   reviewCount: number
   createdAt: string
-}
-
-interface ReviewItem {
-  id: number
-  rating: number
-  title: string
-  body: string | null
-  status: string
-  reply: string | null
-  repliedAt: string | null
-  createdAt: string
-  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
-  breeder: { id: number; businessName: string }
-  authorId: number
 }
 
 interface ReviewsResponse {

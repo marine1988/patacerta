@@ -7,21 +7,9 @@ import { Pagination } from '../../components/ui/Pagination'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import type { PaginatedMeta } from '../../lib/pagination'
+import type { DashboardServiceReviewItem } from '../../lib/reviews'
 
-interface ServiceReviewItem {
-  id: number
-  serviceId: number
-  authorId: number
-  rating: number
-  title: string
-  body: string | null
-  status: string
-  moderationReason: string | null
-  reply: string | null
-  repliedAt: string | null
-  createdAt: string
-  updatedAt: string
-  author: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
+type ServiceReviewItem = DashboardServiceReviewItem & {
   service: { id: number; title: string; providerId: number }
 }
 
