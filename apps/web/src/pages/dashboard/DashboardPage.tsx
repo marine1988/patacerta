@@ -21,9 +21,8 @@ import {
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import { ServicesTab } from './ServicesTab'
-import { ServiceReviewsTab } from './ServiceReviewsTab'
 import { MyReviewsTab } from './MyReviewsTab'
-import { ReviewsAboutMeTab } from './ReviewsAboutMeTab'
+import { ReceivedReviewsTab } from './ReceivedReviewsTab'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
@@ -2059,7 +2058,7 @@ export default function DashboardPage() {
     },
     {
       id: 'avaliacoes',
-      label: isBreeder ? 'Avaliações sobre mim' : 'Minhas avaliações',
+      label: 'Minhas avaliações',
       icon: (
         <svg
           className="h-4 w-4"
@@ -2075,13 +2074,13 @@ export default function DashboardPage() {
           />
         </svg>
       ),
-      content: isBreeder ? <ReviewsAboutMeTab /> : <MyReviewsTab />,
+      content: <MyReviewsTab />,
     },
-    ...(showServicesTab
+    ...(isBreeder || hasServices
       ? [
           {
-            id: 'avaliacoes-servicos',
-            label: 'Avaliações de serviços',
+            id: 'avaliacoes-recebidas',
+            label: 'Avaliações sobre mim',
             icon: (
               <svg
                 className="h-4 w-4"
@@ -2097,7 +2096,9 @@ export default function DashboardPage() {
                 />
               </svg>
             ),
-            content: <ServiceReviewsTab />,
+            content: (
+              <ReceivedReviewsTab includeBreeder={isBreeder} includeServices={hasServices} />
+            ),
           },
         ]
       : []),
