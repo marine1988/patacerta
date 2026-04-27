@@ -96,7 +96,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://www.sosanimal.pt"
+                    href="https://www.sosanimal.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-ink underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500"
