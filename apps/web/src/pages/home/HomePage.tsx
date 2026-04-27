@@ -21,7 +21,8 @@ interface FeaturedService {
   priceCents: number
   priceUnit: ServicePriceUnit
   currency: string
-  avgRating: number | null
+  /** Decimal serializado pelo Prisma vem como string. */
+  avgRating: number | string | null
   reviewCount: number
   featuredUntil: string | null
   photos: { id: number; url: string; sortOrder: number }[]
@@ -34,7 +35,7 @@ interface FeaturedBreeder {
   id: number
   businessName: string
   description: string | null
-  avgRating: number | null
+  avgRating: number | string | null
   reviewCount: number
   featuredUntil: string | null
   district: { id: number; namePt: string }
@@ -325,9 +326,18 @@ function ServiceCategoryCard({
 
 const ITEM_CLASSES = 'relative w-72 flex-shrink-0 snap-start sm:w-80'
 
+/** Coage avgRating (Decimal Prisma vem como string) e arredonda a 1 casa. */
+function formatRating(value: number | string | null | undefined): string | null {
+  if (value == null) return null
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n.toFixed(1)
+}
+
 function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
   const cover = s.photos[0]?.url ?? null
   const isPromoted = s.featuredUntil != null && new Date(s.featuredUntil) > new Date()
+  const rating = formatRating(s.avgRating)
 
   return (
     <Link
@@ -355,9 +365,9 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
         <p className="mt-2 text-xs text-muted">
           {s.municipality.namePt}, {s.district.namePt}
         </p>
-        {s.avgRating != null && s.reviewCount > 0 && (
+        {rating && s.reviewCount > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs">
-            <span className="font-semibold text-yellow-600">{s.avgRating.toFixed(1)}</span>
+            <span className="font-semibold text-yellow-600">{rating}</span>
             <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
@@ -371,6 +381,7 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
 
 function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
   const isPromoted = b.featuredUntil != null && new Date(b.featuredUntil) > new Date()
+  const rating = formatRating(b.avgRating)
 
   return (
     <Link
@@ -385,9 +396,9 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
           <p className="mt-1 text-xs text-muted">
             {b.municipality.namePt}, {b.district.namePt}
           </p>
-          {b.avgRating != null && b.reviewCount > 0 && (
+          {rating && b.reviewCount > 0 && (
             <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-              <span className="font-semibold text-yellow-600">{b.avgRating.toFixed(1)}</span>
+              <span className="font-semibold text-yellow-600">{rating}</span>
               <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
