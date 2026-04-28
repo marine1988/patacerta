@@ -253,9 +253,9 @@ async function main() {
   const serviceCategoriesData = [
     { nameSlug: 'passeio', namePt: 'Passeio de Cães', isActive: true },
     { nameSlug: 'pet-sitting', namePt: 'Pet Sitting', isActive: true },
+    { nameSlug: 'treino', namePt: 'Treino / Comportamento', isActive: true },
     { nameSlug: 'veterinario', namePt: 'Veterinário', isActive: false },
     { nameSlug: 'tosquia', namePt: 'Tosquia / Grooming', isActive: false },
-    { nameSlug: 'treino', namePt: 'Treino / Comportamento', isActive: false },
     { nameSlug: 'transporte', namePt: 'Transporte de Animais', isActive: false },
     { nameSlug: 'fotografia', namePt: 'Fotografia Animal', isActive: false },
     { nameSlug: 'outro', namePt: 'Outro', isActive: false },

@@ -264,7 +264,7 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2">
+          <div className="grid gap-8 md:grid-cols-3">
             <ServiceCategoryCard
               eyebrow="01"
               title="Passeios"
@@ -277,11 +277,17 @@ export function HomePage() {
               description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem stress de canil."
               href="/explorar?tipo=servicos&categoria=pet-sitting"
             />
+            <ServiceCategoryCard
+              eyebrow="03"
+              title="Treino"
+              description="Treinadores que trabalham obediência, comportamento e socialização — métodos de reforço positivo, sessões individuais ou em grupo."
+              href="/explorar?tipo=servicos&categoria=treino"
+            />
           </div>
 
           <div className="mt-12 flex flex-col items-start gap-6 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-serif text-lg italic text-muted">
-              Mais categorias a chegar — banhos, treino, transporte, veterinária.
+              Mais categorias a chegar — banhos, transporte, veterinária.
             </p>
             <Link to="/explorar?tipo=servicos" className="btn-primary">
               Ver todos os serviços

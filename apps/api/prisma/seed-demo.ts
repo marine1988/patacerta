@@ -233,7 +233,7 @@ const REVIEWS: ReviewSeed[] = [
 
 type ServiceSeed = {
   providerEmail: string // referencia o user de um BREEDERS[i].email
-  categorySlug: 'passeio' | 'pet-sitting'
+  categorySlug: 'passeio' | 'pet-sitting' | 'treino'
   title: string
   description: string
   priceCents: number
@@ -688,6 +688,45 @@ const SERVICES: ServiceSeed[] = [
     serviceRadiusKm: 5,
     status: ServiceStatus.PAUSED,
     photoSeeds: [1601],
+  },
+
+  // ── TREINO / Comportamento ──
+  // Categoria activada nesta fase do MVP; deixamos exemplos minimos em Lisboa
+  // e Porto para validar UX (lista, filtro por categoria, mapa) e dar contexto
+  // ao tipo de oferta que esperamos (sessoes 1-a-1, foco em reforco positivo).
+  {
+    providerEmail: 'canil.alvalade@example.pt',
+    categorySlug: 'treino',
+    title: 'Treino comportamental — reforço positivo',
+    description:
+      'Sessões 1-a-1 ao domicílio para tutores que querem trabalhar obediência básica, ansiedade de separação ou reactividade na trela. Plano personalizado após avaliação inicial. Zero coleiras de choque ou métodos aversivos.',
+    priceCents: 4500,
+    priceUnit: PriceUnit.PER_SESSION,
+    districtCode: '11',
+    municipalityCode: '1101',
+    latOffset: -0.004,
+    lngOffset: 0.006,
+    serviceRadiusKm: 12,
+    status: ServiceStatus.ACTIVE,
+    photoSeeds: [1080, 1081],
+    extraCoverageCodes: ['1104', '1105'],
+  },
+  {
+    providerEmail: 'canil.douro@example.pt',
+    categorySlug: 'treino',
+    title: 'Educação para cachorros (8–16 semanas)',
+    description:
+      'Programa de 4 semanas focado em socialização, hábitos de casa e prevenção de problemas comportamentais. Sessões em grupo pequeno (máx 4 cachorros) para os pais aprenderem em conjunto.',
+    priceCents: 9000,
+    priceUnit: PriceUnit.FIXED,
+    districtCode: '13',
+    municipalityCode: '1301',
+    latOffset: 0.005,
+    lngOffset: -0.003,
+    serviceRadiusKm: 8,
+    status: ServiceStatus.ACTIVE,
+    photoSeeds: [1082, 1083],
+    extraCoverageCodes: ['1302', '1303'],
   },
 ]
 

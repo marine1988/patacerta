@@ -3,7 +3,7 @@
 // ============================================
 //
 // Tab "Serviços" no Painel: gestão dos próprios anúncios
-// (passeios + pet-sitting) com:
+// (passeios + pet-sitting + treino) com:
 //   - Lista filtrável por estado (tabs)
 //   - Form de criação/edição em secções colapsáveis
 //   - Drag-and-drop + botões para reordenar fotos
@@ -484,7 +484,7 @@ export function ServicesTab() {
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Os meus anúncios</h3>
           <p className="text-sm text-gray-500">
-            Crie e gira os seus anúncios de passeios e pet-sitting.
+            Crie e gira os seus anúncios de passeios, pet-sitting e treino.
           </p>
         </div>
         <Button onClick={startNew}>Novo anúncio</Button>
