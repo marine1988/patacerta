@@ -251,6 +251,48 @@ async function main() {
   }
   console.log(`  ✓ ${serviceCategoriesData.length} service categories seeded`)
 
+  // ---- Cleanup legacy non-dog demo data ----
+  // MVP so-caes: remove demos antigos (gatos/coelhos/aves) que possam estar
+  // persistidos em DBs criadas antes da redução para uma só espécie.
+  console.log('\nCleaning up legacy non-dog demo accounts...')
+  const LEGACY_DEMO_EMAILS = [
+    'gatil.portucale@example.pt',
+    'gatil.algarve@example.pt',
+    'quinta.dos.coelhos@example.pt',
+    'aviario.douro@example.pt',
+    'petlovers.setubal@example.pt',
+  ]
+  const legacyUsers = await prisma.user.findMany({
+    where: { email: { in: LEGACY_DEMO_EMAILS } },
+    select: { id: true, email: true },
+  })
+  if (legacyUsers.length > 0) {
+    const legacyUserIds = legacyUsers.map((u) => u.id)
+    const legacyBreeders = await prisma.breeder.findMany({
+      where: { userId: { in: legacyUserIds } },
+      select: { id: true },
+    })
+    const legacyBreederIds = legacyBreeders.map((b) => b.id)
+    if (legacyBreederIds.length > 0) {
+      await prisma.review.deleteMany({ where: { breederId: { in: legacyBreederIds } } })
+      await prisma.breederSpecies.deleteMany({
+        where: { breederId: { in: legacyBreederIds } },
+      })
+      await prisma.breeder.deleteMany({ where: { id: { in: legacyBreederIds } } })
+    }
+    await prisma.serviceCoverage.deleteMany({
+      where: { service: { providerId: { in: legacyUserIds } } },
+    })
+    await prisma.servicePhoto.deleteMany({
+      where: { service: { providerId: { in: legacyUserIds } } },
+    })
+    await prisma.service.deleteMany({ where: { providerId: { in: legacyUserIds } } })
+    await prisma.user.deleteMany({ where: { id: { in: legacyUserIds } } })
+    console.log(`  ✓ Removed ${legacyUsers.length} legacy demo users + dependents`)
+  } else {
+    console.log('  ✓ No legacy demo users found')
+  }
+
   // ---- Summary ----
   console.log('\n========================================')
   console.log('  Seed completed successfully!')

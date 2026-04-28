@@ -671,6 +671,52 @@ async function main() {
     throw new Error('Espécie "cao" não encontrada — corra primeiro o seed principal.')
   }
 
+  // ---- Cleanup legacy demo breeders (não-cão) ----
+  // MVP so-caes: removemos demos antigos de gatos/coelhos/aves/pequenos animais
+  // que possam estar persistidos em DBs anteriores. Identificamos por email.
+  const LEGACY_DEMO_EMAILS = [
+    'gatil.portucale@example.pt',
+    'gatil.algarve@example.pt',
+    'quinta.dos.coelhos@example.pt',
+    'aviario.douro@example.pt',
+    'petlovers.setubal@example.pt',
+  ]
+  console.log('Cleaning up legacy non-dog demo breeders...')
+  const legacyUsers = await prisma.user.findMany({
+    where: { email: { in: LEGACY_DEMO_EMAILS } },
+    select: { id: true, email: true },
+  })
+  if (legacyUsers.length > 0) {
+    const legacyUserIds = legacyUsers.map((u) => u.id)
+    const legacyBreeders = await prisma.breeder.findMany({
+      where: { userId: { in: legacyUserIds } },
+      select: { id: true },
+    })
+    const legacyBreederIds = legacyBreeders.map((b) => b.id)
+
+    if (legacyBreederIds.length > 0) {
+      // Apaga dependentes que não cascateiam automaticamente.
+      await prisma.review.deleteMany({ where: { breederId: { in: legacyBreederIds } } })
+      await prisma.breederSpecies.deleteMany({
+        where: { breederId: { in: legacyBreederIds } },
+      })
+      await prisma.breeder.deleteMany({ where: { id: { in: legacyBreederIds } } })
+    }
+    // Serviços e fotos cascateiam via FK no User; mas serviços do legacy provider
+    // não têm FK em cascade — apaga manualmente.
+    await prisma.serviceCoverage.deleteMany({
+      where: { service: { providerId: { in: legacyUserIds } } },
+    })
+    await prisma.servicePhoto.deleteMany({
+      where: { service: { providerId: { in: legacyUserIds } } },
+    })
+    await prisma.service.deleteMany({ where: { providerId: { in: legacyUserIds } } })
+    await prisma.user.deleteMany({ where: { id: { in: legacyUserIds } } })
+    console.log(`  ✓ Removed ${legacyUsers.length} legacy demo users + dependents`)
+  } else {
+    console.log('  ✓ No legacy demo users found')
+  }
+
   const districtByCode = new Map(districts.map((d) => [d.code, d.id]))
   const munByCode = new Map(municipalities.map((m) => [m.code, m.id]))
 
