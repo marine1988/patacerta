@@ -32,6 +32,12 @@ interface PhotoGalleryManagerProps {
   uploadMsg: { type: 'success' | 'error'; text: string } | null
   onDelete: (photoId: number) => void
   onReorder: (photoIds: number[]) => void
+  /**
+   * When false, renders the gallery without the surrounding Card so it can
+   * be embedded as a sub-section inside a parent card. Defaults to true to
+   * preserve the standalone behaviour used elsewhere.
+   */
+  wrapInCard?: boolean
 }
 
 export function PhotoGalleryManager({
@@ -45,6 +51,7 @@ export function PhotoGalleryManager({
   uploadMsg,
   onDelete,
   onReorder,
+  wrapInCard = true,
 }: PhotoGalleryManagerProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -85,7 +92,7 @@ export function PhotoGalleryManager({
   }
 
   return (
-    <Card hover={false}>
+    <GalleryShell wrapInCard={wrapInCard}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">
           {title} ({photos.length}/{max})
@@ -188,6 +195,22 @@ export function PhotoGalleryManager({
           {uploadMsg.text}
         </p>
       )}
-    </Card>
+    </GalleryShell>
   )
+}
+
+/**
+ * Optional Card wrapper. When `wrapInCard` is false the gallery is emitted
+ * as a bare fragment so the consumer can place it inside an existing card
+ * with its own padding/borders.
+ */
+function GalleryShell({
+  wrapInCard,
+  children,
+}: {
+  wrapInCard: boolean
+  children: React.ReactNode
+}) {
+  if (wrapInCard) return <Card hover={false}>{children}</Card>
+  return <>{children}</>
 }

@@ -854,11 +854,12 @@ function BreederTab() {
       uploadMsg={photoMsg}
       onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
       onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
+      wrapInCard={false}
     />
   ) : null
 
   const documentosSection = breeder ? (
-    <Card hover={false}>
+    <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
 
       {breeder.verificationDocs.length > 0 ? (
@@ -923,7 +924,7 @@ function BreederTab() {
           {uploadMsg.text}
         </p>
       )}
-    </Card>
+    </div>
   ) : null
 
   const hasDgavDoc = breeder?.verificationDocs.some((d) => d.docType === 'DGAV') ?? false
@@ -1312,15 +1313,8 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Quando ja existe perfil mas nao-verificado, Galeria + Documentos vivem
-          dentro do formulario Editar para reduzir clutter. */}
-      {breeder && isUnverified && (
-        <div className="space-y-6 border-t border-line pt-6">
-          {galeriaSection}
-          {documentosSection}
-          {submitVerificationButton}
-        </div>
-      )}
+      {/* Galeria + Documentos vivem agora no Card pai do tab Criador
+          (ver render abaixo), nao duplicar dentro do formulario. */}
 
       <div className="flex gap-3">
         <Button
@@ -1359,9 +1353,12 @@ function BreederTab() {
         </Card>
       )}
 
-      {/* Status — apenas quando ja existe perfil */}
+      {/* Status — apenas quando ja existe perfil. Card unico com
+          sub-seccoes: Estado, Form (quando editar), Galeria, Documentos.
+          Tudo agrupado dentro do tab Criador para coerencia visual. */}
       {breeder && (
         <Card hover={false}>
+          {/* Estado + accoes */}
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Estado do criador</h3>
@@ -1388,28 +1385,35 @@ function BreederTab() {
               </div>
             )}
           </div>
+
+          {/* Form (apenas em modo editar) */}
+          {editing && <div className="mt-6 border-t border-line pt-6">{breederForm}</div>}
+
+          {/* Galeria — sempre visivel quando ha perfil */}
+          <div className="mt-6 border-t border-line pt-6">{galeriaSection}</div>
+
+          {/* Documentos — sempre visiveis quando ha perfil */}
+          <div className="mt-6 border-t border-line pt-6">{documentosSection}</div>
+
+          {/* Submit para verificacao */}
+          {submitVerificationButton && (
+            <div className="mt-6 border-t border-line pt-6 flex justify-end">
+              {submitVerificationButton}
+            </div>
+          )}
+
+          {!editing && msg && (
+            <p
+              className={`mt-4 text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {msg.text}
+            </p>
+          )}
         </Card>
       )}
 
-      {/* Form — em modo criar esta sempre aberto, em modo editar e' toggle */}
-      {(noProfile || editing) && <Card hover={false}>{breederForm}</Card>}
-
-      {!editing && msg && (
-        <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-          {msg.text}
-        </p>
-      )}
-
-      {/* Galeria + Documentos: só fora do Editar quando o criador
-          já está VERIFIED. Para os outros estados ficam dentro do
-          formulário de edição (ver acima). */}
-      {breeder && !isUnverified && (
-        <>
-          {galeriaSection}
-          {documentosSection}
-          {submitVerificationButton}
-        </>
-      )}
+      {/* Modo criar (sem perfil) — form sozinho num card */}
+      {noProfile && <Card hover={false}>{breederForm}</Card>}
 
       {/* Modal — confirmação de eliminação do perfil de criador */}
       <Modal
