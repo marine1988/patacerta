@@ -1,17 +1,20 @@
 import type { Request, Response, NextFunction } from 'express'
+import { getRedis } from '../lib/redis.js'
 
 interface RateLimitStore {
   [key: string]: { count: number; resetAt: number }
 }
 
-const store: RateLimitStore = {}
+// In-process fallback used when Redis is unavailable. Single-instance only;
+// for multi-instance production deployments, set REDIS_URL.
+const memoryStore: RateLimitStore = {}
 
-// Clean up expired entries every 5 minutes
+// Periodic cleanup of expired in-memory entries.
 setInterval(
   () => {
     const now = Date.now()
-    for (const key of Object.keys(store)) {
-      if (store[key].resetAt <= now) delete store[key]
+    for (const key of Object.keys(memoryStore)) {
+      if (memoryStore[key].resetAt <= now) delete memoryStore[key]
     }
   },
   5 * 60 * 1000,
@@ -22,6 +25,11 @@ interface RateLimitOptions {
   max?: number
   message?: string
   keyGenerator?: (req: Request) => string
+  /**
+   * Bucket name used to namespace Redis keys. Defaults to 'default'. Use a
+   * distinct name per limiter so different policies don't share counters.
+   */
+  bucket?: string
 }
 
 /**
@@ -33,9 +41,64 @@ function rateLimitsDisabled(): boolean {
   return v === '1' || v === 'true' || v === 'TRUE'
 }
 
+interface HitResult {
+  count: number
+  resetAt: number
+}
+
 /**
- * Simple in-memory rate limiter.
- * For production with multiple instances, use Redis-backed rate limiting.
+ * Atomic INCR + EXPIRE in Redis. On the first hit within a window we set the
+ * TTL; subsequent hits just increment. Failures throw and let the caller
+ * fall back to the in-memory store, so a flaky Redis never takes the API down.
+ */
+async function redisHit(key: string, windowMs: number): Promise<HitResult | null> {
+  const redis = getRedis()
+  if (!redis) return null
+
+  const redisKey = `rl:${key}`
+  // Use a pipeline for INCR + PTTL so we know if this is a fresh window.
+  const pipeline = redis.multi()
+  pipeline.incr(redisKey)
+  pipeline.pttl(redisKey)
+  const results = await pipeline.exec()
+  if (!results) throw new Error('redis pipeline returned null')
+
+  const [incrErr, count] = results[0]
+  const [pttlErr, pttl] = results[1]
+  if (incrErr) throw incrErr
+  if (pttlErr) throw pttlErr
+
+  let ttlMs = typeof pttl === 'number' ? pttl : -1
+  // First hit (or key without TTL): set the window expiry.
+  if (ttlMs < 0) {
+    await redis.pexpire(redisKey, windowMs)
+    ttlMs = windowMs
+  }
+
+  return {
+    count: typeof count === 'number' ? count : Number(count),
+    resetAt: Date.now() + ttlMs,
+  }
+}
+
+function memoryHit(key: string, windowMs: number): HitResult {
+  const now = Date.now()
+  const entry = memoryStore[key]
+  if (!entry || entry.resetAt <= now) {
+    memoryStore[key] = { count: 1, resetAt: now + windowMs }
+  } else {
+    entry.count++
+  }
+  return memoryStore[key]
+}
+
+/**
+ * Rate limiter middleware. Uses Redis when REDIS_URL is configured (required
+ * for multi-instance deployments), otherwise falls back to an in-process Map.
+ * If Redis is configured but momentarily unhealthy, this falls back to the
+ * in-process store rather than failing the request — security over availability
+ * trade-off favours availability for short Redis blips, since the fallback
+ * still rate-limits per-instance.
  */
 export function rateLimit(options: RateLimitOptions = {}) {
   const {
@@ -43,29 +106,32 @@ export function rateLimit(options: RateLimitOptions = {}) {
     max = 100,
     message = 'Demasiados pedidos. Tente novamente mais tarde.',
     keyGenerator = (req: Request) => req.ip || 'unknown',
+    bucket = 'default',
   } = options
 
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     if (rateLimitsDisabled()) {
       next()
       return
     }
 
-    const key = keyGenerator(req)
-    const now = Date.now()
+    const key = `${bucket}:${keyGenerator(req)}`
 
-    if (!store[key] || store[key].resetAt <= now) {
-      store[key] = { count: 1, resetAt: now + windowMs }
-    } else {
-      store[key].count++
+    let hit: HitResult
+    try {
+      const redisResult = await redisHit(key, windowMs)
+      hit = redisResult ?? memoryHit(key, windowMs)
+    } catch {
+      // Redis blip — degrade to per-instance memory store.
+      hit = memoryHit(key, windowMs)
     }
 
-    const remaining = Math.max(0, max - store[key].count)
+    const remaining = Math.max(0, max - hit.count)
     res.set('X-RateLimit-Limit', String(max))
     res.set('X-RateLimit-Remaining', String(remaining))
-    res.set('X-RateLimit-Reset', String(Math.ceil(store[key].resetAt / 1000)))
+    res.set('X-RateLimit-Reset', String(Math.ceil(hit.resetAt / 1000)))
 
-    if (store[key].count > max) {
+    if (hit.count > max) {
       res.status(429).json({ error: message, code: 'RATE_LIMITED' })
       return
     }
@@ -79,17 +145,20 @@ export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Demasiadas tentativas de autenticação. Tente em 15 minutos.',
+  bucket: 'auth',
 })
 
 export const apiRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
+  bucket: 'api',
 })
 
 export const uploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   message: 'Limite de uploads atingido. Tente novamente em 1 hora.',
+  bucket: 'upload',
 })
 
 // Per-authenticated-user key generator. Falls back to IP for unauthenticated requests.
@@ -103,6 +172,7 @@ export const reviewCreateRateLimit = rateLimit({
   max: 5,
   message: 'Limite diário de avaliações atingido. Tente novamente amanhã.',
   keyGenerator: userKey,
+  bucket: 'review-create',
 })
 
 export const reviewFlagRateLimit = rateLimit({
@@ -110,6 +180,7 @@ export const reviewFlagRateLimit = rateLimit({
   max: 10,
   message: 'Demasiadas denúncias. Tente novamente mais tarde.',
   keyGenerator: userKey,
+  bucket: 'review-flag',
 })
 
 export const messageSendRateLimit = rateLimit({
@@ -117,6 +188,7 @@ export const messageSendRateLimit = rateLimit({
   max: 20,
   message: 'Está a enviar mensagens demasiado depressa. Aguarde um momento.',
   keyGenerator: userKey,
+  bucket: 'message-send',
 })
 
 export const threadCreateRateLimit = rateLimit({
@@ -124,6 +196,7 @@ export const threadCreateRateLimit = rateLimit({
   max: 15,
   message: 'Limite de novas conversas atingido. Tente novamente mais tarde.',
   keyGenerator: userKey,
+  bucket: 'thread-create',
 })
 
 export const serviceCreateRateLimit = rateLimit({
@@ -131,6 +204,7 @@ export const serviceCreateRateLimit = rateLimit({
   max: 10,
   message: 'Limite diário de novos anúncios atingido. Tente novamente amanhã.',
   keyGenerator: userKey,
+  bucket: 'service-create',
 })
 
 export const serviceReportRateLimit = rateLimit({
@@ -138,6 +212,7 @@ export const serviceReportRateLimit = rateLimit({
   max: 10,
   message: 'Demasiadas denúncias. Tente novamente mais tarde.',
   keyGenerator: userKey,
+  bucket: 'service-report',
 })
 
 // Protege as mutacoes owner-side de servicos (PATCH/DELETE/publish/pause)
@@ -147,4 +222,5 @@ export const serviceMutationRateLimit = rateLimit({
   max: 60,
   message: 'Demasiadas alterações ao anúncio. Aguarde um momento.',
   keyGenerator: userKey,
+  bucket: 'service-mutation',
 })

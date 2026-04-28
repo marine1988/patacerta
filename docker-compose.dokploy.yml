@@ -47,6 +47,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     expose:
       - '3001'
     networks:
@@ -55,6 +57,7 @@ services:
       NODE_ENV: production
       PORT: '3001'
       DATABASE_URL: postgresql://patacerta:${POSTGRES_PASSWORD}@postgres:5432/patacerta?schema=public&connection_limit=5&pool_timeout=20&connect_timeout=10&socket_timeout=30
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: '15m'
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -100,6 +103,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis (rate-limit + cache) ──
+  redis:
+    image: redis:7-alpine
+    networks:
+      - default
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── MinIO (S3-compatible object storage) ──
   minio:
     image: minio/minio:latest
@@ -123,6 +141,8 @@ volumes:
     name: patacerta_postgres_data
   minio_data:
     name: patacerta_minio_data
+  redis_data:
+    name: patacerta_redis_data
 
 networks:
   dokploy-network:
