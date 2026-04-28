@@ -92,12 +92,8 @@ export const breederProfileSchema = z
     description: z
       .string()
       .trim()
-      .max(2000)
-      .optional()
-      .refine((v) => v === undefined || v.length === 0 || v.length >= 50, {
-        message:
-          'Apresentação demasiado curta — escreva pelo menos 50 caracteres ou deixe em branco',
-      }),
+      .min(80, 'Apresentação demasiado curta — escreva pelo menos 80 caracteres')
+      .max(2000, 'Apresentação demasiado longa (máx. 2000 caracteres)'),
     districtId: z.number().int().positive(),
     municipalityId: z.number().int().positive(),
     // MVP: campo deprecated — backend assume sempre 'cao'.
@@ -157,11 +153,9 @@ export const updateBreederProfileSchema = z.object({
   description: z
     .string()
     .trim()
-    .max(2000)
-    .optional()
-    .refine((v) => v === undefined || v.length === 0 || v.length >= 50, {
-      message: 'Apresentação demasiado curta — escreva pelo menos 50 caracteres ou deixe em branco',
-    }),
+    .min(80, 'Apresentação demasiado curta — escreva pelo menos 80 caracteres')
+    .max(2000, 'Apresentação demasiado longa (máx. 2000 caracteres)')
+    .optional(),
   districtId: z.number().int().positive().optional(),
   municipalityId: z.number().int().positive().optional(),
   speciesIds: z.array(z.number().int().positive()).optional(),

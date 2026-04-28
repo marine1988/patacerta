@@ -434,6 +434,14 @@ function BreederTab() {
   const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const MAX_BREEDER_PHOTOS = 10
 
+  // Modo "criar perfil" — fotos e DGAV são submetidos no mesmo fluxo
+  // do formulário (single submit). Capturamos os ficheiros aqui para
+  // depois fazer upload sequencial após criar o breeder.
+  const pendingPhotosRef = useRef<HTMLInputElement>(null)
+  const pendingDgavRef = useRef<HTMLInputElement>(null)
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([])
+  const [pendingDgavFile, setPendingDgavFile] = useState<File | null>(null)
+
   const isLocked = breeder?.status === 'VERIFIED' || breeder?.status === 'PENDING_VERIFICATION'
 
   useEffect(() => {
@@ -641,7 +649,7 @@ function BreederTab() {
     uploadPhotosMutation.mutate(fd)
   }
 
-  function handleSave(e: FormEvent) {
+  async function handleSave(e: FormEvent) {
     e.preventDefault()
     setMsg(null)
     const otherBreedsNote = form.hasOtherBreeds ? form.otherBreedsNote.trim() || null : null
@@ -660,6 +668,9 @@ function BreederTab() {
       if (!form.dgavNumber.trim()) requiredMissing.push('Número DGAV')
       if (!form.districtId) requiredMissing.push('Distrito')
       if (!form.municipalityId) requiredMissing.push('Concelho')
+      if (form.description.trim().length < 80) requiredMissing.push('Apresentação (mín. 80)')
+      if (pendingPhotos.length === 0) requiredMissing.push('Pelo menos 1 foto')
+      if (!pendingDgavFile) requiredMissing.push('Documento DGAV')
       if (requiredMissing.length > 0) {
         setMsg({
           type: 'error',
@@ -708,7 +719,7 @@ function BreederTab() {
 
     // O endpoint actual aceita null para "limpar" certos campos. Mantemos a
     // forma do payload existente (com null em vez de undefined) para compat.
-    saveMutation.mutate({
+    const finalPayload = {
       ...parsed.data,
       description: form.description,
       website: form.website,
@@ -719,7 +730,50 @@ function BreederTab() {
       municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
       breedIds: form.breedIds,
       otherBreedsNote,
-    })
+    }
+
+    if (!breeder) {
+      // Fluxo "criar perfil" — cria breeder, depois faz upload sequencial
+      // das fotos e do documento DGAV. Tudo dentro do mesmo submit.
+      try {
+        await saveMutation.mutateAsync(finalPayload)
+        // Upload fotos
+        if (pendingPhotos.length > 0) {
+          const fd = new FormData()
+          pendingPhotos.forEach((f) => fd.append('photos', f))
+          await api.post('/breeders/me/photos', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+        }
+        // Upload DGAV
+        if (pendingDgavFile) {
+          const fd = new FormData()
+          fd.append('file', pendingDgavFile)
+          fd.append('docType', 'DGAV')
+          await api.post('/verification/upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+        }
+        // Limpa estado pendente e refresca cache para aparecer galeria/docs
+        setPendingPhotos([])
+        setPendingDgavFile(null)
+        if (pendingPhotosRef.current) pendingPhotosRef.current.value = ''
+        if (pendingDgavRef.current) pendingDgavRef.current.value = ''
+        queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+        setMsg({
+          type: 'success',
+          text: 'Perfil criado com fotos e documento DGAV. Pode agora submeter para verificação.',
+        })
+      } catch (err) {
+        setMsg({
+          type: 'error',
+          text: extractApiError(err, 'Erro ao criar perfil ou enviar ficheiros.'),
+        })
+      }
+      return
+    }
+
+    saveMutation.mutate(finalPayload)
   }
 
   function handleUpload(e: FormEvent) {
@@ -924,19 +978,20 @@ function BreederTab() {
               />
             </div>
             <div>
-              <label className="label">Apresentação</label>
+              <label className="label">Apresentação{noProfile ? ' *' : ''}</label>
               <textarea
                 className="input min-h-[100px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Conte-nos brevemente sobre o seu canil — pelo menos 50 caracteres se preencher…"
+                placeholder="Conte-nos sobre o seu canil — experiência, filosofia, raças, instalações… (mín. 80 caracteres)"
                 maxLength={2000}
+                required={noProfile}
               />
               <p
                 className={`mt-1 text-right text-xs ${
                   form.description.length === 0
                     ? 'text-gray-400'
-                    : form.description.length < 50
+                    : form.description.length < 80
                       ? 'text-amber-600'
                       : form.description.length > 1800
                         ? 'text-orange-600'
@@ -944,9 +999,12 @@ function BreederTab() {
                 }`}
               >
                 {form.description.length === 0 ? (
-                  <>0/2000 (opcional)</>
-                ) : form.description.length < 50 ? (
-                  <>{form.description.length}/2000 (mín. 50 ou deixe em branco)</>
+                  <>0/2000 (mín. 80)</>
+                ) : form.description.length < 80 ? (
+                  <>
+                    {form.description.length}/2000 — faltam {80 - form.description.length}{' '}
+                    caracteres
+                  </>
                 ) : (
                   <>{form.description.length}/2000</>
                 )}
@@ -1119,6 +1177,55 @@ function BreederTab() {
             />
           </div>
         </AccordionSection>
+
+        {noProfile && (
+          <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
+            <p className="mb-3 text-xs text-gray-600">
+              Envie pelo menos uma foto do seu canil, instalações ou cães. Pode adicionar até{' '}
+              {MAX_BREEDER_PHOTOS} fotos no total. Formatos aceites: JPG, PNG, WebP.
+            </p>
+            <input
+              ref={pendingPhotosRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(e) => {
+                const files = e.target.files ? Array.from(e.target.files) : []
+                setPendingPhotos(files.slice(0, MAX_BREEDER_PHOTOS))
+              }}
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              {pendingPhotos.length === 0
+                ? 'Nenhuma foto seleccionada (mín. 1).'
+                : `${pendingPhotos.length} foto(s) seleccionada(s).`}
+            </p>
+          </AccordionSection>
+        )}
+
+        {noProfile && (
+          <AccordionSection title="Documento DGAV" eyebrow="Verificação *" defaultOpen>
+            <p className="mb-3 text-xs text-gray-600">
+              Envie o seu certificado DGAV. Este documento é obrigatório para submeter o perfil para
+              verificação. Formatos aceites: PDF, JPG, PNG.
+            </p>
+            <input
+              ref={pendingDgavRef}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                setPendingDgavFile(file)
+              }}
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              {pendingDgavFile
+                ? `Ficheiro: ${pendingDgavFile.name}`
+                : 'Nenhum ficheiro seleccionado.'}
+            </p>
+          </AccordionSection>
+        )}
       </Accordion>
 
       {msg && (
@@ -1138,7 +1245,14 @@ function BreederTab() {
       )}
 
       <div className="flex gap-3">
-        <Button type="submit" loading={saveMutation.isPending}>
+        <Button
+          type="submit"
+          loading={saveMutation.isPending}
+          disabled={
+            noProfile &&
+            (form.description.trim().length < 80 || pendingPhotos.length === 0 || !pendingDgavFile)
+          }
+        >
           {noProfile ? 'Criar perfil' : 'Guardar'}
         </Button>
         {!noProfile && (
@@ -1161,8 +1275,8 @@ function BreederTab() {
           </div>
           <h2 className="mt-1 font-serif text-2xl text-ink">Criar perfil de criador</h2>
           <p className="mt-2 text-sm text-muted">
-            Preencha os campos abaixo para começar. Após criar o perfil, poderá adicionar fotos,
-            documentos e submeter para verificação.
+            Preencha os campos abaixo para criar o seu perfil. A apresentação, pelo menos uma foto e
+            o documento DGAV são obrigatórios. Após criar, poderá submeter para verificação.
           </p>
         </Card>
       )}
