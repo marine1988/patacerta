@@ -560,7 +560,7 @@ function BreederTab() {
         updateUser({ ...user, role: user.role === 'BREEDER' ? 'OWNER' : user.role })
       }
       setDeleteOpen(false)
-      navigate('/dashboard')
+      navigate('/area-pessoal')
     },
     onError: (err: unknown) => {
       setDeleteError(extractApiError(err, 'Erro ao eliminar perfil de criador.'))
