@@ -423,7 +423,7 @@ function BreederTab() {
     }
   }, [isLoading, breeder])
 
-  const [uploadDocType, setUploadDocType] = useState('NIF')
+  const [uploadDocType, setUploadDocType] = useState('DGAV')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
@@ -749,13 +749,7 @@ function BreederTab() {
   // depois do perfil ser criado.
   const noProfile = !breeder
 
-  const docTypeOptions = [
-    { value: 'NIF', label: 'NIF' },
-    { value: 'DGAV', label: 'DGAV' },
-    { value: 'CARTAO_CIDADAO', label: 'Cartão de Cidadão' },
-    { value: 'CITES', label: 'CITES' },
-    { value: 'OTHER', label: 'Outro' },
-  ]
+  const docTypeOptions = [{ value: 'DGAV', label: 'DGAV (obrigatório)' }]
 
   const docStatusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
     PENDING: 'yellow',
@@ -828,7 +822,9 @@ function BreederTab() {
           ))}
         </div>
       ) : (
-        <p className="mb-6 text-sm text-gray-500">Nenhum documento enviado.</p>
+        <p className="mb-6 text-sm text-gray-500">
+          Nenhum documento enviado. É obrigatório enviar o certificado DGAV.
+        </p>
       )}
 
       {/* Upload */}
@@ -861,14 +857,24 @@ function BreederTab() {
     </Card>
   ) : null
 
+  const hasDgavDoc = breeder?.verificationDocs.some((d) => d.docType === 'DGAV') ?? false
+
   const submitVerificationButton =
     breeder && breeder.status === 'DRAFT' && breeder.verificationDocs.length > 0 ? (
-      <Button
-        loading={submitVerificationMutation.isPending}
-        onClick={() => submitVerificationMutation.mutate()}
-      >
-        Submeter para verificação
-      </Button>
+      <div className="flex flex-col items-end gap-1">
+        <Button
+          loading={submitVerificationMutation.isPending}
+          disabled={!hasDgavDoc}
+          onClick={() => submitVerificationMutation.mutate()}
+        >
+          Submeter para verificação
+        </Button>
+        {!hasDgavDoc && (
+          <p className="text-xs text-red-600">
+            É necessário enviar o certificado DGAV antes de submeter.
+          </p>
+        )}
+      </div>
     ) : null
 
   // ── Form do criador (acordeao com seccoes) ─────────────────────────
