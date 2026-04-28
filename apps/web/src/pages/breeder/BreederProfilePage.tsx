@@ -266,7 +266,7 @@ export function BreederProfilePage() {
       <div className="page-container text-center">
         <h1 className="text-2xl font-bold text-gray-900">Criador não encontrado</h1>
         <p className="mt-2 text-gray-600">O criador com ID {id} não existe ou foi removido.</p>
-        <Link to="/explorar" className="btn-primary mt-6 inline-block">
+        <Link to="/pesquisar" className="btn-primary mt-6 inline-block">
           Voltar ao diretório
         </Link>
       </div>
@@ -278,7 +278,7 @@ export function BreederProfilePage() {
   return (
     <div className="page-container">
       <nav className="mb-6 text-sm text-gray-500">
-        <Link to="/explorar" className="hover:text-gray-700">
+        <Link to="/pesquisar" className="hover:text-gray-700">
           Criadores
         </Link>
         <span className="mx-2">/</span>

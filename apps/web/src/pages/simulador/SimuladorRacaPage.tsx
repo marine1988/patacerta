@@ -8,7 +8,7 @@
 //
 // Não envolve criadores específicos por raça (modelo BreederBreed
 // ainda não existe). Em vez disso, o CTA final aponta para
-// /explorar?tipo=criadores onde o utilizador pode filtrar por
+// /pesquisar?tipo=criadores onde o utilizador pode filtrar por
 // distrito/espécie.
 
 import { useState } from 'react'
@@ -369,7 +369,7 @@ export function SimuladorRacaPage() {
             Já sabe o que procura? Encontre criadores verificados perto de si.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link to="/explorar" className="btn-primary">
+            <Link to="/pesquisar" className="btn-primary">
               Ver criadores na PataCerta
             </Link>
             <button onClick={handleRestart} className="btn-secondary">

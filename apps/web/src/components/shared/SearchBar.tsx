@@ -25,7 +25,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     const params = new URLSearchParams()
     if (district) params.set('districtId', district)
     if (query.trim()) params.set('query', query.trim())
-    navigate(`/explorar?${params.toString()}`)
+    navigate(`/pesquisar?${params.toString()}`)
   }
 
   if (compact) {

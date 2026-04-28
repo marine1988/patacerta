@@ -425,7 +425,7 @@ export function ServiceDetailPage() {
             O anúncio que procura não existe, foi removido ou já não está activo.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link to="/explorar?tipo=servicos" className="btn-primary">
+            <Link to="/pesquisar?tipo=servicos" className="btn-primary">
               Ver outros serviços
             </Link>
             <Link to="/" className="btn-secondary">
@@ -457,12 +457,12 @@ export function ServiceDetailPage() {
           Início
         </Link>
         <span aria-hidden="true">›</span>
-        <Link to="/explorar?tipo=servicos" className="hover:text-gray-700">
+        <Link to="/pesquisar?tipo=servicos" className="hover:text-gray-700">
           Serviços
         </Link>
         <span aria-hidden="true">›</span>
         <Link
-          to={`/explorar?tipo=servicos&categoria=${service.category.id}`}
+          to={`/pesquisar?tipo=servicos&categoria=${service.category.id}`}
           className="hover:text-gray-700"
         >
           {service.category.namePt}

@@ -4,16 +4,16 @@ import { ServicesListView } from './ServicesListView'
 import { BreedersMapView } from './BreedersMapView'
 import { ServicesMapView } from './ServicesMapView'
 
-type ExplorarTipo = 'criadores' | 'servicos'
-type ExplorarVista = 'lista' | 'mapa'
+type PesquisarTipo = 'criadores' | 'servicos'
+type PesquisarVista = 'lista' | 'mapa'
 
-export function ExplorarPage() {
+export function PesquisarPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const tipo: ExplorarTipo = searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores'
-  const vista: ExplorarVista = searchParams.get('vista') === 'mapa' ? 'mapa' : 'lista'
+  const tipo: PesquisarTipo = searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores'
+  const vista: PesquisarVista = searchParams.get('vista') === 'mapa' ? 'mapa' : 'lista'
 
-  function setTipo(next: ExplorarTipo) {
+  function setTipo(next: PesquisarTipo) {
     const params = new URLSearchParams(searchParams)
     if (next === 'criadores') params.delete('tipo')
     else params.set('tipo', next)
@@ -32,7 +32,7 @@ export function ExplorarPage() {
     setSearchParams(params)
   }
 
-  function setVista(next: ExplorarVista) {
+  function setVista(next: PesquisarVista) {
     const params = new URLSearchParams(searchParams)
     if (next === 'lista') params.delete('vista')
     else params.set('vista', next)
@@ -44,7 +44,7 @@ export function ExplorarPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Explorar</h1>
+        <h1 className="page-title">Pesquisar</h1>
         <p className="page-subtitle">
           Encontre criadores verificados e prestadores de serviços em Portugal.
         </p>
@@ -156,7 +156,7 @@ export function ExplorarPage() {
 // Cross-promotion banner — sugere a outra vertical no rodape
 // ─────────────────────────────────────────────────────────────────────
 
-function CrossPromoBanner({ currentTipo }: { currentTipo: ExplorarTipo }) {
+function CrossPromoBanner({ currentTipo }: { currentTipo: PesquisarTipo }) {
   const isCriadores = currentTipo === 'criadores'
   const eyebrow = isCriadores ? '◆ Também temos serviços' : '◆ Também temos criadores'
   const title = isCriadores
@@ -165,7 +165,7 @@ function CrossPromoBanner({ currentTipo }: { currentTipo: ExplorarTipo }) {
   const description = isCriadores
     ? 'Passeadores, pet-sitters e mais profissionais verificados em Portugal.'
     : 'Criadores éticos verificados, com linhagem rastreável e documentação confirmada.'
-  const linkTo = isCriadores ? '/explorar?tipo=servicos' : '/explorar'
+  const linkTo = isCriadores ? '/pesquisar?tipo=servicos' : '/pesquisar'
   const linkLabel = isCriadores ? 'Ver serviços' : 'Ver criadores'
 
   return (

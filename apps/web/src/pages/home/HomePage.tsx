@@ -85,10 +85,10 @@ export function HomePage() {
               </p>
 
               <div className="mt-10 flex flex-wrap items-center gap-6">
-                <Link to="/explorar" className="btn-primary">
-                  Explorar criadores
+                <Link to="/pesquisar" className="btn-primary">
+                  Pesquisar criadores
                 </Link>
-                <Link to="/explorar?tipo=servicos" className="btn-secondary">
+                <Link to="/pesquisar?tipo=servicos" className="btn-secondary">
                   Ver serviços
                 </Link>
               </div>
@@ -269,19 +269,19 @@ export function HomePage() {
               eyebrow="01"
               title="Passeios"
               description="Passeadores experientes para o dia-a-dia ou ocasiões pontuais. Horários flexíveis, encontros presenciais antes de começar."
-              href="/explorar?tipo=servicos&categoria=passeio"
+              href="/pesquisar?tipo=servicos&categoria=passeio"
             />
             <ServiceCategoryCard
               eyebrow="02"
               title="Pet-sitting"
               description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem stress de canil."
-              href="/explorar?tipo=servicos&categoria=pet-sitting"
+              href="/pesquisar?tipo=servicos&categoria=pet-sitting"
             />
             <ServiceCategoryCard
               eyebrow="03"
               title="Treino"
               description="Treinadores que trabalham obediência, comportamento e socialização — métodos de reforço positivo, sessões individuais ou em grupo."
-              href="/explorar?tipo=servicos&categoria=treino"
+              href="/pesquisar?tipo=servicos&categoria=treino"
             />
           </div>
 
@@ -289,7 +289,7 @@ export function HomePage() {
             <p className="font-serif text-lg italic text-muted">
               Mais categorias a chegar — banhos, transporte, veterinária.
             </p>
-            <Link to="/explorar?tipo=servicos" className="btn-primary">
+            <Link to="/pesquisar?tipo=servicos" className="btn-primary">
               Ver todos os serviços
             </Link>
           </div>
@@ -394,7 +394,7 @@ function ServiceCategoryCard({
       <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
       <div className="mt-8 flex items-center gap-3">
         <span className="text-[11px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:text-caramel-700">
-          Explorar
+          Pesquisar
         </span>
         <span className="h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
       </div>
