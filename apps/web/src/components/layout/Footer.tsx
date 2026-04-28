@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { LogoMark } from '@/components/shared/LogoMark'
 
 export function Footer() {
   return (
@@ -16,9 +17,12 @@ export function Footer() {
           <div>
             <Link
               to="/"
-              className="font-serif text-2xl tracking-tight text-ink transition-colors hover:text-caramel-700"
+              className="group inline-flex items-center gap-3 font-serif text-2xl tracking-tight text-ink transition-colors hover:text-caramel-700"
             >
-              Pata<em className="italic text-caramel-500">Certa</em>
+              <LogoMark size={32} className="transition-transform group-hover:scale-105" />
+              <span>
+                Pata<em className="italic text-caramel-500">Certa</em>
+              </span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted">
               O portal dos patudos em Portugal — criadores éticos verificados e serviços de
