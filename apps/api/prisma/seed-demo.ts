@@ -22,10 +22,11 @@ type BreederSeed = {
   phone: string
   districtCode: string
   municipalityCode: string
-  speciesSlugs: string[]
   status: BreederStatus
 }
 
+// MVP: apenas criadores de cães. Demo breeders de gatos/coelhos/aves/pequenos
+// animais foram removidos (mantém-se cobertura geográfica relevante).
 const BREEDERS: BreederSeed[] = [
   {
     email: 'canil.alvalade@example.pt',
@@ -40,54 +41,21 @@ const BREEDERS: BreederSeed[] = [
     phone: '912345678',
     districtCode: '11',
     municipalityCode: '1101',
-    speciesSlugs: ['cao'],
     status: BreederStatus.VERIFIED,
   },
   {
-    email: 'gatil.portucale@example.pt',
+    email: 'canil.douro@example.pt',
     firstName: 'João',
     lastName: 'Silva',
-    businessName: 'Gatil Portucale',
+    businessName: 'Canil do Douro',
     nif: '502345678',
     dgavNumber: 'DGAV-2020-015',
     description:
-      'Gatil especializado em Maine Coon e British Shorthair. Gatinhos criados em ambiente familiar, com socialização diária e testes genéticos aos progenitores.',
-    website: 'https://gatilportucale.pt',
+      'Canil especializado em Pastor Alemão e Border Collie. Cachorros criados em ambiente familiar, com socialização diária e testes genéticos aos progenitores.',
+    website: 'https://canildodouro.pt',
     phone: '913456789',
     districtCode: '13',
     municipalityCode: '1301',
-    speciesSlugs: ['gato'],
-    status: BreederStatus.VERIFIED,
-  },
-  {
-    email: 'quinta.dos.coelhos@example.pt',
-    firstName: 'Maria',
-    lastName: 'Sousa',
-    businessName: 'Quinta dos Coelhos',
-    nif: '503456789',
-    dgavNumber: 'DGAV-2021-042',
-    description:
-      'Criação de coelhos anões e mini-lops. Pais selecionados por temperamento e conformidade com o padrão. Manual de cuidados incluído em cada adoção.',
-    phone: '914567890',
-    districtCode: '03',
-    municipalityCode: '0301',
-    speciesSlugs: ['coelho'],
-    status: BreederStatus.VERIFIED,
-  },
-  {
-    email: 'aviario.douro@example.pt',
-    firstName: 'Pedro',
-    lastName: 'Ferreira',
-    businessName: 'Aviário do Douro',
-    nif: '504567890',
-    dgavNumber: 'DGAV-2018-208',
-    description:
-      'Aviário dedicado a canários de cor e periquitos. Anilhas oficiais FOP, alimentação premium e controlo veterinário regular.',
-    website: 'https://aviariododouro.pt',
-    phone: '915678901',
-    districtCode: '13',
-    municipalityCode: '1302',
-    speciesSlugs: ['ave'],
     status: BreederStatus.VERIFIED,
   },
   {
@@ -102,23 +70,21 @@ const BREEDERS: BreederSeed[] = [
     phone: '916789012',
     districtCode: '18',
     municipalityCode: '1801',
-    speciesSlugs: ['cao'],
     status: BreederStatus.VERIFIED,
   },
   {
-    email: 'gatil.algarve@example.pt',
+    email: 'canil.algarve@example.pt',
     firstName: 'Sofia',
     lastName: 'Rodrigues',
-    businessName: 'Gatil do Algarve',
+    businessName: 'Canil do Algarve',
     nif: '506789012',
     dgavNumber: 'DGAV-2023-005',
     description:
-      'Gatil de Ragdoll e Siameses. Pequena criação familiar no Algarve, máxima atenção a cada gatinho. Contrato de adoção e acompanhamento pós-entrega.',
-    website: 'https://gatildoalgarve.pt',
+      'Canil de pequeno porte no Algarve, especializado em Cavalier King Charles e Bichon Frisé. Pequena criação familiar, máxima atenção a cada cachorro. Contrato de adoção e acompanhamento pós-entrega.',
+    website: 'https://canildoalgarve.pt',
     phone: '917890123',
     districtCode: '08',
     municipalityCode: '0801',
-    speciesSlugs: ['gato'],
     status: BreederStatus.VERIFIED,
   },
   {
@@ -133,23 +99,21 @@ const BREEDERS: BreederSeed[] = [
     phone: '918901234',
     districtCode: '16',
     municipalityCode: '1601',
-    speciesSlugs: ['cao'],
     status: BreederStatus.VERIFIED,
   },
   {
-    email: 'petlovers.setubal@example.pt',
-    firstName: 'Inês',
-    lastName: 'Pereira',
-    businessName: 'PetLovers Setúbal',
-    nif: '508901234',
-    dgavNumber: 'DGAV-2024-018',
+    email: 'canil.aveiro@example.pt',
+    firstName: 'Maria',
+    lastName: 'Sousa',
+    businessName: 'Canil de Aveiro',
+    nif: '503456789',
+    dgavNumber: 'DGAV-2021-042',
     description:
-      'Criação multi-espécie: hamsters sírios, porquinhos-da-índia e chinchilas. Habitats amplos, socialização diária e guias de cuidado detalhados.',
-    phone: '919012345',
-    districtCode: '15',
-    municipalityCode: '1501',
-    speciesSlugs: ['hamster', 'porquinho-da-india', 'chinchila'],
-    status: BreederStatus.PENDING_VERIFICATION,
+      'Pequeno canil familiar em Aveiro com criação de Beagle e Cocker Spaniel. Pais selecionados por temperamento e conformidade com o padrão. Manual de cuidados incluído em cada adoção.',
+    phone: '914567890',
+    districtCode: '03',
+    municipalityCode: '0301',
+    status: BreederStatus.VERIFIED,
   },
 ]
 
@@ -192,26 +156,26 @@ const REVIEWS: ReviewSeed[] = [
     body: 'Ambiente limpo, cães saudáveis e acompanhamento pós-venda fantástico. Voltaria sem hesitar.',
   },
   {
-    breederEmail: 'gatil.portucale@example.pt',
+    breederEmail: 'canil.douro@example.pt',
     authorEmail: 'cliente3@example.pt',
     rating: 5,
-    title: 'Maine Coon maravilhoso',
-    body: 'O João enviou fotos e vídeos durante todo o processo. O nosso gatinho é um amor, saudável e muito sociável.',
+    title: 'Pastor Alemão maravilhoso',
+    body: 'O João enviou fotos e vídeos durante todo o processo. O nosso cachorro é um amor, saudável e muito sociável.',
     reply: 'Obrigado Catarina! Envie-nos sempre novidades dele.',
   },
   {
-    breederEmail: 'gatil.portucale@example.pt',
+    breederEmail: 'canil.douro@example.pt',
     authorEmail: 'cliente4@example.pt',
     rating: 4,
     title: 'Boa experiência',
     body: 'Correu tudo bem, apenas demorou um pouco a responder inicialmente mas depois foi impecável.',
   },
   {
-    breederEmail: 'quinta.dos.coelhos@example.pt',
+    breederEmail: 'canil.aveiro@example.pt',
     authorEmail: 'cliente1@example.pt',
     rating: 5,
-    title: 'Coelhinhos adoráveis',
-    body: 'A Maria cuida destes coelhos com imenso amor. Recebemos um manual muito completo e apoio sempre que precisámos.',
+    title: 'Beagle adorável',
+    body: 'A Maria cuida dos seus cães com imenso amor. Recebemos um manual muito completo e apoio sempre que precisámos.',
   },
   {
     breederEmail: 'canil.serra@example.pt',
@@ -222,11 +186,11 @@ const REVIEWS: ReviewSeed[] = [
     reply: 'Obrigado Miguel, é uma honra.',
   },
   {
-    breederEmail: 'gatil.algarve@example.pt',
+    breederEmail: 'canil.algarve@example.pt',
     authorEmail: 'cliente3@example.pt',
     rating: 5,
-    title: 'Ragdoll maravilhosa',
-    body: 'A Sofia foi muito atenciosa. A gatinha veio com contrato, manual e até brinquedinhos. Adorámos.',
+    title: 'Cavalier maravilhoso',
+    body: 'A Sofia foi muito atenciosa. O cachorro veio com contrato, manual e até brinquedinhos. Adorámos.',
   },
   {
     breederEmail: 'criador.minho@example.pt',
@@ -234,13 +198,6 @@ const REVIEWS: ReviewSeed[] = [
     rating: 4,
     title: 'Cão de Água excelente',
     body: 'Muito satisfeito com o nosso cachorro. Pais testados, cão saudável e bem socializado. Só demorou mais tempo que o esperado.',
-  },
-  {
-    breederEmail: 'aviario.douro@example.pt',
-    authorEmail: 'cliente1@example.pt',
-    rating: 5,
-    title: 'Canário belíssimo',
-    body: 'Aves saudáveis, bem cuidadas e com anilhas oficiais. O Pedro deu todas as indicações necessárias.',
   },
 ]
 
@@ -335,13 +292,13 @@ const SERVICES: ServiceSeed[] = [
     extraCoverageCodes: ['1104'],
   },
 
-  // ── Porto metro (João — gatil.portucale) ──
+  // ── Porto metro (João — canil.douro) ──
   {
-    providerEmail: 'gatil.portucale@example.pt',
+    providerEmail: 'canil.douro@example.pt',
     categorySlug: 'pet-sitting',
-    title: 'Cuidador de gatos ao domicílio — Porto',
+    title: 'Pet sitting ao domicílio — Porto',
     description:
-      'Especializado em felinos. Visitas diárias com limpeza de caixa, alimentação e companhia. Ideal para quem viaja e deixa o gato em casa.',
+      'Visitas diárias com alimentação, brincadeira e companhia. Ideal para quem viaja e quer manter o cão na rotina familiar.',
     priceCents: 1500,
     priceUnit: PriceUnit.PER_SESSION,
     districtCode: '13',
@@ -354,7 +311,7 @@ const SERVICES: ServiceSeed[] = [
     extraCoverageCodes: ['1302', '1303'],
   },
   {
-    providerEmail: 'gatil.portucale@example.pt',
+    providerEmail: 'canil.douro@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios na Foz e Marginal',
     description:
@@ -370,11 +327,11 @@ const SERVICES: ServiceSeed[] = [
     photoSeeds: [204, 205],
   },
   {
-    providerEmail: 'gatil.portucale@example.pt',
+    providerEmail: 'canil.douro@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Estadia prolongada — Vila Nova de Gaia',
     description:
-      'Recebo o seu animal em minha casa durante férias longas. Espaço amplo, jardim murado, máximo 2 hóspedes em simultâneo.',
+      'Recebo o seu cão em minha casa durante férias longas. Espaço amplo, jardim murado, máximo 2 hóspedes em simultâneo.',
     priceCents: 2500,
     priceUnit: PriceUnit.PER_SESSION,
     districtCode: '13',
@@ -421,48 +378,13 @@ const SERVICES: ServiceSeed[] = [
     extraCoverageCodes: ['0302'],
   },
 
-  // ── Setúbal (Inês — petlovers.setubal) ──
+  // ── Faro/Algarve (Sofia — canil.algarve) ──
   {
-    providerEmail: 'petlovers.setubal@example.pt',
-    categorySlug: 'pet-sitting',
-    title: 'Cuidados para pequenos animais — Setúbal',
-    description:
-      'Especialista em hamsters, porquinhos-da-índia, chinchilas e coelhos. Sei limpar habitats e administrar medicação específica.',
-    priceCents: 1000,
-    priceUnit: PriceUnit.PER_SESSION,
-    districtCode: '15',
-    municipalityCode: '1501',
-    latOffset: 0.008,
-    lngOffset: -0.006,
-    serviceRadiusKm: 8,
-    status: ServiceStatus.ACTIVE,
-    photoSeeds: [401, 402],
-  },
-  {
-    providerEmail: 'petlovers.setubal@example.pt',
-    categorySlug: 'passeio',
-    title: 'Passeios em Almada e Costa da Caparica',
-    description:
-      'Passeios de 1h junto à praia. Os seus cães vão adorar a areia e o mar. Tenho transporte para grupos pequenos.',
-    priceCents: 1300,
-    priceUnit: PriceUnit.PER_SESSION,
-    districtCode: '15',
-    municipalityCode: '1502',
-    latOffset: -0.005,
-    lngOffset: 0.012,
-    serviceRadiusKm: 12,
-    status: ServiceStatus.ACTIVE,
-    photoSeeds: [403, 404],
-    extraCoverageCodes: ['1501', '1503'],
-  },
-
-  // ── Faro/Algarve (Sofia — gatil.algarve) ──
-  {
-    providerEmail: 'gatil.algarve@example.pt',
+    providerEmail: 'canil.algarve@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Pet sitting no Algarve — Faro',
     description:
-      'Cuido do seu animal enquanto está de férias. Sou veterinária assistente, experiência com administração de medicação e cuidados pós-cirúrgicos.',
+      'Cuido do seu cão enquanto está de férias. Sou veterinária assistente, experiência com administração de medicação e cuidados pós-cirúrgicos.',
     priceCents: 2800,
     priceUnit: PriceUnit.PER_SESSION,
     districtCode: '08',
@@ -475,7 +397,7 @@ const SERVICES: ServiceSeed[] = [
     extraCoverageCodes: ['0802', '0803'],
   },
   {
-    providerEmail: 'gatil.algarve@example.pt',
+    providerEmail: 'canil.algarve@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios costeiros — Faro e Olhão',
     description:
@@ -492,7 +414,7 @@ const SERVICES: ServiceSeed[] = [
     extraCoverageCodes: ['0807'],
   },
   {
-    providerEmail: 'gatil.algarve@example.pt',
+    providerEmail: 'canil.algarve@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Estadia premium em Albufeira',
     description:
@@ -508,9 +430,9 @@ const SERVICES: ServiceSeed[] = [
     photoSeeds: [505, 506],
   },
 
-  // ── Aveiro (Maria — quinta.dos.coelhos) ──
+  // ── Aveiro (Maria — canil.aveiro) ──
   {
-    providerEmail: 'quinta.dos.coelhos@example.pt',
+    providerEmail: 'canil.aveiro@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Pet sitting rural em Aveiro',
     description:
@@ -526,7 +448,7 @@ const SERVICES: ServiceSeed[] = [
     photoSeeds: [601, 602],
   },
   {
-    providerEmail: 'quinta.dos.coelhos@example.pt',
+    providerEmail: 'canil.aveiro@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios na Ria de Aveiro',
     description:
@@ -576,40 +498,6 @@ const SERVICES: ServiceSeed[] = [
     photoSeeds: [703],
   },
 
-  // ── Viana do Castelo (Pedro — aviario.douro) ──
-  {
-    providerEmail: 'aviario.douro@example.pt',
-    categorySlug: 'pet-sitting',
-    title: 'Cuidador de aves — Vila do Conde',
-    description:
-      'Especializado em aves de gaiola: canários, periquitos, calopsitas. Sei limpar, alimentar e detectar sinais de doença.',
-    priceCents: 1200,
-    priceUnit: PriceUnit.PER_SESSION,
-    districtCode: '13',
-    municipalityCode: '1310',
-    latOffset: 0.009,
-    lngOffset: 0.004,
-    serviceRadiusKm: 15,
-    status: ServiceStatus.ACTIVE,
-    photoSeeds: [801],
-    extraCoverageCodes: ['1312'],
-  },
-  {
-    providerEmail: 'aviario.douro@example.pt',
-    categorySlug: 'passeio',
-    title: 'Passeios na Póvoa de Varzim',
-    description: 'Passeios pela orla marítima da Póvoa. Bom para cães que gostam de praia e areia.',
-    priceCents: 1300,
-    priceUnit: PriceUnit.PER_SESSION,
-    districtCode: '13',
-    municipalityCode: '1312',
-    latOffset: -0.006,
-    lngOffset: -0.008,
-    serviceRadiusKm: 8,
-    status: ServiceStatus.ACTIVE,
-    photoSeeds: [802],
-  },
-
   // ── Coimbra ──
   {
     providerEmail: 'criador.minho@example.pt',
@@ -628,9 +516,9 @@ const SERVICES: ServiceSeed[] = [
     photoSeeds: [901],
   },
 
-  // ── Évora (Ana — cobertura no sul, exemplo de prestador "viajante") ──
+  // ── Évora (Sofia — cobertura no sul, exemplo de prestador "viajante") ──
   {
-    providerEmail: 'gatil.algarve@example.pt',
+    providerEmail: 'canil.algarve@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios em Évora — disponibilidade limitada',
     description:
@@ -648,7 +536,7 @@ const SERVICES: ServiceSeed[] = [
 
   // ── Leiria ──
   {
-    providerEmail: 'quinta.dos.coelhos@example.pt',
+    providerEmail: 'canil.aveiro@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Estadia em Leiria — quinta familiar',
     description:
@@ -685,7 +573,7 @@ const SERVICES: ServiceSeed[] = [
 
   // ── Matosinhos (denser Porto cluster) ──
   {
-    providerEmail: 'gatil.portucale@example.pt',
+    providerEmail: 'canil.douro@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios na praia de Matosinhos',
     description:
@@ -703,11 +591,11 @@ const SERVICES: ServiceSeed[] = [
 
   // ── Loulé (Algarve cluster) ──
   {
-    providerEmail: 'gatil.algarve@example.pt',
+    providerEmail: 'canil.algarve@example.pt',
     categorySlug: 'pet-sitting',
     title: 'Pet sitting em Loulé',
     description:
-      'Visitas curtas no horário da tarde. Bom para gatos que ficam sozinhos enquanto trabalha.',
+      'Visitas curtas no horário da tarde. Bom para cães que ficam sozinhos enquanto trabalha.',
     priceCents: 1100,
     priceUnit: PriceUnit.PER_SESSION,
     districtCode: '08',
@@ -756,7 +644,7 @@ const SERVICES: ServiceSeed[] = [
 
   // ── PAUSED (visivel no painel, escondido publico) ──
   {
-    providerEmail: 'gatil.portucale@example.pt',
+    providerEmail: 'canil.douro@example.pt',
     categorySlug: 'passeio',
     title: 'Passeios em férias (pausado)',
     description:
@@ -777,11 +665,14 @@ async function main() {
   // Fetch reference data
   const districts = await prisma.district.findMany()
   const municipalities = await prisma.municipality.findMany()
-  const species = await prisma.species.findMany()
+  // MVP: todos os breeders são de cães. Resolvemos o speciesId 'cao' uma vez.
+  const dogSpecies = await prisma.species.findUnique({ where: { nameSlug: 'cao' } })
+  if (!dogSpecies) {
+    throw new Error('Espécie "cao" não encontrada — corra primeiro o seed principal.')
+  }
 
   const districtByCode = new Map(districts.map((d) => [d.code, d.id]))
   const munByCode = new Map(municipalities.map((m) => [m.code, m.id]))
-  const speciesBySlug = new Map(species.map((s) => [s.nameSlug, s.id]))
 
   const defaultPassword = 'DemoPass123'
   const passwordHash = await bcrypt.hash(defaultPassword, 12)
@@ -859,16 +750,11 @@ async function main() {
     })
     breederIdByEmail.set(b.email, breeder.id)
 
-    // Species links
+    // Species link — MVP: sempre 'cao'
     await prisma.breederSpecies.deleteMany({ where: { breederId: breeder.id } })
-    for (const slug of b.speciesSlugs) {
-      const speciesId = speciesBySlug.get(slug)
-      if (speciesId) {
-        await prisma.breederSpecies.create({
-          data: { breederId: breeder.id, speciesId },
-        })
-      }
-    }
+    await prisma.breederSpecies.create({
+      data: { breederId: breeder.id, speciesId: dogSpecies.id },
+    })
     console.log(`  ✓ ${b.businessName} (${b.status})`)
   }
 

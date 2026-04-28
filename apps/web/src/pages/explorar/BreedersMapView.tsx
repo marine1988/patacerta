@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
-import type { DistrictOption, SpeciesOption } from '../../lib/lookups'
+import type { DistrictOption } from '../../lib/lookups'
 
 interface MapBreederResult {
   id: number
@@ -17,7 +17,6 @@ interface MapBreederResult {
   status: string
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
-  species: { speciesId: number; species: { id: number; namePt: string } }[]
   avgRating: number | null
   reviewCount: number
   latitude: number
@@ -35,15 +34,8 @@ interface Props {
 }
 
 export function BreedersMapView({ searchParams, setSearchParams }: Props) {
-  const speciesId = searchParams.get('speciesId') || ''
   const districtId = searchParams.get('districtId') || ''
   const query = searchParams.get('query') || ''
-
-  const { data: speciesList = [] } = useQuery<SpeciesOption[]>({
-    queryKey: ['species'],
-    queryFn: () => api.get('/search/species').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
 
   const { data: districtsList = [] } = useQuery<DistrictOption[]>({
     queryKey: ['districts'],
@@ -52,12 +44,11 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
   })
 
   const { data, isLoading, isError } = useQuery<MapBreedersResponse>({
-    queryKey: ['breeders-map', { speciesId, districtId, query }],
+    queryKey: ['breeders-map', { districtId, query }],
     queryFn: () =>
       api
         .get('/search/breeders/map', {
           params: {
-            speciesId: speciesId || undefined,
             districtId: districtId || undefined,
             query: query || undefined,
           },
@@ -75,7 +66,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
       municipalityName: b.municipality.namePt,
       avgRating: b.avgRating,
       reviewCount: b.reviewCount,
-      speciesLabels: b.species.map((s) => s.species.namePt),
+      speciesLabels: [],
     }))
   }, [data])
 
@@ -100,7 +91,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
     setSearchParams(next)
   }
 
-  const hasFilters = Boolean(speciesId || districtId || query)
+  const hasFilters = Boolean(districtId || query)
 
   return (
     <>
@@ -112,17 +103,6 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
           <div className="flex-1">
             <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
             <Input name="query" defaultValue={query} placeholder="Nome ou descrição..." />
-          </div>
-          <div className="md:w-48">
-            <label className="mb-1 block text-xs font-medium text-gray-700">Espécie</label>
-            <Select
-              value={speciesId}
-              onChange={(e) => updateFilter('speciesId', e.target.value)}
-              options={[
-                { value: '', label: 'Todas' },
-                ...speciesList.map((s) => ({ value: String(s.id), label: s.namePt })),
-              ]}
-            />
           </div>
           <div className="md:w-56">
             <label className="mb-1 block text-xs font-medium text-gray-700">Distrito</label>

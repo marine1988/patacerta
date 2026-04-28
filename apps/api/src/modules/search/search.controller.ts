@@ -194,16 +194,15 @@ export const listMunicipalities = asyncHandler(async (req, res) => {
 export const getPublicStats = asyncHandler(async (_req, res) => {
   const now = Date.now()
   if (!statsCache || statsCache.expiresAt < now) {
-    const [breederCount, speciesCount, districtCount, reviewCount, serviceCount] =
-      await Promise.all([
-        prisma.breeder.count({ where: { status: 'VERIFIED' } }),
-        prisma.species.count(),
-        prisma.district.count(),
-        prisma.review.count({ where: { status: 'PUBLISHED' } }),
-        prisma.service.count({ where: { status: 'ACTIVE' } }),
-      ])
+    const [breederCount, breedCount, districtCount, reviewCount, serviceCount] = await Promise.all([
+      prisma.breeder.count({ where: { status: 'VERIFIED' } }),
+      prisma.breed.count(),
+      prisma.district.count(),
+      prisma.review.count({ where: { status: 'PUBLISHED' } }),
+      prisma.service.count({ where: { status: 'ACTIVE' } }),
+    ])
     statsCache = {
-      data: { breederCount, speciesCount, districtCount, reviewCount, serviceCount },
+      data: { breederCount, breedCount, districtCount, reviewCount, serviceCount },
       expiresAt: now + TTL,
     }
   }

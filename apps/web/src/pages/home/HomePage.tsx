@@ -9,7 +9,8 @@ import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 interface PublicStats {
   breederCount: number
-  speciesCount: number
+  speciesCount?: number
+  breedCount: number
   districtCount: number
   reviewCount: number
   serviceCount: number
@@ -40,7 +41,6 @@ interface FeaturedBreeder {
   featuredUntil: string | null
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
-  species: { species: { id: number; namePt: string } }[]
 }
 
 interface FeaturedResponse {
@@ -108,7 +108,7 @@ export function HomePage() {
           <div className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={stats?.breederCount} label="Criadores" />
             <Stat value={stats?.serviceCount} label="Serviços" />
-            <Stat value={stats?.speciesCount} label="Espécies" />
+            <Stat value={stats?.breedCount} label="Raças" />
             <Stat value={stats?.districtCount} label="Distritos" />
             <Stat value={stats?.reviewCount} label="Avaliações" />
           </div>
@@ -485,15 +485,6 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
       </div>
       {b.description && (
         <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted">{b.description}</p>
-      )}
-      {b.species.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {b.species.slice(0, 3).map((s) => (
-            <Badge key={s.species.id} variant="blue">
-              {s.species.namePt}
-            </Badge>
-          ))}
-        </div>
       )}
     </Link>
   )

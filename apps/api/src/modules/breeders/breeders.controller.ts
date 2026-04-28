@@ -63,6 +63,22 @@ async function promoteToBreederIfNeeded(userId: number): Promise<void> {
   }
 }
 
+/**
+ * MVP: a plataforma é exclusiva para cães. Resolvemos o id da espécie 'cao'
+ * uma vez e usamos sempre que precisamos de associar/validar species.
+ * Cache em memória — o id nunca muda em runtime.
+ */
+let dogSpeciesIdCache: number | null = null
+async function getDogSpeciesId(): Promise<number> {
+  if (dogSpeciesIdCache !== null) return dogSpeciesIdCache
+  const dog = await prisma.species.findUnique({ where: { nameSlug: 'cao' }, select: { id: true } })
+  if (!dog) {
+    throw new AppError(500, 'Espécie "cão" não configurada na base de dados', 'SPECIES_NOT_SEEDED')
+  }
+  dogSpeciesIdCache = dog.id
+  return dog.id
+}
+
 export const getBreederById = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
 
@@ -109,9 +125,8 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
   if (!municipality)
     throw new AppError(400, 'Concelho não pertence ao distrito', 'INVALID_MUNICIPALITY')
 
-  const speciesCount = await prisma.species.count({ where: { id: { in: data.speciesIds } } })
-  if (speciesCount !== data.speciesIds.length)
-    throw new AppError(400, 'Uma ou mais espécies selecionadas são inválidas', 'INVALID_SPECIES')
+  // MVP: ignora speciesIds enviado pelo cliente; criadores são sempre de cães.
+  const dogSpeciesId = await getDogSpeciesId()
 
   let breeder
   try {
@@ -126,7 +141,7 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
         phone: data.phone,
         districtId: data.districtId,
         municipalityId: data.municipalityId,
-        species: { create: data.speciesIds.map((speciesId) => ({ speciesId })) },
+        species: { create: [{ speciesId: dogSpeciesId }] },
       },
       include: BREEDER_INCLUDE,
     })
@@ -194,29 +209,8 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     if (data.municipalityId !== undefined) updateData.municipalityId = data.municipalityId
   }
 
-  // Transactional species sync
-  if (data.speciesIds !== undefined) {
-    if (Array.isArray(data.speciesIds) && data.speciesIds.length === 0) {
-      throw new AppError(400, 'Selecione pelo menos uma espécie', 'EMPTY_SPECIES')
-    }
-    const speciesCount = await prisma.species.count({ where: { id: { in: data.speciesIds } } })
-    if (speciesCount !== data.speciesIds.length)
-      throw new AppError(400, 'Uma ou mais espécies selecionadas são inválidas', 'INVALID_SPECIES')
-
-    const updated = await prisma.$transaction(async (tx) => {
-      await tx.breederSpecies.deleteMany({ where: { breederId: breeder.id } })
-      await tx.breederSpecies.createMany({
-        data: data.speciesIds.map((speciesId: number) => ({ breederId: breeder.id, speciesId })),
-      })
-      return tx.breeder.update({
-        where: { id: breeder.id },
-        data: updateData,
-        include: BREEDER_INCLUDE,
-      })
-    })
-    res.json(updated)
-    return
-  }
+  // MVP: speciesIds é ignorado — todos os criadores são de cães. A associação
+  // BreederSpecies para 'cao' é criada no createBreederProfile e não muda.
 
   const updated = await prisma.breeder.update({
     where: { id: breeder.id },

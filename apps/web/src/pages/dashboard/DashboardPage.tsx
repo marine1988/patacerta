@@ -49,7 +49,6 @@ interface BreederProfile {
   status: string
   districtId: number | null
   municipalityId: number | null
-  speciesIds: number[]
   verificationDocs: VerificationDoc[]
   photos?: BreederPhoto[]
   // Apresentacao publica
@@ -78,11 +77,6 @@ interface VerificationDoc {
   docType: string
   fileName: string
   status: string
-}
-
-interface Species {
-  id: number
-  namePt: string
 }
 
 interface District {
@@ -364,11 +358,6 @@ function BreederTab() {
     queryFn: () => api.get('/breeders/me/profile').then((r) => r.data),
   })
 
-  const { data: speciesList } = useQuery<Species[]>({
-    queryKey: ['species'],
-    queryFn: () => api.get('/search/species').then((r) => r.data),
-  })
-
   const { data: districts } = useQuery<District[]>({
     queryKey: ['districts'],
     queryFn: () => api.get('/search/districts').then((r) => r.data),
@@ -384,7 +373,6 @@ function BreederTab() {
     description: '',
     districtId: '',
     municipalityId: '',
-    speciesIds: [] as number[],
     youtubeVideoId: '',
     cpcMember: false,
     fciAffiliated: false,
@@ -427,7 +415,6 @@ function BreederTab() {
         description: breeder.description ?? '',
         districtId: breeder.districtId ? String(breeder.districtId) : '',
         municipalityId: breeder.municipalityId ? String(breeder.municipalityId) : '',
-        speciesIds: breeder.speciesIds ?? [],
         youtubeVideoId: breeder.youtubeVideoId ?? '',
         cpcMember: breeder.cpcMember ?? false,
         fciAffiliated: breeder.fciAffiliated ?? false,
@@ -585,7 +572,6 @@ function BreederTab() {
       description: form.description,
       districtId: form.districtId ? Number(form.districtId) : null,
       municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
-      speciesIds: form.speciesIds,
       youtubeVideoId: form.youtubeVideoId,
       cpcMember: form.cpcMember,
       fciAffiliated: form.fciAffiliated,
@@ -616,15 +602,6 @@ function BreederTab() {
     fd.append('file', file)
     fd.append('docType', uploadDocType)
     uploadMutation.mutate(fd)
-  }
-
-  function toggleSpecies(id: number) {
-    setForm((prev) => ({
-      ...prev,
-      speciesIds: prev.speciesIds.includes(id)
-        ? prev.speciesIds.filter((s) => s !== id)
-        : [...prev.speciesIds, id],
-    }))
   }
 
   if (isLoading) {
@@ -734,24 +711,6 @@ function BreederTab() {
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               />
-            </div>
-
-            {/* Species */}
-            <div>
-              <label className="label">Espécies</label>
-              <div className="mt-1 flex flex-wrap gap-3">
-                {speciesList?.map((sp) => (
-                  <label key={sp.id} className="flex items-center gap-1.5 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={form.speciesIds.includes(sp.id)}
-                      onChange={() => toggleSpecies(sp.id)}
-                      className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                    />
-                    {sp.namePt}
-                  </label>
-                ))}
-              </div>
             </div>
 
             {/* District / Municipality */}

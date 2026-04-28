@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { Button } from '../ui/Button'
-import type { DistrictOption, SpeciesOption } from '../../lib/lookups'
+import type { DistrictOption } from '../../lib/lookups'
 
 interface SearchBarProps {
   compact?: boolean
@@ -11,15 +11,8 @@ interface SearchBarProps {
 
 export function SearchBar({ compact = false }: SearchBarProps) {
   const navigate = useNavigate()
-  const [species, setSpecies] = useState('')
   const [district, setDistrict] = useState('')
   const [query, setQuery] = useState('')
-
-  const { data: speciesList = [] } = useQuery<SpeciesOption[]>({
-    queryKey: ['species'],
-    queryFn: () => api.get('/search/species').then((r) => r.data),
-    staleTime: 3600_000,
-  })
 
   const { data: districtList = [] } = useQuery<DistrictOption[]>({
     queryKey: ['districts'],
@@ -30,7 +23,6 @@ export function SearchBar({ compact = false }: SearchBarProps) {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const params = new URLSearchParams()
-    if (species) params.set('speciesId', species)
     if (district) params.set('districtId', district)
     if (query.trim()) params.set('query', query.trim())
     navigate(`/explorar?${params.toString()}`)
@@ -58,19 +50,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
       onSubmit={handleSearch}
       className="rounded-2xl border border-gray-200 bg-white p-4 shadow-lg sm:p-6"
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label className="label">Espécie</label>
-          <select className="select" value={species} onChange={(e) => setSpecies(e.target.value)}>
-            <option value="">Todas as espécies</option>
-            {speciesList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.namePt}
-              </option>
-            ))}
-          </select>
-        </div>
-
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="label">Distrito</label>
           <select className="select" value={district} onChange={(e) => setDistrict(e.target.value)}>

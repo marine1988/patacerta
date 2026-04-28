@@ -90,7 +90,9 @@ export const breederProfileSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   districtId: z.number().int().positive(),
   municipalityId: z.number().int().positive(),
-  speciesIds: z.array(z.number().int().positive()).min(1, 'Selecione pelo menos uma espécie'),
+  // MVP: campo deprecated — backend assume sempre 'cao'.
+  // Mantido como opcional no schema para compatibilidade futura multi-espécie.
+  speciesIds: z.array(z.number().int().positive()).optional(),
   website: z.string().url().max(255).optional(),
   phone: z
     .string()

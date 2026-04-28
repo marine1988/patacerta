@@ -12,6 +12,7 @@ export interface MapMarker {
   municipalityName: string
   avgRating: number | null
   reviewCount: number
+  /** @deprecated MVP só-cães: não é renderizado mas mantido para compatibilidade. */
   speciesLabels: string[]
 }
 
@@ -42,16 +43,11 @@ export function MarkerClusterLayer({ markers, onMarkerClick }: MarkerClusterProp
         m.avgRating !== null
           ? `<div style="margin-top:4px;font-size:12px;color:#6b7280">★ ${m.avgRating.toFixed(1)} (${m.reviewCount} avaliações)</div>`
           : `<div style="margin-top:4px;font-size:12px;color:#9ca3af">Sem avaliações</div>`
-      const species =
-        m.speciesLabels.length > 0
-          ? `<div style="margin-top:6px;font-size:11px;color:#4b5563">${m.speciesLabels.join(' · ')}</div>`
-          : ''
       marker.bindPopup(
         `<div style="min-width:200px">
           <div style="font-weight:600;font-size:14px;color:#111827">${escapeHtml(m.businessName)}</div>
           <div style="margin-top:2px;font-size:12px;color:#6b7280">${escapeHtml(m.municipalityName)}, ${escapeHtml(m.districtName)}</div>
           ${rating}
-          ${species}
           <a href="/criador/${m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#2563eb;text-decoration:none">Ver perfil →</a>
         </div>`,
         { closeButton: true, autoPan: true },

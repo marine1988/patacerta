@@ -46,8 +46,7 @@ export function PublicarPage() {
               <div className="flex-1">
                 <h2 className="text-base font-semibold text-gray-900">Anúncio de criador</h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  Tem um canil ou cria animais. Vai precisar de NIF, número DGAV e da espécie que
-                  cria.
+                  Tem um canil e cria cães. Vai precisar de NIF e número DGAV.
                 </p>
                 <p className="mt-3 text-xs font-medium text-caramel-700">
                   Criar perfil de criador →

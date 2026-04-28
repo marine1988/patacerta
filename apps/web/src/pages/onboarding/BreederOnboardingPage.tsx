@@ -6,10 +6,6 @@ import { extractApiError } from '../../lib/errors'
 import { breederProfileSchema } from '@patacerta/shared'
 import { Button, Card, Input, Select, Spinner } from '../../components/ui'
 
-interface Species {
-  id: number
-  namePt: string
-}
 interface District {
   id: number
   namePt: string
@@ -59,12 +55,6 @@ export function BreederOnboardingPage() {
     website: '',
     districtId: '',
     municipalityId: '',
-    speciesIds: [] as number[],
-  })
-
-  const { data: speciesList } = useQuery<Species[]>({
-    queryKey: ['species'],
-    queryFn: () => api.get('/search/species').then((r) => r.data),
   })
 
   const { data: districts } = useQuery<District[]>({
@@ -96,15 +86,6 @@ export function BreederOnboardingPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  function toggleSpecies(id: number) {
-    setForm((prev) => ({
-      ...prev,
-      speciesIds: prev.speciesIds.includes(id)
-        ? prev.speciesIds.filter((s) => s !== id)
-        : [...prev.speciesIds, id],
-    }))
-  }
-
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
@@ -118,7 +99,6 @@ export function BreederOnboardingPage() {
       website: form.website.trim() || undefined,
       districtId: Number(form.districtId),
       municipalityId: Number(form.municipalityId),
-      speciesIds: form.speciesIds,
     }
 
     const parsed = breederProfileSchema.safeParse(input)
@@ -206,25 +186,9 @@ export function BreederOnboardingPage() {
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Espécies que cria
             </label>
-            <div className="flex flex-wrap gap-2">
-              {(speciesList ?? []).map((s) => {
-                const active = form.speciesIds.includes(s.id)
-                return (
-                  <button
-                    type="button"
-                    key={s.id}
-                    onClick={() => toggleSpecies(s.id)}
-                    className={`rounded-full border px-3 py-1 text-sm transition ${
-                      active
-                        ? 'border-caramel-600 bg-caramel-100 text-caramel-800'
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {s.namePt}
-                  </button>
-                )
-              })}
-            </div>
+            <p className="text-sm text-gray-600">
+              Esta plataforma é exclusiva para criadores de cães.
+            </p>
           </div>
 
           <Input

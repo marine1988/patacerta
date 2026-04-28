@@ -189,21 +189,10 @@ async function main() {
   console.log(`  ✓ ${municipalityCount} municipalities seeded`)
 
   // ---- Species ----
+  // MVP: apenas cães. Schema mantém o conceito multi-espécie para iterações
+  // futuras, mas a UI e os dados estão restritos a 'cao'.
   console.log('\nSeeding species...')
-  const speciesData = [
-    { nameSlug: 'cao', namePt: 'Cão' },
-    { nameSlug: 'gato', namePt: 'Gato' },
-    { nameSlug: 'coelho', namePt: 'Coelho' },
-    { nameSlug: 'hamster', namePt: 'Hamster' },
-    { nameSlug: 'porquinho-da-india', namePt: 'Porquinho-da-índia' },
-    { nameSlug: 'chinchila', namePt: 'Chinchila' },
-    { nameSlug: 'furao', namePt: 'Furão' },
-    { nameSlug: 'ave', namePt: 'Ave' },
-    { nameSlug: 'reptil', namePt: 'Réptil' },
-    { nameSlug: 'peixe', namePt: 'Peixe' },
-    { nameSlug: 'cavalo', namePt: 'Cavalo' },
-    { nameSlug: 'outro', namePt: 'Outro' },
-  ]
+  const speciesData = [{ nameSlug: 'cao', namePt: 'Cão' }]
 
   for (const s of speciesData) {
     await prisma.species.upsert({
@@ -211,6 +200,15 @@ async function main() {
       update: { namePt: s.namePt },
       create: s,
     })
+  }
+
+  // Limpa espécies legadas (gato, coelho, etc.) caso existam de seeds anteriores.
+  // BreederSpecies usa onDelete: Cascade, portanto associações ficam removidas.
+  const removedSpecies = await prisma.species.deleteMany({
+    where: { nameSlug: { notIn: speciesData.map((s) => s.nameSlug) } },
+  })
+  if (removedSpecies.count > 0) {
+    console.log(`  ✓ ${removedSpecies.count} legacy species removed`)
   }
   console.log(`  ✓ ${speciesData.length} species seeded`)
 

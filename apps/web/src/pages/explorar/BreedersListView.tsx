@@ -14,7 +14,6 @@ interface BreederResult {
   status: string
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
-  species: { speciesId: number; species: { id: number; namePt: string } }[]
   avgRating: number | null
   reviewCount: number
   createdAt: string

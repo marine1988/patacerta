@@ -16,9 +16,8 @@ import { StarRating } from '../../components/shared/StarRating'
 import { YouTubeEmbed } from '../../components/shared/YouTubeEmbed'
 import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
 import { Avatar } from '../../components/ui/Avatar'
-import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import { Spinner } from '../../components/ui/Spinner'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -53,7 +52,6 @@ interface BreederDetail {
   userId: number
   district: { id: number; namePt: string; latitude: number | null; longitude: number | null }
   municipality: { id: number; namePt: string }
-  species: { speciesId: number; species: { id: number; namePt: string } }[]
   user: { id: number; firstName: string; lastName: string; email: string }
   avgRating: number | null
   reviewCount: number
@@ -316,14 +314,6 @@ export function BreederProfilePage() {
                       <span className="text-gray-400">({breeder.reviewCount})</span>
                     </span>
                   )}
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {breeder.species.map((s) => (
-                    <Badge key={s.species.id} variant="blue">
-                      {s.species.namePt}
-                    </Badge>
-                  ))}
                 </div>
               </div>
             </div>
