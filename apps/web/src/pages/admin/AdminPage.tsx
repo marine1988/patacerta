@@ -4,17 +4,7 @@ import { api } from '../../lib/api'
 import { formatDateShort } from '../../lib/dates'
 import { Pagination } from '../../components/ui/Pagination'
 import type { Paginated } from '../../lib/pagination'
-import {
-  Tabs,
-  Card,
-  Badge,
-  Button,
-  Spinner,
-  EmptyState,
-  Select,
-  Modal,
-  Input,
-} from '../../components/ui'
+import { Card, Badge, Button, Spinner, EmptyState, Select, Modal, Input } from '../../components/ui'
 import { PatrocinadosTab } from './PatrocinadosTab'
 
 // Types
@@ -2204,6 +2194,8 @@ function AuditoriaTab() {
 // AdminPage
 
 export function AdminPage() {
+  const [activeTab, setActiveTab] = useState<string>('resumo')
+
   const tabs = [
     {
       id: 'resumo',
@@ -2387,6 +2379,8 @@ export function AdminPage() {
     },
   ]
 
+  const activeContent = tabs.find((t) => t.id === activeTab)?.content ?? tabs[0].content
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -2396,7 +2390,53 @@ export function AdminPage() {
         </p>
       </div>
 
-      <Tabs tabs={tabs} defaultTab="resumo" />
+      {/* Mobile / tablet: select dropdown */}
+      <div className="mb-6 lg:hidden">
+        <Select
+          value={activeTab}
+          onChange={(e) => setActiveTab(e.target.value)}
+          aria-label="Secção do painel"
+          options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
+        />
+      </div>
+
+      {/* Desktop: vertical sidebar + content */}
+      <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-8">
+        <nav
+          className="hidden lg:block"
+          aria-label="Secções do painel de administração"
+          role="tablist"
+          aria-orientation="vertical"
+        >
+          <ul className="flex flex-col gap-1 border-l border-gray-200">
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTab
+              return (
+                <li key={tab.id}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`-ml-px flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border-caramel-600 bg-caramel-50/40 text-caramel-700'
+                        : 'border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="shrink-0">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        <div role="tabpanel" className="min-w-0">
+          {activeContent}
+        </div>
+      </div>
     </div>
   )
 }
