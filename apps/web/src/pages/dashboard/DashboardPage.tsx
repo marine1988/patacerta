@@ -976,9 +976,20 @@ function BreederTab() {
   const breederForm = (
     <form onSubmit={handleSave} className="space-y-4">
       <Accordion>
-        {/* Certificado DGAV — em modo edit, esta e a primeira seccao do
-            form porque e o documento mais critico. Em "criar" usa-se o
-            uploader simples mais abaixo. */}
+        {/* Galeria — primeira seccao do form em modo edit. As fotos sao
+            o primeiro contacto visual com o criador, por isso ficam no
+            topo. Em "criar" usa-se o uploader simples mais abaixo. */}
+        {!noProfile && breeder && (
+          <AccordionSection
+            title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
+            eyebrow="Apresentação visual *"
+            defaultOpen
+          >
+            {galeriaSection}
+          </AccordionSection>
+        )}
+        {/* Certificado DGAV — segunda seccao em modo edit, pelo papel
+            critico que tem na verificacao do perfil. */}
         {!noProfile && breeder && (
           <AccordionSection title="Certificado DGAV" eyebrow="Documento obrigatório *" defaultOpen>
             {documentosSection}
@@ -1345,10 +1356,8 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Galeria do criador integrada no fim do form em modo edit. Os
-          Documentos (DGAV) estao no topo do form porque sao o item mais
-          critico do processo de verificacao. */}
-      {!noProfile && breeder && <div className="border-t border-line pt-4">{galeriaSection}</div>}
+      {/* Galeria e Documentos vivem no topo do Accordion em modo edit;
+          aqui em baixo ficam apenas os botoes de accao. */}
 
       <div className="flex gap-3 border-t border-line pt-4">
         <Button
