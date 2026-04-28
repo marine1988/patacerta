@@ -17,6 +17,8 @@ import {
   EmptyState,
   Spinner,
   Modal,
+  Accordion,
+  AccordionSection,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
@@ -408,6 +410,15 @@ function BreederTab() {
   })
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Sem perfil ainda? Abre directamente em modo "criar" (form aberto).
+  // Ja tem perfil? Mostra a vista de status; o utilizador clica "Editar"
+  // para entrar no formulario.
+  useEffect(() => {
+    if (!isLoading && !breeder) {
+      setEditing(true)
+    }
+  }, [isLoading, breeder])
+
   const [uploadDocType, setUploadDocType] = useState('NIF')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
@@ -464,14 +475,30 @@ function BreederTab() {
   })
 
   const saveMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.patch('/breeders/me', data),
+    // Cria ou actualiza consoante ja existir perfil. O endpoint POST /breeders
+    // valida com breederProfileSchema (mais estrito); PATCH /breeders/me usa
+    // updateBreederProfileSchema (parcial).
+    mutationFn: (data: Record<string, unknown>) =>
+      breeder ? api.patch('/breeders/me', data) : api.post('/breeders', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+      queryClient.invalidateQueries({ queryKey: ['breeder-profile-probe'] })
       setEditing(false)
-      setMsg({ type: 'success', text: 'Perfil de criador atualizado com sucesso.' })
+      setMsg({
+        type: 'success',
+        text: breeder
+          ? 'Perfil de criador atualizado com sucesso.'
+          : 'Perfil de criador criado com sucesso. Adicione documentos para verificacao.',
+      })
     },
-    onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao atualizar perfil de criador.' })
+    onError: (err) => {
+      setMsg({
+        type: 'error',
+        text: extractApiError(
+          err,
+          breeder ? 'Erro ao atualizar perfil de criador.' : 'Erro ao criar perfil de criador.',
+        ),
+      })
     },
   })
 
@@ -621,6 +648,24 @@ function BreederTab() {
       })
       return
     }
+    // No modo "criar" os campos abaixo sao obrigatorios. No modo "editar"
+    // o backend aceita PATCH parcial, por isso passamos null para sinalizar
+    // "sem alteracao" / "limpar" (e a convencao actual do controller).
+    if (!breeder) {
+      const requiredMissing: string[] = []
+      if (!form.businessName.trim()) requiredMissing.push('Nome comercial')
+      if (!form.nif.trim()) requiredMissing.push('NIF')
+      if (!form.dgavNumber.trim()) requiredMissing.push('Numero DGAV')
+      if (!form.districtId) requiredMissing.push('Distrito')
+      if (!form.municipalityId) requiredMissing.push('Concelho')
+      if (requiredMissing.length > 0) {
+        setMsg({
+          type: 'error',
+          text: `Preencha os campos obrigatorios: ${requiredMissing.join(', ')}.`,
+        })
+        return
+      }
+    }
     saveMutation.mutate({
       businessName: form.businessName,
       nif: form.nif,
@@ -672,21 +717,10 @@ function BreederTab() {
     )
   }
 
-  if (!breeder) {
-    // Should never happen — BreederOnboardingGuard redirects to /onboarding/criador
-    // before this tab can render. Keep as defensive fallback.
-    return (
-      <EmptyState
-        title="Perfil de criador não encontrado"
-        description="Vamos redirecioná-lo para completar o seu perfil."
-        action={
-          <Button onClick={() => (window.location.href = '/onboarding/criador')}>
-            Completar perfil
-          </Button>
-        }
-      />
-    )
-  }
+  // Sem perfil de criador ainda — entramos directos em modo "criar".
+  // O resto do tab (Status, Galeria, Documentos, Eliminar) so aparece
+  // depois do perfil ser criado.
+  const noProfile = !breeder
 
   const docTypeOptions = [
     { value: 'NIF', label: 'NIF' },
@@ -713,12 +747,12 @@ function BreederTab() {
   // colapsado para dentro do modo Editar para reduzir clutter na vista
   // pública do dashboard. Adicionamos um botão Eliminar ao lado do
   // Editar nesses estados.
-  const isUnverified = breeder.status !== 'VERIFIED'
+  const isUnverified = breeder ? breeder.status !== 'VERIFIED' : true
 
   // Galeria + Documentos extraídos para variáveis para que possam ser
   // renderizados ou fora dos cards (status VERIFIED) ou dentro do
   // formulário Editar (status não-verificado).
-  const galeriaSection = (
+  const galeriaSection = breeder ? (
     <PhotoGalleryManager
       photos={breeder.photos ?? []}
       max={MAX_BREEDER_PHOTOS}
@@ -731,9 +765,9 @@ function BreederTab() {
       onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
       onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
     />
-  )
+  ) : null
 
-  const documentosSection = (
+  const documentosSection = breeder ? (
     <Card hover={false}>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
 
@@ -798,10 +832,10 @@ function BreederTab() {
         </p>
       )}
     </Card>
-  )
+  ) : null
 
   const submitVerificationButton =
-    breeder.status === 'DRAFT' && breeder.verificationDocs.length > 0 ? (
+    breeder && breeder.status === 'DRAFT' && breeder.verificationDocs.length > 0 ? (
       <Button
         loading={submitVerificationMutation.isPending}
         onClick={() => submitVerificationMutation.mutate()}
@@ -810,129 +844,128 @@ function BreederTab() {
       </Button>
     ) : null
 
-  return (
-    <div className="space-y-6">
-      {/* Status */}
-      <Card hover={false}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Estado do criador</h3>
-            <div className="mt-2">
-              <VerificationBadge status={breeder.status} />
-            </div>
-          </div>
-          {!editing && (
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={() => setEditing(true)}>
-                Editar
-              </Button>
-              {isUnverified && (
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setDeleteOpen(true)
-                  }}
-                >
-                  Eliminar
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Edit form */}
-      {editing && (
-        <Card hover={false}>
-          <form onSubmit={handleSave} className="space-y-4">
+  // ── Form do criador (acordeao com seccoes) ─────────────────────────
+  // Reutilizado tanto em modo "criar" (sem perfil ainda) como em "editar".
+  const breederForm = (
+    <form onSubmit={handleSave} className="space-y-4">
+      <Accordion>
+        <AccordionSection title="Identificação" eyebrow="Dados oficiais" defaultOpen>
+          <div className="space-y-4">
+            <Input
+              label="Nome comercial / canil"
+              value={form.businessName}
+              onChange={(e) => setForm((p) => ({ ...p, businessName: e.target.value }))}
+              disabled={isLocked}
+              required={noProfile}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="Nome comercial"
-                value={form.businessName}
-                onChange={(e) => setForm((p) => ({ ...p, businessName: e.target.value }))}
-                disabled={isLocked}
-              />
               <Input
                 label="NIF"
                 value={form.nif}
                 onChange={(e) => setForm((p) => ({ ...p, nif: e.target.value }))}
                 disabled={isLocked}
+                placeholder="9 dígitos"
+                required={noProfile}
               />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Número DGAV"
                 value={form.dgavNumber}
                 onChange={(e) => setForm((p) => ({ ...p, dgavNumber: e.target.value }))}
                 disabled={isLocked}
+                required={noProfile}
               />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Website"
+                placeholder="https://"
                 value={form.website}
                 onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
               />
+              <Input
+                label="Telefone"
+                placeholder="+351 912 345 678"
+                value={form.phone}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                type="tel"
+              />
             </div>
-            <Input
-              label="Telefone"
-              value={form.phone}
-              onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              type="tel"
-            />
             <div>
-              <label className="label">Descrição</label>
+              <label className="label">Apresentação</label>
               <textarea
                 className="input min-h-[100px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Conte-nos brevemente sobre o seu canil…"
+                maxLength={2000}
               />
             </div>
+          </div>
+        </AccordionSection>
 
-            {/* District / Municipality */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
-                label="Distrito"
-                options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.namePt }))}
-                placeholder="Selecionar distrito"
-                value={form.districtId}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
-                }
-              />
-              <Select
-                label="Município"
-                options={(municipalities ?? []).map((m) => ({
-                  value: String(m.id),
-                  label: m.namePt,
-                }))}
-                placeholder="Selecionar município"
-                value={form.municipalityId}
-                onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
-                disabled={!form.districtId}
-              />
-            </div>
+        <AccordionSection title="Localização" eyebrow="Onde está" defaultOpen={noProfile}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select
+              label="Distrito"
+              options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.namePt }))}
+              placeholder="Selecionar distrito"
+              value={form.districtId}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
+              }
+              required={noProfile}
+            />
+            <Select
+              label="Concelho"
+              options={(municipalities ?? []).map((m) => ({
+                value: String(m.id),
+                label: m.namePt,
+              }))}
+              placeholder="Selecionar concelho"
+              value={form.municipalityId}
+              onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
+              disabled={!form.districtId}
+              required={noProfile}
+            />
+          </div>
+        </AccordionSection>
 
-            {/* Vídeo de apresentação */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Vídeo de apresentação (YouTube)
-              </h4>
-              <Input
-                label="URL ou ID do vídeo YouTube"
-                placeholder="https://www.youtube.com/watch?v=..."
-                value={form.youtubeVideoId}
-                onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
+        <AccordionSection title="Raças" eyebrow="O que cria" defaultOpen={noProfile}>
+          <p className="mb-3 text-xs text-gray-600">
+            Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
+            descrevê-las em "Outras raças".
+          </p>
+          <BreedMultiCombobox
+            breeds={breedsCatalog ?? []}
+            selectedIds={form.breedIds}
+            onChange={(ids) => setForm((prev) => ({ ...prev, breedIds: ids }))}
+          />
+          <div className="mt-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.hasOtherBreeds}
+                onChange={(e) => setForm((p) => ({ ...p, hasOtherBreeds: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Cole o link completo ou apenas o ID. Deixe vazio para remover.
-              </p>
-            </div>
+              Tenho outras raças não listadas
+            </label>
+            {form.hasOtherBreeds && (
+              <textarea
+                className="input mt-2 min-h-[80px]"
+                value={form.otherBreedsNote}
+                onChange={(e) => setForm((p) => ({ ...p, otherBreedsNote: e.target.value }))}
+                placeholder="Indique as raças que cria (máx. 500 caracteres)…"
+                maxLength={500}
+              />
+            )}
+          </div>
+        </AccordionSection>
 
-            {/* Reconhecimentos oficiais */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Reconhecimentos oficiais
-              </h4>
+        <AccordionSection title="Reconhecimentos e inclusões" eyebrow="Credibilidade">
+          <div className="space-y-5">
+            <div>
+              <h4 className="mb-2 text-sm font-semibold text-gray-700">Reconhecimentos oficiais</h4>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -955,9 +988,8 @@ function BreederTab() {
               </div>
             </div>
 
-            {/* O que está incluído */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+            <div>
+              <h4 className="mb-2 text-sm font-semibold text-gray-700">
                 O que está incluído com cada cachorro
               </h4>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -986,117 +1018,146 @@ function BreederTab() {
               </div>
             </div>
 
-            {/* Racas */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Raças que cria
+            <div>
+              <h4 className="mb-2 text-sm font-semibold text-gray-700">
+                Vídeo de apresentação (YouTube)
               </h4>
-              <p className="mb-3 text-xs text-gray-600">
-                Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
-                descrevê-las em "Outras raças".
-              </p>
-              <BreedMultiCombobox
-                breeds={breedsCatalog ?? []}
-                selectedIds={form.breedIds}
-                onChange={(ids) => setForm((prev) => ({ ...prev, breedIds: ids }))}
+              <Input
+                label="URL ou ID do vídeo"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={form.youtubeVideoId}
+                onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
               />
-              <div className="mt-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.hasOtherBreeds}
-                    onChange={(e) => setForm((p) => ({ ...p, hasOtherBreeds: e.target.checked }))}
-                    className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                  />
-                  Tenho outras raças não listadas
-                </label>
-                {form.hasOtherBreeds && (
-                  <textarea
-                    className="input mt-2 min-h-[80px]"
-                    value={form.otherBreedsNote}
-                    onChange={(e) => setForm((p) => ({ ...p, otherBreedsNote: e.target.value }))}
-                    placeholder="Indique as raças que cria (máx. 500 caracteres)…"
-                    maxLength={500}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Recolha / entrega */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Levar para casa
-              </h4>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.pickupInPerson}
-                    onChange={(e) => setForm((p) => ({ ...p, pickupInPerson: e.target.checked }))}
-                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                  />
-                  Recolha presencial no canil
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.deliveryByCar}
-                    onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
-                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                  />
-                  Entrega ao domicílio (carro)
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.deliveryByPlane}
-                    onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
-                    className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                  />
-                  Envio por avião
-                </label>
-              </div>
-              <div className="mt-3">
-                <label className="label">Notas sobre recolha / entrega</label>
-                <textarea
-                  className="input min-h-[80px]"
-                  value={form.pickupNotes}
-                  onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
-                  placeholder="Custos, condições, zonas cobertas..."
-                  maxLength={1000}
-                />
-              </div>
-            </div>
-
-            {msg && (
-              <p
-                className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
-              >
-                {msg.text}
+              <p className="mt-1 text-xs text-gray-500">
+                Cole o link completo ou apenas o ID. Deixe vazio para remover.
               </p>
-            )}
-
-            {/* Quando não-verificado, Galeria + Documentos vivem dentro
-                do formulário Editar para reduzir clutter. */}
-            {isUnverified && (
-              <div className="space-y-6 border-t border-line pt-6">
-                {galeriaSection}
-                {documentosSection}
-                {submitVerificationButton}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button type="submit" loading={saveMutation.isPending}>
-                Guardar
-              </Button>
-              <Button variant="secondary" type="button" onClick={() => setEditing(false)}>
-                Cancelar
-              </Button>
             </div>
-          </form>
+          </div>
+        </AccordionSection>
+
+        <AccordionSection title="Recolha e entrega" eyebrow="Levar para casa">
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.pickupInPerson}
+                onChange={(e) => setForm((p) => ({ ...p, pickupInPerson: e.target.checked }))}
+                className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+              />
+              Recolha presencial no canil
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.deliveryByCar}
+                onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
+                className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+              />
+              Entrega ao domicílio (carro)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.deliveryByPlane}
+                onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
+                className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+              />
+              Envio por avião
+            </label>
+          </div>
+          <div className="mt-3">
+            <label className="label">Notas sobre recolha / entrega</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={form.pickupNotes}
+              onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
+              placeholder="Custos, condições, zonas cobertas..."
+              maxLength={1000}
+            />
+          </div>
+        </AccordionSection>
+      </Accordion>
+
+      {msg && (
+        <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          {msg.text}
+        </p>
+      )}
+
+      {/* Quando ja existe perfil mas nao-verificado, Galeria + Documentos vivem
+          dentro do formulario Editar para reduzir clutter. */}
+      {breeder && isUnverified && (
+        <div className="space-y-6 border-t border-line pt-6">
+          {galeriaSection}
+          {documentosSection}
+          {submitVerificationButton}
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <Button type="submit" loading={saveMutation.isPending}>
+          {noProfile ? 'Criar perfil' : 'Guardar'}
+        </Button>
+        {!noProfile && (
+          <Button variant="secondary" type="button" onClick={() => setEditing(false)}>
+            Cancelar
+          </Button>
+        )}
+      </div>
+    </form>
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Header — modo criar */}
+      {noProfile && (
+        <Card hover={false}>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-caramel-500">
+            <span>◆</span>
+            <span className="italic">Tornar-me criador</span>
+          </div>
+          <h2 className="mt-1 font-serif text-2xl text-ink">Criar perfil de criador</h2>
+          <p className="mt-2 text-sm text-muted">
+            Preencha os campos abaixo para começar. Após criar o perfil, poderá adicionar fotos,
+            documentos e submeter para verificação.
+          </p>
         </Card>
       )}
+
+      {/* Status — apenas quando ja existe perfil */}
+      {breeder && (
+        <Card hover={false}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Estado do criador</h3>
+              <div className="mt-2">
+                <VerificationBadge status={breeder.status} />
+              </div>
+            </div>
+            {!editing && (
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  Editar
+                </Button>
+                {isUnverified && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    Eliminar
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Form — em modo criar esta sempre aberto, em modo editar e' toggle */}
+      {(noProfile || editing) && <Card hover={false}>{breederForm}</Card>}
 
       {!editing && msg && (
         <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
@@ -1107,7 +1168,7 @@ function BreederTab() {
       {/* Galeria + Documentos: só fora do Editar quando o criador
           já está VERIFIED. Para os outros estados ficam dentro do
           formulário de edição (ver acima). */}
-      {!isUnverified && (
+      {breeder && !isUnverified && (
         <>
           {galeriaSection}
           {documentosSection}
@@ -1127,9 +1188,9 @@ function BreederTab() {
             <strong className="text-red-600">irreversível</strong> e vai apagar:
           </p>
           <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-            <li>Todos os dados do perfil ({breeder.businessName})</li>
-            <li>Galeria ({breeder.photos?.length ?? 0} foto(s))</li>
-            <li>Documentos de verificação ({breeder.verificationDocs.length})</li>
+            <li>Todos os dados do perfil ({breeder?.businessName ?? '—'})</li>
+            <li>Galeria ({breeder?.photos?.length ?? 0} foto(s))</li>
+            <li>Documentos de verificação ({breeder?.verificationDocs.length ?? 0})</li>
             <li>Raças associadas</li>
             <li>Conversas e mensagens recebidas</li>
             <li>Avaliações recebidas</li>
@@ -2105,6 +2166,9 @@ export default function DashboardPage() {
   const hasBreederProfile = !!breederProbe?.id
   const hasServices = !!servicesProbe?.data && servicesProbe.data.length > 0
   const isBreeder = hasBreederProfile
+  // Tab "Criador" aparece para qualquer non-admin: serve tanto para gerir
+  // o perfil existente como para o criar (entra direto em modo formulario).
+  const showBreederTab = !!user && user.role !== 'ADMIN'
   // Tab de servicos aparece se ja presta servicos OU se e OWNER autenticado
   // (para poder criar o primeiro). Admin nao tem painel de servicos.
   const showServicesTab =
@@ -2133,11 +2197,11 @@ export default function DashboardPage() {
       ),
       content: <ProfileTab />,
     },
-    ...(isBreeder
+    ...(showBreederTab
       ? [
           {
-            id: 'breeder',
-            label: 'Criador',
+            id: 'criador',
+            label: hasBreederProfile ? 'Criador' : 'Tornar-me criador',
             icon: (
               <svg
                 className="h-4 w-4"

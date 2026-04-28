@@ -39,11 +39,6 @@ const ServiceDetailPage = lazy(() =>
   })),
 )
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
-const BreederOnboardingPage = lazy(() =>
-  import('./pages/onboarding/BreederOnboardingPage').then((m) => ({
-    default: m.BreederOnboardingPage,
-  })),
-)
 const PublicarPage = lazy(() =>
   import('./pages/publicar/PublicarPage').then((m) => ({ default: m.PublicarPage })),
 )
@@ -158,21 +153,17 @@ export function App() {
             />
             <Route
               path="/publicar/criador"
-              element={
-                <ProtectedRoute>
-                  <BreederOnboardingPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/painel?tab=criador" replace />}
             />
             <Route
               path="/publicar/servico"
               element={<Navigate to="/painel?tab=servicos&new=1" replace />}
             />
 
-            {/* Legacy: /onboarding/criador → /publicar/criador */}
+            {/* Legacy: /onboarding/criador → /painel?tab=criador */}
             <Route
               path="/onboarding/criador"
-              element={<Navigate to="/publicar/criador" replace />}
+              element={<Navigate to="/painel?tab=criador" replace />}
             />
 
             {/* Protected — admin only */}
