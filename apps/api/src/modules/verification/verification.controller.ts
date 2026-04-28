@@ -2,9 +2,31 @@ import type { Request, Response } from 'express'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
-import { uploadFile, deleteFile, getPresignedUrl } from '../../lib/minio.js'
+import {
+  uploadPrivateFile,
+  deletePrivateFile,
+  getPrivatePresignedUrl,
+  deleteFile as deletePublicFile,
+  getPresignedUrl as getPublicPresignedUrl,
+} from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
+
+/**
+ * Documentos antigos foram guardados no bucket publico no formato
+ * `/{bucket}/{objectName}`. Os novos vao para o bucket privado com
+ * formato `private:{bucket}/{objectName}`. Este helper devolve a accao
+ * correcta para qualquer um dos dois.
+ */
+function resolveDocStorage(fileUrl: string): { isPrivate: boolean; objectName: string } {
+  if (fileUrl.startsWith('private:')) {
+    const rest = fileUrl.slice('private:'.length) // {bucket}/{object}
+    const objectName = rest.replace(/^[^/]+\//, '')
+    return { isPrivate: true, objectName }
+  }
+  // Formato legacy: /{bucket}/{object}
+  return { isPrivate: false, objectName: fileUrl.replace(/^\/[^/]+\//, '') }
+}
 import multer from 'multer'
 import path from 'path'
 import type { ReviewVerificationDocInput } from '@patacerta/shared'
@@ -54,8 +76,14 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   // Defence-in-depth: re-check the buffer's magic bytes. The mimetype header
   // multer used in fileFilter is supplied by the client and is trivially
   // spoofable; this catches a renamed/repackaged executable masquerading as
-  // an image or PDF.
-  assertFileKind(req.file.buffer, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+  // an image or PDF. Use the SERVER-DETECTED kind as the stored Content-Type
+  // so that the bucket cannot serve attacker-chosen MIMEs.
+  const detectedMime = assertFileKind(req.file.buffer, [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ])
 
   // Apenas DGAV e suportado. Os outros tipos foram removidos do dominio.
   const docType = req.body.docType
@@ -98,7 +126,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   const safeFileName = `${Date.now()}-${docType}${ext}`
   const objectName = `verification/${breeder.id}/${safeFileName}`
 
-  const fileUrl = await uploadFile(objectName, req.file.buffer, req.file.mimetype)
+  const fileUrl = await uploadPrivateFile(objectName, req.file.buffer, detectedMime)
 
   const doc = await prisma.verificationDoc.create({
     data: {
@@ -170,9 +198,9 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     )
   }
 
-  // Delete from MinIO
-  const objectName = doc.fileUrl.replace(/^\/[^/]+\//, '')
-  await deleteFile(objectName).catch(() => {})
+  // Delete from MinIO (resolve storage backend by URL prefix)
+  const { isPrivate, objectName } = resolveDocStorage(doc.fileUrl)
+  await (isPrivate ? deletePrivateFile(objectName) : deletePublicFile(objectName)).catch(() => {})
 
   await prisma.verificationDoc.delete({ where: { id: docId } })
 
@@ -274,9 +302,13 @@ export const viewDocument = asyncHandler(async (req, res) => {
     throw new AppError(403, 'Sem permissão', 'FORBIDDEN')
   }
 
-  // Extract object name from stored fileUrl (format: /bucket/objectName)
-  const objectName = doc.fileUrl.replace(/^\/[^/]+\//, '')
-  const url = await getPresignedUrl(objectName, 900) // 15 min expiry
+  // Resolve storage backend and generate a short-lived presigned URL.
+  // Documentos novos vao para bucket privado; legacy ficam no publico
+  // (mas mesmo assim usamos presigned para uniformidade da resposta).
+  const { isPrivate, objectName } = resolveDocStorage(doc.fileUrl)
+  const url = isPrivate
+    ? await getPrivatePresignedUrl(objectName, 900)
+    : await getPublicPresignedUrl(objectName, 900)
 
   res.json({ url, fileName: doc.fileName, docType: doc.docType })
 })
