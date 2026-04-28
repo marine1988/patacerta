@@ -61,7 +61,7 @@ export function AccordionSection({
   }
 
   return (
-    <div className="overflow-hidden border border-line bg-white" style={{ borderRadius: 2 }}>
+    <div className="border border-line bg-white" style={{ borderRadius: 2 }}>
       <button
         type="button"
         onClick={handleClick}
