@@ -7,7 +7,7 @@
  *   - 20 distritos de Portugal (com coordenadas)
  *   - municípios das principais cidades
  *   - espécies (MVP: só `cao`) + cleanup de espécies legadas
- *   - 40 raças de cão (catálogo do simulador)
+ *   - 104 raças de cão (catálogo do simulador, base CPC 2025 — todas as raças com mais de 5 nascimentos LOP em 2025)
  *   - categorias de serviços
  *   - cleanup de utilizadores demo legados não-cão (gatos/coelhos/aves)
  *
