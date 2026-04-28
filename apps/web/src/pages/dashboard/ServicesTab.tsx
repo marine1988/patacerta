@@ -14,6 +14,7 @@
 // e manter o componente focado.
 
 import { useState, useEffect, useRef, useMemo, type FormEvent, type ChangeEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { extractApiError } from '../../lib/errors'
 import { formatPrice, parsePriceToCents, type ServicePriceUnit } from '../../lib/format'
@@ -36,6 +37,8 @@ import {
   Spinner,
   Modal,
   Tabs,
+  Accordion,
+  AccordionSection,
 } from '../../components/ui'
 import { ServiceCard, type ServiceCardData } from '../../components/shared/ServiceCard'
 
@@ -118,6 +121,7 @@ const emptyServiceForm: ServiceFormState = {
 
 export function ServicesTab() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [mode, setMode] = useState<'list' | 'edit'>('list')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -314,6 +318,22 @@ export function ServicesTab() {
       phone: editingService.phone ?? '',
     })
   }, [mode, editingService])
+
+  // ── Auto-abrir form quando vem com ?new=1 (de /publicar/servico) ──
+  useEffect(() => {
+    if (searchParams.get('new') === '1' && mode === 'list') {
+      setEditingId(null)
+      setForm(emptyServiceForm)
+      setMsg(null)
+      setPhotoMsg(null)
+      setOpenSections({ basics: true, location: true, contact: false })
+      setMode('edit')
+      // Limpa o param para nao reabrir se o user voltar a lista
+      const next = new URLSearchParams(searchParams)
+      next.delete('new')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams, mode])
 
   // ── Handlers ───────────────────────────────────────────────────────
   function startNew() {
@@ -778,137 +798,139 @@ function ServiceEditView(props: ServiceEditViewProps) {
         </h3>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          {/* Secção 1: Sobre o serviço */}
-          <CollapseSection
-            title="Sobre o serviço"
-            subtitle="Categoria, título, descrição e preço"
-            open={openSections.basics}
-            onToggle={() => toggleSection('basics')}
-          >
-            <div className="space-y-4">
-              <Select
-                label="Categoria"
-                options={categories.map((c) => ({ value: String(c.id), label: c.namePt }))}
-                placeholder="Selecionar categoria"
-                value={form.categoryId}
-                onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
-              />
+          <Accordion>
+            {/* Secção 1: Sobre o serviço */}
+            <AccordionSection
+              title="Sobre o serviço"
+              eyebrow="Identificação"
+              open={openSections.basics}
+              onToggle={() => toggleSection('basics')}
+            >
+              <div className="space-y-4">
+                <Select
+                  label="Categoria"
+                  options={categories.map((c) => ({ value: String(c.id), label: c.namePt }))}
+                  placeholder="Selecionar categoria"
+                  value={form.categoryId}
+                  onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
+                />
 
-              <div>
+                <div>
+                  <Input
+                    label="Título"
+                    value={form.title}
+                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="Ex.: Passeios no Parque da Cidade"
+                    maxLength={TITLE_MAX}
+                  />
+                  <CharCounter value={form.title} max={TITLE_MAX} min={5} />
+                </div>
+
+                <div>
+                  <label className="label">Descrição</label>
+                  <textarea
+                    className="input min-h-[120px]"
+                    value={form.description}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Descreva o seu serviço com detalhe (mínimo 20 caracteres)."
+                    maxLength={DESCRIPTION_MAX}
+                  />
+                  <CharCounter value={form.description} max={DESCRIPTION_MAX} min={20} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Input
+                    label="Preço (€)"
+                    value={form.price}
+                    onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
+                    placeholder="Ex.: 15,00"
+                    inputMode="decimal"
+                  />
+                  <Select
+                    label="Unidade"
+                    options={priceUnitOptions.map((o) => ({ value: o.value, label: o.label }))}
+                    value={form.priceUnit}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, priceUnit: e.target.value as ServicePriceUnit }))
+                    }
+                  />
+                </div>
+              </div>
+            </AccordionSection>
+
+            {/* Secção 2: Localização */}
+            <AccordionSection
+              title="Localização"
+              eyebrow="Onde presta"
+              open={openSections.location}
+              onToggle={() => toggleSection('location')}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Select
+                    label="Distrito"
+                    options={districts.map((d) => ({ value: String(d.id), label: d.namePt }))}
+                    placeholder="Selecionar distrito"
+                    value={form.districtId}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
+                    }
+                  />
+                  <Select
+                    label="Concelho"
+                    options={municipalities.map((m) => ({ value: String(m.id), label: m.namePt }))}
+                    placeholder="Selecionar concelho"
+                    value={form.municipalityId}
+                    onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
+                    disabled={!form.districtId}
+                  />
+                </div>
+
                 <Input
-                  label="Título"
-                  value={form.title}
-                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Ex.: Passeios no Parque da Cidade"
-                  maxLength={TITLE_MAX}
+                  label="Morada (opcional)"
+                  value={form.addressLine}
+                  onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
+                  placeholder="Rua, número, código postal"
+                  maxLength={255}
                 />
-                <CharCounter value={form.title} max={TITLE_MAX} min={5} />
-              </div>
 
-              <div>
-                <label className="label">Descrição</label>
-                <textarea
-                  className="input min-h-[120px]"
-                  value={form.description}
-                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="Descreva o seu serviço com detalhe (mínimo 20 caracteres)."
-                  maxLength={DESCRIPTION_MAX}
-                />
-                <CharCounter value={form.description} max={DESCRIPTION_MAX} min={20} />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Input
-                  label="Preço (€)"
-                  value={form.price}
-                  onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
-                  placeholder="Ex.: 15,00"
-                  inputMode="decimal"
-                />
-                <Select
-                  label="Unidade"
-                  options={priceUnitOptions.map((o) => ({ value: o.value, label: o.label }))}
-                  value={form.priceUnit}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, priceUnit: e.target.value as ServicePriceUnit }))
-                  }
+                  label="Raio de deslocação (km, opcional)"
+                  value={form.serviceRadiusKm}
+                  onChange={(e) => setForm((p) => ({ ...p, serviceRadiusKm: e.target.value }))}
+                  type="number"
+                  min={1}
+                  max={100}
+                  placeholder="Até onde se desloca"
                 />
               </div>
-            </div>
-          </CollapseSection>
+            </AccordionSection>
 
-          {/* Secção 2: Localização */}
-          <CollapseSection
-            title="Localização"
-            subtitle="Onde presta o serviço"
-            open={openSections.location}
-            onToggle={() => toggleSection('location')}
-          >
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Select
-                  label="Distrito"
-                  options={districts.map((d) => ({ value: String(d.id), label: d.namePt }))}
-                  placeholder="Selecionar distrito"
-                  value={form.districtId}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
-                  }
+            {/* Secção 3: Contactos */}
+            <AccordionSection
+              title="Contactos (opcional)"
+              eyebrow="Telefone e website"
+              open={openSections.contact}
+              onToggle={() => toggleSection('contact')}
+            >
+              <div className="space-y-4">
+                <Input
+                  label="Telefone (opcional)"
+                  value={form.phone}
+                  onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder="+351 912 345 678"
+                  type="tel"
                 />
-                <Select
-                  label="Concelho"
-                  options={municipalities.map((m) => ({ value: String(m.id), label: m.namePt }))}
-                  placeholder="Selecionar concelho"
-                  value={form.municipalityId}
-                  onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
-                  disabled={!form.districtId}
+                <Input
+                  label="Website (opcional)"
+                  value={form.website}
+                  onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
+                  placeholder="https://..."
+                  type="url"
                 />
               </div>
-
-              <Input
-                label="Morada (opcional)"
-                value={form.addressLine}
-                onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
-                placeholder="Rua, número, código postal"
-                maxLength={255}
-              />
-
-              <Input
-                label="Raio de deslocação (km, opcional)"
-                value={form.serviceRadiusKm}
-                onChange={(e) => setForm((p) => ({ ...p, serviceRadiusKm: e.target.value }))}
-                type="number"
-                min={1}
-                max={100}
-                placeholder="Até onde se desloca"
-              />
-            </div>
-          </CollapseSection>
-
-          {/* Secção 3: Contactos */}
-          <CollapseSection
-            title="Contactos (opcional)"
-            subtitle="Telefone e website para os clientes"
-            open={openSections.contact}
-            onToggle={() => toggleSection('contact')}
-          >
-            <div className="space-y-4">
-              <Input
-                label="Telefone (opcional)"
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="+351 912 345 678"
-                type="tel"
-              />
-              <Input
-                label="Website (opcional)"
-                value={form.website}
-                onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
-                placeholder="https://..."
-                type="url"
-              />
-            </div>
-          </CollapseSection>
+            </AccordionSection>
+          </Accordion>
 
           {msg && (
             <div
@@ -1001,46 +1023,6 @@ function ServiceEditView(props: ServiceEditViewProps) {
           )}
         </Card>
       )}
-    </div>
-  )
-}
-
-// ── Sub-componente: secção colapsável ────────────────────────────────
-
-interface CollapseSectionProps {
-  title: string
-  subtitle?: string
-  open: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}
-
-function CollapseSection({ title, subtitle, open, onToggle, children }: CollapseSectionProps) {
-  return (
-    <div className="rounded-lg border border-gray-200">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 rounded-t-lg px-4 py-3 text-left transition-colors hover:bg-gray-50"
-        aria-expanded={open}
-      >
-        <div>
-          <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-          {subtitle && <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>}
-        </div>
-        <svg
-          className={`h-4 w-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
-      {open && <div className="border-t border-gray-200 px-4 py-4">{children}</div>}
     </div>
   )
 }

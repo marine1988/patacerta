@@ -31,25 +31,40 @@ export function AccordionSection({
   title,
   eyebrow,
   defaultOpen = false,
+  open: openProp,
+  onToggle,
   children,
 }: {
   title: string
   /** Texto pequeno acima do titulo (estilo editorial). Opcional. */
   eyebrow?: string
   defaultOpen?: boolean
+  /** Modo controlado: se passado, sobrepoe o estado interno. */
+  open?: boolean
+  /** Modo controlado: callback quando o utilizador clica no header. */
+  onToggle?: () => void
   children: ReactNode
 }) {
   // Usamos estado controlado em vez de <details> nativo porque queremos
   // animar a chevron e ter controlo total do styling do summary, e o
   // <details>/<summary> tem inconsistencias entre browsers para customizar
   // o marker.
-  const [open, setOpen] = useState(defaultOpen)
+  const [internalOpen, setInternalOpen] = useState(defaultOpen)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : internalOpen
+  const handleClick = () => {
+    if (isControlled) {
+      onToggle?.()
+    } else {
+      setInternalOpen((v) => !v)
+    }
+  }
 
   return (
     <div className="overflow-hidden border border-line bg-white" style={{ borderRadius: 2 }}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleClick}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-cream-50"
         aria-expanded={open}
       >
