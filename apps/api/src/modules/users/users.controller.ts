@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import bcrypt from 'bcryptjs'
+import type { ChangeUserRoleInput } from '@patacerta/shared'
 
 const USER_SELECT = {
   id: true,
@@ -35,7 +36,8 @@ export const updateMe = asyncHandler(async (req, res) => {
   if (phone !== undefined) updateData.phone = phone || null
 
   if (newPassword) {
-    if (!currentPassword) throw new AppError(400, 'Palavra-passe atual é obrigatória', 'MISSING_CURRENT_PASSWORD')
+    if (!currentPassword)
+      throw new AppError(400, 'Palavra-passe atual é obrigatória', 'MISSING_CURRENT_PASSWORD')
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
     if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
@@ -142,13 +144,13 @@ export const getUserById = asyncHandler(async (req, res) => {
 
 export const changeUserRole = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
+  // Body shape is enforced by the changeUserRoleSchema Zod validator on the
+  // router; the enum mirrors UserRole exactly so we never have to maintain
+  // a duplicate allow-list here.
+  const { role } = req.body as ChangeUserRoleInput
 
-  const { role } = req.body
-  if (!['OWNER', 'BREEDER', 'ADMIN'].includes(role)) {
-    throw new AppError(400, 'Role inválido', 'INVALID_ROLE')
-  }
-
-  if (id === req.user!.userId) throw new AppError(400, 'Não pode alterar o seu próprio papel', 'SELF_ROLE_CHANGE')
+  if (id === req.user!.userId)
+    throw new AppError(400, 'Não pode alterar o seu próprio papel', 'SELF_ROLE_CHANGE')
 
   const updated = await prisma.user.update({
     where: { id },

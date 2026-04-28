@@ -5,6 +5,7 @@ import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
 import { uploadFile, deleteFile, getPresignedUrl } from '../../lib/minio.js'
 import multer from 'multer'
 import path from 'path'
+import type { ReviewVerificationDocInput } from '@patacerta/shared'
 
 // Multer config: max 5MB, images + PDF
 const multerUpload = multer({
@@ -127,11 +128,9 @@ export const deleteDocument = asyncHandler(async (req, res) => {
 // B-15 + B-16: Guard doc status and breeder suspension on review
 export const reviewDocument = asyncHandler(async (req, res) => {
   const docId = parseId(req.params.docId)
-
-  const { status, notes } = req.body
-  if (!status || !['APPROVED', 'REJECTED'].includes(status)) {
-    throw new AppError(400, 'Estado inválido. Use APPROVED ou REJECTED.', 'INVALID_STATUS')
-  }
+  // Body shape is enforced by reviewVerificationDocSchema on the router; the
+  // controller no longer has to maintain its own allow-list.
+  const { status, notes } = req.body as ReviewVerificationDocInput
 
   const doc = await prisma.verificationDoc.findUnique({
     where: { id: docId },
@@ -148,7 +147,7 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     where: { id: docId },
     data: {
       status,
-      notes: notes || null,
+      notes: notes ?? null,
       reviewedBy: req.user!.userId,
       reviewedAt: new Date(),
     },

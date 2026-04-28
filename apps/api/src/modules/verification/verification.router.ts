@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { requireAuth, requireRole, requireBreederProfile } from '../../middleware/auth.js'
+import { validate } from '../../middleware/validate.js'
 import { uploadRateLimit } from '../../middleware/rate-limit.js'
+import { reviewVerificationDocSchema } from '@patacerta/shared'
 import * as ctrl from './verification.controller.js'
 
 export const verificationRouter = Router()
@@ -21,7 +23,13 @@ verificationRouter.get('/my-docs', requireAuth, requireBreederProfile, ctrl.getM
 verificationRouter.delete('/:docId', requireAuth, requireBreederProfile, ctrl.deleteDocument)
 
 // Admin: review a doc
-verificationRouter.patch('/:docId/review', requireAuth, requireRole('ADMIN'), ctrl.reviewDocument)
+verificationRouter.patch(
+  '/:docId/review',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate(reviewVerificationDocSchema),
+  ctrl.reviewDocument,
+)
 
 // Breeder or Admin: view a doc (presigned URL)
 verificationRouter.get('/:docId/view', requireAuth, ctrl.viewDocument)

@@ -21,6 +21,17 @@ const EMAIL_VERIFICATION_EXPIRY_HOURS = 24
 const RESET_TOKEN_EXPIRY_HOURS = 1
 
 /**
+ * Hash one-time tokens (email verification, password reset) before storing in DB.
+ * The raw token is sent to the user's email; only the hash lives at rest, so a DB
+ * leak does not allow account takeover. We use SHA-256 (not bcrypt) because the
+ * tokens are 256-bit random and short-lived — collision/preimage resistance is
+ * sufficient and verification needs to be O(1) by hash lookup.
+ */
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+/**
  * When true, registration auto-verifies the user and login does not require
  * email verification. Controlled by AUTH_SKIP_EMAIL_VERIFICATION env var.
  * MUST remain false/unset in production.
@@ -35,10 +46,11 @@ function buildVerificationUrl(token: string): string {
   return `${base}/verificar-email?token=${token}`
 }
 
-function generateVerificationToken(): { token: string; expiresAt: Date } {
+function generateVerificationToken(): { token: string; tokenHash: string; expiresAt: Date } {
   const token = crypto.randomBytes(32).toString('hex')
+  const tokenHash = hashToken(token)
   const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000)
-  return { token, expiresAt }
+  return { token, tokenHash, expiresAt }
 }
 
 export const register = asyncHandler(async (req, res) => {
@@ -46,7 +58,11 @@ export const register = asyncHandler(async (req, res) => {
   const email = data.email.toLowerCase().trim()
   const passwordHash = await bcrypt.hash(data.password, 12)
   const skip = skipEmailVerification()
-  const { token: verificationToken, expiresAt: verificationExpiresAt } = generateVerificationToken()
+  const {
+    token: verificationToken,
+    tokenHash: verificationTokenHash,
+    expiresAt: verificationExpiresAt,
+  } = generateVerificationToken()
   const ipAddress = req.ip ?? null
   const userAgent = req.headers['user-agent']?.slice(0, 500) ?? null
 
@@ -65,7 +81,7 @@ export const register = asyncHandler(async (req, res) => {
           role: 'OWNER',
           phone: data.phone,
           emailVerified: skip,
-          emailVerificationToken: skip ? null : verificationToken,
+          emailVerificationToken: skip ? null : verificationTokenHash,
           emailVerificationExpiresAt: skip ? null : verificationExpiresAt,
         },
         select: { id: true, email: true, role: true, firstName: true, lastName: true },
@@ -168,8 +184,9 @@ export const refresh = asyncHandler(async (req, res) => {
 
 export const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.body as VerifyEmailInput
+  const tokenHash = hashToken(token)
 
-  const user = await prisma.user.findUnique({ where: { emailVerificationToken: token } })
+  const user = await prisma.user.findUnique({ where: { emailVerificationToken: tokenHash } })
   if (!user) throw new AppError(400, 'Token inválido ou já utilizado', 'INVALID_VERIFICATION_TOKEN')
   if (user.emailVerified) {
     res.json({ message: 'Email já estava verificado. Pode iniciar sessão.' })
@@ -208,10 +225,10 @@ export const resendVerification = asyncHandler(async (req, res) => {
     return
   }
 
-  const { token, expiresAt } = generateVerificationToken()
+  const { token, tokenHash, expiresAt } = generateVerificationToken()
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerificationToken: token, emailVerificationExpiresAt: expiresAt },
+    data: { emailVerificationToken: tokenHash, emailVerificationExpiresAt: expiresAt },
   })
 
   const verificationUrl = buildVerificationUrl(token)
@@ -232,11 +249,12 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   }
 
   const token = crypto.randomBytes(32).toString('hex')
+  const tokenHash = hashToken(token)
   const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { resetToken: token, resetTokenExpiresAt: expiresAt },
+    data: { resetToken: tokenHash, resetTokenExpiresAt: expiresAt },
   })
 
   // Send via SMTP (no-op log fallback when SMTP not configured)
@@ -248,8 +266,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body as ResetPasswordInput
+  const tokenHash = hashToken(token)
 
-  const user = await prisma.user.findUnique({ where: { resetToken: token } })
+  const user = await prisma.user.findUnique({ where: { resetToken: tokenHash } })
   if (!user) throw new AppError(400, 'Token inválido ou expirado', 'INVALID_RESET_TOKEN')
   if (!user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
     throw new AppError(400, 'Token expirado — solicite um novo', 'EXPIRED_RESET_TOKEN')
