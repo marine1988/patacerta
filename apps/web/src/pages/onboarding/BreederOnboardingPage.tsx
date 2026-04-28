@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import { breederProfileSchema } from '@patacerta/shared'
 import { Button, Card, Input, Select, Spinner } from '../../components/ui'
+import { BreedMultiCombobox } from '../../components/shared/BreedMultiCombobox'
 
 interface District {
   id: number
@@ -214,40 +215,11 @@ export function BreederOnboardingPage() {
               Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
               descrevê-las em "Outras raças".
             </p>
-            <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300 p-3">
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                {(breeds ?? []).map((b) => {
-                  const checked = form.breedIds.includes(b.id)
-                  return (
-                    <label
-                      key={b.id}
-                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-cream-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          setForm((prev) => ({
-                            ...prev,
-                            breedIds: e.target.checked
-                              ? [...prev.breedIds, b.id]
-                              : prev.breedIds.filter((id) => id !== b.id),
-                          }))
-                        }}
-                        className="h-4 w-4 rounded border-gray-300 text-caramel-500 focus:ring-caramel-500"
-                      />
-                      <span className="text-gray-800">{b.namePt}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-            {form.breedIds.length > 0 && (
-              <p className="mt-2 text-xs text-gray-600">
-                {form.breedIds.length} {form.breedIds.length === 1 ? 'raça' : 'raças'} seleccionada
-                {form.breedIds.length === 1 ? '' : 's'}.
-              </p>
-            )}
+            <BreedMultiCombobox
+              breeds={breeds ?? []}
+              selectedIds={form.breedIds}
+              onChange={(ids) => setForm((prev) => ({ ...prev, breedIds: ids }))}
+            />
           </div>
 
           <div>

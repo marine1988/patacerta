@@ -20,6 +20,7 @@ import {
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
+import { BreedMultiCombobox } from '../../components/shared/BreedMultiCombobox'
 import { ServicesTab } from './ServicesTab'
 import { MyReviewsTab } from './MyReviewsTab'
 import { ReceivedReviewsTab } from './ReceivedReviewsTab'
@@ -851,40 +852,11 @@ function BreederTab() {
                 Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
                 descrevê-las em "Outras raças".
               </p>
-              <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300 p-3">
-                <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                  {(breedsCatalog ?? []).map((b) => {
-                    const checked = form.breedIds.includes(b.id)
-                    return (
-                      <label
-                        key={b.id}
-                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-cream-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            setForm((prev) => ({
-                              ...prev,
-                              breedIds: e.target.checked
-                                ? [...prev.breedIds, b.id]
-                                : prev.breedIds.filter((id) => id !== b.id),
-                            }))
-                          }}
-                          className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-                        />
-                        <span className="text-gray-800">{b.namePt}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-              {form.breedIds.length > 0 && (
-                <p className="mt-2 text-xs text-gray-600">
-                  {form.breedIds.length}{' '}
-                  {form.breedIds.length === 1 ? 'raça seleccionada' : 'raças seleccionadas'}.
-                </p>
-              )}
+              <BreedMultiCombobox
+                breeds={breedsCatalog ?? []}
+                selectedIds={form.breedIds}
+                onChange={(ids) => setForm((prev) => ({ ...prev, breedIds: ids }))}
+              />
               <div className="mt-3">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
                   <input
