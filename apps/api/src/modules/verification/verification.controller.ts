@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
 import { uploadFile, deleteFile, getPresignedUrl } from '../../lib/minio.js'
+import { assertFileKind } from '../../lib/file-validation.js'
 import multer from 'multer'
 import path from 'path'
 import type { ReviewVerificationDocInput } from '@patacerta/shared'
@@ -48,6 +49,12 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   await runMulter(req, res)
 
   if (!req.file) throw new AppError(400, 'Nenhum ficheiro enviado', 'NO_FILE')
+
+  // Defence-in-depth: re-check the buffer's magic bytes. The mimetype header
+  // multer used in fileFilter is supplied by the client and is trivially
+  // spoofable; this catches a renamed/repackaged executable masquerading as
+  // an image or PDF.
+  assertFileKind(req.file.buffer, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
 
   const docType = req.body.docType
   if (!docType || !['NIF', 'DGAV', 'CARTAO_CIDADAO', 'CITES', 'OTHER'].includes(docType)) {

@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
 import { uploadFile, deleteFile } from '../../lib/minio.js'
+import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
 import { Prisma } from '@prisma/client'
 import type { BreederProfileInput, ReorderBreederPhotosInput } from '@patacerta/shared'
@@ -335,6 +336,12 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
   const files = (req.files as Express.Multer.File[] | undefined) ?? []
   if (files.length === 0) {
     throw new AppError(400, 'Nenhuma foto enviada', 'NO_FILES')
+  }
+
+  // Defence-in-depth: validate magic bytes per file before sharp re-encodes.
+  // Multer's fileFilter trusts the client's mimetype header which is spoofable.
+  for (const f of files) {
+    assertFileKind(f.buffer, ['image/jpeg', 'image/png', 'image/webp'])
   }
 
   const existingCount = await prisma.breederPhoto.count({ where: { breederId: breeder.id } })
