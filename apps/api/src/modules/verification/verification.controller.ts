@@ -56,8 +56,9 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   // an image or PDF.
   assertFileKind(req.file.buffer, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
 
+  // Apenas DGAV e suportado. Os outros tipos foram removidos do dominio.
   const docType = req.body.docType
-  if (!docType || !['NIF', 'DGAV', 'CARTAO_CIDADAO', 'CITES', 'OTHER'].includes(docType)) {
+  if (docType !== 'DGAV') {
     throw new AppError(400, 'Tipo de documento inválido', 'INVALID_DOC_TYPE')
   }
 
@@ -203,16 +204,20 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     },
   })
 
-  // If all docs approved, auto-verify breeder — but NOT if suspended (B-16)
-  if (status === 'APPROVED' && doc.breeder.status !== 'SUSPENDED') {
-    const allDocs = await prisma.verificationDoc.findMany({
-      where: { breederId: doc.breederId },
-    })
-    const allApproved = allDocs.every((d) => d.status === 'APPROVED')
-    if (allApproved) {
+  // O DGAV e o UNICO documento que controla a verificacao do criador.
+  // Aprovar DGAV -> breeder VERIFIED. Rejeitar DGAV -> breeder DRAFT
+  // (criador re-submete depois). Outros docs ja nao sao usados, mas se
+  // existirem dados antigos sao revistos sem afectar status.
+  if (doc.docType === 'DGAV' && doc.breeder.status !== 'SUSPENDED') {
+    if (status === 'APPROVED') {
       await prisma.breeder.update({
         where: { id: doc.breederId },
         data: { status: 'VERIFIED', verifiedAt: new Date() },
+      })
+    } else if (status === 'REJECTED') {
+      await prisma.breeder.update({
+        where: { id: doc.breederId },
+        data: { status: 'DRAFT', verifiedAt: null },
       })
     }
   }

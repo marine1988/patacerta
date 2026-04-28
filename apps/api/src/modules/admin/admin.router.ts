@@ -28,9 +28,12 @@ adminRouter.get('/verifications/pending', ctrl.getPendingVerifications)
 adminRouter.get('/users', ctrl.listAllUsers)
 adminRouter.patch('/users/:id/suspend', ctrl.suspendUser)
 
-// Breeders management
+// Breeders management — admin so pode suspender/reactivar.
+// A promocao para VERIFIED acontece exclusivamente via aprovacao do
+// documento DGAV (PATCH /verification/:docId/review).
 adminRouter.get('/breeders', ctrl.listAllBreeders)
-adminRouter.patch('/breeders/:id/status', ctrl.changeBreederStatus)
+adminRouter.patch('/breeders/:id/suspend', ctrl.suspendBreeder)
+adminRouter.patch('/breeders/:id/unsuspend', ctrl.unsuspendBreeder)
 
 // Reviews moderation
 adminRouter.get('/reviews/flagged', ctrl.getFlaggedReviews)

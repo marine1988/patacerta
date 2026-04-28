@@ -321,10 +321,8 @@ export const submitForVerification = asyncHandler(async (req, res) => {
   if (breeder.status === 'SUSPENDED')
     throw new AppError(403, 'Perfil suspenso — contacte o suporte', 'BREEDER_SUSPENDED')
 
-  if (breeder.verificationDocs.length === 0) {
-    throw new AppError(400, 'Envie pelo menos um documento antes de submeter', 'NO_DOCUMENTS')
-  }
-
+  // Unico requisito de submissao: ter um certificado DGAV. Os outros
+  // tipos de documento foram removidos do dominio.
   const hasDgavDoc = breeder.verificationDocs.some((d) => d.docType === 'DGAV')
   if (!hasDgavDoc) {
     throw new AppError(

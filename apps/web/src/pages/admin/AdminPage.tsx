@@ -179,6 +179,8 @@ function ResumoTab() {
 function VerificacoesTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [rejectingDocId, setRejectingDocId] = useState<number | null>(null)
+  const [rejectNotes, setRejectNotes] = useState('')
 
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
     queryKey: ['admin-verifications', page],
@@ -186,18 +188,49 @@ function VerificacoesTab() {
       api.get(`/admin/verifications/pending?page=${page}&limit=20`).then((r) => r.data),
   })
 
+  // Aprovar = aprovar o documento DGAV. O backend trata de promover o
+  // criador a VERIFIED automaticamente. Nao ha "aprovar criador" directo.
   const approveMutation = useMutation({
-    mutationFn: (breederId: number) =>
-      api.patch(`/admin/breeders/${breederId}/status`, { status: 'VERIFIED' }),
+    mutationFn: (docId: number) =>
+      api.patch(`/verification/${docId}/review`, { status: 'APPROVED' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
     },
   })
 
-  function handleApprove(breederId: number, businessName: string) {
-    if (!window.confirm(`Tem a certeza que pretende aprovar o criador "${businessName}"?`)) return
-    approveMutation.mutate(breederId)
+  // Rejeitar = rejeitar o DGAV. O backend devolve o criador a DRAFT
+  // para que volte a poder enviar um novo certificado.
+  const rejectMutation = useMutation({
+    mutationFn: ({ docId, notes }: { docId: number; notes: string }) =>
+      api.patch(`/verification/${docId}/review`, { status: 'REJECTED', notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+      setRejectingDocId(null)
+      setRejectNotes('')
+    },
+  })
+
+  function handleApprove(docId: number, businessName: string) {
+    if (!window.confirm(`Aprovar DGAV de "${businessName}"? O criador ficará verificado.`)) return
+    approveMutation.mutate(docId)
+  }
+
+  function openReject(docId: number) {
+    setRejectingDocId(docId)
+    setRejectNotes('')
+  }
+
+  function confirmReject() {
+    if (rejectingDocId == null) return
+    if (rejectNotes.trim().length < 5) {
+      window.alert('Indique um motivo para a rejeição (pelo menos 5 caracteres).')
+      return
+    }
+    rejectMutation.mutate({ docId: rejectingDocId, notes: rejectNotes.trim() })
   }
 
   async function handleViewDoc(docId: number) {
@@ -227,7 +260,7 @@ function VerificacoesTab() {
     return (
       <EmptyState
         title="Sem verificações pendentes"
-        description="Não existem documentos pendentes de revisão."
+        description="Não existem certificados DGAV pendentes de revisão."
       />
     )
   }
@@ -240,7 +273,7 @@ function VerificacoesTab() {
             <tr className="border-b border-gray-200 text-left text-gray-500">
               <th className="px-3 py-2">Criador</th>
               <th className="px-3 py-2">NIF</th>
-              <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2">DGAV</th>
               <th className="px-3 py-2">Ficheiro</th>
               <th className="px-3 py-2">Data</th>
               <th className="px-3 py-2">Ações</th>
@@ -271,13 +304,23 @@ function VerificacoesTab() {
                 </td>
                 <td className="px-3 py-2">{formatDateShort(doc.createdAt)}</td>
                 <td className="px-3 py-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(doc.breeder.id, doc.breeder.businessName)}
-                    disabled={approveMutation.isPending}
-                  >
-                    Aprovar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleApprove(doc.id, doc.breeder.businessName)}
+                      disabled={approveMutation.isPending}
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => openReject(doc.id)}
+                      disabled={rejectMutation.isPending}
+                    >
+                      Rejeitar
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -285,6 +328,34 @@ function VerificacoesTab() {
         </table>
       </div>
       <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
+
+      <Modal
+        isOpen={rejectingDocId !== null}
+        onClose={() => setRejectingDocId(null)}
+        title="Rejeitar certificado DGAV"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink">
+            Indique o motivo da rejeição. O criador volta ao estado <strong>Rascunho</strong> para
+            poder enviar um novo certificado.
+          </p>
+          <textarea
+            value={rejectNotes}
+            onChange={(e) => setRejectNotes(e.target.value)}
+            placeholder="Ex.: certificado ilegível, fora do prazo, NIF não corresponde, etc."
+            className="w-full min-h-[100px] border border-line bg-white p-3 text-sm"
+            style={{ borderRadius: 2 }}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setRejectingDocId(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmReject} loading={rejectMutation.isPending}>
+              Rejeitar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -443,9 +514,18 @@ function CriadoresTab() {
     },
   })
 
-  const statusChangeMutation = useMutation({
-    mutationFn: ({ breederId, status }: { breederId: number; status: string }) =>
-      api.patch(`/admin/breeders/${breederId}/status`, { status }),
+  // Admin so pode suspender ou reactivar. Promocao para VERIFIED acontece
+  // exclusivamente via aprovacao do certificado DGAV no separador
+  // "Verificações".
+  const suspendMutation = useMutation({
+    mutationFn: (breederId: number) => api.patch(`/admin/breeders/${breederId}/suspend`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+    },
+  })
+  const unsuspendMutation = useMutation({
+    mutationFn: (breederId: number) => api.patch(`/admin/breeders/${breederId}/unsuspend`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
@@ -466,15 +546,23 @@ function CriadoresTab() {
     },
   })
 
-  function handleStatusChange(breeder: Breeder, newStatus: string) {
-    if (newStatus === breeder.status) return
+  function handleSuspend(breeder: Breeder) {
     if (
       !window.confirm(
-        `Tem a certeza que pretende alterar o estado de "${breeder.businessName}" para "${statusLabel[newStatus] ?? newStatus}"?`,
+        `Suspender "${breeder.businessName}"? O perfil deixa de aparecer em pesquisas e listas.`,
       )
     )
       return
-    statusChangeMutation.mutate({ breederId: breeder.id, status: newStatus })
+    suspendMutation.mutate(breeder.id)
+  }
+  function handleUnsuspend(breeder: Breeder) {
+    if (
+      !window.confirm(
+        `Reactivar "${breeder.businessName}"? Volta ao estado anterior (Verificado se já tinha DGAV aprovado, caso contrário Rascunho).`,
+      )
+    )
+      return
+    unsuspendMutation.mutate(breeder.id)
   }
 
   if (isLoading) {
@@ -521,70 +609,87 @@ function CriadoresTab() {
                   <th className="px-3 py-2">Estado</th>
                   <th className="px-3 py-2">Docs / Avaliações</th>
                   <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Alterar estado</th>
+                  <th className="px-3 py-2">Acção</th>
                   <th className="px-3 py-2">Destaque</th>
                 </tr>
               </thead>
               <tbody>
-                {data.data.map((breeder, i) => (
-                  <tr
-                    key={breeder.id}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
-                  >
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-gray-900">{breeder.businessName}</div>
-                      <div className="text-xs text-gray-500">
-                        {breeder.user.firstName} {breeder.user.lastName}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">{breeder.nif}</td>
-                    <td className="px-3 py-2">{breeder.dgavNumber || String.fromCharCode(8212)}</td>
-                    <td className="px-3 py-2">
-                      {breeder.district?.namePt ?? String.fromCharCode(8212)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
-                        {statusLabel[breeder.status] ?? breeder.status}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2">
-                      {breeder._count.verificationDocs} / {breeder._count.reviews}
-                    </td>
-                    <td className="px-3 py-2">{formatDateShort(breeder.createdAt)}</td>
-                    <td className="px-3 py-2">
-                      <select
-                        className="rounded border border-gray-300 px-2 py-1 text-sm"
-                        value={breeder.status}
-                        disabled={statusChangeMutation.isPending}
-                        onChange={(e) => handleStatusChange(breeder, e.target.value)}
-                      >
-                        {breederStatusOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <FeatureToggle
-                        featuredUntil={breeder.featuredUntil}
-                        isPending={
-                          featureBreederMutation.isPending &&
-                          featureBreederMutation.variables?.breederId === breeder.id
-                        }
-                        onSet={(days) =>
-                          featureBreederMutation.mutate({ breederId: breeder.id, body: { days } })
-                        }
-                        onClear={() =>
-                          featureBreederMutation.mutate({
-                            breederId: breeder.id,
-                            body: { until: null },
-                          })
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {data.data.map((breeder, i) => {
+                  const isSuspended = breeder.status === 'SUSPENDED'
+                  const actionPending =
+                    (suspendMutation.isPending && suspendMutation.variables === breeder.id) ||
+                    (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
+                  return (
+                    <tr
+                      key={breeder.id}
+                      className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                    >
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900">{breeder.businessName}</div>
+                        <div className="text-xs text-gray-500">
+                          {breeder.user.firstName} {breeder.user.lastName}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">{breeder.nif}</td>
+                      <td className="px-3 py-2">
+                        {breeder.dgavNumber || String.fromCharCode(8212)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {breeder.district?.namePt ?? String.fromCharCode(8212)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
+                          {statusLabel[breeder.status] ?? breeder.status}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        {breeder._count.verificationDocs} / {breeder._count.reviews}
+                      </td>
+                      <td className="px-3 py-2">{formatDateShort(breeder.createdAt)}</td>
+                      <td className="px-3 py-2">
+                        {isSuspended ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleUnsuspend(breeder)}
+                            disabled={actionPending}
+                          >
+                            Reactivar
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleSuspend(breeder)}
+                            disabled={actionPending}
+                          >
+                            Suspender
+                          </Button>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <FeatureToggle
+                          featuredUntil={breeder.featuredUntil}
+                          isPending={
+                            featureBreederMutation.isPending &&
+                            featureBreederMutation.variables?.breederId === breeder.id
+                          }
+                          onSet={(days) =>
+                            featureBreederMutation.mutate({
+                              breederId: breeder.id,
+                              body: { days },
+                            })
+                          }
+                          onClear={() =>
+                            featureBreederMutation.mutate({
+                              breederId: breeder.id,
+                              body: { until: null },
+                            })
+                          }
+                        />
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

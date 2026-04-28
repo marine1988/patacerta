@@ -191,29 +191,69 @@ export const listAllBreeders = asyncHandler(async (req, res) => {
   res.json(paginatedResponse(breeders, total, page, limit))
 })
 
-export const changeBreederStatus = asyncHandler(async (req, res) => {
+// Apenas SUSPEND / UNSUSPEND sao expostos como acoes do admin.
+// A transicao para VERIFIED so acontece quando o admin aprova o
+// documento DGAV em PATCH /verification/:docId/review. Isto evita que
+// um admin promova um criador sem haver DGAV validado.
+export const suspendBreeder = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
-
-  const { status } = req.body
-  if (!['DRAFT', 'PENDING_VERIFICATION', 'VERIFIED', 'SUSPENDED'].includes(status)) {
-    throw new AppError(400, 'Estado inválido', 'INVALID_STATUS')
-  }
 
   const breeder = await prisma.breeder.findUnique({ where: { id } })
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
 
   const updated = await prisma.breeder.update({
     where: { id },
-    data: { status },
+    data: { status: 'SUSPENDED' },
     select: { id: true, businessName: true, status: true },
   })
 
   await logAudit({
     userId: req.user!.userId,
-    action: 'CHANGE_BREEDER_STATUS',
+    action: 'SUSPEND_BREEDER',
     entity: 'Breeder',
     entityId: id,
-    details: `Changed status to ${status}`,
+    details: 'Breeder suspended by admin',
+    ipAddress: req.ip,
+  })
+
+  res.json(updated)
+})
+
+export const unsuspendBreeder = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    include: { verificationDocs: true },
+  })
+  if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+  if (breeder.status !== 'SUSPENDED') {
+    throw new AppError(400, 'Criador nao esta suspenso', 'NOT_SUSPENDED')
+  }
+
+  // Ao reactivar, o status volta para o que faria sentido pelo estado
+  // dos documentos: se houver DGAV APPROVED -> VERIFIED, caso contrario
+  // -> DRAFT (criador volta a poder enviar/ressubmeter o DGAV).
+  const dgavApproved = breeder.verificationDocs.some(
+    (d) => d.docType === 'DGAV' && d.status === 'APPROVED',
+  )
+  const nextStatus = dgavApproved ? 'VERIFIED' : 'DRAFT'
+
+  const updated = await prisma.breeder.update({
+    where: { id },
+    data: {
+      status: nextStatus,
+      verifiedAt: dgavApproved ? (breeder.verifiedAt ?? new Date()) : null,
+    },
+    select: { id: true, businessName: true, status: true },
+  })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'UNSUSPEND_BREEDER',
+    entity: 'Breeder',
+    entityId: id,
+    details: `Breeder reactivated as ${nextStatus}`,
     ipAddress: req.ip,
   })
 

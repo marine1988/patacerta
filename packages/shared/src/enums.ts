@@ -23,11 +23,7 @@ export enum BreederStatus {
 }
 
 export enum DocType {
-  NIF = 'NIF',
   DGAV = 'DGAV',
-  CARTAO_CIDADAO = 'CARTAO_CIDADAO',
-  CITES = 'CITES',
-  OTHER = 'OTHER',
 }
 
 export enum ServiceStatus {
