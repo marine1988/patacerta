@@ -38,6 +38,12 @@ interface PhotoGalleryManagerProps {
    * preserve the standalone behaviour used elsewhere.
    */
   wrapInCard?: boolean
+  /**
+   * When false, hides the internal title row (title + reorder hint). Useful
+   * when the gallery is embedded inside a parent component that already
+   * provides a heading (e.g. an AccordionSection).
+   */
+  showHeader?: boolean
 }
 
 export function PhotoGalleryManager({
@@ -52,6 +58,7 @@ export function PhotoGalleryManager({
   onDelete,
   onReorder,
   wrapInCard = true,
+  showHeader = true,
 }: PhotoGalleryManagerProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -93,16 +100,18 @@ export function PhotoGalleryManager({
 
   return (
     <GalleryShell wrapInCard={wrapInCard}>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {title} ({photos.length}/{max})
-        </h3>
-        {photos.length > 1 && (
-          <p className="hidden text-xs text-gray-500 sm:block">
-            Arraste para reordenar · a primeira é a capa
-          </p>
-        )}
-      </div>
+      {showHeader && (
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {title} ({photos.length}/{max})
+          </h3>
+          {photos.length > 1 && (
+            <p className="hidden text-xs text-gray-500 sm:block">
+              Arraste para reordenar · a primeira é a capa
+            </p>
+          )}
+        </div>
+      )}
 
       {photos.length > 0 ? (
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">

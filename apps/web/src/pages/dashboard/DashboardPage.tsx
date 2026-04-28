@@ -855,13 +855,12 @@ function BreederTab() {
       onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
       onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
       wrapInCard={false}
+      showHeader={false}
     />
   ) : null
 
   const documentosSection = breeder ? (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
-
       {breeder.verificationDocs.length > 0 ? (
         <div className="space-y-3 mb-6">
           {breeder.verificationDocs.map((doc) => (
@@ -1389,11 +1388,19 @@ function BreederTab() {
           {/* Form (apenas em modo editar) */}
           {editing && <div className="mt-6 border-t border-line pt-6">{breederForm}</div>}
 
-          {/* Galeria — sempre visivel quando ha perfil */}
-          <div className="mt-6 border-t border-line pt-6">{galeriaSection}</div>
-
-          {/* Documentos — sempre visiveis quando ha perfil */}
-          <div className="mt-6 border-t border-line pt-6">{documentosSection}</div>
+          {/* Galeria e Documentos — colapsados por defeito para reduzir
+              ruido visual. So Estado fica sempre visivel. */}
+          <div className="mt-6 space-y-3">
+            <AccordionSection
+              title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
+              eyebrow="Apresentação visual"
+            >
+              {galeriaSection}
+            </AccordionSection>
+            <AccordionSection title="Documentos de verificação" eyebrow="Credenciais">
+              {documentosSection}
+            </AccordionSection>
+          </div>
 
           {/* Submit para verificacao */}
           {submitVerificationButton && (
