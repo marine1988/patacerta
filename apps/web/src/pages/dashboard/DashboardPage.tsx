@@ -1312,10 +1312,19 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Galeria + Documentos vivem agora no Card pai do tab Criador
-          (ver render abaixo), nao duplicar dentro do formulario. */}
+      {/* Galeria e Documentos integrados no formulario quando em modo
+          edicao, para que tudo fique num unico fluxo e os botoes
+          Guardar/Cancelar fiquem no fim de tudo. So renderizamos quando
+          ja existe perfil (em "criar" o upload inicial vai pelas seccoes
+          dedicadas no topo do form). */}
+      {!noProfile && breeder && (
+        <>
+          <div className="border-t border-line pt-4">{galeriaSection}</div>
+          <div className="border-t border-line pt-4">{documentosSection}</div>
+        </>
+      )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 border-t border-line pt-4">
         <Button
           type="submit"
           loading={saveMutation.isPending}
@@ -1385,25 +1394,29 @@ function BreederTab() {
             )}
           </div>
 
-          {/* Form (apenas em modo editar) */}
+          {/* Form (apenas em modo editar) — inclui ja Galeria + Documentos
+              integrados, com Guardar/Cancelar no fim de tudo. */}
           {editing && <div className="mt-6 border-t border-line pt-6">{breederForm}</div>}
 
-          {/* Galeria e Documentos — colapsados por defeito para reduzir
-              ruido visual. So Estado fica sempre visivel. */}
-          <div className="mt-6 space-y-3">
-            <AccordionSection
-              title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
-              eyebrow="Apresentação visual"
-            >
-              {galeriaSection}
-            </AccordionSection>
-            <AccordionSection title="Documentos de verificação" eyebrow="Credenciais">
-              {documentosSection}
-            </AccordionSection>
-          </div>
+          {/* Modo leitura: Galeria e Documentos em accordions colapsados.
+              Em modo editar nao aparecem aqui (ja vivem dentro do form). */}
+          {!editing && (
+            <div className="mt-6 space-y-3">
+              <AccordionSection
+                title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
+                eyebrow="Apresentação visual"
+              >
+                {galeriaSection}
+              </AccordionSection>
+              <AccordionSection title="Documentos de verificação" eyebrow="Credenciais">
+                {documentosSection}
+              </AccordionSection>
+            </div>
+          )}
 
-          {/* Submit para verificacao */}
-          {submitVerificationButton && (
+          {/* Submit para verificacao — so visivel quando NAO esta a editar
+              para nao competir visualmente com Guardar/Cancelar. */}
+          {!editing && submitVerificationButton && (
             <div className="mt-6 border-t border-line pt-6 flex justify-end">
               {submitVerificationButton}
             </div>
