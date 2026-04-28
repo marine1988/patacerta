@@ -1,0 +1,124 @@
+name: E2E (Stage)
+
+# Corre os testes Playwright contra a instância de stage já deployed.
+# Não arranca nenhuma stack — apenas aponta o `baseURL` para a URL pública
+# e usa as credenciais do seed demo (DemoPass123) que já lá estão.
+#
+# Útil como smoke contínuo para detectar regressões em stage.
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage_url:
+        description: 'URL base de stage (override do default)'
+        required: false
+        default: 'https://stage.patacerta.pt'
+      grep:
+        description: 'Filtro Playwright (--grep). Ex: "@smoke" ou "Homepage"'
+        required: false
+        default: ''
+  push:
+    branches: [stage]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.12.0'
+  STAGE_URL_DEFAULT: 'https://stage.patacerta.pt'
+
+jobs:
+  e2e-stage:
+    name: Playwright E2E vs Stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # baseURL público — Playwright NÃO arranca nenhum webServer porque
+      # E2E_BASE_URL está definido (ver playwright.config.ts).
+      E2E_BASE_URL: ${{ github.event.inputs.stage_url || 'https://stage.patacerta.pt' }}
+      E2E_API_URL: ${{ github.event.inputs.stage_url || 'https://stage.patacerta.pt' }}/api
+      # Skipa testes que escrevem na BD (registo de novas contas).
+      E2E_SKIP_DESTRUCTIVE: 'true'
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @patacerta/shared build
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @patacerta/web exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @patacerta/web exec playwright install-deps chromium
+
+      - name: Sanity check — stage URL responde
+        run: |
+          echo "Smoke check em $E2E_BASE_URL"
+          for i in {1..10}; do
+            if curl -sf -o /dev/null -w "%{http_code}" "$E2E_BASE_URL" | grep -qE "^(200|301|302)$"; then
+              echo "Stage respondeu OK"
+              exit 0
+            fi
+            echo "Tentativa $i falhou, a aguardar 5s..."
+            sleep 5
+          done
+          echo "Stage não respondeu em 50s — abort"
+          exit 1
+        shell: bash
+
+      - name: Sanity check — API health
+        run: |
+          if ! curl -sf "$E2E_API_URL/health" > /dev/null; then
+            echo "WARN: $E2E_API_URL/health não respondeu OK (continuando — pode ser endpoint privado)"
+          else
+            echo "API health OK"
+          fi
+        shell: bash
+
+      - name: Run Playwright tests
+        working-directory: apps/web
+        run: |
+          if [ -n "${{ github.event.inputs.grep }}" ]; then
+            pnpm test:e2e --grep "${{ github.event.inputs.grep }}"
+          else
+            pnpm test:e2e
+          fi
+        shell: bash
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-stage
+          path: apps/web/playwright-report
+          retention-days: 14
+
+      - name: Upload Playwright traces & artefactos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-stage
+          path: apps/web/e2e/.artifacts
+          retention-days: 14

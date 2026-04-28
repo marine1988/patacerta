@@ -50,3 +50,9 @@ coverage/
 *.tgz
 .cache/
 opencode.json
+
+# ========== Playwright ==========
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/e2e/.artifacts/
+apps/web/e2e/.auth/

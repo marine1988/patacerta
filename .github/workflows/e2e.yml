@@ -1,0 +1,192 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: patacerta
+          POSTGRES_PASSWORD: patacerta_test
+          POSTGRES_DB: patacerta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U patacerta"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # ---- API ----
+      NODE_ENV: test
+      PORT: '3001'
+      DATABASE_URL: postgresql://patacerta:patacerta_test@localhost:5432/patacerta_test
+      JWT_SECRET: e2e-jwt-secret
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: e2e-jwt-refresh-secret
+      JWT_REFRESH_EXPIRES_IN: 7d
+      # Bypasses para testes determinísticos
+      AUTH_SKIP_EMAIL_VERIFICATION: 'true'
+      DISABLE_RATE_LIMITS: 'true'
+      REVIEW_ELIGIBILITY_BYPASS: '1'
+      ADMIN_EMAIL: admin@patacerta.pt
+      ADMIN_PASSWORD: AdminPass123!
+      # MinIO desabilitado em CI — não há upload de imagens nos testes
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: dummy
+      MINIO_SECRET_KEY: dummy_secret_key
+      MINIO_BUCKET: patacerta-uploads
+      NOMINATIM_BASE_URL: https://nominatim.openstreetmap.org
+      NOMINATIM_EMAIL: ci@patacerta.test
+      # ---- Web ----
+      VITE_API_URL: http://localhost:3001/api
+      # ---- E2E ----
+      E2E_BASE_URL: http://localhost:5173
+      E2E_API_URL: http://localhost:3001/api
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @patacerta/shared build
+
+      - name: Generate Prisma client
+        run: pnpm --filter @patacerta/api db:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @patacerta/api exec prisma migrate deploy
+
+      - name: Seed admin
+        run: pnpm --filter @patacerta/api db:seed
+
+      - name: Seed demo data
+        run: pnpm --filter @patacerta/api db:seed:demo
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @patacerta/web exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @patacerta/web exec playwright install-deps chromium
+
+      - name: Build API
+        run: pnpm --filter @patacerta/api build
+
+      - name: Start API (background)
+        run: |
+          pnpm --filter @patacerta/api start > api.log 2>&1 &
+          echo $! > api.pid
+        shell: bash
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:3001/api/health > /dev/null; then
+              echo "API up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start within 60s"
+          tail -n 200 api.log || true
+          exit 1
+        shell: bash
+
+      - name: Build Web
+        run: pnpm --filter @patacerta/web build
+
+      - name: Start Web (vite preview, background)
+        run: |
+          pnpm --filter @patacerta/web exec vite preview --host 127.0.0.1 --port 5173 --strictPort > web.log 2>&1 &
+          echo $! > web.pid
+        shell: bash
+
+      - name: Wait for Web to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:5173 > /dev/null; then
+              echo "Web up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Web failed to start within 60s"
+          tail -n 200 web.log || true
+          exit 1
+        shell: bash
+
+      - name: Run Playwright tests
+        working-directory: apps/web
+        run: pnpm test:e2e
+
+      - name: Stop background services
+        if: always()
+        run: |
+          if [ -f api.pid ]; then kill $(cat api.pid) || true; fi
+          if [ -f web.pid ]; then kill $(cat web.pid) || true; fi
+        shell: bash
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 14
+
+      - name: Upload Playwright traces & artefactos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: apps/web/e2e/.artifacts
+          retention-days: 14
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            api.log
+            web.log
+          retention-days: 7
