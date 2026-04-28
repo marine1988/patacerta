@@ -859,36 +859,48 @@ function BreederTab() {
     />
   ) : null
 
+  const isVerifiedBreeder = breeder?.status === 'VERIFIED'
+  const hasDgavDocAlready = breeder?.verificationDocs.some((d) => d.docType === 'DGAV') ?? false
+  const dgavLocked = isVerifiedBreeder
+  const canUploadMoreDocs = !hasDgavDocAlready
+
   const documentosSection = breeder ? (
     <div>
       {breeder.verificationDocs.length > 0 ? (
         <div className="space-y-3 mb-6">
-          {breeder.verificationDocs.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-700">{doc.docType}</span>
-                <span className="text-sm text-gray-500">{doc.fileName}</span>
+          {breeder.verificationDocs.map((doc) => {
+            const isDgav = doc.docType === 'DGAV'
+            // O DGAV so pode ser eliminado em PENDING e enquanto o perfil
+            // ainda nao esta verificado. Apos verificacao fica trancado
+            // permanentemente para evitar reutilizacao em outros perfis.
+            const canDelete = doc.status === 'PENDING' && !(isDgav && dgavLocked)
+            return (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700">{doc.docType}</span>
+                  <span className="text-sm text-gray-500">{doc.fileName}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={docStatusVariant[doc.status] ?? 'gray'}>
+                    {docStatusLabel[doc.status] ?? doc.status}
+                  </Badge>
+                  {canDelete && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      loading={deleteDocMutation.isPending}
+                      onClick={() => deleteDocMutation.mutate(doc.id)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge variant={docStatusVariant[doc.status] ?? 'gray'}>
-                  {docStatusLabel[doc.status] ?? doc.status}
-                </Badge>
-                {doc.status === 'PENDING' && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    loading={deleteDocMutation.isPending}
-                    onClick={() => deleteDocMutation.mutate(doc.id)}
-                  >
-                    Eliminar
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <p className="mb-6 text-sm text-gray-500">
@@ -896,26 +908,39 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Upload */}
-      <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
-        <Select
-          label="Tipo de documento"
-          options={docTypeOptions}
-          value={uploadDocType}
-          onChange={(e) => setUploadDocType(e.target.value)}
-        />
-        <div>
-          <label className="label">Ficheiro</label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+      {/* Upload — escondido quando ja existe um DGAV (so se permite 1) ou
+          quando o perfil ja esta verificado. */}
+      {canUploadMoreDocs && !dgavLocked ? (
+        <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
+          <Select
+            label="Tipo de documento"
+            options={docTypeOptions}
+            value={uploadDocType}
+            onChange={(e) => setUploadDocType(e.target.value)}
           />
-        </div>
-        <Button type="submit" loading={uploadMutation.isPending}>
-          Enviar
-        </Button>
-      </form>
+          <div>
+            <label className="label">Ficheiro</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+            />
+          </div>
+          <Button type="submit" loading={uploadMutation.isPending}>
+            Enviar
+          </Button>
+        </form>
+      ) : dgavLocked ? (
+        <p className="text-xs text-muted">
+          O certificado DGAV está trancado após verificação do perfil. Para o substituir contacte o
+          suporte.
+        </p>
+      ) : (
+        <p className="text-xs text-muted">
+          Para enviar um novo certificado DGAV, elimine primeiro o atual (apenas possível enquanto
+          estiver pendente).
+        </p>
+      )}
       {uploadMsg && (
         <p
           className={`mt-2 text-sm ${uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
@@ -951,6 +976,14 @@ function BreederTab() {
   const breederForm = (
     <form onSubmit={handleSave} className="space-y-4">
       <Accordion>
+        {/* Certificado DGAV — em modo edit, esta e a primeira seccao do
+            form porque e o documento mais critico. Em "criar" usa-se o
+            uploader simples mais abaixo. */}
+        {!noProfile && breeder && (
+          <AccordionSection title="Certificado DGAV" eyebrow="Documento obrigatório *" defaultOpen>
+            {documentosSection}
+          </AccordionSection>
+        )}
         {noProfile && (
           <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
             <p className="mb-3 text-xs text-gray-600">
@@ -1312,17 +1345,10 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Galeria e Documentos integrados no formulario quando em modo
-          edicao, para que tudo fique num unico fluxo e os botoes
-          Guardar/Cancelar fiquem no fim de tudo. So renderizamos quando
-          ja existe perfil (em "criar" o upload inicial vai pelas seccoes
-          dedicadas no topo do form). */}
-      {!noProfile && breeder && (
-        <>
-          <div className="border-t border-line pt-4">{galeriaSection}</div>
-          <div className="border-t border-line pt-4">{documentosSection}</div>
-        </>
-      )}
+      {/* Galeria do criador integrada no fim do form em modo edit. Os
+          Documentos (DGAV) estao no topo do form porque sao o item mais
+          critico do processo de verificacao. */}
+      {!noProfile && breeder && <div className="border-t border-line pt-4">{galeriaSection}</div>}
 
       <div className="flex gap-3 border-t border-line pt-4">
         <Button

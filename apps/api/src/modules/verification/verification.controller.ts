@@ -63,6 +63,30 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
   const breeder = await getBreederForUser(req.user!.userId)
 
+  // DGAV e o documento mais critico: so pode existir UM por criador, e
+  // assim que o perfil estiver verificado fica trancado (evita reutilizar
+  // o mesmo certificado em multiplos perfis ou remover apos aprovacao).
+  if (docType === 'DGAV') {
+    if (breeder.status === 'VERIFIED') {
+      throw new AppError(
+        403,
+        'O certificado DGAV nao pode ser alterado apos verificacao do perfil. Contacte o suporte.',
+        'DGAV_LOCKED',
+      )
+    }
+    const existingDgav = await prisma.verificationDoc.findFirst({
+      where: { breederId: breeder.id, docType: 'DGAV' },
+      select: { id: true },
+    })
+    if (existingDgav) {
+      throw new AppError(
+        409,
+        'Ja existe um certificado DGAV submetido. Elimine o atual antes de enviar outro.',
+        'DGAV_ALREADY_EXISTS',
+      )
+    }
+  }
+
   // Sanitize filename: use only the extension from path.extname, stripping path traversal
   const ext =
     path
@@ -118,10 +142,22 @@ export const deleteDocument = asyncHandler(async (req, res) => {
 
   const doc = await prisma.verificationDoc.findFirst({
     where: { id: docId, breederId: breeder.id },
+    include: { breeder: { select: { status: true } } },
   })
   if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
   if (doc.status !== 'PENDING')
     throw new AppError(400, 'Só pode eliminar documentos pendentes', 'DOC_NOT_PENDING')
+
+  // Defesa em profundidade: mesmo que o doc esteja PENDING, se o perfil
+  // ja esta verificado o DGAV nao pode ser removido — protege contra
+  // remocao apos aprovacao.
+  if (doc.docType === 'DGAV' && doc.breeder.status === 'VERIFIED') {
+    throw new AppError(
+      403,
+      'O certificado DGAV nao pode ser eliminado apos verificacao do perfil.',
+      'DGAV_LOCKED',
+    )
+  }
 
   // Delete from MinIO
   const objectName = doc.fileUrl.replace(/^\/[^/]+\//, '')
