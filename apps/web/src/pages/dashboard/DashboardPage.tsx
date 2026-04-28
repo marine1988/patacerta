@@ -2340,7 +2340,7 @@ export default function DashboardPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Painel de controlo</h1>
+        <h1 className="page-title">Área pessoal</h1>
         <p className="page-subtitle">Gerir o seu perfil, mensagens e definições.</p>
       </div>
 

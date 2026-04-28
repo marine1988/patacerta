@@ -67,8 +67,8 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
   const currentTab = new URLSearchParams(location.search).get('tab')
-  const isMessagesActive = location.pathname === '/painel' && currentTab === 'mensagens'
-  const isDashboardActive = location.pathname === '/painel' && currentTab !== 'mensagens'
+  const isMessagesActive = location.pathname === '/area-pessoal' && currentTab === 'mensagens'
+  const isDashboardActive = location.pathname === '/area-pessoal' && currentTab !== 'mensagens'
 
   const isActive = (path: string) => location.pathname === path
 
@@ -120,7 +120,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-6">
               <Link
-                to="/painel?tab=mensagens"
+                to="/area-pessoal?tab=mensagens"
                 className={`${tabLinkClass(isMessagesActive)} inline-flex items-center gap-2`}
                 aria-label="Mensagens"
               >
@@ -141,10 +141,10 @@ export function Navbar() {
                 <UnreadBadge />
               </Link>
               <Link
-                to="/painel"
+                to="/area-pessoal"
                 className={`${tabLinkClass(isDashboardActive)} inline-flex items-center gap-2`}
               >
-                Painel
+                Área pessoal
               </Link>
               {user?.role !== 'ADMIN' && (
                 <Link to="/publicar" className="btn-primary btn-sm">
@@ -263,7 +263,7 @@ export function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link
-                  to="/painel?tab=mensagens"
+                  to="/area-pessoal?tab=mensagens"
                   onClick={() => setMobileMenuOpen(false)}
                   className="inline-flex items-center gap-2 px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
                   aria-label="Mensagens"
@@ -285,11 +285,11 @@ export function Navbar() {
                   <UnreadBadge />
                 </Link>
                 <Link
-                  to="/painel"
+                  to="/area-pessoal"
                   onClick={() => setMobileMenuOpen(false)}
                   className="inline-flex items-center gap-2 px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
                 >
-                  Painel
+                  Área pessoal
                 </Link>
                 {user?.role !== 'ADMIN' && (
                   <Link

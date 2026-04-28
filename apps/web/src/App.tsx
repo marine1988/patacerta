@@ -88,6 +88,15 @@ function RedirectToPesquisar({
   return <Navigate to={qs ? `/pesquisar?${qs}` : '/pesquisar'} replace />
 }
 
+/**
+ * Redirect /painel → /area-pessoal preservando query string (?tab=...).
+ */
+function RedirectPainelToAreaPessoal() {
+  const [searchParams] = useSearchParams()
+  const qs = searchParams.toString()
+  return <Navigate to={qs ? `/area-pessoal?${qs}` : '/area-pessoal'} replace />
+}
+
 function ErrorFallback({
   error,
   resetErrorBoundary,
@@ -134,13 +143,15 @@ export function App() {
 
             {/* Protected — any authenticated user */}
             <Route
-              path="/painel"
+              path="/area-pessoal"
               element={
                 <ProtectedRoute>
                   <DashboardPage />
                 </ProtectedRoute>
               }
             />
+            {/* Legacy: /painel → /area-pessoal (preserva query string) */}
+            <Route path="/painel" element={<RedirectPainelToAreaPessoal />} />
 
             {/* Protected — publish flow (any authenticated user) */}
             <Route
@@ -153,17 +164,17 @@ export function App() {
             />
             <Route
               path="/publicar/criador"
-              element={<Navigate to="/painel?tab=criador" replace />}
+              element={<Navigate to="/area-pessoal?tab=criador" replace />}
             />
             <Route
               path="/publicar/servico"
-              element={<Navigate to="/painel?tab=servicos&new=1" replace />}
+              element={<Navigate to="/area-pessoal?tab=servicos&new=1" replace />}
             />
 
-            {/* Legacy: /onboarding/criador → /painel?tab=criador */}
+            {/* Legacy: /onboarding/criador → /area-pessoal?tab=criador */}
             <Route
               path="/onboarding/criador"
-              element={<Navigate to="/painel?tab=criador" replace />}
+              element={<Navigate to="/area-pessoal?tab=criador" replace />}
             />
 
             {/* Protected — admin only */}

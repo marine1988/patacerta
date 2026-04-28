@@ -313,7 +313,7 @@ export function HomePage() {
             <Link to="/registar" className="btn-primary btn-lg">
               Juntar-me à PataCerta
             </Link>
-            <Link to="/painel?tab=servicos" className="link-editorial">
+            <Link to="/area-pessoal?tab=servicos" className="link-editorial">
               Oferecer serviços →
             </Link>
           </div>

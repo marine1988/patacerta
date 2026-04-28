@@ -364,7 +364,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             title="Ainda não há anúncios disponíveis"
             description="Seja o primeiro a anunciar um serviço para patudos."
             action={
-              <Link to="/painel?tab=servicos" className="btn-primary">
+              <Link to="/area-pessoal?tab=servicos" className="btn-primary">
                 Criar o meu anúncio
               </Link>
             }

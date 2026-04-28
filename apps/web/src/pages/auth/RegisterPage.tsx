@@ -229,7 +229,7 @@ export function RegisterPage() {
 
             <p className="rounded-lg bg-caramel-50 p-3 text-xs text-caramel-900">
               Crie a sua conta agora. Mais tarde, se quiser anunciar como criador ou prestador de
-              serviços, basta publicar o seu primeiro anúncio a partir do painel.
+              serviços, basta publicar o seu primeiro anúncio a partir da área pessoal.
             </p>
 
             <label className="flex items-start gap-2 text-sm text-gray-700">

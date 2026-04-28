@@ -216,7 +216,7 @@ export function BreederProfilePage() {
     onSuccess: (res) => {
       setThreadModalOpen(false)
       setThreadError(null)
-      navigate(`/painel?tab=mensagens&threadId=${res.threadId}`)
+      navigate(`/area-pessoal?tab=mensagens&threadId=${res.threadId}`)
     },
     onError: (err) => {
       setThreadError(extractApiError(err, 'Erro ao enviar mensagem.'))

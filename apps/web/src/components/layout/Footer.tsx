@@ -38,7 +38,7 @@ export function Footer() {
               <FooterLink to="/pesquisar?tipo=servicos">Serviços</FooterLink>
               <FooterLink to="/pesquisar?vista=mapa">Mapa</FooterLink>
               <FooterLink to="/registar">Juntar-me como criador</FooterLink>
-              <FooterLink to="/painel?tab=servicos">Oferecer serviços</FooterLink>
+              <FooterLink to="/area-pessoal?tab=servicos">Oferecer serviços</FooterLink>
             </ul>
           </div>
 
