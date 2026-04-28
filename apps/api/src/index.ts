@@ -19,6 +19,7 @@ import { homeRouter } from './modules/home/home.router.js'
 import { breedMatcherRouter } from './modules/breed-matcher/breed-matcher.router.js'
 import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
+import { ensureBucket } from './lib/minio.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -67,6 +68,14 @@ app.use('/api/admin', adminRouter)
 
 // ---- Error handler (must be last) ----
 app.use(errorHandler)
+
+// Ensure the MinIO bucket exists before accepting requests.
+// Best-effort: if MinIO is momentarily unavailable we log and continue —
+// uploads will fail until the bucket is provisioned, but the rest of the
+// API stays functional (auth, listings, etc.).
+ensureBucket()
+  .then(() => console.log('[PataCerta API] MinIO bucket OK'))
+  .catch((err) => console.error('[PataCerta API] MinIO bucket setup failed:', err))
 
 app.listen(PORT, () => {
   console.log(`[PataCerta API] Running on http://localhost:${PORT}`)
