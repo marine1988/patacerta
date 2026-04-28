@@ -508,6 +508,34 @@ function BreederTab() {
     },
   })
 
+  // Eliminar perfil de criador (apenas quando status != VERIFIED).
+  // Apaga em cascata fotos, documentos, raças, etc; user volta a OWNER.
+  const navigate = useNavigate()
+  const { user, updateUser } = useAuth()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const deleteProfileMutation = useMutation({
+    mutationFn: () => api.delete('/breeders/me'),
+    onSuccess: () => {
+      // Refresca user (role mudou) e limpa caches do perfil + probe
+      // (a probe controla a presença da tab "Criador").
+      queryClient.removeQueries({ queryKey: ['breeder-profile'] })
+      queryClient.removeQueries({ queryKey: ['breeder-profile-probe'] })
+      queryClient.invalidateQueries({ queryKey: ['breeder-profile-probe'] })
+      if (user) {
+        // Se o user era BREEDER, baixa para OWNER (server pode ter posto SP — mas
+        // mais comum é OWNER). Resync via /auth/me na próxima mount; aqui
+        // só ajustamos optimisticamente para refletir UI.
+        updateUser({ ...user, role: user.role === 'BREEDER' ? 'OWNER' : user.role })
+      }
+      setDeleteOpen(false)
+      navigate('/dashboard')
+    },
+    onError: (err: unknown) => {
+      setDeleteError(extractApiError(err, 'Erro ao eliminar perfil de criador.'))
+    },
+  })
+
   // Galeria — uploads, delete, reorder
   const uploadPhotosMutation = useMutation({
     mutationFn: (formData: FormData) =>
@@ -680,6 +708,108 @@ function BreederTab() {
     REJECTED: 'Rejeitado',
   }
 
+  // Quando o criador ainda não está verificado (DRAFT, PENDING_VERIFICATION
+  // ou SUSPENDED), todo o conteúdo de gestão (galeria + documentos) é
+  // colapsado para dentro do modo Editar para reduzir clutter na vista
+  // pública do dashboard. Adicionamos um botão Eliminar ao lado do
+  // Editar nesses estados.
+  const isUnverified = breeder.status !== 'VERIFIED'
+
+  // Galeria + Documentos extraídos para variáveis para que possam ser
+  // renderizados ou fora dos cards (status VERIFIED) ou dentro do
+  // formulário Editar (status não-verificado).
+  const galeriaSection = (
+    <PhotoGalleryManager
+      photos={breeder.photos ?? []}
+      max={MAX_BREEDER_PHOTOS}
+      title="Galeria do criador"
+      emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
+      onUpload={handleUploadPhotos}
+      uploadInputRef={photoInputRef}
+      isUploading={uploadPhotosMutation.isPending}
+      uploadMsg={photoMsg}
+      onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
+      onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
+    />
+  )
+
+  const documentosSection = (
+    <Card hover={false}>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
+
+      {breeder.verificationDocs.length > 0 ? (
+        <div className="space-y-3 mb-6">
+          {breeder.verificationDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">{doc.docType}</span>
+                <span className="text-sm text-gray-500">{doc.fileName}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge variant={docStatusVariant[doc.status] ?? 'gray'}>
+                  {docStatusLabel[doc.status] ?? doc.status}
+                </Badge>
+                {doc.status === 'PENDING' && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    loading={deleteDocMutation.isPending}
+                    onClick={() => deleteDocMutation.mutate(doc.id)}
+                  >
+                    Eliminar
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-6 text-sm text-gray-500">Nenhum documento enviado.</p>
+      )}
+
+      {/* Upload */}
+      <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
+        <Select
+          label="Tipo de documento"
+          options={docTypeOptions}
+          value={uploadDocType}
+          onChange={(e) => setUploadDocType(e.target.value)}
+        />
+        <div>
+          <label className="label">Ficheiro</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+          />
+        </div>
+        <Button type="submit" loading={uploadMutation.isPending}>
+          Enviar
+        </Button>
+      </form>
+      {uploadMsg && (
+        <p
+          className={`mt-2 text-sm ${uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+        >
+          {uploadMsg.text}
+        </p>
+      )}
+    </Card>
+  )
+
+  const submitVerificationButton =
+    breeder.status === 'DRAFT' && breeder.verificationDocs.length > 0 ? (
+      <Button
+        loading={submitVerificationMutation.isPending}
+        onClick={() => submitVerificationMutation.mutate()}
+      >
+        Submeter para verificação
+      </Button>
+    ) : null
+
   return (
     <div className="space-y-6">
       {/* Status */}
@@ -692,9 +822,22 @@ function BreederTab() {
             </div>
           </div>
           {!editing && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Editar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Editar
+              </Button>
+              {isUnverified && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  }}
+                >
+                  Eliminar
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -933,6 +1076,16 @@ function BreederTab() {
               </p>
             )}
 
+            {/* Quando não-verificado, Galeria + Documentos vivem dentro
+                do formulário Editar para reduzir clutter. */}
+            {isUnverified && (
+              <div className="space-y-6 border-t border-line pt-6">
+                {galeriaSection}
+                {documentosSection}
+                {submitVerificationButton}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button type="submit" loading={saveMutation.isPending}>
                 Guardar
@@ -951,95 +1104,61 @@ function BreederTab() {
         </p>
       )}
 
-      {/* Galeria de fotos do criador */}
-      <PhotoGalleryManager
-        photos={breeder.photos ?? []}
-        max={MAX_BREEDER_PHOTOS}
-        title="Galeria do criador"
-        emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
-        onUpload={handleUploadPhotos}
-        uploadInputRef={photoInputRef}
-        isUploading={uploadPhotosMutation.isPending}
-        uploadMsg={photoMsg}
-        onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
-        onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
-      />
-
-      {/* Documents */}
-      <Card hover={false}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos de verificação</h3>
-
-        {breeder.verificationDocs.length > 0 ? (
-          <div className="space-y-3 mb-6">
-            {breeder.verificationDocs.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700">{doc.docType}</span>
-                  <span className="text-sm text-gray-500">{doc.fileName}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant={docStatusVariant[doc.status] ?? 'gray'}>
-                    {docStatusLabel[doc.status] ?? doc.status}
-                  </Badge>
-                  {doc.status === 'PENDING' && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      loading={deleteDocMutation.isPending}
-                      onClick={() => deleteDocMutation.mutate(doc.id)}
-                    >
-                      Eliminar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mb-6 text-sm text-gray-500">Nenhum documento enviado.</p>
-        )}
-
-        {/* Upload */}
-        <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
-          <Select
-            label="Tipo de documento"
-            options={docTypeOptions}
-            value={uploadDocType}
-            onChange={(e) => setUploadDocType(e.target.value)}
-          />
-          <div>
-            <label className="label">Ficheiro</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
-            />
-          </div>
-          <Button type="submit" loading={uploadMutation.isPending}>
-            Enviar
-          </Button>
-        </form>
-        {uploadMsg && (
-          <p
-            className={`mt-2 text-sm ${uploadMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
-          >
-            {uploadMsg.text}
-          </p>
-        )}
-      </Card>
-
-      {/* Submit verification */}
-      {breeder.status === 'DRAFT' && breeder.verificationDocs.length > 0 && (
-        <Button
-          loading={submitVerificationMutation.isPending}
-          onClick={() => submitVerificationMutation.mutate()}
-        >
-          Submeter para verificação
-        </Button>
+      {/* Galeria + Documentos: só fora do Editar quando o criador
+          já está VERIFIED. Para os outros estados ficam dentro do
+          formulário de edição (ver acima). */}
+      {!isUnverified && (
+        <>
+          {galeriaSection}
+          {documentosSection}
+          {submitVerificationButton}
+        </>
       )}
+
+      {/* Modal — confirmação de eliminação do perfil de criador */}
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Eliminar perfil de criador"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink">
+            Tem a certeza que pretende eliminar o seu perfil de criador? Esta acção é{' '}
+            <strong className="text-red-600">irreversível</strong> e vai apagar:
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+            <li>Todos os dados do perfil ({breeder.businessName})</li>
+            <li>Galeria ({breeder.photos?.length ?? 0} foto(s))</li>
+            <li>Documentos de verificação ({breeder.verificationDocs.length})</li>
+            <li>Raças associadas</li>
+            <li>Conversas e mensagens recebidas</li>
+            <li>Avaliações recebidas</li>
+          </ul>
+          <p className="text-xs text-muted">
+            A sua conta de utilizador é mantida — pode voltar a criar um perfil de criador no
+            futuro.
+          </p>
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleteProfileMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              loading={deleteProfileMutation.isPending}
+              onClick={() => deleteProfileMutation.mutate()}
+            >
+              Eliminar definitivamente
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

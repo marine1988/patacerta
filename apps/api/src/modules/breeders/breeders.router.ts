@@ -26,6 +26,7 @@ breedersRouter.post(
   requireBreederProfile,
   ctrl.submitForVerification,
 )
+breedersRouter.delete('/me', requireAuth, requireBreederProfile, ctrl.deleteMyBreederProfile)
 
 // Existing breeder — gallery management
 breedersRouter.post('/me/photos', requireAuth, requireBreederProfile, ctrl.uploadBreederPhotos)

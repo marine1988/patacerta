@@ -564,3 +564,91 @@ export const reorderBreederPhotos = asyncHandler(async (req, res) => {
 
   res.json({ data: updated })
 })
+
+/**
+ * DELETE /api/breeders/me
+ *
+ * Elimina o perfil de criador do utilizador autenticado. Apaga em
+ * cascata (via Prisma `onDelete: Cascade`) toda a informação associada:
+ *   - BreederBreed, BreederSpecies, BreederPhoto, VerificationDoc
+ *   - Threads e mensagens, reviews recebidas, sponsored slots
+ *
+ * Antes de apagar a linha do Breeder, fazemos cleanup best-effort dos
+ * ficheiros no MinIO (fotos e documentos) para não deixar lixo.
+ *
+ * Se o utilizador não tem outros papéis activos (BREEDER ou SP), o
+ * role volta a OWNER. NUNCA rebaixamos um ADMIN.
+ *
+ * Restrições: apenas se o status NÃO for VERIFIED. Para criadores
+ * verificados, o pedido de eliminação tem de passar por moderação
+ * para preservar histórico de avaliações públicas.
+ */
+export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+  const breeder = await getBreederForUser(userId)
+
+  if (breeder.status === 'VERIFIED') {
+    throw new AppError(
+      400,
+      'Criadores verificados não podem ser eliminados directamente. Contacte o suporte.',
+      'CANNOT_DELETE_VERIFIED',
+    )
+  }
+
+  // Buscar os ficheiros para cleanup do storage antes do delete.
+  const [photos, docs] = await Promise.all([
+    prisma.breederPhoto.findMany({
+      where: { breederId: breeder.id },
+      select: { url: true },
+    }),
+    prisma.verificationDoc.findMany({
+      where: { breederId: breeder.id },
+      select: { fileUrl: true },
+    }),
+  ])
+
+  // Best-effort: falhas de storage não bloqueiam o delete da BD.
+  await Promise.all([
+    ...photos.map((p) => {
+      const objectName = p.url.replace(/^\/[^/]+\//, '')
+      return deleteFile(objectName).catch(() => {})
+    }),
+    ...docs.map((d) => {
+      const objectName = d.fileUrl.replace(/^\/[^/]+\//, '')
+      return deleteFile(objectName).catch(() => {})
+    }),
+  ])
+
+  // Cascade trata das relações (ver schema.prisma).
+  await prisma.breeder.delete({ where: { id: breeder.id } })
+
+  // Reverter o role para OWNER se já não tem outros perfis activos.
+  // Não tocar em ADMIN.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, services: { select: { id: true }, take: 1 } },
+  })
+  if (user && user.role === 'BREEDER') {
+    const hasService = user.services.length > 0
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: hasService ? 'SERVICE_PROVIDER' : 'OWNER' },
+    })
+  }
+
+  await logAudit({
+    userId,
+    action: 'breeder.delete',
+    entity: 'breeder',
+    entityId: breeder.id,
+    details: JSON.stringify({
+      status: breeder.status,
+      businessName: breeder.businessName,
+      photosDeleted: photos.length,
+      docsDeleted: docs.length,
+    }),
+    ipAddress: req.ip,
+  })
+
+  res.status(204).send()
+})
