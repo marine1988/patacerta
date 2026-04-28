@@ -4,6 +4,7 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
 import { uploadFile, deleteFile, getPresignedUrl } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
+import { logAudit } from '../../lib/audit.js'
 import multer from 'multer'
 import path from 'path'
 import type { ReviewVerificationDocInput } from '@patacerta/shared'
@@ -115,6 +116,15 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     },
   })
 
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'VERIFICATION_DOC_UPLOADED',
+    entity: 'VerificationDoc',
+    entityId: doc.id,
+    details: `${docType} uploaded for breeder ${breeder.id}`,
+    ipAddress: req.ip,
+  })
+
   res.status(201).json(doc)
 })
 
@@ -166,6 +176,15 @@ export const deleteDocument = asyncHandler(async (req, res) => {
 
   await prisma.verificationDoc.delete({ where: { id: docId } })
 
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'VERIFICATION_DOC_DELETED',
+    entity: 'VerificationDoc',
+    entityId: docId,
+    details: `${doc.docType} deleted by breeder ${breeder.id}`,
+    ipAddress: req.ip,
+  })
+
   res.status(204).send()
 })
 
@@ -208,19 +227,33 @@ export const reviewDocument = asyncHandler(async (req, res) => {
   // Aprovar DGAV -> breeder VERIFIED. Rejeitar DGAV -> breeder DRAFT
   // (criador re-submete depois). Outros docs ja nao sao usados, mas se
   // existirem dados antigos sao revistos sem afectar status.
+  let breederStatusChange: 'VERIFIED' | 'DRAFT' | null = null
   if (doc.docType === 'DGAV' && doc.breeder.status !== 'SUSPENDED') {
     if (status === 'APPROVED') {
       await prisma.breeder.update({
         where: { id: doc.breederId },
         data: { status: 'VERIFIED', verifiedAt: new Date() },
       })
+      breederStatusChange = 'VERIFIED'
     } else if (status === 'REJECTED') {
       await prisma.breeder.update({
         where: { id: doc.breederId },
         data: { status: 'DRAFT', verifiedAt: null },
       })
+      breederStatusChange = 'DRAFT'
     }
   }
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED',
+    entity: 'VerificationDoc',
+    entityId: docId,
+    details: `${doc.docType} ${status} for breeder ${doc.breederId}${
+      breederStatusChange ? ` -> breeder.status=${breederStatusChange}` : ''
+    }${notes ? `: ${notes}` : ''}`,
+    ipAddress: req.ip,
+  })
 
   res.json(updated)
 })

@@ -34,6 +34,59 @@ const BREEDER_INCLUDE = {
 }
 
 /**
+ * SELECT explícito para o endpoint público GET /api/breeders/:id.
+ *
+ * NUNCA inclui campos sensíveis: nif, dgavNumber, suspendedAt, suspendedReason,
+ * email do utilizador. O contacto público é feito via /messages, não por email
+ * directo. NIF e DGAV pertencem ao perfil interno (getMyBreederProfile) e ao
+ * admin.
+ */
+const BREEDER_PUBLIC_SELECT = {
+  id: true,
+  businessName: true,
+  description: true,
+  website: true,
+  phone: true,
+  status: true,
+  verifiedAt: true,
+  featuredUntil: true,
+  districtId: true,
+  municipalityId: true,
+  createdAt: true,
+  youtubeVideoId: true,
+  cpcMember: true,
+  fciAffiliated: true,
+  vetCheckup: true,
+  microchip: true,
+  vaccinations: true,
+  lopRegistry: true,
+  kennelName: true,
+  salesInvoice: true,
+  food: true,
+  initialTraining: true,
+  pickupInPerson: true,
+  deliveryByCar: true,
+  deliveryByPlane: true,
+  pickupNotes: true,
+  otherBreedsNote: true,
+  user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+  district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
+  municipality: { select: { id: true, namePt: true } },
+  species: { include: { species: { select: { id: true, namePt: true, nameSlug: true } } } },
+  breeds: {
+    include: {
+      breed: {
+        select: { id: true, nameSlug: true, namePt: true, fciGroup: true, imageUrl: true },
+      },
+    },
+  },
+  photos: {
+    select: { id: true, url: true, caption: true, sortOrder: true },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+} as const
+
+/**
  * Campos opcionais que o criador pode actualizar e que sao copiados
  * directamente do body para o updateData se vierem definidos.
  * Mantem o updateMyBreederProfile curto e evita esquecer campos.
@@ -92,7 +145,7 @@ export const getBreederById = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
 
   const [breeder, ratingAgg] = await Promise.all([
-    prisma.breeder.findUnique({ where: { id }, include: BREEDER_INCLUDE }),
+    prisma.breeder.findUnique({ where: { id }, select: BREEDER_PUBLIC_SELECT }),
     prisma.review.aggregate({
       where: { breederId: id, status: 'PUBLISHED' },
       _avg: { rating: true },
