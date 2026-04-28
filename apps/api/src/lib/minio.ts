@@ -10,12 +10,42 @@ export const minioClient = new Client({
 
 const BUCKET = process.env.MINIO_BUCKET || 'patacerta-uploads'
 
-/** Ensure the bucket exists on startup */
+/**
+ * Bucket policy that allows anonymous read of all objects. Necessary
+ * because the public URL scheme used by `uploadFile` is
+ * `/${BUCKET}/${objectName}` and the frontend nginx proxies that path
+ * straight to MinIO without signing requests.
+ *
+ * Without this policy, browser GETs for photos return 403/AccessDenied.
+ */
+function publicReadPolicy(bucket: string): string {
+  return JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { AWS: ['*'] },
+        Action: ['s3:GetObject'],
+        Resource: [`arn:aws:s3:::${bucket}/*`],
+      },
+    ],
+  })
+}
+
+/** Ensure the bucket exists on startup and has public-read policy */
 export async function ensureBucket(): Promise<void> {
   const exists = await minioClient.bucketExists(BUCKET)
   if (!exists) {
     await minioClient.makeBucket(BUCKET)
     console.log(`[MinIO] Created bucket: ${BUCKET}`)
+  }
+  // Always reapply the policy — idempotent, and protects against the
+  // bucket having been (re)created without the right policy.
+  try {
+    await minioClient.setBucketPolicy(BUCKET, publicReadPolicy(BUCKET))
+    console.log(`[MinIO] Public-read policy applied to bucket: ${BUCKET}`)
+  } catch (err) {
+    console.warn(`[MinIO] Failed to set bucket policy on ${BUCKET}:`, err)
   }
 }
 
