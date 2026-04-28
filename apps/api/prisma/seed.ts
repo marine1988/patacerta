@@ -1,3 +1,22 @@
+/**
+ * Seed CORE (dados de referência) — seguro em produção.
+ *
+ * Cria/actualiza apenas dados que existem realmente e são necessários para
+ * a aplicação funcionar:
+ *   - admin user (ADMIN_EMAIL / ADMIN_PASSWORD via env)
+ *   - 20 distritos de Portugal (com coordenadas)
+ *   - municípios das principais cidades
+ *   - espécies (MVP: só `cao`) + cleanup de espécies legadas
+ *   - 40 raças de cão (catálogo do simulador)
+ *   - categorias de serviços
+ *   - cleanup de utilizadores demo legados não-cão (gatos/coelhos/aves)
+ *
+ * **Não cria dados fictícios** (canis, reviews, serviços) — esses estão em
+ * seed-demo.ts e nunca devem correr em produção real.
+ *
+ * Idempotente: pode correr quantas vezes quiseres. Triggered por
+ * `RUN_SEED_ON_BOOT=true` no entrypoint.
+ */
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { BREEDS } from './breeds-data.js'

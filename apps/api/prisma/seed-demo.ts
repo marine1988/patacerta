@@ -1,3 +1,25 @@
+/**
+ * Seed DEMO (dados fictícios) — APENAS para staging/desenvolvimento.
+ *
+ * ⚠ NÃO correr em produção real: cria utilizadores e negócios falsos
+ * (`canil.alvalade@example.pt`, NIFs inventados, fotos via picsum.photos).
+ *
+ * Cria:
+ *   - 4 owner users fictícios (clientes para reviews)
+ *   - 6 canis fictícios verificados (cobertura geográfica de PT)
+ *   - 2-3 fotos picsum por canil (seed estável)
+ *   - 8 reviews publicadas
+ *   - ~25 serviços (passeio + pet-sitting) com coverage e fotos
+ *   - cleanup de demos legados não-cão (defesa dupla com seed.ts)
+ *
+ * Pré-requisitos: seed.ts precisa de ter corrido antes (espécie `cao`,
+ * distritos, municípios, categorias).
+ *
+ * Idempotente via upsert por email/título. Triggered por
+ * `RUN_SEED_DEMO_ON_BOOT=true` no entrypoint, ou manualmente:
+ *   pnpm --filter @patacerta/api db:seed:demo  (local)
+ *   npx tsx prisma/seed-demo.ts                (no container)
+ */
 import {
   PrismaClient,
   UserRole,
