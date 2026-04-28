@@ -159,6 +159,7 @@ model Breeder {
   reviews          Review[]          @relation("reviewed_breeder")
   threadsAsBreeder Thread[]          @relation("thread_breeder")
   photos           BreederPhoto[]
+  sponsoredSlots   SponsoredBreedSlot[]
 
   @@index([districtId])
   @@index([status])
@@ -234,6 +235,7 @@ model Breed {
 
   species Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
   breeders BreederBreed[]
+  sponsoredSlots SponsoredBreedSlot[]
 
   @@index([speciesId])
   @@index([size])
@@ -250,6 +252,48 @@ model BreederBreed {
   @@id([breederId, breedId])
   @@index([breedId])
   @@map("breeder_breeds")
+}
+
+// ─── SponsoredBreedSlot ─────────────────────────────────────────────
+//
+// Slot patrocinado de um criador para uma raça específica.
+// Aparece nos cards de resultado do simulador (`breed-matcher`) com
+// label "Patrocinado" obrigatório (ver UI). MVP: máximo 3 slots
+// activos por raça em simultâneo (limite imposto no controller, não
+// no schema, para permitir overlap durante migração de campanhas).
+//
+// status:
+//   ACTIVE     — dentro da janela [startsAt, endsAt] e a aparecer
+//   PAUSED     — admin pausou manualmente
+//   EXPIRED    — fora da janela (calculado, mas pode ficar persistido)
+//
+// Tracking: impressionCount/clickCount são incrementados com
+// updateMany e contadores best-effort (não-transaccional, P2 OK).
+model SponsoredBreedSlot {
+  id              Int                      @id @default(autoincrement())
+  breederId       Int                      @map("breeder_id")
+  breedId         Int                      @map("breed_id")
+  startsAt        DateTime                 @map("starts_at")
+  endsAt          DateTime                 @map("ends_at")
+  status          SponsoredBreedSlotStatus @default(ACTIVE)
+  impressionCount Int                      @default(0) @map("impression_count")
+  clickCount      Int                      @default(0) @map("click_count")
+  notes           String?                  @db.VarChar(500)
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  breeder Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
+  breed   Breed   @relation(fields: [breedId], references: [id], onDelete: Cascade)
+
+  @@index([breedId, status, startsAt, endsAt])
+  @@index([breederId])
+  @@map("sponsored_breed_slots")
+}
+
+enum SponsoredBreedSlotStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
 }
 
 model BreederSpecies {

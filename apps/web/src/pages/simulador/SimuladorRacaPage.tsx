@@ -20,6 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { Badge } from '../../components/ui/Badge'
+import { SponsoredBreedersStrip } from '../../components/shared/SponsoredBreedersStrip'
 
 // ─── Definição das perguntas ──────────────────────────────────────
 //
@@ -334,6 +335,12 @@ export function SimuladorRacaPage() {
                     <ScoreBadge score={r.score} />
                   </div>
                 </div>
+
+                <SponsoredBreedersStrip
+                  breeders={r.sponsoredBreeders}
+                  breedId={r.breed.id}
+                  breedNamePt={r.breed.namePt}
+                />
               </Card>
             ))}
           </div>

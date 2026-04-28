@@ -5,8 +5,12 @@ import {
   resolveReportSchema,
   resolveServiceReportSchema,
   suspendServiceSchema,
+  createSponsoredSlotSchema,
+  updateSponsoredSlotSchema,
+  listSponsoredSlotsSchema,
 } from '@patacerta/shared'
 import * as ctrl from './admin.controller.js'
+import * as sponsoredCtrl from '../sponsored-slots/admin-sponsored-slots.controller.js'
 
 export const adminRouter = Router()
 
@@ -65,3 +69,21 @@ adminRouter.get('/audit-logs', ctrl.getAuditLogs)
 // Featured / homepage destaques
 adminRouter.patch('/services/:id/featured', ctrl.setServiceFeatured)
 adminRouter.patch('/breeders/:id/featured', ctrl.setBreederFeatured)
+
+// Sponsored slots — gestão de campanhas patrocinadas no simulador
+adminRouter.get(
+  '/sponsored-slots',
+  validate(listSponsoredSlotsSchema, 'query'),
+  sponsoredCtrl.listSponsoredSlots,
+)
+adminRouter.post(
+  '/sponsored-slots',
+  validate(createSponsoredSlotSchema),
+  sponsoredCtrl.createSponsoredSlot,
+)
+adminRouter.patch(
+  '/sponsored-slots/:id',
+  validate(updateSponsoredSlotSchema),
+  sponsoredCtrl.updateSponsoredSlot,
+)
+adminRouter.delete('/sponsored-slots/:id', sponsoredCtrl.deleteSponsoredSlot)

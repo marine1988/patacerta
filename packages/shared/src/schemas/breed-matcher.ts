@@ -49,6 +49,19 @@ export type BreedMatchInput = z.infer<typeof breedMatchInputSchema>
 
 // ─── Output do match (apenas tipos — Zod não valida resposta) ───────
 
+export interface SponsoredBreederMini {
+  /** Slot id — usado para tracking de cliques. */
+  slotId: number
+  breederId: number
+  businessName: string
+  district: { id: number; namePt: string }
+  municipality: { id: number; namePt: string }
+  avgRating: number | null
+  reviewCount: number
+  /** URL da primeira foto (cover) se existir. */
+  coverPhotoUrl: string | null
+}
+
 export interface BreedMatchResult {
   breed: {
     id: number
@@ -75,6 +88,8 @@ export interface BreedMatchResult {
   score: number
   /** Razões positivas/negativas relevantes para mostrar ao utilizador. */
   highlights: string[]
+  /** Criadores patrocinados desta raça (máx. 3, só VERIFIED, com label "Patrocinado" obrigatório na UI). */
+  sponsoredBreeders: SponsoredBreederMini[]
 }
 
 export interface BreedMatchResponse {
