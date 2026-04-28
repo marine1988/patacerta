@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../hooks/useAuth'
 import { Avatar } from '../ui/Avatar'
 import { ThemeToggle } from '../ui/ThemeToggle'
+import { LogoMark } from '../shared/LogoMark'
 import { api } from '../../lib/api'
 
 function UnreadBadge({ className = '' }: { className?: string }) {
@@ -92,12 +93,15 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
       <nav className="mx-auto flex max-w-[72rem] items-center justify-between px-6 py-5 lg:px-8">
-        {/* Logo editorial — wordmark em Lora */}
+        {/* Logo editorial — icone + wordmark em Lora */}
         <Link
           to="/"
-          className="font-serif text-xl tracking-tight text-ink transition-colors hover:text-caramel-700"
+          className="group flex items-center gap-2.5 font-serif text-xl tracking-tight text-ink transition-colors hover:text-caramel-700"
         >
-          Pata<em className="italic text-caramel-500">Certa</em>
+          <LogoMark size={26} className="shrink-0 transition-transform group-hover:scale-105" />
+          <span>
+            Pata<em className="italic text-caramel-500">Certa</em>
+          </span>
         </Link>
 
         {/* Desktop nav */}
