@@ -35,15 +35,16 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
 
   const speciesId = searchParams.get('speciesId') || undefined
   const districtId = searchParams.get('districtId') || undefined
+  const breedId = searchParams.get('breedId') || undefined
   const query = searchParams.get('query') || undefined
   const page = parseInt(searchParams.get('page') || '1') || 1
 
   const { data, isLoading, isError } = useQuery<BreedersPaginatedResponse>({
-    queryKey: ['breeders', { speciesId, districtId, query, page }],
+    queryKey: ['breeders', { speciesId, districtId, breedId, query, page }],
     queryFn: () =>
       api
         .get('/search/breeders', {
-          params: { speciesId, districtId, query, page, limit: 12 },
+          params: { speciesId, districtId, breedId, query, page, limit: 12 },
         })
         .then((r) => r.data),
   })

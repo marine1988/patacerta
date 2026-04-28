@@ -144,10 +144,17 @@ model Breeder {
   deliveryByPlane Boolean @default(false) @map("delivery_by_plane")
   pickupNotes     String? @map("pickup_notes") @db.Text
 
+  // Raças que o criador trabalha (cataloga em BreederBreed) +
+  // texto livre opcional para raças que nao constam do catalogo
+  // ("Outras"). O constraint de "pelo menos 1 raça do catalogo
+  // OU otherBreedsNote preenchida" e validado a nivel API.
+  otherBreedsNote String? @map("other_breeds_note") @db.VarChar(500)
+
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   district         District          @relation(fields: [districtId], references: [id])
   municipality     Municipality      @relation(fields: [municipalityId], references: [id])
   species          BreederSpecies[]
+  breeds           BreederBreed[]
   verificationDocs VerificationDoc[]
   reviews          Review[]          @relation("reviewed_breeder")
   threadsAsBreeder Thread[]          @relation("thread_breeder")
@@ -226,10 +233,23 @@ model Breed {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   species Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  breeders BreederBreed[]
 
   @@index([speciesId])
   @@index([size])
   @@map("breeds")
+}
+
+model BreederBreed {
+  breederId Int @map("breeder_id")
+  breedId   Int @map("breed_id")
+
+  breeder Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
+  breed   Breed   @relation(fields: [breedId], references: [id], onDelete: Cascade)
+
+  @@id([breederId, breedId])
+  @@index([breedId])
+  @@map("breeder_breeds")
 }
 
 model BreederSpecies {

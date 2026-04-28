@@ -9,9 +9,15 @@ interface SearchBarProps {
   compact?: boolean
 }
 
+interface BreedOption {
+  id: number
+  namePt: string
+}
+
 export function SearchBar({ compact = false }: SearchBarProps) {
   const navigate = useNavigate()
   const [district, setDistrict] = useState('')
+  const [breed, setBreed] = useState('')
   const [query, setQuery] = useState('')
 
   const { data: districtList = [] } = useQuery<DistrictOption[]>({
@@ -20,10 +26,17 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     staleTime: 3600_000,
   })
 
+  const { data: breedList = [] } = useQuery<BreedOption[]>({
+    queryKey: ['breeds'],
+    queryFn: () => api.get('/breeds').then((r) => r.data),
+    staleTime: 3600_000,
+  })
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const params = new URLSearchParams()
     if (district) params.set('districtId', district)
+    if (breed) params.set('breedId', breed)
     if (query.trim()) params.set('query', query.trim())
     navigate(`/pesquisar?${params.toString()}`)
   }
@@ -50,7 +63,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
       onSubmit={handleSearch}
       className="rounded-2xl border border-gray-200 bg-white p-4 shadow-lg sm:p-6"
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="label">Distrito</label>
           <select className="select" value={district} onChange={(e) => setDistrict(e.target.value)}>
@@ -58,6 +71,18 @@ export function SearchBar({ compact = false }: SearchBarProps) {
             {districtList.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.namePt}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="label">Raça</label>
+          <select className="select" value={breed} onChange={(e) => setBreed(e.target.value)}>
+            <option value="">Todas as raças</option>
+            {breedList.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.namePt}
               </option>
             ))}
           </select>

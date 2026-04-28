@@ -20,6 +20,13 @@ const BREEDER_INCLUDE = {
   district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
   municipality: { select: { id: true, namePt: true } },
   species: { include: { species: { select: { id: true, namePt: true, nameSlug: true } } } },
+  breeds: {
+    include: {
+      breed: {
+        select: { id: true, nameSlug: true, namePt: true, fciGroup: true, imageUrl: true },
+      },
+    },
+  },
   photos: {
     select: { id: true, url: true, caption: true, sortOrder: true },
     orderBy: { sortOrder: 'asc' as const },
@@ -50,6 +57,7 @@ const OPTIONAL_BREEDER_FIELDS = [
   'deliveryByCar',
   'deliveryByPlane',
   'pickupNotes',
+  'otherBreedsNote',
 ] as const
 
 // Auto-promove OWNER -> BREEDER quando cria o primeiro perfil de criador.
@@ -129,6 +137,18 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
   // MVP: ignora speciesIds enviado pelo cliente; criadores são sempre de cães.
   const dogSpeciesId = await getDogSpeciesId()
 
+  // Valida breedIds: garante que todos existem e são da espécie 'cao'.
+  const breedIds = data.breedIds ?? []
+  if (breedIds.length > 0) {
+    const found = await prisma.breed.findMany({
+      where: { id: { in: breedIds }, speciesId: dogSpeciesId },
+      select: { id: true },
+    })
+    if (found.length !== breedIds.length) {
+      throw new AppError(400, 'Uma ou mais raças não são válidas', 'INVALID_BREEDS')
+    }
+  }
+
   let breeder
   try {
     breeder = await prisma.breeder.create({
@@ -142,7 +162,10 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
         phone: data.phone,
         districtId: data.districtId,
         municipalityId: data.municipalityId,
+        otherBreedsNote: data.otherBreedsNote,
         species: { create: [{ speciesId: dogSpeciesId }] },
+        breeds:
+          breedIds.length > 0 ? { create: breedIds.map((breedId) => ({ breedId })) } : undefined,
       },
       include: BREEDER_INCLUDE,
     })
@@ -213,10 +236,59 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
   // MVP: speciesIds é ignorado — todos os criadores são de cães. A associação
   // BreederSpecies para 'cao' é criada no createBreederProfile e não muda.
 
-  const updated = await prisma.breeder.update({
-    where: { id: breeder.id },
-    data: updateData,
-    include: BREEDER_INCLUDE,
+  // Sincronização de raças: se vier breedIds (mesmo que array vazio), reescreve
+  // a associação. Se não vier, mantém o que está. Quando ambos breedIds e
+  // otherBreedsNote são tocados num update, validamos a invariante mínima
+  // (>=1 raça do catálogo OU note preenchida); se só um deles vier, comparamos
+  // com o estado actual em DB.
+  let breedIdsToSet: number[] | undefined
+  if (Array.isArray(data.breedIds)) {
+    breedIdsToSet = data.breedIds as number[]
+    if (breedIdsToSet.length > 0) {
+      const dogSpeciesId = await getDogSpeciesId()
+      const found = await prisma.breed.findMany({
+        where: { id: { in: breedIdsToSet }, speciesId: dogSpeciesId },
+        select: { id: true },
+      })
+      if (found.length !== breedIdsToSet.length) {
+        throw new AppError(400, 'Uma ou mais raças não são válidas', 'INVALID_BREEDS')
+      }
+    }
+  }
+
+  // Invariante: pelo menos uma raça do catálogo OU otherBreedsNote preenchido.
+  // Calcular estado final efectivo (após este update) para validar.
+  const finalBreedsCount =
+    breedIdsToSet !== undefined
+      ? breedIdsToSet.length
+      : await prisma.breederBreed.count({ where: { breederId: breeder.id } })
+  const finalNote =
+    data.otherBreedsNote !== undefined
+      ? (data.otherBreedsNote as string | null | undefined)
+      : breeder.otherBreedsNote
+  const noteHasContent = typeof finalNote === 'string' && finalNote.trim().length > 0
+  if (finalBreedsCount === 0 && !noteHasContent) {
+    throw new AppError(
+      400,
+      'Indique pelo menos uma raça do catálogo ou descreva as raças que tem em "Outras raças".',
+      'BREEDS_REQUIRED',
+    )
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (breedIdsToSet !== undefined) {
+      await tx.breederBreed.deleteMany({ where: { breederId: breeder.id } })
+      if (breedIdsToSet.length > 0) {
+        await tx.breederBreed.createMany({
+          data: breedIdsToSet.map((breedId) => ({ breederId: breeder.id, breedId })),
+        })
+      }
+    }
+    return tx.breeder.update({
+      where: { id: breeder.id },
+      data: updateData,
+      include: BREEDER_INCLUDE,
+    })
   })
   res.json(updated)
 })

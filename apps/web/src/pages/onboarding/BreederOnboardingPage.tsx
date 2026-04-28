@@ -14,6 +14,12 @@ interface Municipality {
   id: number
   namePt: string
 }
+interface Breed {
+  id: number
+  nameSlug: string
+  namePt: string
+  fciGroup: string | null
+}
 
 /**
  * Breeder onboarding — collects the minimum data needed to create the
@@ -55,6 +61,15 @@ export function BreederOnboardingPage() {
     website: '',
     districtId: '',
     municipalityId: '',
+    breedIds: [] as number[],
+    hasOtherBreeds: false,
+    otherBreedsNote: '',
+  })
+
+  const { data: breeds } = useQuery<Breed[]>({
+    queryKey: ['breeds'],
+    queryFn: () => api.get('/breeds').then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
   })
 
   const { data: districts } = useQuery<District[]>({
@@ -99,6 +114,15 @@ export function BreederOnboardingPage() {
       website: form.website.trim() || undefined,
       districtId: Number(form.districtId),
       municipalityId: Number(form.municipalityId),
+      breedIds: form.breedIds,
+      otherBreedsNote: form.hasOtherBreeds ? form.otherBreedsNote.trim() || undefined : undefined,
+    }
+
+    if (form.breedIds.length === 0 && !input.otherBreedsNote) {
+      setError(
+        'Indique pelo menos uma raça do catálogo ou descreva as raças que tem em "Outras raças".',
+      )
+      return
     }
 
     const parsed = breederProfileSchema.safeParse(input)
@@ -184,11 +208,68 @@ export function BreederOnboardingPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
-              Espécies que cria
+              Raças que cria <span className="text-red-600">*</span>
             </label>
-            <p className="text-sm text-gray-600">
-              Esta plataforma é exclusiva para criadores de cães.
+            <p className="mb-3 text-xs text-gray-600">
+              Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
+              descrevê-las em "Outras raças".
             </p>
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300 p-3">
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                {(breeds ?? []).map((b) => {
+                  const checked = form.breedIds.includes(b.id)
+                  return (
+                    <label
+                      key={b.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-cream-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            breedIds: e.target.checked
+                              ? [...prev.breedIds, b.id]
+                              : prev.breedIds.filter((id) => id !== b.id),
+                          }))
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-caramel-500 focus:ring-caramel-500"
+                      />
+                      <span className="text-gray-800">{b.namePt}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+            {form.breedIds.length > 0 && (
+              <p className="mt-2 text-xs text-gray-600">
+                {form.breedIds.length} {form.breedIds.length === 1 ? 'raça' : 'raças'} seleccionada
+                {form.breedIds.length === 1 ? '' : 's'}.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.hasOtherBreeds}
+                onChange={(e) => update('hasOtherBreeds', e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-caramel-500 focus:ring-caramel-500"
+              />
+              Tenho outras raças não listadas
+            </label>
+            {form.hasOtherBreeds && (
+              <textarea
+                value={form.otherBreedsNote}
+                onChange={(e) => update('otherBreedsNote', e.target.value)}
+                rows={3}
+                maxLength={500}
+                className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-caramel-500 focus:ring-1 focus:ring-caramel-500"
+                placeholder="Indique as raças que cria (máx. 500 caracteres)…"
+              />
+            )}
           </div>
 
           <Input

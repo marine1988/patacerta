@@ -35,6 +35,7 @@ interface Props {
 
 export function BreedersMapView({ searchParams, setSearchParams }: Props) {
   const districtId = searchParams.get('districtId') || ''
+  const breedId = searchParams.get('breedId') || ''
   const query = searchParams.get('query') || ''
 
   const { data: districtsList = [] } = useQuery<DistrictOption[]>({
@@ -43,13 +44,20 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
     staleTime: 60 * 60 * 1000,
   })
 
+  const { data: breedsList = [] } = useQuery<{ id: number; namePt: string }[]>({
+    queryKey: ['breeds'],
+    queryFn: () => api.get('/breeds').then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  })
+
   const { data, isLoading, isError } = useQuery<MapBreedersResponse>({
-    queryKey: ['breeders-map', { districtId, query }],
+    queryKey: ['breeders-map', { districtId, breedId, query }],
     queryFn: () =>
       api
         .get('/search/breeders/map', {
           params: {
             districtId: districtId || undefined,
+            breedId: breedId || undefined,
             query: query || undefined,
           },
         })
@@ -91,7 +99,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
     setSearchParams(next)
   }
 
-  const hasFilters = Boolean(districtId || query)
+  const hasFilters = Boolean(districtId || breedId || query)
 
   return (
     <>
@@ -112,6 +120,17 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
               options={[
                 { value: '', label: 'Todos' },
                 ...districtsList.map((d) => ({ value: String(d.id), label: d.namePt })),
+              ]}
+            />
+          </div>
+          <div className="md:w-56">
+            <label className="mb-1 block text-xs font-medium text-gray-700">Raça</label>
+            <Select
+              value={breedId}
+              onChange={(e) => updateFilter('breedId', e.target.value)}
+              options={[
+                { value: '', label: 'Todas' },
+                ...breedsList.map((b) => ({ value: String(b.id), label: b.namePt })),
               ]}
             />
           </div>

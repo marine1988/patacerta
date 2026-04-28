@@ -72,6 +72,10 @@ interface BreederDetail {
   deliveryByCar?: boolean
   deliveryByPlane?: boolean
   pickupNotes?: string | null
+  breeds?: Array<{
+    breed: { id: number; nameSlug: string; namePt: string; fciGroup: string | null }
+  }>
+  otherBreedsNote?: string | null
 }
 
 interface ReviewsResponse {
@@ -374,6 +378,35 @@ export function BreederProfilePage() {
               <div className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-600">
                 {breeder.description}
               </div>
+            </Card>
+          )}
+
+          {/* Racas */}
+          {((breeder.breeds && breeder.breeds.length > 0) || breeder.otherBreedsNote) && (
+            <Card>
+              <h2 className="text-lg font-semibold text-gray-900">Raças que cria</h2>
+              {breeder.breeds && breeder.breeds.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {breeder.breeds.map((b) => (
+                    <span
+                      key={b.breed.id}
+                      className="inline-flex items-center rounded-full border border-caramel-200 bg-caramel-50 px-3 py-1 text-sm text-caramel-700"
+                    >
+                      {b.breed.namePt}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {breeder.otherBreedsNote && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Outras raças
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-gray-700">
+                    {breeder.otherBreedsNote}
+                  </p>
+                </div>
+              )}
             </Card>
           )}
 

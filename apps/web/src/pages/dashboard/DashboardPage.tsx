@@ -70,6 +70,11 @@ interface BreederProfile {
   deliveryByCar?: boolean
   deliveryByPlane?: boolean
   pickupNotes?: string | null
+  // Racas
+  breeds?: Array<{
+    breed: { id: number; nameSlug: string; namePt: string; fciGroup: string | null }
+  }>
+  otherBreedsNote?: string | null
 }
 
 interface VerificationDoc {
@@ -363,6 +368,14 @@ function BreederTab() {
     queryFn: () => api.get('/search/districts').then((r) => r.data),
   })
 
+  const { data: breedsCatalog } = useQuery<
+    Array<{ id: number; nameSlug: string; namePt: string; fciGroup: string | null }>
+  >({
+    queryKey: ['breeds'],
+    queryFn: () => api.get('/breeds').then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  })
+
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     businessName: '',
@@ -388,6 +401,9 @@ function BreederTab() {
     deliveryByCar: false,
     deliveryByPlane: false,
     pickupNotes: '',
+    breedIds: [] as number[],
+    hasOtherBreeds: false,
+    otherBreedsNote: '',
   })
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -430,6 +446,11 @@ function BreederTab() {
         deliveryByCar: breeder.deliveryByCar ?? false,
         deliveryByPlane: breeder.deliveryByPlane ?? false,
         pickupNotes: breeder.pickupNotes ?? '',
+        breedIds: (breeder.breeds ?? []).map((b) => b.breed.id),
+        hasOtherBreeds: Boolean(
+          breeder.otherBreedsNote && breeder.otherBreedsNote.trim().length > 0,
+        ),
+        otherBreedsNote: breeder.otherBreedsNote ?? '',
       })
     }
   }, [breeder])
@@ -563,6 +584,14 @@ function BreederTab() {
   function handleSave(e: FormEvent) {
     e.preventDefault()
     setMsg(null)
+    const otherBreedsNote = form.hasOtherBreeds ? form.otherBreedsNote.trim() || null : null
+    if (form.breedIds.length === 0 && !otherBreedsNote) {
+      setMsg({
+        type: 'error',
+        text: 'Indique pelo menos uma raça do catálogo ou descreva as raças em "Outras raças".',
+      })
+      return
+    }
     saveMutation.mutate({
       businessName: form.businessName,
       nif: form.nif,
@@ -587,6 +616,8 @@ function BreederTab() {
       deliveryByCar: form.deliveryByCar,
       deliveryByPlane: form.deliveryByPlane,
       pickupNotes: form.pickupNotes,
+      breedIds: form.breedIds,
+      otherBreedsNote,
     })
   }
 
@@ -808,6 +839,71 @@ function BreederTab() {
                     {label}
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Racas */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+                Raças que cria
+              </h4>
+              <p className="mb-3 text-xs text-gray-600">
+                Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
+                descrevê-las em "Outras raças".
+              </p>
+              <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300 p-3">
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {(breedsCatalog ?? []).map((b) => {
+                    const checked = form.breedIds.includes(b.id)
+                    return (
+                      <label
+                        key={b.id}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-cream-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              breedIds: e.target.checked
+                                ? [...prev.breedIds, b.id]
+                                : prev.breedIds.filter((id) => id !== b.id),
+                            }))
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                        />
+                        <span className="text-gray-800">{b.namePt}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+              {form.breedIds.length > 0 && (
+                <p className="mt-2 text-xs text-gray-600">
+                  {form.breedIds.length}{' '}
+                  {form.breedIds.length === 1 ? 'raça seleccionada' : 'raças seleccionadas'}.
+                </p>
+              )}
+              <div className="mt-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.hasOtherBreeds}
+                    onChange={(e) => setForm((p) => ({ ...p, hasOtherBreeds: e.target.checked }))}
+                    className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+                  />
+                  Tenho outras raças não listadas
+                </label>
+                {form.hasOtherBreeds && (
+                  <textarea
+                    className="input mt-2 min-h-[80px]"
+                    value={form.otherBreedsNote}
+                    onChange={(e) => setForm((p) => ({ ...p, otherBreedsNote: e.target.value }))}
+                    placeholder="Indique as raças que cria (máx. 500 caracteres)…"
+                    maxLength={500}
+                  />
+                )}
               </div>
             </div>
 

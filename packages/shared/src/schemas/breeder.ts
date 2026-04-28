@@ -83,30 +83,85 @@ export const youtubeVideoIdSchema = z
     message: 'URL/ID YouTube invalido',
   })
 
-export const breederProfileSchema = z.object({
-  businessName: z.string().trim().min(2).max(200),
-  nif: nifSchema,
-  dgavNumber: dgavNumberSchema,
+export const breederProfileSchema = z
+  .object({
+    businessName: z.string().trim().min(2).max(200),
+    nif: nifSchema,
+    dgavNumber: dgavNumberSchema,
+    description: z.string().trim().max(2000).optional(),
+    districtId: z.number().int().positive(),
+    municipalityId: z.number().int().positive(),
+    // MVP: campo deprecated — backend assume sempre 'cao'.
+    // Mantido como opcional no schema para compatibilidade futura multi-espécie.
+    speciesIds: z.array(z.number().int().positive()).optional(),
+    // Raças que o criador trabalha (ids do catálogo Breed). Pode estar vazio
+    // SE otherBreedsNote for preenchido (caso "só raças não listadas"). A
+    // regra "pelo menos uma das duas" é validada via .superRefine() abaixo.
+    breedIds: z.array(z.number().int().positive()).max(50).optional(),
+    // Texto livre para raças que não constam do catálogo. Visível no perfil.
+    otherBreedsNote: z.string().trim().max(500).optional(),
+    website: z.string().url().max(255).optional(),
+    phone: z
+      .string()
+      .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
+      .optional(),
+
+    // Apresentacao publica
+    youtubeVideoId: youtubeVideoIdSchema.optional(),
+
+    // Reconhecimentos oficiais
+    cpcMember: z.boolean().optional(),
+    fciAffiliated: z.boolean().optional(),
+
+    // Sao incluidos com cada cachorro
+    vetCheckup: z.boolean().optional(),
+    microchip: z.boolean().optional(),
+    vaccinations: z.boolean().optional(),
+    lopRegistry: z.boolean().optional(),
+    kennelName: z.boolean().optional(),
+    salesInvoice: z.boolean().optional(),
+    food: z.boolean().optional(),
+    initialTraining: z.boolean().optional(),
+
+    // Recolha
+    pickupInPerson: z.boolean().optional(),
+    deliveryByCar: z.boolean().optional(),
+    deliveryByPlane: z.boolean().optional(),
+    pickupNotes: z.string().trim().max(1000).optional(),
+  })
+  .superRefine((val, ctx) => {
+    const hasBreed = (val.breedIds?.length ?? 0) > 0
+    const hasOther = !!val.otherBreedsNote && val.otherBreedsNote.trim().length > 0
+    if (!hasBreed && !hasOther) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['breedIds'],
+        message: 'Indique pelo menos uma raça do catálogo ou descreva em "Outras raças".',
+      })
+    }
+  })
+
+// O update aceita PATCH parcial — não obriga sempre a ter raças (o utilizador
+// pode estar a actualizar só, p.ex., o telefone). A validação "pelo menos uma"
+// já foi feita na criação do perfil.
+export const updateBreederProfileSchema = z.object({
+  businessName: z.string().trim().min(2).max(200).optional(),
+  nif: nifSchema.optional(),
+  dgavNumber: dgavNumberSchema.optional(),
   description: z.string().trim().max(2000).optional(),
-  districtId: z.number().int().positive(),
-  municipalityId: z.number().int().positive(),
-  // MVP: campo deprecated — backend assume sempre 'cao'.
-  // Mantido como opcional no schema para compatibilidade futura multi-espécie.
+  districtId: z.number().int().positive().optional(),
+  municipalityId: z.number().int().positive().optional(),
   speciesIds: z.array(z.number().int().positive()).optional(),
+  breedIds: z.array(z.number().int().positive()).max(50).optional(),
+  otherBreedsNote: z.string().trim().max(500).optional(),
   website: z.string().url().max(255).optional(),
   phone: z
     .string()
     .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
     .optional(),
-
-  // Apresentacao publica
   youtubeVideoId: youtubeVideoIdSchema.optional(),
-
-  // Reconhecimentos oficiais
   cpcMember: z.boolean().optional(),
   fciAffiliated: z.boolean().optional(),
-
-  // Sao incluidos com cada cachorro
   vetCheckup: z.boolean().optional(),
   microchip: z.boolean().optional(),
   vaccinations: z.boolean().optional(),
@@ -115,15 +170,11 @@ export const breederProfileSchema = z.object({
   salesInvoice: z.boolean().optional(),
   food: z.boolean().optional(),
   initialTraining: z.boolean().optional(),
-
-  // Recolha
   pickupInPerson: z.boolean().optional(),
   deliveryByCar: z.boolean().optional(),
   deliveryByPlane: z.boolean().optional(),
   pickupNotes: z.string().trim().max(1000).optional(),
 })
-
-export const updateBreederProfileSchema = breederProfileSchema.partial()
 
 export const reorderBreederPhotosSchema = z.object({
   photoIds: z

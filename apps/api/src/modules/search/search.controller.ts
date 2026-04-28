@@ -15,13 +15,14 @@ let statsCache: CacheEntry<Record<string, number>> | null = null
 
 export const searchBreeders = asyncHandler(async (req, res) => {
   // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
-  const { districtId, municipalityId, query, page, limit } =
+  const { districtId, municipalityId, breedId, query, page, limit } =
     req.query as unknown as SearchBreedersInput
 
   const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
+  if (breedId) where.breeds = { some: { breedId } }
   if (query) {
     where.OR = [
       { businessName: { contains: query, mode: 'insensitive' } },
@@ -80,13 +81,14 @@ export const searchBreeders = asyncHandler(async (req, res) => {
 // Map view: flat list with coordinates (herdadas do distrito). No pagination.
 export const mapBreeders = asyncHandler(async (req, res) => {
   // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
-  const { districtId, municipalityId, query, minLat, maxLat, minLng, maxLng, limit } =
+  const { districtId, municipalityId, breedId, query, minLat, maxLat, minLng, maxLng, limit } =
     req.query as unknown as MapBreedersInput
 
   const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
+  if (breedId) where.breeds = { some: { breedId } }
   if (query) {
     where.OR = [
       { businessName: { contains: query, mode: 'insensitive' } },
