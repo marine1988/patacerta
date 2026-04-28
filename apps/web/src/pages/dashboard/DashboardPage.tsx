@@ -441,6 +441,21 @@ function BreederTab() {
   const pendingDgavRef = useRef<HTMLInputElement>(null)
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([])
   const [pendingDgavFile, setPendingDgavFile] = useState<File | null>(null)
+  // URLs de preview para as fotos pendentes. Geridos via useEffect para
+  // garantir cleanup (URL.revokeObjectURL) e evitar memory leaks.
+  const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([])
+  // IDs das fotos cuja miniatura já carregou no <img> — usado para
+  // mostrar spinner por foto enquanto o browser processa.
+  const [loadedThumbs, setLoadedThumbs] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    const urls = pendingPhotos.map((f) => URL.createObjectURL(f))
+    setPendingPhotoUrls(urls)
+    setLoadedThumbs(new Set())
+    return () => {
+      urls.forEach((u) => URL.revokeObjectURL(u))
+    }
+  }, [pendingPhotos])
 
   const isLocked = breeder?.status === 'VERIFIED' || breeder?.status === 'PENDING_VERIFICATION'
 
@@ -936,6 +951,118 @@ function BreederTab() {
   const breederForm = (
     <form onSubmit={handleSave} className="space-y-4">
       <Accordion>
+        {noProfile && (
+          <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
+            <p className="mb-3 text-xs text-gray-600">
+              Comece por escolher pelo menos uma foto — pode continuar a preencher o formulário
+              enquanto o browser processa as miniaturas. Pode adicionar até {MAX_BREEDER_PHOTOS}{' '}
+              fotos. Formatos aceites: JPG, PNG, WebP.
+            </p>
+            <input
+              ref={pendingPhotosRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(e) => {
+                const files = e.target.files ? Array.from(e.target.files) : []
+                setPendingPhotos(files.slice(0, MAX_BREEDER_PHOTOS))
+              }}
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+            />
+            {pendingPhotos.length > 0 ? (
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {pendingPhotos.map((file, idx) => {
+                  const url = pendingPhotoUrls[idx]
+                  const isLoaded = loadedThumbs.has(idx)
+                  return (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="relative aspect-square overflow-hidden border border-line bg-cream-50"
+                      style={{ borderRadius: 2 }}
+                    >
+                      {!isLoaded && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-cream-50">
+                          <Spinner size="sm" />
+                        </div>
+                      )}
+                      {url && (
+                        <img
+                          src={url}
+                          alt={file.name}
+                          className={`h-full w-full object-cover transition-opacity ${
+                            isLoaded ? 'opacity-100' : 'opacity-0'
+                          }`}
+                          onLoad={() =>
+                            setLoadedThumbs((prev) => {
+                              const next = new Set(prev)
+                              next.add(idx)
+                              return next
+                            })
+                          }
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingPhotos((prev) => prev.filter((_, i) => i !== idx))
+                        }}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                        aria-label={`Remover ${file.name}`}
+                      >
+                        <svg
+                          className="h-3.5 w-3.5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 truncate bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                        {file.name}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">Nenhuma foto seleccionada (mín. 1).</p>
+            )}
+            {pendingPhotos.length > 0 && (
+              <p className="mt-2 text-xs text-gray-500">
+                {pendingPhotos.length}/{MAX_BREEDER_PHOTOS} foto(s) seleccionada(s) ·{' '}
+                {loadedThumbs.size === pendingPhotos.length
+                  ? 'pré-visualizações prontas'
+                  : `a processar ${pendingPhotos.length - loadedThumbs.size}…`}
+              </p>
+            )}
+          </AccordionSection>
+        )}
+
+        {noProfile && (
+          <AccordionSection title="Documento DGAV" eyebrow="Verificação *" defaultOpen>
+            <p className="mb-3 text-xs text-gray-600">
+              Envie o seu certificado DGAV. Este documento é obrigatório para submeter o perfil para
+              verificação. Formatos aceites: PDF, JPG, PNG.
+            </p>
+            <input
+              ref={pendingDgavRef}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                setPendingDgavFile(file)
+              }}
+              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              {pendingDgavFile
+                ? `Ficheiro: ${pendingDgavFile.name}`
+                : 'Nenhum ficheiro seleccionado.'}
+            </p>
+          </AccordionSection>
+        )}
+
         <AccordionSection title="Identificação" eyebrow="Dados oficiais" defaultOpen>
           <div className="space-y-4">
             <Input
@@ -1177,55 +1304,6 @@ function BreederTab() {
             />
           </div>
         </AccordionSection>
-
-        {noProfile && (
-          <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
-            <p className="mb-3 text-xs text-gray-600">
-              Envie pelo menos uma foto do seu canil, instalações ou cães. Pode adicionar até{' '}
-              {MAX_BREEDER_PHOTOS} fotos no total. Formatos aceites: JPG, PNG, WebP.
-            </p>
-            <input
-              ref={pendingPhotosRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              onChange={(e) => {
-                const files = e.target.files ? Array.from(e.target.files) : []
-                setPendingPhotos(files.slice(0, MAX_BREEDER_PHOTOS))
-              }}
-              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              {pendingPhotos.length === 0
-                ? 'Nenhuma foto seleccionada (mín. 1).'
-                : `${pendingPhotos.length} foto(s) seleccionada(s).`}
-            </p>
-          </AccordionSection>
-        )}
-
-        {noProfile && (
-          <AccordionSection title="Documento DGAV" eyebrow="Verificação *" defaultOpen>
-            <p className="mb-3 text-xs text-gray-600">
-              Envie o seu certificado DGAV. Este documento é obrigatório para submeter o perfil para
-              verificação. Formatos aceites: PDF, JPG, PNG.
-            </p>
-            <input
-              ref={pendingDgavRef}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null
-                setPendingDgavFile(file)
-              }}
-              className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              {pendingDgavFile
-                ? `Ficheiro: ${pendingDgavFile.name}`
-                : 'Nenhum ficheiro seleccionado.'}
-            </p>
-          </AccordionSection>
-        )}
       </Accordion>
 
       {msg && (
