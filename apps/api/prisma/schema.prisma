@@ -99,6 +99,7 @@ model User {
   serviceReportsReviewed ServiceReport[]   @relation("service_report_reviewer")
   auditLogs              AuditLog[]
   consentLogs            ConsentLog[]
+  refreshTokens          RefreshToken[]
 
   @@map("users")
 }
@@ -483,6 +484,30 @@ model ConsentLog {
   @@index([userId])
   @@index([consentType])
   @@map("consent_logs")
+}
+
+// Refresh-token store. We persist a SHA-256 hash of every issued refresh
+// token so we can rotate them on use, revoke them on logout, and detect
+// reuse (a sign of token theft). The plaintext token is never written to
+// disk; clients hold it client-side and present it on /auth/refresh.
+model RefreshToken {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  tokenHash    String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  // When this token is rotated, we point at the replacement so we can walk
+  // the chain and revoke siblings if the same token is replayed.
+  replacedById Int?      @map("replaced_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  userAgent    String?   @map("user_agent") @db.VarChar(500)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 // ---- Services (dog-walking, dog-sitting, ...) ----

@@ -6,6 +6,7 @@ import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
+import type { Request } from 'express'
 import {
   CONSENT_TYPE,
   TERMS_VERSION,
@@ -19,6 +20,10 @@ import {
 
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24
 const RESET_TOKEN_EXPIRY_HOURS = 1
+// Must mirror JWT_REFRESH_EXPIRES_IN default in lib/jwt.ts. We keep an
+// independent millisecond constant here because Prisma needs an absolute
+// expiresAt and parsing the JWT lib's "7d" string would be brittle.
+const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Hash one-time tokens (email verification, password reset) before storing in DB.
@@ -51,6 +56,63 @@ function generateVerificationToken(): { token: string; tokenHash: string; expire
   const tokenHash = hashToken(token)
   const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000)
   return { token, tokenHash, expiresAt }
+}
+
+/**
+ * Sign a refresh JWT for `payload` and persist its hash so we can rotate /
+ * revoke it later. The plaintext token is returned to the client; only the
+ * hash lives at rest. `replacedById` and `parentId` let us walk the rotation
+ * chain when we need to detect token reuse and revoke siblings.
+ */
+async function issueRefreshToken(
+  payload: { userId: number; email: string; role: string },
+  req: Request,
+  parentId: number | null = null,
+): Promise<string> {
+  const token = signRefreshToken(payload)
+  const stored = await prisma.refreshToken.create({
+    data: {
+      userId: payload.userId,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+      ipAddress: req.ip ?? null,
+      userAgent: req.headers['user-agent']?.slice(0, 500) ?? null,
+    },
+    select: { id: true },
+  })
+  if (parentId !== null) {
+    await prisma.refreshToken.update({
+      where: { id: parentId },
+      data: { replacedById: stored.id },
+    })
+  }
+  return token
+}
+
+/**
+ * Mark `tokenId` and every token that descended from it (via `replacedById`)
+ * as revoked. Used both on legitimate logout and as the response to detected
+ * token reuse — if a token we already retired is presented again, somebody
+ * still holds it and we must invalidate the whole chain.
+ */
+async function revokeRefreshChain(tokenId: number): Promise<void> {
+  const visited = new Set<number>()
+  const stack = [tokenId]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    if (visited.has(current)) continue
+    visited.add(current)
+    const node = await prisma.refreshToken.findUnique({
+      where: { id: current },
+      select: { replacedById: true },
+    })
+    if (node?.replacedById) stack.push(node.replacedById)
+  }
+  if (visited.size === 0) return
+  await prisma.refreshToken.updateMany({
+    where: { id: { in: [...visited] }, revokedAt: null },
+    data: { revokedAt: new Date() },
+  })
 }
 
 export const register = asyncHandler(async (req, res) => {
@@ -155,7 +217,7 @@ export const login = asyncHandler(async (req, res) => {
 
   const payload = { userId: user.id, email: user.email, role: user.role }
   const accessToken = signAccessToken(payload)
-  const refreshToken = signRefreshToken(payload)
+  const refreshToken = await issueRefreshToken(payload, req)
 
   res.json({
     user: {
@@ -172,14 +234,72 @@ export const login = asyncHandler(async (req, res) => {
 
 export const refresh = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string }
+  // First, verify the JWT signature/expiry. A forged or tampered token never
+  // even reaches the DB lookup.
   const decoded = verifyRefreshToken(refreshToken)
+
+  // Then look up the matching DB record so we can enforce rotation: a
+  // legitimate refresh token must exist, must not be revoked, and must not
+  // have expired (the JWT exp is the upper bound; the DB row may be revoked
+  // earlier).
+  const tokenHashValue = hashToken(refreshToken)
+  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash: tokenHashValue } })
+
+  if (!stored) {
+    // The signature checked out but we have no record. Treat as a forgery
+    // attempt; the user will have to re-authenticate.
+    throw new AppError(401, 'Refresh token inválido', 'INVALID_REFRESH_TOKEN')
+  }
+
+  if (stored.revokedAt) {
+    // Reuse detection: somebody is presenting a token we already rotated
+    // away from. Either an attacker captured the old token or the legitimate
+    // client cached it past rotation. Either way, revoke the whole chain so
+    // both parties have to re-authenticate.
+    await revokeRefreshChain(stored.id)
+    throw new AppError(401, 'Refresh token reutilizado — sessão revogada', 'REFRESH_TOKEN_REUSED')
+  }
+
+  if (stored.expiresAt < new Date()) {
+    throw new AppError(401, 'Refresh token expirado', 'EXPIRED_REFRESH_TOKEN')
+  }
+
   const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
   if (!user) throw new AppError(401, 'Utilizador não encontrado', 'USER_NOT_FOUND')
   if (!user.isActive)
     throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
 
   const payload = { userId: user.id, email: user.email, role: user.role }
-  res.json({ accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload) })
+
+  // Rotate: revoke this token, issue a fresh one, link them so reuse of the
+  // old token is detectable.
+  await prisma.refreshToken.update({
+    where: { id: stored.id },
+    data: { revokedAt: new Date() },
+  })
+  const newRefresh = await issueRefreshToken(payload, req, stored.id)
+
+  res.json({ accessToken: signAccessToken(payload), refreshToken: newRefresh })
+})
+
+export const logout = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body as { refreshToken?: string }
+  // We accept logout without a token as a no-op so the client can always
+  // call this endpoint without worrying about state. With a token, we
+  // revoke the whole chain so any leaked sibling is invalidated too.
+  if (refreshToken) {
+    try {
+      verifyRefreshToken(refreshToken)
+    } catch {
+      // Tampered or expired tokens are not worth blocking logout on.
+    }
+    const stored = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashToken(refreshToken) },
+      select: { id: true },
+    })
+    if (stored) await revokeRefreshChain(stored.id)
+  }
+  res.status(204).send()
 })
 
 export const verifyEmail = asyncHandler(async (req, res) => {

@@ -100,12 +100,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u
   }, [])
 
-  const register = useCallback(async (data: RegisterInput): Promise<{ message: string; email: string }> => {
-    const res = await api.post('/auth/register', data)
-    return res.data as { message: string; email: string }
-  }, [])
+  const register = useCallback(
+    async (data: RegisterInput): Promise<{ message: string; email: string }> => {
+      const res = await api.post('/auth/register', data)
+      return res.data as { message: string; email: string }
+    },
+    [],
+  )
 
   const logout = useCallback(() => {
+    // Best-effort server-side revocation of the refresh-token rotation chain.
+    // We fire-and-forget: even if the request fails (offline, expired token),
+    // we still clear local state so the UI logs the user out immediately.
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (refreshToken) {
+      api.post('/auth/logout', { refreshToken }).catch(() => {
+        /* swallowed: logout must not fail client-side */
+      })
+    }
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
