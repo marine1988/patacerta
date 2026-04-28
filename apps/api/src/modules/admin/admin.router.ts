@@ -5,6 +5,8 @@ import {
   resolveReportSchema,
   resolveServiceReportSchema,
   suspendServiceSchema,
+  suspendBreederSchema,
+  suspendUserSchema,
   createSponsoredSlotSchema,
   updateSponsoredSlotSchema,
   listSponsoredSlotsSchema,
@@ -26,13 +28,13 @@ adminRouter.get('/verifications/pending', ctrl.getPendingVerifications)
 
 // Users management
 adminRouter.get('/users', ctrl.listAllUsers)
-adminRouter.patch('/users/:id/suspend', ctrl.suspendUser)
+adminRouter.patch('/users/:id/suspend', validate(suspendUserSchema), ctrl.suspendUser)
 
 // Breeders management — admin so pode suspender/reactivar.
 // A promocao para VERIFIED acontece exclusivamente via aprovacao do
 // documento DGAV (PATCH /verification/:docId/review).
 adminRouter.get('/breeders', ctrl.listAllBreeders)
-adminRouter.patch('/breeders/:id/suspend', ctrl.suspendBreeder)
+adminRouter.patch('/breeders/:id/suspend', validate(suspendBreederSchema), ctrl.suspendBreeder)
 adminRouter.patch('/breeders/:id/unsuspend', ctrl.unsuspendBreeder)
 
 // Reviews moderation

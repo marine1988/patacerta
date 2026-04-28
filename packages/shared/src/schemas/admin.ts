@@ -23,3 +23,15 @@ export const reviewVerificationDocSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 })
 export type ReviewVerificationDocInput = z.infer<typeof reviewVerificationDocSchema>
+
+// Admin suspensions — both for users and breeders. Reason is mandatory and
+// surfaced in the audit log; the affected party may also see it (FE decision).
+export const suspendBreederSchema = z.object({
+  reason: z.string().trim().min(15, 'Indique um motivo com pelo menos 15 caracteres').max(500),
+})
+export type SuspendBreederInput = z.infer<typeof suspendBreederSchema>
+
+export const suspendUserSchema = z.object({
+  reason: z.string().trim().min(15, 'Indique um motivo com pelo menos 15 caracteres').max(500),
+})
+export type SuspendUserInput = z.infer<typeof suspendUserSchema>

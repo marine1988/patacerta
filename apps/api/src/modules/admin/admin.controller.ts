@@ -142,24 +142,31 @@ export const suspendUser = asyncHandler(async (req, res) => {
   if (id === req.user!.userId)
     throw new AppError(400, 'Não pode suspender a sua própria conta', 'SELF_SUSPEND')
 
+  const reason = (req.body as { reason?: string } | undefined)?.reason?.trim() ?? ''
+
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
   if (!user.isActive) throw new AppError(400, 'Utilizador já está suspenso', 'ALREADY_SUSPENDED')
 
   // Deactivate user account
-  await prisma.user.update({ where: { id }, data: { isActive: false, suspendedAt: new Date() } })
+  await prisma.user.update({
+    where: { id },
+    data: { isActive: false, suspendedAt: new Date(), suspendedReason: reason },
+  })
 
   if (user.role === 'BREEDER') {
-    await prisma.breeder.updateMany({ where: { userId: id }, data: { status: 'SUSPENDED' } })
+    await prisma.breeder.updateMany({
+      where: { userId: id },
+      data: { status: 'SUSPENDED', suspendedAt: new Date(), suspendedReason: reason },
+    })
   }
 
-  // Q5: Use logAudit utility instead of raw prisma call
   await logAudit({
     userId: req.user!.userId,
     action: 'SUSPEND_USER',
     entity: 'User',
     entityId: id,
-    details: `Suspended user ${user.email}`,
+    details: `Suspended user ${user.email}: ${reason}`,
     ipAddress: req.ip,
   })
 
@@ -197,13 +204,14 @@ export const listAllBreeders = asyncHandler(async (req, res) => {
 // um admin promova um criador sem haver DGAV validado.
 export const suspendBreeder = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
+  const reason = (req.body as { reason?: string } | undefined)?.reason?.trim() ?? ''
 
   const breeder = await prisma.breeder.findUnique({ where: { id } })
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
 
   const updated = await prisma.breeder.update({
     where: { id },
-    data: { status: 'SUSPENDED' },
+    data: { status: 'SUSPENDED', suspendedAt: new Date(), suspendedReason: reason },
     select: { id: true, businessName: true, status: true },
   })
 
@@ -212,7 +220,7 @@ export const suspendBreeder = asyncHandler(async (req, res) => {
     action: 'SUSPEND_BREEDER',
     entity: 'Breeder',
     entityId: id,
-    details: 'Breeder suspended by admin',
+    details: `Breeder suspended by admin: ${reason}`,
     ipAddress: req.ip,
   })
 
@@ -244,6 +252,8 @@ export const unsuspendBreeder = asyncHandler(async (req, res) => {
     data: {
       status: nextStatus,
       verifiedAt: dgavApproved ? (breeder.verifiedAt ?? new Date()) : null,
+      suspendedAt: null,
+      suspendedReason: null,
     },
     select: { id: true, businessName: true, status: true },
   })

@@ -356,6 +356,9 @@ function UtilizadoresTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [roleFilter, setRoleFilter] = useState('')
+  const [suspendingUser, setSuspendingUser] = useState<User | null>(null)
+  const [suspendReason, setSuspendReason] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<User>>({
     queryKey: ['admin-users', page, roleFilter],
@@ -367,21 +370,26 @@ function UtilizadoresTab() {
   })
 
   const suspendMutation = useMutation({
-    mutationFn: (userId: number) => api.patch(`/admin/users/${userId}/suspend`),
+    mutationFn: ({ userId, reason }: { userId: number; reason: string }) =>
+      api.patch(`/admin/users/${userId}/suspend`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      setSuspendingUser(null)
+      setSuspendReason('')
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender utilizador.')
     },
   })
 
   function handleSuspend(user: User) {
-    if (
-      !window.confirm(
-        `Tem a certeza que pretende suspender o utilizador "${user.firstName} ${user.lastName}"?`,
-      )
-    )
-      return
-    suspendMutation.mutate(user.id)
+    setSuspendingUser(user)
+    setSuspendReason('')
+    setActionError(null)
   }
 
   if (isLoading) {
@@ -477,6 +485,52 @@ function UtilizadoresTab() {
           <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
+
+      {/* Suspend modal */}
+      <Modal
+        isOpen={suspendingUser !== null}
+        onClose={() => setSuspendingUser(null)}
+        title="Suspender utilizador"
+        size="md"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            A conta deixa de poder iniciar sessão. Se for criador, o perfil também é suspenso. O
+            motivo é registado no histórico.
+          </p>
+          <div>
+            <label className="label">Motivo (mín. 15, máx. 500)</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              minLength={15}
+              maxLength={500}
+            />
+            <p className="mt-1 text-xs text-gray-400">{suspendReason.length}/500</p>
+          </div>
+          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setSuspendingUser(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              disabled={suspendReason.trim().length < 15}
+              loading={suspendMutation.isPending}
+              onClick={() =>
+                suspendingUser &&
+                suspendMutation.mutate({
+                  userId: suspendingUser.id,
+                  reason: suspendReason.trim(),
+                })
+              }
+            >
+              Suspender
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -487,6 +541,9 @@ function CriadoresTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [suspendingBreeder, setSuspendingBreeder] = useState<Breeder | null>(null)
+  const [suspendReason, setSuspendReason] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const breederStatusOptions = [
     { value: 'DRAFT', label: 'Rascunho' },
@@ -508,10 +565,19 @@ function CriadoresTab() {
   // exclusivamente via aprovacao do certificado DGAV no separador
   // "Verificações".
   const suspendMutation = useMutation({
-    mutationFn: (breederId: number) => api.patch(`/admin/breeders/${breederId}/suspend`),
+    mutationFn: ({ breederId, reason }: { breederId: number; reason: string }) =>
+      api.patch(`/admin/breeders/${breederId}/suspend`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      setSuspendingBreeder(null)
+      setSuspendReason('')
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender criador.')
     },
   })
   const unsuspendMutation = useMutation({
@@ -537,13 +603,9 @@ function CriadoresTab() {
   })
 
   function handleSuspend(breeder: Breeder) {
-    if (
-      !window.confirm(
-        `Suspender "${breeder.businessName}"? O perfil deixa de aparecer em pesquisas e listas.`,
-      )
-    )
-      return
-    suspendMutation.mutate(breeder.id)
+    setSuspendingBreeder(breeder)
+    setSuspendReason('')
+    setActionError(null)
   }
   function handleUnsuspend(breeder: Breeder) {
     if (
@@ -607,7 +669,8 @@ function CriadoresTab() {
                 {data.data.map((breeder, i) => {
                   const isSuspended = breeder.status === 'SUSPENDED'
                   const actionPending =
-                    (suspendMutation.isPending && suspendMutation.variables === breeder.id) ||
+                    (suspendMutation.isPending &&
+                      suspendMutation.variables?.breederId === breeder.id) ||
                     (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
                   return (
                     <tr
@@ -686,6 +749,51 @@ function CriadoresTab() {
           <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
+
+      {/* Suspend modal */}
+      <Modal
+        isOpen={suspendingBreeder !== null}
+        onClose={() => setSuspendingBreeder(null)}
+        title="Suspender criador"
+        size="md"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            O perfil deixará de aparecer em pesquisas e listas. O motivo é registado no histórico.
+          </p>
+          <div>
+            <label className="label">Motivo (mín. 15, máx. 500)</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              minLength={15}
+              maxLength={500}
+            />
+            <p className="mt-1 text-xs text-gray-400">{suspendReason.length}/500</p>
+          </div>
+          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setSuspendingBreeder(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              disabled={suspendReason.trim().length < 15}
+              loading={suspendMutation.isPending}
+              onClick={() =>
+                suspendingBreeder &&
+                suspendMutation.mutate({
+                  breederId: suspendingBreeder.id,
+                  reason: suspendReason.trim(),
+                })
+              }
+            >
+              Suspender
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
