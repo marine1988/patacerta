@@ -3,6 +3,7 @@
 // ============================================
 
 import { z } from 'zod'
+import { portuguesePhoneSchema } from './common.js'
 
 // I-06: .trim() on all user-facing string fields
 export const emailSchema = z.string().trim().email('Email inválido').max(255)
@@ -23,10 +24,7 @@ export const registerSchema = z.object({
   password: passwordSchema,
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
-  phone: z
-    .string()
-    .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-    .optional(),
+  phone: portuguesePhoneSchema.optional(),
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: 'Tem de aceitar os Termos e a Política de Privacidade' }),
   }),
@@ -46,11 +44,7 @@ export const updateUserSchema = z
   .object({
     firstName: z.string().trim().min(1).max(100).optional(),
     lastName: z.string().trim().min(1).max(100).optional(),
-    phone: z
-      .string()
-      .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-      .optional()
-      .nullable(),
+    phone: portuguesePhoneSchema.optional().nullable(),
     currentPassword: z.string().min(1).optional(),
     newPassword: passwordSchema.optional(),
   })

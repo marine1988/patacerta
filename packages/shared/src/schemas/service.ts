@@ -4,6 +4,7 @@
 
 import { z } from 'zod'
 import { PriceUnit, ServiceStatus } from '../enums.js'
+import { optionalUrlSchema, portuguesePhoneSchema } from './common.js'
 
 /**
  * Preço em cêntimos. Obrigatório no MVP.
@@ -25,12 +26,8 @@ export const createServiceSchema = z.object({
   municipalityId: z.number().int().positive(),
   addressLine: z.string().trim().max(255).optional(),
   serviceRadiusKm: z.number().int().min(1).max(100).optional(),
-  website: z.string().url().max(255).optional().or(z.literal('')),
-  phone: z
-    .string()
-    .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-    .optional()
-    .or(z.literal('')),
+  website: optionalUrlSchema.optional(),
+  phone: portuguesePhoneSchema.optional(),
   coverageMunicipalityIds: z.array(z.number().int().positive()).max(10).optional(),
 })
 

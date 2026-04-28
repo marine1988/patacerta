@@ -4,6 +4,7 @@
 
 import { z } from 'zod'
 import { DocType } from '../enums.js'
+import { optionalUrlSchema, portuguesePhoneSchema } from './common.js'
 
 /** Portuguese NIF validation (9 digits, check digit algorithm) */
 export function isValidNif(nif: string): boolean {
@@ -100,11 +101,8 @@ export const breederProfileSchema = z
     breedIds: z.array(z.number().int().positive()).max(50).optional(),
     // Texto livre para raças que não constam do catálogo. Visível no perfil.
     otherBreedsNote: z.string().trim().max(500).optional(),
-    website: z.string().url().max(255).optional(),
-    phone: z
-      .string()
-      .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-      .optional(),
+    website: optionalUrlSchema.optional(),
+    phone: portuguesePhoneSchema.optional(),
 
     // Apresentacao publica
     youtubeVideoId: youtubeVideoIdSchema.optional(),
@@ -154,11 +152,8 @@ export const updateBreederProfileSchema = z.object({
   speciesIds: z.array(z.number().int().positive()).optional(),
   breedIds: z.array(z.number().int().positive()).max(50).optional(),
   otherBreedsNote: z.string().trim().max(500).optional(),
-  website: z.string().url().max(255).optional(),
-  phone: z
-    .string()
-    .regex(/^\+351\s?\d{3}\s?\d{3}\s?\d{3}$/, 'Formato: +351 XXX XXX XXX')
-    .optional(),
+  website: optionalUrlSchema.optional(),
+  phone: portuguesePhoneSchema.optional(),
   youtubeVideoId: youtubeVideoIdSchema.optional(),
   cpcMember: z.boolean().optional(),
   fciAffiliated: z.boolean().optional(),
