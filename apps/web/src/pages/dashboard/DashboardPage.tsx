@@ -1424,22 +1424,6 @@ function BreederTab() {
               integrados, com Guardar/Cancelar no fim de tudo. */}
           {editing && <div className="mt-6 border-t border-line pt-6">{breederForm}</div>}
 
-          {/* Modo leitura: Galeria e Documentos em accordions colapsados.
-              Em modo editar nao aparecem aqui (ja vivem dentro do form). */}
-          {!editing && (
-            <div className="mt-6 space-y-3">
-              <AccordionSection
-                title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
-                eyebrow="Apresentação visual"
-              >
-                {galeriaSection}
-              </AccordionSection>
-              <AccordionSection title="Documentos de verificação" eyebrow="Credenciais">
-                {documentosSection}
-              </AccordionSection>
-            </div>
-          )}
-
           {/* Submit para verificacao — so visivel quando NAO esta a editar
               para nao competir visualmente com Guardar/Cancelar. */}
           {!editing && submitVerificationButton && (
