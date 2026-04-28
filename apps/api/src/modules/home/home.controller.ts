@@ -144,8 +144,5 @@ function featuredBreederSelect() {
     featuredUntil: true,
     district: { select: { id: true, namePt: true } },
     municipality: { select: { id: true, namePt: true } },
-    species: {
-      select: { species: { select: { id: true, namePt: true } } },
-    },
   }
 }

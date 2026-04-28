@@ -3,7 +3,7 @@
 > Estado: **proposta para revisão** (v2, alinhada com `apps/api/prisma/schema.sql`).
 >
 > Autor: sessão de design PataCerta
-> Contexto: expandir a plataforma de "directório de criadores" para "portal unificado para patudos" (cães e gatos), começando por dog-walking e dog-sitting.
+> Contexto: expandir a plataforma de "directório de criadores" para "portal unificado para patudos" (cães), começando por dog-walking e dog-sitting.
 
 ## 0. Nota crítica de arquitectura
 

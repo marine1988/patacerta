@@ -32,7 +32,6 @@ const API_ROUTES = [
   ['GET', '/api/verification/:docId/view'],
   ['GET', '/api/search/stats'],
   ['GET', '/api/search/breeders'],
-  ['GET', '/api/search/species'],
   ['GET', '/api/search/districts'],
   ['GET', '/api/search/districts/:districtId/municipalities'],
   ['GET', '/api/reviews/mine'],

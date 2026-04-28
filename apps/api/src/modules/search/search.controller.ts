@@ -10,19 +10,18 @@ interface CacheEntry<T> {
 }
 
 const TTL = 3600_000 // 1 hour
-let speciesCache: CacheEntry<unknown[]> | null = null
 let districtsCache: CacheEntry<unknown[]> | null = null
 let statsCache: CacheEntry<Record<string, number>> | null = null
 
 export const searchBreeders = asyncHandler(async (req, res) => {
-  const { speciesId, districtId, municipalityId, query, page, limit } =
+  // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
+  const { districtId, municipalityId, query, page, limit } =
     req.query as unknown as SearchBreedersInput
 
   const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
-  if (speciesId) where.species = { some: { speciesId } }
   if (query) {
     where.OR = [
       { businessName: { contains: query, mode: 'insensitive' } },
@@ -36,7 +35,6 @@ export const searchBreeders = asyncHandler(async (req, res) => {
       include: {
         district: { select: { id: true, namePt: true } },
         municipality: { select: { id: true, namePt: true } },
-        species: { include: { species: { select: { id: true, namePt: true } } } },
         reviews: {
           where: { status: 'PUBLISHED' },
           select: { rating: true },
@@ -64,7 +62,6 @@ export const searchBreeders = asyncHandler(async (req, res) => {
       status: b.status,
       district: b.district,
       municipality: b.municipality,
-      species: b.species,
       avgRating,
       reviewCount: ratings.length,
       createdAt: b.createdAt,
@@ -76,14 +73,14 @@ export const searchBreeders = asyncHandler(async (req, res) => {
 
 // Map view: flat list with coordinates (herdadas do distrito). No pagination.
 export const mapBreeders = asyncHandler(async (req, res) => {
-  const { speciesId, districtId, municipalityId, query, minLat, maxLat, minLng, maxLng, limit } =
+  // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
+  const { districtId, municipalityId, query, minLat, maxLat, minLng, maxLng, limit } =
     req.query as unknown as MapBreedersInput
 
   const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
-  if (speciesId) where.species = { some: { speciesId } }
   if (query) {
     where.OR = [
       { businessName: { contains: query, mode: 'insensitive' } },
@@ -113,7 +110,6 @@ export const mapBreeders = asyncHandler(async (req, res) => {
     include: {
       district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
       municipality: { select: { id: true, namePt: true } },
-      species: { include: { species: { select: { id: true, namePt: true } } } },
       reviews: {
         where: { status: 'PUBLISHED' },
         select: { rating: true },
@@ -138,7 +134,6 @@ export const mapBreeders = asyncHandler(async (req, res) => {
         status: b.status,
         district: { id: b.district.id, namePt: b.district.namePt },
         municipality: b.municipality,
-        species: b.species,
         avgRating,
         reviewCount: ratings.length,
         latitude: b.district.latitude as number,
@@ -147,20 +142,6 @@ export const mapBreeders = asyncHandler(async (req, res) => {
     })
 
   res.json({ data, total: data.length })
-})
-
-// P4: Cached — species rarely change
-export const listSpecies = asyncHandler(async (_req, res) => {
-  const now = Date.now()
-  if (!speciesCache || speciesCache.expiresAt < now) {
-    const data = await prisma.species.findMany({
-      orderBy: { namePt: 'asc' },
-      select: { id: true, nameSlug: true, namePt: true },
-    })
-    speciesCache = { data, expiresAt: now + TTL }
-  }
-  res.set('Cache-Control', 'public, max-age=3600')
-  res.json(speciesCache.data)
 })
 
 // P4: Cached — districts rarely change
