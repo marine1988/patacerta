@@ -29,6 +29,13 @@ else
   echo "[PataCerta] Skipping seed (set RUN_SEED_ON_BOOT=true to enable)"
 fi
 
+if [ "$RUN_SEED_DEMO_ON_BOOT" = "true" ] || [ "$RUN_SEED_DEMO_ON_BOOT" = "1" ]; then
+  echo "[PataCerta] Running demo seed (RUN_SEED_DEMO_ON_BOOT=$RUN_SEED_DEMO_ON_BOOT)..."
+  npx tsx prisma/seed-demo.ts || echo "[PataCerta] Demo seed finished with non-zero exit"
+else
+  echo "[PataCerta] Skipping demo seed (set RUN_SEED_DEMO_ON_BOOT=true to enable)"
+fi
+
 echo "[PataCerta] Starting API server..."
 cd /app
 exec node apps/api/dist/index.js
