@@ -14,6 +14,7 @@ interface BreederResult {
   status: string
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }
+  photos: Array<{ id: number; url: string; sortOrder: number }>
   avgRating: number | null
   reviewCount: number
   createdAt: string

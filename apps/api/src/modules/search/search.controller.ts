@@ -35,6 +35,11 @@ export const searchBreeders = asyncHandler(async (req, res) => {
       include: {
         district: { select: { id: true, namePt: true } },
         municipality: { select: { id: true, namePt: true } },
+        photos: {
+          select: { id: true, url: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+        },
         reviews: {
           where: { status: 'PUBLISHED' },
           select: { rating: true },
@@ -62,6 +67,7 @@ export const searchBreeders = asyncHandler(async (req, res) => {
       status: b.status,
       district: b.district,
       municipality: b.municipality,
+      photos: b.photos,
       avgRating,
       reviewCount: ratings.length,
       createdAt: b.createdAt,

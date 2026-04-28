@@ -144,5 +144,10 @@ function featuredBreederSelect() {
     featuredUntil: true,
     district: { select: { id: true, namePt: true } },
     municipality: { select: { id: true, namePt: true } },
+    photos: {
+      select: { id: true, url: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' as const },
+      take: 1,
+    },
   }
 }

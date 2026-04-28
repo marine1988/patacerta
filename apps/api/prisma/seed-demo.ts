@@ -23,6 +23,8 @@ type BreederSeed = {
   districtCode: string
   municipalityCode: string
   status: BreederStatus
+  /** URLs picsum.photos (seed estavel para reproducibilidade). 1a = capa. */
+  photoSeeds: number[]
 }
 
 // MVP: apenas criadores de cães. Demo breeders de gatos/coelhos/aves/pequenos
@@ -42,6 +44,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '11',
     municipalityCode: '1101',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2001, 2002, 2003],
   },
   {
     email: 'canil.douro@example.pt',
@@ -57,6 +60,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '13',
     municipalityCode: '1301',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2010, 2011],
   },
   {
     email: 'canil.serra@example.pt',
@@ -71,6 +75,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '18',
     municipalityCode: '1801',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2020, 2021],
   },
   {
     email: 'canil.algarve@example.pt',
@@ -86,6 +91,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '08',
     municipalityCode: '0801',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2030, 2031, 2032],
   },
   {
     email: 'criador.minho@example.pt',
@@ -100,6 +106,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '16',
     municipalityCode: '1601',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2040, 2041],
   },
   {
     email: 'canil.aveiro@example.pt',
@@ -114,6 +121,7 @@ const BREEDERS: BreederSeed[] = [
     districtCode: '03',
     municipalityCode: '0301',
     status: BreederStatus.VERIFIED,
+    photoSeeds: [2050, 2051],
   },
 ]
 
@@ -801,6 +809,19 @@ async function main() {
     await prisma.breederSpecies.create({
       data: { breederId: breeder.id, speciesId: dogSpecies.id },
     })
+
+    // Photos: URLs publicos picsum.photos com seed estavel
+    await prisma.breederPhoto.deleteMany({ where: { breederId: breeder.id } })
+    for (let i = 0; i < b.photoSeeds.length; i++) {
+      const seed = b.photoSeeds[i]
+      await prisma.breederPhoto.create({
+        data: {
+          breederId: breeder.id,
+          url: `https://picsum.photos/seed/patacerta-breeder-${seed}/800/600`,
+          sortOrder: i,
+        },
+      })
+    }
     console.log(`  ✓ ${b.businessName} (${b.status})`)
   }
 
