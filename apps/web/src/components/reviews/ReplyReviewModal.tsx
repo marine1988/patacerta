@@ -25,8 +25,8 @@ export function ReplyReviewModal({
     e.preventDefault()
     setLocalError(null)
     const trimmed = reply.trim()
-    if (trimmed.length < 1) {
-      setLocalError('A resposta não pode estar vazia.')
+    if (trimmed.length < 20) {
+      setLocalError('Resposta demasiado curta — escreva pelo menos 20 caracteres.')
       return
     }
     if (trimmed.length > 2000) {
@@ -50,11 +50,21 @@ export function ReplyReviewModal({
             className="input min-h-[120px]"
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Responda de forma cordial e profissional..."
+            placeholder="Responda de forma cordial e profissional (mínimo 20 caracteres)…"
             maxLength={2000}
             required
           />
-          <p className="mt-1 text-xs text-gray-400">{reply.length}/2000 caracteres</p>
+          <p
+            className={`mt-1 text-xs ${
+              reply.trim().length === 0
+                ? 'text-gray-400'
+                : reply.trim().length < 20
+                  ? 'text-amber-600'
+                  : 'text-gray-400'
+            }`}
+          >
+            {reply.trim().length < 20 ? `${reply.length}/2000 (mín. 20)` : `${reply.length}/2000`}
+          </p>
         </div>
 
         {(localError || errorMessage) && (

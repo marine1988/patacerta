@@ -89,7 +89,15 @@ export const breederProfileSchema = z
     businessName: z.string().trim().min(2).max(200),
     nif: nifSchema,
     dgavNumber: dgavNumberSchema,
-    description: z.string().trim().max(2000).optional(),
+    description: z
+      .string()
+      .trim()
+      .max(2000)
+      .optional()
+      .refine((v) => v === undefined || v.length === 0 || v.length >= 50, {
+        message:
+          'Apresentação demasiado curta — escreva pelo menos 50 caracteres ou deixe em branco',
+      }),
     districtId: z.number().int().positive(),
     municipalityId: z.number().int().positive(),
     // MVP: campo deprecated — backend assume sempre 'cao'.
@@ -146,7 +154,14 @@ export const updateBreederProfileSchema = z.object({
   businessName: z.string().trim().min(2).max(200).optional(),
   nif: nifSchema.optional(),
   dgavNumber: dgavNumberSchema.optional(),
-  description: z.string().trim().max(2000).optional(),
+  description: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .refine((v) => v === undefined || v.length === 0 || v.length >= 50, {
+      message: 'Apresentação demasiado curta — escreva pelo menos 50 caracteres ou deixe em branco',
+    }),
   districtId: z.number().int().positive().optional(),
   municipalityId: z.number().int().positive().optional(),
   speciesIds: z.array(z.number().int().positive()).optional(),

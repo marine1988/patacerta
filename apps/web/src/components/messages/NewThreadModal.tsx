@@ -15,6 +15,10 @@ interface NewThreadModalProps {
   bodyPlaceholder?: string
   /** Override do titulo do modal (default deriva de `breederName`). */
   title?: string
+  /** Mínimo de caracteres do assunto (default 3). */
+  minSubject?: number
+  /** Mínimo de caracteres do corpo (default 20). */
+  minBody?: number
 }
 
 export function NewThreadModal({
@@ -28,6 +32,8 @@ export function NewThreadModal({
   subjectPlaceholder,
   bodyPlaceholder,
   title,
+  minSubject = 3,
+  minBody = 20,
 }: NewThreadModalProps) {
   const [subject, setSubject] = useState(defaultSubject ?? '')
   const [body, setBody] = useState('')
@@ -44,19 +50,29 @@ export function NewThreadModal({
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setLocalError(null)
-    if (subject.trim().length < 1) {
-      setLocalError('Indique um assunto.')
+    const subjectTrimmed = subject.trim()
+    const bodyTrimmed = body.trim()
+    if (subjectTrimmed.length < minSubject) {
+      setLocalError(
+        minSubject <= 1
+          ? 'Indique um assunto.'
+          : `Assunto demasiado curto (mín. ${minSubject} caracteres).`,
+      )
       return
     }
-    if (body.trim().length < 1) {
-      setLocalError('Escreva uma mensagem.')
+    if (bodyTrimmed.length < minBody) {
+      setLocalError(
+        minBody <= 1
+          ? 'Escreva uma mensagem.'
+          : `Mensagem demasiado curta (mín. ${minBody} caracteres).`,
+      )
       return
     }
-    if (body.length > 5000) {
+    if (bodyTrimmed.length > 5000) {
       setLocalError('Mensagem demasiado longa (máx. 5000 caracteres).')
       return
     }
-    onSubmit({ subject: subject.trim(), body: body.trim() })
+    onSubmit({ subject: subjectTrimmed, body: bodyTrimmed })
   }
 
   return (
@@ -86,7 +102,13 @@ export function NewThreadModal({
             maxLength={5000}
             required
           />
-          <p className="mt-1 text-xs text-gray-400">{body.length}/5000 caracteres</p>
+          <p className="mt-1 text-xs text-gray-400">
+            {body.length === 0
+              ? `Mín. ${minBody} caracteres`
+              : body.trim().length < minBody
+                ? `Faltam ${minBody - body.trim().length} caracteres`
+                : `${body.length}/5000 caracteres`}
+          </p>
         </div>
 
         {(localError || errorMessage) && (

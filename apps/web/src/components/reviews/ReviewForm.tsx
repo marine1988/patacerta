@@ -43,11 +43,18 @@ export function ReviewForm({
       setLocalError('O título deve ter pelo menos 3 caracteres.')
       return
     }
+    const trimmedBody = body.trim()
+    if (trimmedBody.length > 0 && trimmedBody.length < 30) {
+      setLocalError(
+        'Comentário demasiado curto — escreva pelo menos 30 caracteres ou deixe em branco.',
+      )
+      return
+    }
     if (body.length > 2000) {
       setLocalError('O texto da avaliação é demasiado longo (máx. 2000 caracteres).')
       return
     }
-    onSubmit({ rating, title: title.trim(), body: body.trim() })
+    onSubmit({ rating, title: title.trim(), body: trimmedBody })
   }
 
   return (
@@ -86,10 +93,24 @@ export function ReviewForm({
             className="input min-h-[120px]"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Descreva a sua experiência com este criador..."
+            placeholder="Descreva a sua experiência (mínimo 30 caracteres se preencher, ou deixe em branco)…"
             maxLength={2000}
           />
-          <p className="mt-1 text-xs text-gray-400">{body.length}/2000 caracteres</p>
+          <p
+            className={`mt-1 text-xs ${
+              body.trim().length === 0
+                ? 'text-gray-400'
+                : body.trim().length < 30
+                  ? 'text-amber-600'
+                  : 'text-gray-400'
+            }`}
+          >
+            {body.trim().length === 0
+              ? `${body.length}/2000 (opcional)`
+              : body.trim().length < 30
+                ? `${body.length}/2000 (mín. 30 ou deixe em branco)`
+                : `${body.length}/2000 caracteres`}
+          </p>
         </div>
 
         {(localError || errorMessage) && (

@@ -37,11 +37,12 @@ export function FlagReviewModal({
       setLocalError('Selecione um motivo.')
       return
     }
-    const combined = `[${category}] ${details.trim()}`.trim()
-    if (combined.length < 10) {
-      setLocalError('Descreva o motivo com mais detalhe (mínimo 10 caracteres).')
+    const trimmedDetails = details.trim()
+    if (trimmedDetails.length < 20) {
+      setLocalError('Descreva o motivo com mais detalhe (mínimo 20 caracteres).')
       return
     }
+    const combined = `[${category}] ${trimmedDetails}`
     onSubmit(combined)
   }
 

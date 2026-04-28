@@ -30,7 +30,11 @@ import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
-import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
+import {
+  MESSAGE_EDIT_WINDOW_MINUTES,
+  breederProfileSchema,
+  updateBreederProfileSchema,
+} from '@patacerta/shared'
 
 // ──────────────────────────── Types ────────────────────────────
 
@@ -648,34 +652,33 @@ function BreederTab() {
       })
       return
     }
-    // No modo "criar" os campos abaixo sao obrigatorios. No modo "editar"
-    // o backend aceita PATCH parcial, por isso passamos null para sinalizar
-    // "sem alteracao" / "limpar" (e a convencao actual do controller).
+    // No modo "criar" os campos abaixo são obrigatórios.
     if (!breeder) {
       const requiredMissing: string[] = []
       if (!form.businessName.trim()) requiredMissing.push('Nome comercial')
       if (!form.nif.trim()) requiredMissing.push('NIF')
-      if (!form.dgavNumber.trim()) requiredMissing.push('Numero DGAV')
+      if (!form.dgavNumber.trim()) requiredMissing.push('Número DGAV')
       if (!form.districtId) requiredMissing.push('Distrito')
       if (!form.municipalityId) requiredMissing.push('Concelho')
       if (requiredMissing.length > 0) {
         setMsg({
           type: 'error',
-          text: `Preencha os campos obrigatorios: ${requiredMissing.join(', ')}.`,
+          text: `Preencha os campos obrigatórios: ${requiredMissing.join(', ')}.`,
         })
         return
       }
     }
-    saveMutation.mutate({
-      businessName: form.businessName,
-      nif: form.nif,
-      dgavNumber: form.dgavNumber,
-      website: form.website,
-      phone: form.phone,
-      description: form.description,
-      districtId: form.districtId ? Number(form.districtId) : null,
-      municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
-      youtubeVideoId: form.youtubeVideoId,
+
+    const payload = {
+      businessName: form.businessName.trim(),
+      nif: form.nif.trim(),
+      dgavNumber: form.dgavNumber.trim(),
+      website: form.website.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      description: form.description.trim() || undefined,
+      districtId: form.districtId ? Number(form.districtId) : undefined,
+      municipalityId: form.municipalityId ? Number(form.municipalityId) : undefined,
+      youtubeVideoId: form.youtubeVideoId.trim() || undefined,
       cpcMember: form.cpcMember,
       fciAffiliated: form.fciAffiliated,
       vetCheckup: form.vetCheckup,
@@ -688,8 +691,32 @@ function BreederTab() {
       initialTraining: form.initialTraining,
       pickupInPerson: form.pickupInPerson,
       deliveryByCar: form.deliveryByCar,
-      deliveryByPlane: form.deliveryByPlane,
+      deliveryByPlane: false,
+      pickupNotes: form.pickupNotes.trim() || undefined,
+      breedIds: form.breedIds,
+      otherBreedsNote: otherBreedsNote ?? undefined,
+    }
+
+    // Validação completa via schema partilhado (consistente com backend).
+    // Em modo "criar" usamos o estrito; em "editar" o parcial.
+    const schema = breeder ? updateBreederProfileSchema : breederProfileSchema
+    const parsed = schema.safeParse(payload)
+    if (!parsed.success) {
+      setMsg({ type: 'error', text: parsed.error.errors[0].message })
+      return
+    }
+
+    // O endpoint actual aceita null para "limpar" certos campos. Mantemos a
+    // forma do payload existente (com null em vez de undefined) para compat.
+    saveMutation.mutate({
+      ...parsed.data,
+      description: form.description,
+      website: form.website,
+      phone: form.phone,
+      youtubeVideoId: form.youtubeVideoId,
       pickupNotes: form.pickupNotes,
+      districtId: form.districtId ? Number(form.districtId) : null,
+      municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
       breedIds: form.breedIds,
       otherBreedsNote,
     })
@@ -896,9 +923,28 @@ function BreederTab() {
                 className="input min-h-[100px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Conte-nos brevemente sobre o seu canil…"
+                placeholder="Conte-nos brevemente sobre o seu canil — pelo menos 50 caracteres se preencher…"
                 maxLength={2000}
               />
+              <p
+                className={`mt-1 text-right text-xs ${
+                  form.description.length === 0
+                    ? 'text-gray-400'
+                    : form.description.length < 50
+                      ? 'text-amber-600'
+                      : form.description.length > 1800
+                        ? 'text-orange-600'
+                        : 'text-gray-400'
+                }`}
+              >
+                {form.description.length === 0 ? (
+                  <>0/2000 (opcional)</>
+                ) : form.description.length < 50 ? (
+                  <>{form.description.length}/2000 (mín. 50 ou deixe em branco)</>
+                ) : (
+                  <>{form.description.length}/2000</>
+                )}
+              </p>
             </div>
           </div>
         </AccordionSection>
@@ -1053,16 +1099,7 @@ function BreederTab() {
                 onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
                 className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
               />
-              Entrega ao domicílio (carro)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={form.deliveryByPlane}
-                onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
-                className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-              />
-              Envio por avião
+              Entrega ao domicílio
             </label>
           </div>
           <div className="mt-3">

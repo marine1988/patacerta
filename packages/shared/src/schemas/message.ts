@@ -8,8 +8,8 @@ export const createThreadSchema = z
   .object({
     breederId: z.number().int().positive().optional(),
     serviceId: z.number().int().positive().optional(),
-    subject: z.string().trim().min(1, 'Assunto obrigatório').max(200),
-    body: z.string().trim().min(1, 'Mensagem não pode estar vazia').max(5000),
+    subject: z.string().trim().min(3, 'Assunto demasiado curto').max(200),
+    body: z.string().trim().min(20, 'Escreva uma mensagem com pelo menos 20 caracteres').max(5000),
   })
   .refine((d) => !!d.breederId !== !!d.serviceId, {
     message: 'Indique exatamente um destinatário (breederId ou serviceId)',
@@ -25,7 +25,7 @@ export const editMessageSchema = z.object({
 })
 
 export const reportMessageSchema = z.object({
-  reason: z.string().trim().min(10, 'Descreva o motivo com pelo menos 10 caracteres').max(500),
+  reason: z.string().trim().min(20, 'Descreva o motivo com pelo menos 20 caracteres').max(500),
 })
 
 export const resolveReportSchema = z.object({

@@ -8,17 +8,31 @@ export const createServiceReviewSchema = z.object({
   serviceId: z.number().int().positive(),
   rating: z.number().int().min(1, 'Avaliação mínima: 1').max(5, 'Avaliação máxima: 5'),
   title: z.string().trim().min(3, 'Título deve ter pelo menos 3 caracteres').max(200),
-  body: z.string().trim().max(2000).optional(),
+  body: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .refine((v) => v === undefined || v.length === 0 || v.length >= 30, {
+      message: 'Comentário demasiado curto — escreva pelo menos 30 caracteres ou deixe em branco',
+    }),
 })
 
 export const updateServiceReviewSchema = z.object({
   rating: z.number().int().min(1).max(5).optional(),
   title: z.string().trim().min(3).max(200).optional(),
-  body: z.string().trim().max(2000).optional(),
+  body: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .refine((v) => v === undefined || v.length === 0 || v.length >= 30, {
+      message: 'Comentário demasiado curto — escreva pelo menos 30 caracteres ou deixe em branco',
+    }),
 })
 
 export const replyToServiceReviewSchema = z.object({
-  reply: z.string().trim().min(1, 'Resposta não pode estar vazia').max(2000),
+  reply: z.string().trim().min(20, 'Resposta demasiado curta — pelo menos 20 caracteres').max(2000),
 })
 
 export const listServiceReviewsSchema = z.object({
@@ -39,7 +53,7 @@ export const flagServiceReviewSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(10, 'Por favor descreva o motivo (mínimo 10 caracteres)')
+    .min(20, 'Por favor descreva o motivo (mínimo 20 caracteres)')
     .max(500, 'Motivo demasiado longo (máximo 500 caracteres)'),
 })
 

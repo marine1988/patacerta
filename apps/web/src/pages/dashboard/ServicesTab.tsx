@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, useMemo, type FormEvent, type ChangeEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createServiceSchema } from '@patacerta/shared'
 import { extractApiError } from '../../lib/errors'
 import { formatPrice, parsePriceToCents, type ServicePriceUnit } from '../../lib/format'
 import {
@@ -67,7 +68,9 @@ interface MunicipalityOpt {
 
 const SERVICE_MAX_PHOTOS = 8
 const TITLE_MAX = 200
+const TITLE_MIN = 5
 const DESCRIPTION_MAX = 5000
+const DESCRIPTION_MIN = 50
 
 const priceUnitOptions: Array<{ value: ServicePriceUnit; label: string }> = [
   { value: 'FIXED', label: 'Valor fixo' },
@@ -365,29 +368,16 @@ export function ServicesTab() {
     e.preventDefault()
     setMsg(null)
 
+    // Pré-checks que precisam de feedback orientado por secção (campos vazios
+    // ou parsing de preço). O safeParse cobre depois min/max/regex/etc.
     if (!form.categoryId) {
       setMsg({ type: 'error', text: 'Selecione uma categoria.' })
-      setOpenSections((p) => ({ ...p, basics: true }))
-      return
-    }
-    if (form.title.trim().length < 5) {
-      setMsg({ type: 'error', text: 'Título tem de ter pelo menos 5 caracteres.' })
-      setOpenSections((p) => ({ ...p, basics: true }))
-      return
-    }
-    if (form.description.trim().length < 20) {
-      setMsg({ type: 'error', text: 'Descrição tem de ter pelo menos 20 caracteres.' })
       setOpenSections((p) => ({ ...p, basics: true }))
       return
     }
     const priceCents = parsePriceToCents(form.price)
     if (priceCents === null) {
       setMsg({ type: 'error', text: 'Indique um preço válido (ex.: 15,00).' })
-      setOpenSections((p) => ({ ...p, basics: true }))
-      return
-    }
-    if (priceCents > 999999) {
-      setMsg({ type: 'error', text: 'Preço máximo é 9999,99€.' })
       setOpenSections((p) => ({ ...p, basics: true }))
       return
     }
@@ -411,10 +401,35 @@ export function ServicesTab() {
       phone: form.phone.trim() || undefined,
     }
 
+    // Validação completa via schema partilhado (consistente com backend).
+    const parsed = createServiceSchema.safeParse(payload)
+    if (!parsed.success) {
+      const first = parsed.error.errors[0]
+      const path = String(first.path[0] ?? '')
+      // Abre a secção certa para o utilizador ver o campo com erro.
+      const sectionByField: Record<string, 'basics' | 'location' | 'contact'> = {
+        categoryId: 'basics',
+        title: 'basics',
+        description: 'basics',
+        priceCents: 'basics',
+        priceUnit: 'basics',
+        districtId: 'location',
+        municipalityId: 'location',
+        addressLine: 'location',
+        serviceRadiusKm: 'location',
+        phone: 'contact',
+        website: 'contact',
+      }
+      const section = sectionByField[path]
+      if (section) setOpenSections((p) => ({ ...p, [section]: true }))
+      setMsg({ type: 'error', text: first.message })
+      return
+    }
+
     if (editingId === null) {
-      createMutation.mutate(payload)
+      createMutation.mutate(parsed.data as Record<string, unknown>)
     } else {
-      updateMutation.mutate({ id: editingId, payload })
+      updateMutation.mutate({ id: editingId, payload: parsed.data as Record<string, unknown> })
     }
   }
 
@@ -823,7 +838,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                     placeholder="Ex.: Passeios no Parque da Cidade"
                     maxLength={TITLE_MAX}
                   />
-                  <CharCounter value={form.title} max={TITLE_MAX} min={5} />
+                  <CharCounter value={form.title} max={TITLE_MAX} min={TITLE_MIN} />
                 </div>
 
                 <div>
@@ -832,10 +847,14 @@ function ServiceEditView(props: ServiceEditViewProps) {
                     className="input min-h-[120px]"
                     value={form.description}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="Descreva o seu serviço com detalhe (mínimo 20 caracteres)."
+                    placeholder={`Descreva o seu serviço com detalhe (mínimo ${DESCRIPTION_MIN} caracteres).`}
                     maxLength={DESCRIPTION_MAX}
                   />
-                  <CharCounter value={form.description} max={DESCRIPTION_MAX} min={20} />
+                  <CharCounter
+                    value={form.description}
+                    max={DESCRIPTION_MAX}
+                    min={DESCRIPTION_MIN}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1589,12 +1589,12 @@ function ServicosDenunciasView() {
             {openReport.status === 'PENDING' ? (
               <div className="space-y-3 border-t border-gray-200 pt-4">
                 <div>
-                  <label className="label">Nota de resolução (mín. 5)</label>
+                  <label className="label">Nota de resolução (mín. 15)</label>
                   <textarea
                     className="input min-h-[60px]"
                     value={resolution}
                     onChange={(e) => setResolution(e.target.value)}
-                    minLength={5}
+                    minLength={15}
                     maxLength={500}
                   />
                   <p className="mt-1 text-xs text-gray-400">{resolution.length}/500</p>
@@ -1603,7 +1603,7 @@ function ServicosDenunciasView() {
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="secondary"
-                    disabled={resolution.trim().length < 5}
+                    disabled={resolution.trim().length < 15}
                     onClick={() =>
                       resolveMutation.mutate({
                         id: openReport.id,
@@ -1617,7 +1617,7 @@ function ServicosDenunciasView() {
                   </Button>
                   <Button
                     variant="primary"
-                    disabled={resolution.trim().length < 5}
+                    disabled={resolution.trim().length < 15}
                     onClick={() =>
                       resolveMutation.mutate({
                         id: openReport.id,
@@ -1661,12 +1661,12 @@ function ServicosDenunciasView() {
             O anúncio deixará de estar visível ao público. O motivo é registado no histórico.
           </p>
           <div>
-            <label className="label">Motivo (mín. 5, máx. 500)</label>
+            <label className="label">Motivo (mín. 15, máx. 500)</label>
             <textarea
               className="input min-h-[80px]"
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
-              minLength={5}
+              minLength={15}
               maxLength={500}
             />
             <p className="mt-1 text-xs text-gray-400">{suspendReason.length}/500</p>
@@ -1678,7 +1678,7 @@ function ServicosDenunciasView() {
             </Button>
             <Button
               variant="danger"
-              disabled={suspendReason.trim().length < 5}
+              disabled={suspendReason.trim().length < 15}
               loading={suspendMutation.isPending}
               onClick={() =>
                 suspendingServiceId !== null &&
@@ -1920,12 +1920,12 @@ function ServicosTodosView() {
       >
         <div className="space-y-3">
           <div>
-            <label className="label">Motivo (mín. 5, máx. 500)</label>
+            <label className="label">Motivo (mín. 15, máx. 500)</label>
             <textarea
               className="input min-h-[80px]"
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
-              minLength={5}
+              minLength={15}
               maxLength={500}
             />
             <p className="mt-1 text-xs text-gray-400">{suspendReason.length}/500</p>
@@ -1937,7 +1937,7 @@ function ServicosTodosView() {
             </Button>
             <Button
               variant="danger"
-              disabled={suspendReason.trim().length < 5}
+              disabled={suspendReason.trim().length < 15}
               loading={suspendMutation.isPending}
               onClick={() =>
                 suspendingServiceId !== null &&

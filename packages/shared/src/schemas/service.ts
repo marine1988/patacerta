@@ -19,7 +19,11 @@ export const priceCentsSchema = z
 export const createServiceSchema = z.object({
   categoryId: z.number().int().positive(),
   title: z.string().trim().min(5, 'Título demasiado curto').max(200),
-  description: z.string().trim().min(20, 'Descrição demasiado curta').max(5000),
+  description: z
+    .string()
+    .trim()
+    .min(50, 'Descrição demasiado curta — escreva pelo menos 50 caracteres')
+    .max(5000),
   priceCents: priceCentsSchema,
   priceUnit: z.nativeEnum(PriceUnit),
   districtId: z.number().int().positive(),
@@ -93,23 +97,27 @@ export const reorderServicePhotosSchema = z.object({
 })
 
 export const reportServiceSchema = z.object({
-  reason: z.string().trim().min(10, 'Indique um motivo com pelo menos 10 caracteres').max(500),
+  reason: z.string().trim().min(20, 'Indique um motivo com pelo menos 20 caracteres').max(500),
 })
 
 export const contactServiceSchema = z.object({
-  subject: z.string().trim().min(3).max(200),
-  body: z.string().trim().min(5).max(5000),
+  subject: z.string().trim().min(3, 'Assunto demasiado curto').max(200),
+  body: z.string().trim().min(20, 'Escreva uma mensagem com pelo menos 20 caracteres').max(5000),
 })
 
 /**
  * Admin: resolve/dismiss service report.
  */
 export const resolveServiceReportSchema = z.object({
-  resolution: z.string().trim().min(5).max(500),
+  resolution: z
+    .string()
+    .trim()
+    .min(15, 'Descreva a resolução com pelo menos 15 caracteres')
+    .max(500),
 })
 
 export const suspendServiceSchema = z.object({
-  reason: z.string().trim().min(5).max(500),
+  reason: z.string().trim().min(15, 'Indique um motivo com pelo menos 15 caracteres').max(500),
 })
 
 export type CreateServiceInput = z.infer<typeof createServiceSchema>

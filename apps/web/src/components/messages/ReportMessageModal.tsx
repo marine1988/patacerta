@@ -39,8 +39,8 @@ export function ReportMessageModal({
     e.preventDefault()
     setLocalError(null)
     const trimmed = reason.trim()
-    if (trimmed.length < 10) {
-      setLocalError('Descreva o motivo com pelo menos 10 caracteres.')
+    if (trimmed.length < 20) {
+      setLocalError('Descreva o motivo com pelo menos 20 caracteres.')
       return
     }
     if (trimmed.length > 500) {
