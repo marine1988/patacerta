@@ -80,14 +80,32 @@ ensureBucket()
 app.listen(PORT, () => {
   console.log(`[PataCerta API] Running on http://localhost:${PORT}`)
   console.log(`[PataCerta API] Environment: ${process.env.NODE_ENV || 'development'}`)
+
+  const isProd = process.env.NODE_ENV === 'production'
   const skipFlag = process.env.AUTH_SKIP_EMAIL_VERIFICATION
-  if (skipFlag === '1' || skipFlag === 'true' || skipFlag === 'TRUE') {
+  const rlFlag = process.env.DISABLE_RATE_LIMITS
+  const skipOn = skipFlag === '1' || skipFlag === 'true' || skipFlag === 'TRUE'
+  const rlOff = rlFlag === '1' || rlFlag === 'true' || rlFlag === 'TRUE'
+
+  if (isProd && (skipOn || rlOff)) {
+    // Refusing to run with these flags in production protects against
+    // accidental staging-config leak. Operator must remove the flags
+    // explicitly to start in production.
+    const offending = [skipOn && 'AUTH_SKIP_EMAIL_VERIFICATION', rlOff && 'DISABLE_RATE_LIMITS']
+      .filter(Boolean)
+      .join(', ')
+    console.error(
+      `[PataCerta API] FATAL: ${offending} cannot be enabled when NODE_ENV=production. Exiting.`,
+    )
+    process.exit(1)
+  }
+
+  if (skipOn) {
     console.warn(
       '[PataCerta API] ⚠  AUTH_SKIP_EMAIL_VERIFICATION=true — email verification bypassed (do NOT use in production)',
     )
   }
-  const rlFlag = process.env.DISABLE_RATE_LIMITS
-  if (rlFlag === '1' || rlFlag === 'true' || rlFlag === 'TRUE') {
+  if (rlOff) {
     console.warn(
       '[PataCerta API] ⚠  DISABLE_RATE_LIMITS=true — all rate limiters are no-ops (do NOT use in production)',
     )

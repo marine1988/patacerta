@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
+import { logAudit } from '../../lib/audit.js'
 import bcrypt from 'bcryptjs'
 import type { ChangeUserRoleInput } from '@patacerta/shared'
 
@@ -152,10 +153,29 @@ export const changeUserRole = asyncHandler(async (req, res) => {
   if (id === req.user!.userId)
     throw new AppError(400, 'Não pode alterar o seu próprio papel', 'SELF_ROLE_CHANGE')
 
+  // Carregar o role actual antes da update para audit log e para
+  // possiveis checks adicionais (e.g., despromocao de outro admin).
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, role: true },
+  })
+  if (!target) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+
   const updated = await prisma.user.update({
     where: { id },
     data: { role },
     select: USER_SELECT,
+  })
+
+  // Audit log e CRITICO aqui: privilege escalation/de-escalation deve
+  // ter sempre rasto.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'CHANGE_USER_ROLE',
+    entity: 'User',
+    entityId: id,
+    details: `Role changed for ${target.email}: ${target.role} -> ${role}`,
+    ipAddress: req.ip,
   })
 
   res.json(updated)

@@ -147,6 +147,16 @@ export const suspendUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
   if (!user.isActive) throw new AppError(400, 'Utilizador já está suspenso', 'ALREADY_SUSPENDED')
+  // Defesa em profundidade: um admin nao pode suspender outro admin sem
+  // remocao explicita do papel primeiro. Evita que uma conta admin
+  // comprometida purgue silenciosamente os outros admins.
+  if (user.role === 'ADMIN') {
+    throw new AppError(
+      403,
+      'Não pode suspender outro administrador. Remova primeiro o papel ADMIN.',
+      'CANNOT_SUSPEND_ADMIN',
+    )
+  }
 
   // Deactivate user account
   await prisma.user.update({
@@ -206,8 +216,30 @@ export const suspendBreeder = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
   const reason = (req.body as { reason?: string } | undefined)?.reason?.trim() ?? ''
 
-  const breeder = await prisma.breeder.findUnique({ where: { id } })
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    include: { user: { select: { id: true, role: true } } },
+  })
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+
+  // Idempotencia + preservacao forensica: re-suspender sobrescrevia
+  // suspendedAt/suspendedReason originais. Rejeitamos.
+  if (breeder.status === 'SUSPENDED') {
+    throw new AppError(400, 'Criador já está suspenso', 'ALREADY_SUSPENDED')
+  }
+
+  // Peer-admin protection: nao permite suspender perfil de criador cujo
+  // utilizador associado seja ADMIN (consistente com suspendUser).
+  if (breeder.user.role === 'ADMIN') {
+    throw new AppError(
+      403,
+      'Não pode suspender o perfil de outro administrador.',
+      'CANNOT_SUSPEND_ADMIN',
+    )
+  }
+  if (breeder.user.id === req.user!.userId) {
+    throw new AppError(400, 'Não pode suspender o seu próprio perfil', 'SELF_SUSPEND')
+  }
 
   const updated = await prisma.breeder.update({
     where: { id },
