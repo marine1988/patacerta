@@ -96,16 +96,14 @@ async function fetchSponsoredByBreed(
           select: {
             id: true,
             businessName: true,
+            avgRating: true,
+            reviewCount: true,
             district: { select: { id: true, namePt: true } },
             municipality: { select: { id: true, namePt: true } },
             photos: {
               select: { url: true, sortOrder: true },
               orderBy: { sortOrder: 'asc' },
               take: 1,
-            },
-            reviews: {
-              where: { status: 'PUBLISHED' },
-              select: { rating: true },
             },
           },
         },
@@ -124,13 +122,11 @@ async function fetchSponsoredByBreed(
     for (const [breedId, list] of grouped) {
       const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, MAX_SPONSORED_PER_BREED)
       const mini: SponsoredBreederMini[] = shuffled.map((s) => {
-        const ratings = s.breeder.reviews.map((r: { rating: number }) => r.rating)
-        const avgRating =
-          ratings.length > 0
-            ? Math.round(
-                (ratings.reduce((a: number, c: number) => a + c, 0) / ratings.length) * 10,
-              ) / 10
-            : null
+        // avgRating e reviewCount já estão desnormalizados em Breeder
+        // (mantidos por triggers/jobs em review create/update). Evita
+        // carregar todas as reviews publicadas só para recalcular aqui.
+        const avg = s.breeder.avgRating
+        const avgRating = avg != null ? Math.round(Number(avg) * 10) / 10 : null
         return {
           slotId: s.id,
           breederId: s.breeder.id,
@@ -138,7 +134,7 @@ async function fetchSponsoredByBreed(
           district: s.breeder.district,
           municipality: s.breeder.municipality,
           avgRating,
-          reviewCount: ratings.length,
+          reviewCount: s.breeder.reviewCount,
           coverPhotoUrl: s.breeder.photos[0]?.url ?? null,
         }
       })
