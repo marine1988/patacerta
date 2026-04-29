@@ -54,7 +54,7 @@ services:
     networks:
       - default
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: '3001'
       DATABASE_URL: postgresql://patacerta:${POSTGRES_PASSWORD}@postgres:5432/patacerta?schema=public&connection_limit=5&pool_timeout=20&connect_timeout=10&socket_timeout=30
       REDIS_URL: redis://redis:6379
