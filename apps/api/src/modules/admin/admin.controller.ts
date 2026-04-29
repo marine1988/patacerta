@@ -855,13 +855,14 @@ export const adminReactivateService = asyncHandler(async (req, res) => {
 
 const FEATURE_DURATION_DAYS_MAX = 365
 
+/**
+ * Validacao primaria e feita pelo Zod (featuredPayloadSchema): aqui apenas
+ * convertemos o payload ja-validado em Date | null. O guard FEATURE_DURATION_DAYS_MAX
+ * mantem-se como defesa-em-profundidade caso o schema seja relaxado no futuro.
+ */
 function parseFeaturedUntil(body: unknown): Date | null {
-  if (!body || typeof body !== 'object') {
-    throw new AppError(400, 'Body invalido', 'INVALID_BODY')
-  }
-  const b = body as { until?: unknown; days?: unknown }
+  const b = body as { until?: string | null; days?: number }
 
-  // Permite payload { until: ISOString | null } ou { days: number }
   if (b.until === null) return null
   if (typeof b.until === 'string') {
     const d = new Date(b.until)
@@ -870,7 +871,7 @@ function parseFeaturedUntil(body: unknown): Date | null {
     }
     return d
   }
-  if (typeof b.days === 'number' && Number.isFinite(b.days)) {
+  if (typeof b.days === 'number') {
     if (b.days <= 0 || b.days > FEATURE_DURATION_DAYS_MAX) {
       throw new AppError(400, 'Numero de dias invalido', 'INVALID_DAYS')
     }

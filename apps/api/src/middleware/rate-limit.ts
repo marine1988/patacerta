@@ -224,3 +224,23 @@ export const serviceMutationRateLimit = rateLimit({
   keyGenerator: userKey,
   bucket: 'service-mutation',
 })
+
+// Forgot-password tem dois vectores de abuso distintos:
+// 1) Atacante usa um IP para martelar emails de varias vitimas (IP-bound).
+// 2) Atacante usa varios IPs para bombardear o email de uma so vitima
+//    (target-bound — email-bombing). O rate-limit de auth so trata (1).
+// Aplicamos ambos os limites ao endpoint para cobrir as duas dimensoes.
+const forgotPwEmailKey = (req: Request) => {
+  const email = (req.body as { email?: string } | undefined)?.email?.toLowerCase().trim()
+  // Quando nao ha email no body, recai sobre IP — o validador Zod a jusante
+  // devolve 400 e este hit acaba por ser inocuo.
+  return email ? `email:${email}` : `ip:${req.ip || 'unknown'}`
+}
+
+export const forgotPasswordEmailRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Demasiados pedidos de recuperação para este email. Tente novamente em 1 hora.',
+  keyGenerator: forgotPwEmailKey,
+  bucket: 'forgot-pw-email',
+})

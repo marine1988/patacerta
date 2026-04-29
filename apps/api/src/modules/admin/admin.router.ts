@@ -7,6 +7,7 @@ import {
   suspendServiceSchema,
   suspendBreederSchema,
   suspendUserSchema,
+  featuredPayloadSchema,
   createSponsoredSlotSchema,
   updateSponsoredSlotSchema,
   listSponsoredSlotsSchema,
@@ -72,8 +73,16 @@ adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 adminRouter.get('/audit-logs', ctrl.getAuditLogs)
 
 // Featured / homepage destaques
-adminRouter.patch('/services/:id/featured', ctrl.setServiceFeatured)
-adminRouter.patch('/breeders/:id/featured', ctrl.setBreederFeatured)
+adminRouter.patch(
+  '/services/:id/featured',
+  validate(featuredPayloadSchema),
+  ctrl.setServiceFeatured,
+)
+adminRouter.patch(
+  '/breeders/:id/featured',
+  validate(featuredPayloadSchema),
+  ctrl.setBreederFeatured,
+)
 
 // Sponsored slots — gestão de campanhas patrocinadas no simulador
 adminRouter.get(

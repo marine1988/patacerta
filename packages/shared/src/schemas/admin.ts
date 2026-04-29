@@ -35,3 +35,22 @@ export const suspendUserSchema = z.object({
   reason: z.string().trim().min(15, 'Indique um motivo com pelo menos 15 caracteres').max(500),
 })
 export type SuspendUserInput = z.infer<typeof suspendUserSchema>
+
+// PATCH /api/admin/breeders/:id/featured  e  /api/admin/services/:id/featured.
+// Aceita um de tres formatos exclusivos:
+//   { until: null }           — remove a promocao
+//   { until: '2026-12-31T...' } — define data ISO absoluta
+//   { days: 30 }                — define rolling N dias a partir de agora (1..365)
+//
+// Refine garante que pelo menos um dos dois e' dado e que nao sao
+// fornecidos em simultaneo (evita ambiguidade).
+const FEATURED_DAYS_MAX = 365
+export const featuredPayloadSchema = z
+  .object({
+    until: z.union([z.string().datetime({ message: 'Data ISO invalida' }), z.null()]).optional(),
+    days: z.number().int().positive().max(FEATURED_DAYS_MAX).optional(),
+  })
+  .refine((v) => (v.until !== undefined) !== (v.days !== undefined), {
+    message: 'Forneca { until } ou { days } (mutuamente exclusivos)',
+  })
+export type FeaturedPayloadInput = z.infer<typeof featuredPayloadSchema>

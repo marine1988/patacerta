@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { validate } from '../../middleware/validate.js'
+import { forgotPasswordEmailRateLimit } from '../../middleware/rate-limit.js'
 import {
   loginSchema,
   registerSchema,
@@ -35,5 +36,10 @@ authRouter.post('/refresh', validate(refreshTokenSchema), refresh)
 authRouter.post('/logout', validate(logoutSchema), logout)
 authRouter.post('/verify-email', validate(verifyEmailSchema), verifyEmail)
 authRouter.post('/resend-verification', validate(resendVerificationSchema), resendVerification)
-authRouter.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword)
+authRouter.post(
+  '/forgot-password',
+  forgotPasswordEmailRateLimit,
+  validate(forgotPasswordSchema),
+  forgotPassword,
+)
 authRouter.post('/reset-password', validate(resetPasswordSchema), resetPassword)

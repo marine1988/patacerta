@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole, requireBreederProfile } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
+import { uploadRateLimit } from '../../middleware/rate-limit.js'
 import {
   breederProfileSchema,
   reorderBreederPhotosSchema,
@@ -28,8 +29,15 @@ breedersRouter.post(
 )
 breedersRouter.delete('/me', requireAuth, requireBreederProfile, ctrl.deleteMyBreederProfile)
 
-// Existing breeder — gallery management
-breedersRouter.post('/me/photos', requireAuth, requireBreederProfile, ctrl.uploadBreederPhotos)
+// Existing breeder — gallery management. uploadRateLimit protege contra
+// uso de armazenamento como vector de DoS / scraping de slots.
+breedersRouter.post(
+  '/me/photos',
+  requireAuth,
+  requireBreederProfile,
+  uploadRateLimit,
+  ctrl.uploadBreederPhotos,
+)
 breedersRouter.patch(
   '/me/photos/reorder',
   requireAuth,

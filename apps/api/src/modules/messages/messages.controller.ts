@@ -136,7 +136,11 @@ export const createThread = asyncHandler(async (req, res) => {
     if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
     if (breeder.userId === userId)
       throw new AppError(400, 'Não pode enviar mensagem a si próprio', 'SELF_MESSAGE')
-    if (breeder.status === 'SUSPENDED' || !breeder.user.isActive || breeder.user.suspendedAt) {
+    // So criadores VERIFIED recebem mensagens. DRAFT/PENDING_VERIFICATION
+    // ainda nao confirmaram identidade DGAV; SUSPENDED esta bloqueado.
+    // Permitir contacto a perfis nao verificados expoe o utilizador a quem
+    // ainda nao validamos.
+    if (breeder.status !== 'VERIFIED' || !breeder.user.isActive || breeder.user.suspendedAt) {
       throw new AppError(400, 'Este criador não está a receber mensagens', 'BREEDER_UNAVAILABLE')
     }
 
