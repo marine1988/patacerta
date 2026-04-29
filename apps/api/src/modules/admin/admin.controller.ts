@@ -360,47 +360,78 @@ export const getFlaggedReviews = asyncHandler(async (req, res) => {
     return
   }
 
-  // type === 'all' — merge both, sorted by createdAt desc
-  const [breederReviews, breederTotal, serviceReviews, serviceTotal] = await Promise.all([
-    prisma.review.findMany({
-      where,
-      select: {
-        id: true,
-        rating: true,
-        title: true,
-        body: true,
-        status: true,
-        createdAt: true,
-        author: { select: { id: true, firstName: true, lastName: true, email: true } },
-        breeder: { select: { id: true, businessName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
+  // type === 'all' — paginate via UNION ALL on the DB, then hydrate by id.
+  // Counts are cheap (indexed on status); the union only returns (id, type, createdAt)
+  // for the requested page, then we fetch full payloads for those ids.
+  type UnionRow = { id: number; kind: 'breeder' | 'service'; created_at: Date }
+  const [breederTotal, serviceTotal, unionRows] = await Promise.all([
     prisma.review.count({ where }),
-    prisma.serviceReview.findMany({
-      where,
-      select: {
-        id: true,
-        rating: true,
-        title: true,
-        body: true,
-        status: true,
-        createdAt: true,
-        author: { select: { id: true, firstName: true, lastName: true, email: true } },
-        service: { select: { id: true, title: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
     prisma.serviceReview.count({ where }),
+    prisma.$queryRaw<UnionRow[]>`
+      SELECT id, 'breeder' AS kind, "createdAt" AS created_at
+      FROM "Review"
+      WHERE status = 'FLAGGED'
+      UNION ALL
+      SELECT id, 'service' AS kind, "createdAt" AS created_at
+      FROM "ServiceReview"
+      WHERE status = 'FLAGGED'
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `,
   ])
 
-  const merged = [
-    ...breederReviews.map((r) => ({ ...r, type: 'breeder' as const })),
-    ...serviceReviews.map((r) => ({ ...r, type: 'service' as const })),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-
   const total = breederTotal + serviceTotal
-  const paged = merged.slice(skip, skip + limit)
+  const breederIds = unionRows.filter((r) => r.kind === 'breeder').map((r) => r.id)
+  const serviceIds = unionRows.filter((r) => r.kind === 'service').map((r) => r.id)
+
+  const [breederReviews, serviceReviews] = await Promise.all([
+    breederIds.length === 0
+      ? []
+      : prisma.review.findMany({
+          where: { id: { in: breederIds } },
+          select: {
+            id: true,
+            rating: true,
+            title: true,
+            body: true,
+            status: true,
+            createdAt: true,
+            author: { select: { id: true, firstName: true, lastName: true, email: true } },
+            breeder: { select: { id: true, businessName: true } },
+          },
+        }),
+    serviceIds.length === 0
+      ? []
+      : prisma.serviceReview.findMany({
+          where: { id: { in: serviceIds } },
+          select: {
+            id: true,
+            rating: true,
+            title: true,
+            body: true,
+            status: true,
+            createdAt: true,
+            author: { select: { id: true, firstName: true, lastName: true, email: true } },
+            service: { select: { id: true, title: true } },
+          },
+        }),
+  ])
+
+  const breederById = new Map(breederReviews.map((r) => [r.id, r]))
+  const serviceById = new Map(serviceReviews.map((r) => [r.id, r]))
+
+  // Preserve the union's ordering (already sorted by createdAt desc).
+  const paged = unionRows
+    .map((row) => {
+      if (row.kind === 'breeder') {
+        const r = breederById.get(row.id)
+        return r ? { ...r, type: 'breeder' as const } : null
+      }
+      const r = serviceById.get(row.id)
+      return r ? { ...r, type: 'service' as const } : null
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+
   res.json(paginatedResponse(paged, total, page, limit))
 })
 
