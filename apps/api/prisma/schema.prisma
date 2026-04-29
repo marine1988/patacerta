@@ -177,6 +177,12 @@ model Breeder {
   @@index([nif])
   @@index([dgavNumber])
   @@index([featuredUntil])
+  // Compostos para hot-paths publicos (search/map/home featured).
+  // Filtros tipicos: status='VERIFIED' AND (districtId|municipalityId|featuredUntil>now).
+  // Alinha com pattern ja usado em Service.
+  @@index([status, districtId])
+  @@index([status, municipalityId])
+  @@index([status, featuredUntil])
   @@map("breeders")
 }
 
