@@ -1,8 +1,32 @@
+import { lazy, Suspense } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { BreedersListView } from './BreedersListView'
-import { ServicesListView } from './ServicesListView'
-import { BreedersMapView } from './BreedersMapView'
-import { ServicesMapView } from './ServicesMapView'
+import { Spinner } from '../../components/ui/Spinner'
+
+// As views são lazy-loaded para que quem entra em /pesquisar só
+// descarregue o código das vistas que efectivamente abre. Em
+// particular, as MapViews trazem react-leaflet/leaflet (~50 kB
+// gzip) que ficam fora do bundle inicial até o utilizador clicar
+// em "Mapa".
+const BreedersListView = lazy(() =>
+  import('./BreedersListView').then((m) => ({ default: m.BreedersListView })),
+)
+const ServicesListView = lazy(() =>
+  import('./ServicesListView').then((m) => ({ default: m.ServicesListView })),
+)
+const BreedersMapView = lazy(() =>
+  import('./BreedersMapView').then((m) => ({ default: m.BreedersMapView })),
+)
+const ServicesMapView = lazy(() =>
+  import('./ServicesMapView').then((m) => ({ default: m.ServicesMapView })),
+)
+
+function ViewFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Spinner />
+    </div>
+  )
+}
 
 type PesquisarTipo = 'criadores' | 'servicos'
 type PesquisarVista = 'lista' | 'mapa'
@@ -134,18 +158,20 @@ export function PesquisarPage() {
         </div>
       </div>
 
-      {tipo === 'criadores' && vista === 'lista' && (
-        <BreedersListView searchParams={searchParams} setSearchParams={setSearchParams} />
-      )}
-      {tipo === 'criadores' && vista === 'mapa' && (
-        <BreedersMapView searchParams={searchParams} setSearchParams={setSearchParams} />
-      )}
-      {tipo === 'servicos' && vista === 'lista' && (
-        <ServicesListView searchParams={searchParams} setSearchParams={setSearchParams} />
-      )}
-      {tipo === 'servicos' && vista === 'mapa' && (
-        <ServicesMapView searchParams={searchParams} setSearchParams={setSearchParams} />
-      )}
+      <Suspense fallback={<ViewFallback />}>
+        {tipo === 'criadores' && vista === 'lista' && (
+          <BreedersListView searchParams={searchParams} setSearchParams={setSearchParams} />
+        )}
+        {tipo === 'criadores' && vista === 'mapa' && (
+          <BreedersMapView searchParams={searchParams} setSearchParams={setSearchParams} />
+        )}
+        {tipo === 'servicos' && vista === 'lista' && (
+          <ServicesListView searchParams={searchParams} setSearchParams={setSearchParams} />
+        )}
+        {tipo === 'servicos' && vista === 'mapa' && (
+          <ServicesMapView searchParams={searchParams} setSearchParams={setSearchParams} />
+        )}
+      </Suspense>
 
       <CrossPromoBanner currentTipo={tipo} />
     </div>
