@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // B-05: Hydrate from localStorage on mount — verify token is not expired
+  // Hydrate from localStorage on mount. O refresh token vive em cookie
+  // httpOnly e portanto nao e legivel daqui — quando o access token esta
+  // expirado pedimos refresh ao servidor que valida o cookie sozinho.
   useEffect(() => {
     const token = localStorage.getItem('access_token')
     const stored = localStorage.getItem('user')
@@ -56,35 +58,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('user')
       }
       setIsLoading(false)
-    } else if (token && stored && isTokenExpired(token)) {
-      // Token expired — try refreshing
-      const refreshToken = localStorage.getItem('refresh_token')
-      if (refreshToken && !isTokenExpired(refreshToken)) {
-        api
-          .post('/auth/refresh', { refreshToken })
-          .then(({ data }) => {
-            localStorage.setItem('access_token', data.accessToken)
-            localStorage.setItem('refresh_token', data.refreshToken)
-            try {
-              setUser(JSON.parse(stored))
-            } catch {
-              localStorage.removeItem('user')
-            }
-          })
-          .catch(() => {
-            // Refresh failed — clear everything
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
+    } else if (stored) {
+      // Access token expirado ou ausente, mas temos perfil em cache.
+      // Tentamos refresh — se o cookie httpOnly ainda for valido, o
+      // servidor devolve novo accessToken. Caso contrario limpamos tudo.
+      api
+        .post('/auth/refresh', {})
+        .then(({ data }) => {
+          localStorage.setItem('access_token', data.accessToken)
+          try {
+            setUser(JSON.parse(stored))
+          } catch {
             localStorage.removeItem('user')
-          })
-          .finally(() => setIsLoading(false))
-      } else {
-        // No valid refresh token — clear stale data
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('user')
-        setIsLoading(false)
-      }
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('user')
+        })
+        .finally(() => setIsLoading(false))
     } else {
       setIsLoading(false)
     }
@@ -92,9 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (data: LoginInput): Promise<User> => {
     const res = await api.post('/auth/login', data)
-    const { user: u, accessToken, refreshToken } = res.data
+    // O servidor responde com { user, accessToken } e define o cookie
+    // refresh_token httpOnly automaticamente.
+    const { user: u, accessToken } = res.data
     localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('refresh_token', refreshToken)
     localStorage.setItem('user', JSON.stringify(u))
     setUser(u)
     return u
@@ -110,16 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     // Best-effort server-side revocation of the refresh-token rotation chain.
-    // We fire-and-forget: even if the request fails (offline, expired token),
-    // we still clear local state so the UI logs the user out immediately.
-    const refreshToken = localStorage.getItem('refresh_token')
-    if (refreshToken) {
-      api.post('/auth/logout', { refreshToken }).catch(() => {
-        /* swallowed: logout must not fail client-side */
-      })
-    }
+    // O cookie httpOnly e enviado automaticamente pelo browser; o servidor
+    // limpa-o e revoga a chain. Fire-and-forget — o UI desliga ja.
+    api.post('/auth/logout', {}).catch(() => {
+      /* swallowed: logout must not fail client-side */
+    })
     localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
     setUser(null)
   }, [])

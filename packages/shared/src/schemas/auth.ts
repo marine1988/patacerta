@@ -35,8 +35,11 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 })
 
+// Refresh token e lido preferencialmente do cookie httpOnly. O campo no
+// body so e aceite como fallback durante o rollout do FE; mantemo-lo
+// opcional para nao falhar a validacao quando o pedido vem so com cookie.
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1),
+  refreshToken: z.string().min(1).optional(),
 })
 
 // B-12: Schema for user profile update (PATCH /users/me)

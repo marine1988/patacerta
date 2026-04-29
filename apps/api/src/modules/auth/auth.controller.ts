@@ -6,7 +6,7 @@ import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
-import type { Request } from 'express'
+import type { Request, Response } from 'express'
 import {
   CONSENT_TYPE,
   TERMS_VERSION,
@@ -24,6 +24,49 @@ const RESET_TOKEN_EXPIRY_HOURS = 1
 // independent millisecond constant here because Prisma needs an absolute
 // expiresAt and parsing the JWT lib's "7d" string would be brittle.
 const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
+
+const REFRESH_COOKIE_NAME = 'refresh_token'
+// Cookie path e propositadamente restrito a /api/auth para que o token
+// nunca seja enviado em chamadas a outros endpoints (defesa contra CSRF
+// por confusao de scope). O FE chama /api/auth/refresh e /api/auth/logout
+// — ambos sob este path.
+const REFRESH_COOKIE_PATH = '/api/auth'
+
+/**
+ * Set the refresh-token cookie. httpOnly+SameSite=strict so JS cannot read
+ * it and CSRF cannot trigger cross-site refreshes. Secure flag toggles with
+ * NODE_ENV so localhost (http) still works in dev.
+ */
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(REFRESH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: REFRESH_COOKIE_PATH,
+    maxAge: REFRESH_TOKEN_EXPIRY_MS,
+  })
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: REFRESH_COOKIE_PATH,
+  })
+}
+
+/**
+ * Read refresh token from cookie first, then fall back to body for back-compat
+ * during the FE rollout. Once the FE no longer sends the body field, the
+ * fallback can be removed and the body schema tightened.
+ */
+function readRefreshToken(req: Request): string | undefined {
+  const fromCookie = (req.cookies as { refresh_token?: string } | undefined)?.refresh_token
+  if (fromCookie) return fromCookie
+  const fromBody = (req.body as { refreshToken?: string } | undefined)?.refreshToken
+  return fromBody
+}
 
 /**
  * Hash one-time tokens (email verification, password reset) before storing in DB.
@@ -218,6 +261,7 @@ export const login = asyncHandler(async (req, res) => {
   const payload = { userId: user.id, email: user.email, role: user.role }
   const accessToken = signAccessToken(payload)
   const refreshToken = await issueRefreshToken(payload, req)
+  setRefreshCookie(res, refreshToken)
 
   res.json({
     user: {
@@ -228,12 +272,14 @@ export const login = asyncHandler(async (req, res) => {
       lastName: user.lastName,
     },
     accessToken,
-    refreshToken,
   })
 })
 
 export const refresh = asyncHandler(async (req, res) => {
-  const { refreshToken } = req.body as { refreshToken: string }
+  const refreshToken = readRefreshToken(req)
+  if (!refreshToken) {
+    throw new AppError(401, 'Refresh token em falta', 'MISSING_REFRESH_TOKEN')
+  }
   // First, verify the JWT signature/expiry. A forged or tampered token never
   // even reaches the DB lookup.
   const decoded = verifyRefreshToken(refreshToken)
@@ -248,6 +294,7 @@ export const refresh = asyncHandler(async (req, res) => {
   if (!stored) {
     // The signature checked out but we have no record. Treat as a forgery
     // attempt; the user will have to re-authenticate.
+    clearRefreshCookie(res)
     throw new AppError(401, 'Refresh token inválido', 'INVALID_REFRESH_TOKEN')
   }
 
@@ -257,10 +304,12 @@ export const refresh = asyncHandler(async (req, res) => {
     // client cached it past rotation. Either way, revoke the whole chain so
     // both parties have to re-authenticate.
     await revokeRefreshChain(stored.id)
+    clearRefreshCookie(res)
     throw new AppError(401, 'Refresh token reutilizado — sessão revogada', 'REFRESH_TOKEN_REUSED')
   }
 
   if (stored.expiresAt < new Date()) {
+    clearRefreshCookie(res)
     throw new AppError(401, 'Refresh token expirado', 'EXPIRED_REFRESH_TOKEN')
   }
 
@@ -278,12 +327,13 @@ export const refresh = asyncHandler(async (req, res) => {
     data: { revokedAt: new Date() },
   })
   const newRefresh = await issueRefreshToken(payload, req, stored.id)
+  setRefreshCookie(res, newRefresh)
 
-  res.json({ accessToken: signAccessToken(payload), refreshToken: newRefresh })
+  res.json({ accessToken: signAccessToken(payload) })
 })
 
 export const logout = asyncHandler(async (req, res) => {
-  const { refreshToken } = req.body as { refreshToken?: string }
+  const refreshToken = readRefreshToken(req)
   // We accept logout without a token as a no-op so the client can always
   // call this endpoint without worrying about state. With a token, we
   // revoke the whole chain so any leaked sibling is invalidated too.
@@ -299,6 +349,7 @@ export const logout = asyncHandler(async (req, res) => {
     })
     if (stored) await revokeRefreshChain(stored.id)
   }
+  clearRefreshCookie(res)
   res.status(204).send()
 })
 

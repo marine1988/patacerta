@@ -2,9 +2,13 @@ import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
+// withCredentials: refresh_token vive em cookie httpOnly emitido pela API
+// (path /api/auth, SameSite=strict). Sem isto o browser nao envia o cookie
+// e /auth/refresh falha com 401.
 export const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
 // Request interceptor — attach JWT
@@ -54,32 +58,22 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = localStorage.getItem('refresh_token')
-
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken })
-          localStorage.setItem('access_token', data.accessToken)
-          localStorage.setItem('refresh_token', data.refreshToken)
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
-          processQueue(null, data.accessToken)
-          return api(originalRequest)
-        } catch (refreshErr) {
-          processQueue(refreshErr, null)
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('refresh_token')
-          localStorage.removeItem('user')
-          window.location.href = '/entrar'
-          return Promise.reject(refreshErr)
-        } finally {
-          isRefreshing = false
-        }
-      } else {
-        // No refresh token — clear everything and redirect
+      try {
+        // O refresh token vive no cookie httpOnly — basta enviar o pedido
+        // com withCredentials (axios.create ja o tem). Body vazio.
+        const { data } = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+        localStorage.setItem('access_token', data.accessToken)
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
+        processQueue(null, data.accessToken)
+        return api(originalRequest)
+      } catch (refreshErr) {
+        processQueue(refreshErr, null)
         localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
         window.location.href = '/entrar'
+        return Promise.reject(refreshErr)
+      } finally {
+        isRefreshing = false
       }
     }
 
