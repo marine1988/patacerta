@@ -69,6 +69,8 @@ const BREEDER_PUBLIC_SELECT = {
   deliveryByPlane: true,
   pickupNotes: true,
   otherBreedsNote: true,
+  avgRating: true,
+  reviewCount: true,
   user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
   district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
   municipality: { select: { id: true, namePt: true } },
@@ -144,25 +146,17 @@ async function getDogSpeciesId(): Promise<number> {
 export const getBreederById = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
 
-  const [breeder, ratingAgg] = await Promise.all([
-    prisma.breeder.findUnique({ where: { id }, select: BREEDER_PUBLIC_SELECT }),
-    prisma.review.aggregate({
-      where: { breederId: id, status: 'PUBLISHED' },
-      _avg: { rating: true },
-      _count: { id: true },
-    }),
-  ])
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    select: BREEDER_PUBLIC_SELECT,
+  })
 
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
   if (breeder.status !== 'VERIFIED')
     throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
 
-  const avg = ratingAgg._avg.rating
-  res.json({
-    ...breeder,
-    avgRating: avg !== null ? Math.round(avg * 10) / 10 : null,
-    reviewCount: ratingAgg._count.id,
-  })
+  // avgRating/reviewCount ja' vem desnormalizado em Breeder.
+  res.json(breeder)
 })
 
 export const createBreederProfile = asyncHandler(async (req, res) => {

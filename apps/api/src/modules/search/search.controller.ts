@@ -1,17 +1,12 @@
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
 import type { SearchBreedersInput, MapBreedersInput } from '@patacerta/shared'
 import { Prisma } from '@prisma/client'
 
-// P4: Simple in-memory TTL cache for static reference data
-interface CacheEntry<T> {
-  data: T
-  expiresAt: number
-}
-
-const TTL = 3600_000 // 1 hour
-let districtsCache: CacheEntry<unknown[]> | null = null
-let statsCache: CacheEntry<Record<string, number>> | null = null
+const TTL_MS = 3600_000 // 1h
+const CACHE_KEY_DISTRICTS = 'search:districts:v1'
+const CACHE_KEY_STATS = 'search:public-stats:v1'
 
 export const searchBreeders = asyncHandler(async (req, res) => {
   // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
@@ -30,20 +25,25 @@ export const searchBreeders = asyncHandler(async (req, res) => {
     ]
   }
 
+  // Usa avgRating/reviewCount desnormalizados em Breeder — evita o
+  // include de reviews + agregacao em JS (era N+1 por listagem).
   const [breeders, total] = await Promise.all([
     prisma.breeder.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        businessName: true,
+        description: true,
+        status: true,
+        avgRating: true,
+        reviewCount: true,
+        createdAt: true,
         district: { select: { id: true, namePt: true } },
         municipality: { select: { id: true, namePt: true } },
         photos: {
           select: { id: true, url: true, sortOrder: true },
           orderBy: { sortOrder: 'asc' },
           take: 1,
-        },
-        reviews: {
-          where: { status: 'PUBLISHED' },
-          select: { rating: true },
         },
       },
       skip: (page - 1) * limit,
@@ -53,29 +53,7 @@ export const searchBreeders = asyncHandler(async (req, res) => {
     prisma.breeder.count({ where }),
   ])
 
-  // B-08: Explicit response shape — no internal fields leak through
-  const data = breeders.map((b) => {
-    const ratings = b.reviews.map((r) => r.rating)
-    const avgRating =
-      ratings.length > 0
-        ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10
-        : null
-
-    return {
-      id: b.id,
-      businessName: b.businessName,
-      description: b.description,
-      status: b.status,
-      district: b.district,
-      municipality: b.municipality,
-      photos: b.photos,
-      avgRating,
-      reviewCount: ratings.length,
-      createdAt: b.createdAt,
-    }
-  })
-
-  res.json(paginatedResponse(data, total, page, limit))
+  res.json(paginatedResponse(breeders, total, page, limit))
 })
 
 // Map view: flat list with coordinates (herdadas do distrito). No pagination.
@@ -115,13 +93,14 @@ export const mapBreeders = asyncHandler(async (req, res) => {
 
   const breeders = await prisma.breeder.findMany({
     where,
-    include: {
+    select: {
+      id: true,
+      businessName: true,
+      status: true,
+      avgRating: true,
+      reviewCount: true,
       district: { select: { id: true, namePt: true, latitude: true, longitude: true } },
       municipality: { select: { id: true, namePt: true } },
-      reviews: {
-        where: { status: 'PUBLISHED' },
-        select: { rating: true },
-      },
     },
     take: limit,
     orderBy: { createdAt: 'desc' },
@@ -129,41 +108,31 @@ export const mapBreeders = asyncHandler(async (req, res) => {
 
   const data = breeders
     .filter((b) => b.district.latitude !== null && b.district.longitude !== null)
-    .map((b) => {
-      const ratings = b.reviews.map((r) => r.rating)
-      const avgRating =
-        ratings.length > 0
-          ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10
-          : null
-
-      return {
-        id: b.id,
-        businessName: b.businessName,
-        status: b.status,
-        district: { id: b.district.id, namePt: b.district.namePt },
-        municipality: b.municipality,
-        avgRating,
-        reviewCount: ratings.length,
-        latitude: b.district.latitude as number,
-        longitude: b.district.longitude as number,
-      }
-    })
+    .map((b) => ({
+      id: b.id,
+      businessName: b.businessName,
+      status: b.status,
+      district: { id: b.district.id, namePt: b.district.namePt },
+      municipality: b.municipality,
+      avgRating: b.avgRating,
+      reviewCount: b.reviewCount,
+      latitude: b.district.latitude as number,
+      longitude: b.district.longitude as number,
+    }))
 
   res.json({ data, total: data.length })
 })
 
-// P4: Cached — districts rarely change
+// Cached — districts rarely change. Redis-backed via lib/cache.
 export const listDistricts = asyncHandler(async (_req, res) => {
-  const now = Date.now()
-  if (!districtsCache || districtsCache.expiresAt < now) {
-    const data = await prisma.district.findMany({
+  const data = await cacheGetOrSet(CACHE_KEY_DISTRICTS, TTL_MS, async () => {
+    return prisma.district.findMany({
       orderBy: { namePt: 'asc' },
       select: { id: true, code: true, namePt: true, latitude: true, longitude: true },
     })
-    districtsCache = { data, expiresAt: now + TTL }
-  }
+  })
   res.set('Cache-Control', 'public, max-age=3600')
-  res.json(districtsCache.data)
+  res.json(data)
 })
 
 export const listMunicipalities = asyncHandler(async (req, res) => {
@@ -179,10 +148,9 @@ export const listMunicipalities = asyncHandler(async (req, res) => {
   res.json(municipalities)
 })
 
-// Public stats for homepage — cached 1hr
+// Public stats for homepage — Redis-cached 1h.
 export const getPublicStats = asyncHandler(async (_req, res) => {
-  const now = Date.now()
-  if (!statsCache || statsCache.expiresAt < now) {
+  const data = await cacheGetOrSet(CACHE_KEY_STATS, TTL_MS, async () => {
     const [breederCount, breedCount, districtCount, reviewCount, serviceCount] = await Promise.all([
       prisma.breeder.count({ where: { status: 'VERIFIED' } }),
       prisma.breed.count(),
@@ -190,11 +158,8 @@ export const getPublicStats = asyncHandler(async (_req, res) => {
       prisma.review.count({ where: { status: 'PUBLISHED' } }),
       prisma.service.count({ where: { status: 'ACTIVE' } }),
     ])
-    statsCache = {
-      data: { breederCount, breedCount, districtCount, reviewCount, serviceCount },
-      expiresAt: now + TTL,
-    }
-  }
+    return { breederCount, breedCount, districtCount, reviewCount, serviceCount }
+  })
   res.set('Cache-Control', 'public, max-age=3600')
-  res.json(statsCache.data)
+  res.json(data)
 })

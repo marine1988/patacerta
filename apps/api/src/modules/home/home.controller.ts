@@ -14,21 +14,23 @@ import { cacheGetOrSet } from '../../lib/cache.js'
  * com items nao-promovidos tambem em ordem aleatoria. Cada page-load
  * produz uma ordem diferente (shuffle e' pos-cache).
  *
- * Cache: a query base (4 findMany + 1 groupBy) e' cacheada 60s em Redis
- * — uma das paginas mais visitadas do site. O shuffle e o slice por SLOT_COUNT
- * acontecem depois, garantindo variedade visual entre requests mesmo com
- * cache quente.
+ * Cache: a query base (4 findMany) e' cacheada 60s em Redis — uma das
+ * paginas mais visitadas do site. O shuffle e o slice por SLOT_COUNT
+ * acontecem depois, garantindo variedade visual entre requests mesmo
+ * com cache quente.
+ *
+ * Ratings dos breeders ja' vivem desnormalizados em Breeder.avgRating
+ * e Breeder.reviewCount (mantidos por services/breeder-stats.ts).
  */
 const SLOT_COUNT = 12
 const FEATURED_TTL_MS = 60_000
-const FEATURED_CACHE_KEY = 'home:featured:v1'
+const FEATURED_CACHE_KEY = 'home:featured:v2'
 
 interface FeaturedCachePayload {
-  featuredServices: Array<Record<string, unknown>>
-  fallbackServices: Array<Record<string, unknown>>
-  featuredBreeders: Array<{ id: number } & Record<string, unknown>>
-  fallbackBreeders: Array<{ id: number } & Record<string, unknown>>
-  breederRatings: Array<{ id: number; avgRating: number | null; reviewCount: number }>
+  featuredServices: unknown[]
+  fallbackServices: unknown[]
+  featuredBreeders: unknown[]
+  fallbackBreeders: unknown[]
 }
 
 async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
@@ -69,63 +71,23 @@ async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
       }),
     ])
 
-  // Agregar ratings dos breeders num so' groupBy (em vez de N+1).
-  const breederIds = [...featuredBreeders, ...fallbackBreeders].map((b) => b.id)
-  const breederRatings = await aggregateBreederRatings(breederIds)
-
-  return {
-    featuredServices,
-    fallbackServices,
-    featuredBreeders,
-    fallbackBreeders,
-    breederRatings,
-  }
+  return { featuredServices, fallbackServices, featuredBreeders, fallbackBreeders }
 }
 
 export const getFeatured = asyncHandler(async (_req, res) => {
-  const payload = await cacheGetOrSet(
-    FEATURED_CACHE_KEY,
-    FEATURED_TTL_MS,
-    loadFeaturedPayload,
-  )
+  const payload = await cacheGetOrSet(FEATURED_CACHE_KEY, FEATURED_TTL_MS, loadFeaturedPayload)
 
   const services = pickRandom(
     [...shuffle(payload.featuredServices), ...shuffle(payload.fallbackServices)],
     SLOT_COUNT,
   )
-  const breedersRaw = pickRandom(
+  const breeders = pickRandom(
     [...shuffle(payload.featuredBreeders), ...shuffle(payload.fallbackBreeders)],
     SLOT_COUNT,
   )
 
-  const ratingById = new Map(
-    payload.breederRatings.map((r) => [r.id, { avg: r.avgRating, count: r.reviewCount }]),
-  )
-  const breeders = breedersRaw.map((b) => ({
-    ...b,
-    avgRating: ratingById.get(b.id)?.avg ?? null,
-    reviewCount: ratingById.get(b.id)?.count ?? 0,
-  }))
-
   res.json({ services, breeders })
 })
-
-async function aggregateBreederRatings(
-  ids: number[],
-): Promise<Array<{ id: number; avgRating: number | null; reviewCount: number }>> {
-  if (ids.length === 0) return []
-  const aggs = await prisma.review.groupBy({
-    by: ['breederId'],
-    where: { breederId: { in: ids }, status: 'PUBLISHED' },
-    _avg: { rating: true },
-    _count: { id: true },
-  })
-  return aggs.map((a) => ({
-    id: a.breederId,
-    avgRating: a._avg.rating != null ? Math.round(a._avg.rating * 10) / 10 : null,
-    reviewCount: a._count.id,
-  }))
-}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -166,6 +128,8 @@ function featuredBreederSelect() {
     id: true,
     businessName: true,
     description: true,
+    avgRating: true,
+    reviewCount: true,
     featuredUntil: true,
     district: { select: { id: true, namePt: true } },
     municipality: { select: { id: true, namePt: true } },

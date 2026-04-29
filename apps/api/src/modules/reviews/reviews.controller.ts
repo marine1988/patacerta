@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import { recomputeBreederRating } from '../../services/breeder-stats.js'
 import {
   checkReviewEligibility,
   isReviewEligibilityBypassed,
@@ -192,6 +193,8 @@ export const createReview = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  await recomputeBreederRating(data.breederId)
+
   res.status(201).json(review)
 })
 
@@ -225,6 +228,9 @@ export const updateReview = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // O rating pode ter mudado — recalcula agregados.
+  if (body.rating !== undefined) await recomputeBreederRating(review.breederId)
+
   res.json(updated)
 })
 
@@ -251,6 +257,8 @@ export const deleteReview = asyncHandler(async (req, res) => {
     details: `Criador: ${review.breederId} | Autor: ${review.authorId}`,
     ipAddress: req.ip,
   })
+
+  await recomputeBreederRating(review.breederId)
 
   res.status(204).send()
 })
@@ -308,6 +316,9 @@ export const moderateReview = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // Status pode entrar/sair de PUBLISHED — recalcula agregados.
+  if (review.status !== data.status) await recomputeBreederRating(review.breederId)
+
   res.json(updated)
 })
 
@@ -349,6 +360,8 @@ export const flagReview = asyncHandler(async (req, res) => {
       details: `Denúncias: ${flagCount}`,
       ipAddress: req.ip,
     })
+    // Saiu de PUBLISHED — recalcula agregados.
+    await recomputeBreederRating(review.breederId)
   } else {
     updated = await prisma.review.findUnique({ where: { id }, select: REVIEW_SELECT })
   }
@@ -481,11 +494,13 @@ export const dismissReviewFlags = asyncHandler(async (req, res) => {
   const { count } = await prisma.reviewFlag.deleteMany({ where: { reviewId: id } })
 
   // If the review was auto-FLAGGED and an admin dismisses the flags, restore to PUBLISHED
+  let restored = false
   if (review.status === 'FLAGGED') {
     await prisma.review.update({
       where: { id },
       data: { status: 'PUBLISHED', moderationReason: null },
     })
+    restored = true
   }
 
   await logAudit({
@@ -496,6 +511,9 @@ export const dismissReviewFlags = asyncHandler(async (req, res) => {
     details: `Denúncias removidas: ${count}`,
     ipAddress: req.ip,
   })
+
+  // Voltou a PUBLISHED — recalcula agregados.
+  if (restored) await recomputeBreederRating(review.breederId)
 
   res.json({ dismissed: count })
 })

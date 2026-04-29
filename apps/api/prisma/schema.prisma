@@ -153,6 +153,14 @@ model Breeder {
   // OU otherBreedsNote preenchida" e validado a nivel API.
   otherBreedsNote String? @map("other_breeds_note") @db.VarChar(500)
 
+  // Agregados desnormalizados (mantidos via recomputeBreederRating em
+  // services/breeder-stats.ts). Evita groupBy/aggregation repetida em
+  // todos os endpoints de listagem (search, home/featured, mapa).
+  // Recalculados sempre que uma Review e' criada/editada/apagada ou
+  // muda de status (DRAFT/PUBLISHED/HIDDEN).
+  avgRating   Float? @map("avg_rating")
+  reviewCount Int    @default(0) @map("review_count")
+
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   district         District          @relation(fields: [districtId], references: [id])
   municipality     Municipality      @relation(fields: [municipalityId], references: [id])

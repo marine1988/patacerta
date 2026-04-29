@@ -36,6 +36,13 @@ else
   echo "[PataCerta] Skipping demo seed (set RUN_SEED_DEMO_ON_BOOT=true to enable)"
 fi
 
+# Backfill dos agregados desnormalizados (Breeder.avgRating/reviewCount).
+# Idempotente: apenas re-calcula a partir das Reviews PUBLISHED. Necessario
+# apos prisma db push adicionar as colunas — sem isto os breeders existentes
+# ficavam com avgRating=null/reviewCount=0 ate' a' proxima escrita de review.
+echo "[PataCerta] Backfilling breeder stats..."
+npx tsx src/jobs/backfill-breeder-stats.ts || echo "[PataCerta] Backfill finished with non-zero exit"
+
 echo "[PataCerta] Starting API server..."
 cd /app
 exec node apps/api/dist/index.js

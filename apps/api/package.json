@@ -18,7 +18,8 @@
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "job:cleanup-refresh-tokens": "tsx src/jobs/cleanup-refresh-tokens.ts"
+    "job:cleanup-refresh-tokens": "tsx src/jobs/cleanup-refresh-tokens.ts",
+    "job:backfill-breeder-stats": "tsx src/jobs/backfill-breeder-stats.ts"
   },
   "dependencies": {
     "@patacerta/shared": "workspace:*",
