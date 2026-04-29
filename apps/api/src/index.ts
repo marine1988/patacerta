@@ -21,6 +21,7 @@ import { breedMatcherRouter } from './modules/breed-matcher/breed-matcher.router
 import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
 import { ensureBucket } from './lib/minio.js'
+import { isProd, isHttps } from './lib/env.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -33,10 +34,9 @@ app.set('trust proxy', 1)
 // Security headers. CSP is API-focused (no HTML rendered), so we keep defaults
 // but disable the cross-origin embedder policy that breaks JSON consumers.
 //
-// HSTS: forcamos 1 ano + includeSubDomains + preload em producao. Helmet ja
-// injecta HSTS por defeito mas com configuracao mais conservadora; em
-// producao todos os browsers devem honrar a politica completa.
-const isProd = process.env.NODE_ENV === 'production'
+// HSTS: forcamos 1 ano + includeSubDomains + preload em qualquer ambiente
+// HTTPS (producao + stage). Helmet ja injecta HSTS por defeito mas com
+// configuracao mais conservadora; aqui assumimos a politica completa.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -49,7 +49,7 @@ app.use(
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     referrerPolicy: { policy: 'no-referrer' },
-    strictTransportSecurity: isProd
+    strictTransportSecurity: isHttps
       ? { maxAge: 31536000, includeSubDomains: true, preload: true }
       : false,
   }),
@@ -129,7 +129,6 @@ app.listen(PORT, () => {
   console.log(`[PataCerta API] Running on http://localhost:${PORT}`)
   console.log(`[PataCerta API] Environment: ${process.env.NODE_ENV || 'development'}`)
 
-  const isProd = process.env.NODE_ENV === 'production'
   const skipFlag = process.env.AUTH_SKIP_EMAIL_VERIFICATION
   const rlFlag = process.env.DISABLE_RATE_LIMITS
   const skipOn = skipFlag === '1' || skipFlag === 'true' || skipFlag === 'TRUE'

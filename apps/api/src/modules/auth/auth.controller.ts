@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js'
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js'
 import { maskEmail } from '../../lib/redact.js'
+import { isHttps } from '../../lib/env.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
@@ -35,13 +36,13 @@ const REFRESH_COOKIE_PATH = '/api/auth'
 
 /**
  * Set the refresh-token cookie. httpOnly+SameSite=strict so JS cannot read
- * it and CSRF cannot trigger cross-site refreshes. Secure flag toggles with
- * NODE_ENV so localhost (http) still works in dev.
+ * it and CSRF cannot trigger cross-site refreshes. Secure flag liga-se em
+ * qualquer ambiente HTTPS (production + stage); fica off so' em dev (http).
  */
 function setRefreshCookie(res: Response, token: string): void {
   res.cookie(REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     sameSite: 'strict',
     path: REFRESH_COOKIE_PATH,
     maxAge: REFRESH_TOKEN_EXPIRY_MS,
@@ -51,7 +52,7 @@ function setRefreshCookie(res: Response, token: string): void {
 function clearRefreshCookie(res: Response): void {
   res.clearCookie(REFRESH_COOKIE_NAME, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     sameSite: 'strict',
     path: REFRESH_COOKIE_PATH,
   })
