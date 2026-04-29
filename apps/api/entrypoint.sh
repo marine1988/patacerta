@@ -40,8 +40,11 @@ fi
 # Idempotente: apenas re-calcula a partir das Reviews PUBLISHED. Necessario
 # apos prisma db push adicionar as colunas — sem isto os breeders existentes
 # ficavam com avgRating=null/reviewCount=0 ate' a' proxima escrita de review.
+#
+# Corremos o JS compilado (em dist/) em vez de tsx contra src/ — a imagem
+# de runtime so' tem dist/, package.json, prisma/ e node_modules.
 echo "[PataCerta] Backfilling breeder stats..."
-npx tsx src/jobs/backfill-breeder-stats.ts || echo "[PataCerta] Backfill finished with non-zero exit"
+node dist/jobs/backfill-breeder-stats.js || echo "[PataCerta] Backfill finished with non-zero exit"
 
 echo "[PataCerta] Starting API server..."
 cd /app
