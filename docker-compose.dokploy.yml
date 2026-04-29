@@ -70,7 +70,10 @@ services:
       MINIO_BUCKET: patacerta-uploads
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@patacerta.pt}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
-      CORS_ORIGIN: '*'
+      # CORS_ORIGIN deve ser definido no painel Dokploy (Environment vars).
+      # Se ausente, a API recai sobre FRONTEND_URL. '*' nao e' permitido
+      # (credentials enabled — ver apps/api/src/index.ts).
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
       FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.rogeriofigueiredo.us}
       # Lower-environment flags — do NOT enable in production
       RESET_DB_ON_BOOT: ${RESET_DB_ON_BOOT:-false}
