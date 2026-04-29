@@ -6,16 +6,22 @@ import { Avatar } from '../ui/Avatar'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { LogoMark } from '../shared/LogoMark'
 import { api } from '../../lib/api'
+import { queryKeys } from '../../lib/queryKeys'
+import { pollingQueryDefaults } from '../../lib/queryDefaults'
+
+// Polling de badges: 60s (em vez de 30s) e pausado quando a tab está
+// em background. Reduz tráfego em ~50% para utilizadores com a app
+// aberta em segundo plano.
+const BADGE_POLL_MS = 60_000
 
 function UnreadBadge({ className = '' }: { className?: string }) {
   const { data } = useQuery({
-    queryKey: ['messages', 'unread-count'],
+    queryKey: queryKeys.messages.unreadCount(),
     queryFn: async () => {
       const res = await api.get<{ unreadCount: number }>('/messages/unread-count')
       return res.data
     },
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    ...pollingQueryDefaults(BADGE_POLL_MS),
   })
   const count = data?.unreadCount ?? 0
   if (count <= 0) return null
@@ -31,7 +37,7 @@ function UnreadBadge({ className = '' }: { className?: string }) {
 
 function AdminPendingBadge({ className = '' }: { className?: string }) {
   const { data } = useQuery({
-    queryKey: ['admin', 'pending-counts'],
+    queryKey: queryKeys.admin.pendingCounts(),
     queryFn: async () => {
       const res = await api.get<{
         pendingDocs: number
@@ -43,8 +49,7 @@ function AdminPendingBadge({ className = '' }: { className?: string }) {
       }>('/admin/pending-counts')
       return res.data
     },
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    ...pollingQueryDefaults(BADGE_POLL_MS),
   })
   const count = data?.total ?? 0
   if (count <= 0) return null
@@ -76,22 +81,20 @@ function UserMenuAggregateBadge({
   className?: string
 }) {
   const { data: unread } = useQuery({
-    queryKey: ['messages', 'unread-count'],
+    queryKey: queryKeys.messages.unreadCount(),
     queryFn: async () => {
       const res = await api.get<{ unreadCount: number }>('/messages/unread-count')
       return res.data
     },
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    ...pollingQueryDefaults(BADGE_POLL_MS),
   })
   const { data: pending } = useQuery({
-    queryKey: ['admin', 'pending-counts'],
+    queryKey: queryKeys.admin.pendingCounts(),
     queryFn: async () => {
       const res = await api.get<{ total: number }>('/admin/pending-counts')
       return res.data
     },
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    ...pollingQueryDefaults(BADGE_POLL_MS),
     enabled: isAdmin,
   })
   const total = (unread?.unreadCount ?? 0) + (isAdmin ? (pending?.total ?? 0) : 0)

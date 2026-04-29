@@ -1,17 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../../lib/api'
 import { Button } from '../ui/Button'
-import type { DistrictOption } from '../../lib/lookups'
+import { useBreeds, useDistricts } from '../../lib/useLookups'
 
 interface SearchBarProps {
   compact?: boolean
-}
-
-interface BreedOption {
-  id: number
-  namePt: string
 }
 
 export function SearchBar({ compact = false }: SearchBarProps) {
@@ -20,17 +13,8 @@ export function SearchBar({ compact = false }: SearchBarProps) {
   const [breed, setBreed] = useState('')
   const [query, setQuery] = useState('')
 
-  const { data: districtList = [] } = useQuery<DistrictOption[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-    staleTime: 3600_000,
-  })
-
-  const { data: breedList = [] } = useQuery<BreedOption[]>({
-    queryKey: ['breeds'],
-    queryFn: () => api.get('/breeds').then((r) => r.data),
-    staleTime: 3600_000,
-  })
+  const { data: districtList = [] } = useDistricts()
+  const { data: breedList = [] } = useBreeds()
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()

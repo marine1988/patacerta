@@ -27,6 +27,8 @@ import {
 } from '../../lib/services'
 import { api } from '../../lib/api'
 import { formatSmart } from '../../lib/dates'
+import { useDistricts, useMunicipalities, useServiceCategories } from '../../lib/useLookups'
+import type { DistrictOption, MunicipalityOption } from '../../lib/lookups'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import {
   Card,
@@ -54,15 +56,8 @@ interface ServiceItem extends ServiceBase {
   category: ServiceCategory
 }
 
-interface DistrictOpt {
-  id: number
-  namePt: string
-}
-
-interface MunicipalityOpt {
-  id: number
-  namePt: string
-}
+type DistrictOpt = DistrictOption
+type MunicipalityOpt = MunicipalityOption
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -151,22 +146,11 @@ export function ServicesTab() {
     queryFn: () => api.get('/services/mine').then((r) => r.data),
   })
 
-  const { data: categories } = useQuery<ServiceCategory[]>({
-    queryKey: ['service-categories'],
-    queryFn: () => api.get('/services/categories').then((r) => r.data),
-  })
+  const { data: categories } = useServiceCategories()
 
-  const { data: districts } = useQuery<DistrictOpt[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-  })
+  const { data: districts } = useDistricts()
 
-  const { data: municipalities } = useQuery<MunicipalityOpt[]>({
-    queryKey: ['municipalities', form.districtId],
-    queryFn: () =>
-      api.get(`/search/districts/${form.districtId}/municipalities`).then((r) => r.data),
-    enabled: !!form.districtId,
-  })
+  const { data: municipalities } = useMunicipalities(form.districtId)
 
   const editingService =
     editingId !== null ? (services?.data.find((s) => s.id === editingId) ?? null) : null

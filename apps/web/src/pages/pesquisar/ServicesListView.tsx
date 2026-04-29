@@ -12,7 +12,8 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { useGeolocation } from '../../hooks/useGeolocation'
-import type { DistrictOption, MunicipalityOption, ServiceCategoryOption } from '../../lib/lookups'
+import type { MunicipalityOption } from '../../lib/lookups'
+import { useDistricts, useServiceCategories } from '../../lib/useLookups'
 
 interface ServicesPaginatedResponse {
   data: ServiceCardData[]
@@ -63,17 +64,9 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
     setPage(1)
   }, [filtersKey])
 
-  const { data: categories = [] } = useQuery<ServiceCategoryOption[]>({
-    queryKey: ['service-categories'],
-    queryFn: () => api.get('/services/categories').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: categories = [] } = useServiceCategories()
 
-  const { data: districts = [] } = useQuery<DistrictOption[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: districts = [] } = useDistricts()
 
   const { data: municipalities = [] } = useQuery<MunicipalityOption[]>({
     queryKey: ['municipalities', districtId],

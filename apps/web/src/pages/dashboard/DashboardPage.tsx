@@ -6,6 +6,7 @@ import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDateTime, formatSmart } from '../../lib/dates'
+import { useBreeds, useDistricts, useMunicipalities } from '../../lib/useLookups'
 import {
   Tabs,
   Card,
@@ -89,16 +90,6 @@ interface VerificationDoc {
   docType: string
   fileName: string
   status: string
-}
-
-interface District {
-  id: number
-  namePt: string
-}
-
-interface Municipality {
-  id: number
-  namePt: string
 }
 
 interface ThreadUser {
@@ -370,18 +361,9 @@ function BreederTab() {
     queryFn: () => api.get('/breeders/me/profile').then((r) => r.data),
   })
 
-  const { data: districts } = useQuery<District[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-  })
+  const { data: districts } = useDistricts()
 
-  const { data: breedsCatalog } = useQuery<
-    Array<{ id: number; nameSlug: string; namePt: string; fciGroup: string | null }>
-  >({
-    queryKey: ['breeds'],
-    queryFn: () => api.get('/breeds').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: breedsCatalog } = useBreeds()
 
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
@@ -494,12 +476,7 @@ function BreederTab() {
     }
   }, [breeder])
 
-  const { data: municipalities } = useQuery<Municipality[]>({
-    queryKey: ['municipalities', form.districtId],
-    queryFn: () =>
-      api.get(`/search/districts/${form.districtId}/municipalities`).then((r) => r.data),
-    enabled: !!form.districtId,
-  })
+  const { data: municipalities } = useMunicipalities(form.districtId)
 
   const saveMutation = useMutation({
     // Cria ou actualiza consoante ja existir perfil. O endpoint POST /breeders

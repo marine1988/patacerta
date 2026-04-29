@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
-import type { DistrictOption } from '../../lib/lookups'
+import { useBreeds, useDistricts } from '../../lib/useLookups'
 
 interface MapBreederResult {
   id: number
@@ -38,17 +38,9 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
   const breedId = searchParams.get('breedId') || ''
   const query = searchParams.get('query') || ''
 
-  const { data: districtsList = [] } = useQuery<DistrictOption[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: districtsList = [] } = useDistricts()
 
-  const { data: breedsList = [] } = useQuery<{ id: number; namePt: string }[]>({
-    queryKey: ['breeds'],
-    queryFn: () => api.get('/breeds').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: breedsList = [] } = useBreeds()
 
   const { data, isLoading, isError } = useQuery<MapBreedersResponse>({
     queryKey: ['breeders-map', { districtId, breedId, query }],

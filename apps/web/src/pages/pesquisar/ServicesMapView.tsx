@@ -13,7 +13,7 @@ import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { useGeolocation } from '../../hooks/useGeolocation'
-import type { DistrictOption, ServiceCategoryOption } from '../../lib/lookups'
+import { useDistricts, useServiceCategories } from '../../lib/useLookups'
 
 interface MapServiceResult {
   id: number
@@ -60,17 +60,9 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
   const geo = useGeolocation()
   const radiusKm = 25
 
-  const { data: categories = [] } = useQuery<ServiceCategoryOption[]>({
-    queryKey: ['service-categories'],
-    queryFn: () => api.get('/services/categories').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: categories = [] } = useServiceCategories()
 
-  const { data: districtsList = [] } = useQuery<DistrictOption[]>({
-    queryKey: ['districts'],
-    queryFn: () => api.get('/search/districts').then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  })
+  const { data: districtsList = [] } = useDistricts()
 
   const { data, isLoading, isError, refetch } = useQuery<MapServicesResponse>({
     queryKey: [
