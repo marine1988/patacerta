@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer'
+import { maskEmail } from './redact.js'
 
 /**
  * Email transport via nodemailer + generic SMTP.
@@ -66,7 +67,7 @@ async function sendMail({ to, subject, html, text }: SendMailParams): Promise<vo
     await transporter.sendMail({ from: getFrom(), to, subject, html, text })
   } catch (err) {
     // Never break the calling flow because of email failure.
-    console.error(`[Email] Failed to send to ${to}:`, err)
+    console.error(`[Email] Failed to send to ${maskEmail(to)}:`, err)
   }
 }
 

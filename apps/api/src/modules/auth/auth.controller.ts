@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js'
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js'
+import { maskEmail } from '../../lib/redact.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
@@ -224,7 +225,7 @@ export const register = asyncHandler(async (req, res) => {
 
   if (skip) {
     console.log(
-      `[EmailVerification] SKIPPED for ${user.email} (AUTH_SKIP_EMAIL_VERIFICATION enabled)`,
+      `[EmailVerification] SKIPPED for ${maskEmail(user.email)} (AUTH_SKIP_EMAIL_VERIFICATION enabled)`,
     )
     res.status(201).json({
       message: 'Conta criada. Pode iniciar sessão.',
