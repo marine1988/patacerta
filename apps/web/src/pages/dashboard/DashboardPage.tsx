@@ -1,4 +1,12 @@
-import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
+import {
+  useState,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+  type FormEvent,
+  type ChangeEvent,
+} from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -24,9 +32,26 @@ import {
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import { BreedMultiCombobox } from '../../components/shared/BreedMultiCombobox'
-import { ServicesTab } from './ServicesTab'
-import { MyReviewsTab } from './MyReviewsTab'
-import { ReceivedReviewsTab } from './ReceivedReviewsTab'
+// Tabs pesados — lazy-loaded para reduzir o bundle inicial do Dashboard.
+// Cada um vai para o seu chunk e só é descarregado quando o utilizador
+// clica no respectivo separador.
+const ServicesTabLazy = lazy(() =>
+  import('./ServicesTab').then((m) => ({ default: m.ServicesTab })),
+)
+const MyReviewsTabLazy = lazy(() =>
+  import('./MyReviewsTab').then((m) => ({ default: m.MyReviewsTab })),
+)
+const ReceivedReviewsTabLazy = lazy(() =>
+  import('./ReceivedReviewsTab').then((m) => ({ default: m.ReceivedReviewsTab })),
+)
+
+function LazyTabFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Spinner />
+    </div>
+  )
+}
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
@@ -2497,7 +2522,11 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
               </svg>
             ),
-            content: <ServicesTab />,
+            content: (
+              <Suspense fallback={<LazyTabFallback />}>
+                <ServicesTabLazy />
+              </Suspense>
+            ),
           },
         ]
       : []),
@@ -2539,7 +2568,11 @@ export default function DashboardPage() {
           />
         </svg>
       ),
-      content: <MyReviewsTab />,
+      content: (
+        <Suspense fallback={<LazyTabFallback />}>
+          <MyReviewsTabLazy />
+        </Suspense>
+      ),
     },
     ...(isBreeder || hasServices
       ? [
@@ -2562,7 +2595,9 @@ export default function DashboardPage() {
               </svg>
             ),
             content: (
-              <ReceivedReviewsTab includeBreeder={isBreeder} includeServices={hasServices} />
+              <Suspense fallback={<LazyTabFallback />}>
+                <ReceivedReviewsTabLazy includeBreeder={isBreeder} includeServices={hasServices} />
+              </Suspense>
             ),
           },
         ]
