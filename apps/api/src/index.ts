@@ -56,22 +56,31 @@ app.use(
 )
 
 // CORS: aceita lista separada por virgulas em CORS_ORIGIN.
-// - Em producao, CORS_ORIGIN e' obrigatorio (fail-fast).
-// - '*' com credentials e' explicitamente rejeitado pelo navegador, mas
-//   recusamos em config-time para evitar bypass por bug downstream.
-// - origin null (file://, sandboxed iframes) e bloqueado em prod.
-const corsOrigins = (process.env.CORS_ORIGIN || (isProd ? '' : 'http://localhost:5173'))
+// - Se CORS_ORIGIN nao estiver definido, recai sobre FRONTEND_URL — que
+//   ja existe para construir links de email. Evita ter de duplicar o
+//   mesmo dominio em duas variaveis em cada deploy.
+// - Em producao, pelo menos uma das duas tem de estar definida (fail-fast).
+// - '*' com credentials e' rejeitado pelo proprio navegador, mas
+//   recusamos em config-time para detectar config-leak cedo.
+// - origin null (file://, sandboxed iframes) e' aceite apenas em dev
+//   (mais abaixo, pedidos sem Origin header passam).
+const rawCors =
+  process.env.CORS_ORIGIN || process.env.FRONTEND_URL || (isProd ? '' : 'http://localhost:5173')
+const corsOrigins = rawCors
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean)
 if (isProd && corsOrigins.length === 0) {
   throw new Error(
-    '[PataCerta] CORS_ORIGIN obrigatorio em producao. Defina dominio(s) permitido(s).',
+    '[PataCerta] CORS_ORIGIN ou FRONTEND_URL obrigatorio em producao. Defina dominio(s) permitido(s).',
   )
 }
 if (corsOrigins.includes('*')) {
-  throw new Error('[PataCerta] CORS_ORIGIN=* nao e permitido (credentials enabled).')
+  throw new Error(
+    '[PataCerta] CORS_ORIGIN=* nao e permitido (credentials enabled). Use o dominio exacto do FE.',
+  )
 }
+console.log(`[PataCerta API] CORS allowlist: ${corsOrigins.join(', ')}`)
 app.use(
   cors({
     origin: (origin, cb) => {
