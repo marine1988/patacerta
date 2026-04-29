@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { queryKeys } from '../../lib/queryKeys'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import type { ServiceReviewItem } from '../../lib/reviews'
@@ -262,7 +263,7 @@ export function ServiceDetailPage() {
 
   // ─── Reviews ──────────────────────────────────────────────────────
   const reviewsQuery = useQuery<ServiceReviewsResponse>({
-    queryKey: ['service-reviews', { serviceId: id, sort: reviewSort, page: reviewPage }],
+    queryKey: queryKeys.reviews.byService(id, reviewSort, reviewPage),
     queryFn: () =>
       api
         .get('/service-reviews', {
@@ -284,7 +285,7 @@ export function ServiceDetailPage() {
   const myReview = user ? reviews.find((r) => r.authorId === user.id) : undefined
 
   function invalidateReviews() {
-    queryClient.invalidateQueries({ queryKey: ['service-reviews', { serviceId: id }] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.reviews.serviceReviewsAll() })
     queryClient.invalidateQueries({ queryKey: ['service', id] })
     queryClient.invalidateQueries({ queryKey: ['my-service-reviews'] })
   }

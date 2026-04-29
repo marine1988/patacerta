@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
@@ -16,7 +17,7 @@ export function UtilizadoresTab() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<User>>({
-    queryKey: ['admin-users', page, roleFilter],
+    queryKey: queryKeys.admin.users(page, roleFilter || undefined),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (roleFilter) params.set('role', roleFilter)
@@ -29,7 +30,7 @@ export function UtilizadoresTab() {
       api.patch(`/admin/users/${userId}/suspend`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
       setSuspendingUser(null)
       setSuspendReason('')
       setActionError(null)

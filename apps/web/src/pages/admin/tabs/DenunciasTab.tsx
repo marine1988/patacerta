@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
@@ -76,7 +77,7 @@ export function DenunciasTab() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<MessageReportSummary>>({
-    queryKey: ['admin-message-reports', page, statusFilter],
+    queryKey: queryKeys.admin.messageReports(page, statusFilter),
     queryFn: () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -88,7 +89,7 @@ export function DenunciasTab() {
   })
 
   const { data: detail, isLoading: detailLoading } = useQuery<MessageReportDetail>({
-    queryKey: ['admin-message-report', openReportId],
+    queryKey: queryKeys.admin.messageReport(openReportId),
     queryFn: () => api.get(`/admin/message-reports/${openReportId}`).then((r) => r.data),
     enabled: openReportId !== null,
   })
@@ -111,7 +112,7 @@ export function DenunciasTab() {
       setResolution('')
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-message-reports'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
       const maybeMsg =

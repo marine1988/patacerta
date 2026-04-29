@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
 import { Badge, Spinner, EmptyState, Select } from '../../../components/ui'
@@ -12,7 +13,11 @@ export function AuditoriaTab() {
   const [entityFilter, setEntityFilter] = useState('')
 
   const { data, isLoading, isError } = useQuery<Paginated<AuditLog>>({
-    queryKey: ['admin-audit-logs', page, actionFilter, entityFilter],
+    queryKey: queryKeys.admin.auditLogs(
+      page,
+      actionFilter || undefined,
+      entityFilter || undefined,
+    ),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (actionFilter) params.set('action', actionFilter)

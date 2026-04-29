@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
@@ -14,7 +15,7 @@ export function VerificacoesTab() {
   const [rejectNotes, setRejectNotes] = useState('')
 
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
-    queryKey: ['admin-verifications', page],
+    queryKey: queryKeys.admin.verifications(page),
     queryFn: () =>
       api.get(`/admin/verifications/pending?page=${page}&limit=20`).then((r) => r.data),
   })
@@ -26,8 +27,8 @@ export function VerificacoesTab() {
       api.patch(`/verification/${docId}/review`, { status: 'APPROVED' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
   })
 
@@ -38,8 +39,8 @@ export function VerificacoesTab() {
       api.patch(`/verification/${docId}/review`, { status: 'REJECTED', notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
       setRejectingDocId(null)
       setRejectNotes('')
     },

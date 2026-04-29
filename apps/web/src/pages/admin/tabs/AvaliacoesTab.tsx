@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
@@ -64,7 +65,7 @@ export function AvaliacoesTab() {
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null)
 
   const { data, isLoading, isError } = useQuery<Paginated<Review>>({
-    queryKey: ['admin-flagged-reviews', page, typeFilter],
+    queryKey: queryKeys.admin.flaggedReviews(page, typeFilter),
     queryFn: () =>
       api
         .get(`/admin/reviews/flagged?page=${page}&limit=20&type=${typeFilter}`)
@@ -73,9 +74,9 @@ export function AvaliacoesTab() {
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] })
-    queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
-    queryClient.invalidateQueries({ queryKey: ['reviews'] })
-    queryClient.invalidateQueries({ queryKey: ['service-reviews'] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+    queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() })
+    queryClient.invalidateQueries({ queryKey: queryKeys.reviews.serviceReviewsAll() })
   }
 
   function endpointFor(review: Review): string {
@@ -109,7 +110,7 @@ export function AvaliacoesTab() {
   })
 
   const flagsQuery = useQuery<{ data: ReviewFlag[] }>({
-    queryKey: ['review-flags', flagsTarget?.type, flagsTarget?.id],
+    queryKey: queryKeys.admin.reviewFlags(flagsTarget?.type ?? null, flagsTarget?.id),
     queryFn: () => api.get(`${endpointFor(flagsTarget!)}/flags`).then((r) => r.data),
     enabled: !!flagsTarget,
   })

@@ -51,6 +51,11 @@ export const queryKeys = {
       ['admin-audit-logs', page, action ?? null, entity ?? null] as const,
     reviewFlags: (type: string | null, id: number | string | null | undefined) =>
       ['review-flags', type, id ?? null] as const,
+    sponsoredSlots: (page: number, status: string, breedId: number | string | null | undefined) =>
+      ['admin-sponsored-slots', page, status, breedId ?? null] as const,
+    sponsoredSlotsAll: () => ['admin-sponsored-slots'] as const,
+    breedersVerified: (search: string) => ['admin-breeders-verified', search] as const,
+    breedsMini: () => ['breeds-mini'] as const,
   },
 
   // ── Breeders ──────────────────────────────────────────────────────
@@ -70,6 +75,9 @@ export const queryKeys = {
     eligibility: (breederId: number | string | null | undefined) =>
       ['review-eligibility', { breederId: breederId ?? null }] as const,
     mine: () => ['my-reviews'] as const,
+    serviceReviewsAll: () => ['service-reviews'] as const,
+    byService: (serviceId: number | string | null | undefined, sort?: string, page?: number) =>
+      ['service-reviews', { serviceId: serviceId ?? null, sort, page }] as const,
   },
 
   // ── Services ──────────────────────────────────────────────────────

@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
 import { Pagination } from '../../components/ui/Pagination'
 import type { Paginated } from '../../lib/pagination'
@@ -88,7 +89,7 @@ export function PatrocinadosTab() {
 
   // Listagem
   const { data, isLoading, isError } = useQuery<Paginated<SponsoredSlot>>({
-    queryKey: ['admin-sponsored-slots', page, statusFilter, breedFilter],
+    queryKey: queryKeys.admin.sponsoredSlots(page, statusFilter, breedFilter || null),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (statusFilter) params.set('status', statusFilter)
@@ -99,7 +100,7 @@ export function PatrocinadosTab() {
 
   // Listas auxiliares para filtros e selects (raças + criadores VERIFIED).
   const { data: breeds } = useQuery<BreedMini[]>({
-    queryKey: ['breeds-mini'],
+    queryKey: queryKeys.admin.breedsMini(),
     queryFn: () => api.get('/breeds').then((r) => r.data.data ?? r.data),
   })
 
@@ -114,7 +115,8 @@ export function PatrocinadosTab() {
   // Mutations
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/sponsored-slots/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-sponsored-slots'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() }),
   })
 
   function handleDelete(slot: SponsoredSlot) {
@@ -265,7 +267,7 @@ export function PatrocinadosTab() {
           onClose={() => setCreating(false)}
           onSuccess={() => {
             setCreating(false)
-            queryClient.invalidateQueries({ queryKey: ['admin-sponsored-slots'] })
+            queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() })
           }}
         />
       </Modal>
@@ -285,7 +287,7 @@ export function PatrocinadosTab() {
             onClose={() => setEditing(null)}
             onSuccess={() => {
               setEditing(null)
-              queryClient.invalidateQueries({ queryKey: ['admin-sponsored-slots'] })
+              queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() })
             }}
           />
         )}
@@ -332,7 +334,7 @@ function SlotForm(props: SlotFormProps) {
 
   // Pesquisa de criadores VERIFIED para o select de criar.
   const { data: breeders } = useQuery<{ data: BreederMini[] }>({
-    queryKey: ['admin-breeders-verified', breederSearch],
+    queryKey: queryKeys.admin.breedersVerified(breederSearch),
     queryFn: () => {
       const params = new URLSearchParams({
         page: '1',

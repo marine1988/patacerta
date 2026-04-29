@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { Card, Spinner, EmptyState } from '../../../components/ui'
 import type { AdminStats } from '../_shared'
 
@@ -9,7 +10,7 @@ export function ResumoTab() {
     isLoading,
     isError,
   } = useQuery<AdminStats>({
-    queryKey: ['admin-stats'],
+    queryKey: queryKeys.admin.stats(),
     queryFn: () => api.get('/admin/stats').then((r) => r.data),
   })
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
+import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
@@ -126,7 +127,7 @@ function ServicosDenunciasView() {
   const [suspendReason, setSuspendReason] = useState('')
 
   const { data, isLoading, isError } = useQuery<Paginated<AdminServiceReportItem>>({
-    queryKey: ['admin-service-reports', page, statusFilter],
+    queryKey: queryKeys.admin.serviceReports(page, statusFilter),
     queryFn: () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -153,7 +154,7 @@ function ServicosDenunciasView() {
       setResolution('')
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-service-reports'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
       const maybeMsg =
@@ -173,7 +174,7 @@ function ServicosDenunciasView() {
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-service-reports'] })
       queryClient.invalidateQueries({ queryKey: ['admin-services'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
       const maybeMsg =
@@ -449,7 +450,7 @@ function ServicosTodosView() {
   }, [q])
 
   const { data, isLoading, isError } = useQuery<Paginated<AdminServiceItem>>({
-    queryKey: ['admin-services', page, statusFilter, debouncedQ],
+    queryKey: queryKeys.admin.services(page, statusFilter, debouncedQ),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (statusFilter) params.set('status', statusFilter)
@@ -466,7 +467,7 @@ function ServicosTodosView() {
       setSuspendReason('')
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-services'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
       const maybeMsg =
@@ -496,7 +497,7 @@ function ServicosTodosView() {
       api.patch(`/admin/services/${id}/featured`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-services'] })
-      queryClient.invalidateQueries({ queryKey: ['home-featured'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.home.featured() })
     },
   })
 
