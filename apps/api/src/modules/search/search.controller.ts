@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client'
 const TTL_MS = 3600_000 // 1h
 const CACHE_KEY_DISTRICTS = 'search:districts:v1'
 const CACHE_KEY_STATS = 'search:public-stats:v1'
+const CACHE_KEY_MUNICIPALITIES = 'search:municipalities:district:v1'
 
 export const searchBreeders = asyncHandler(async (req, res) => {
   // MVP so-caes: speciesId aceite no schema para retrocompatibilidade mas ignorado.
@@ -138,11 +139,17 @@ export const listDistricts = asyncHandler(async (_req, res) => {
 export const listMunicipalities = asyncHandler(async (req, res) => {
   const districtId = parseId(req.params.districtId)
 
-  const municipalities = await prisma.municipality.findMany({
-    where: { districtId },
-    orderBy: { namePt: 'asc' },
-    select: { id: true, code: true, namePt: true },
-  })
+  // Cache por distrito — municipalities sao essencialmente estaticos.
+  const municipalities = await cacheGetOrSet(
+    `${CACHE_KEY_MUNICIPALITIES}:${districtId}`,
+    TTL_MS,
+    async () =>
+      prisma.municipality.findMany({
+        where: { districtId },
+        orderBy: { namePt: 'asc' },
+        select: { id: true, code: true, namePt: true },
+      }),
+  )
 
   res.set('Cache-Control', 'public, max-age=3600')
   res.json(municipalities)

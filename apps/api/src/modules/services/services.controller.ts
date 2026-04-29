@@ -30,6 +30,7 @@ import { uploadFile, deleteFile } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
 import { geocodeService } from '../../lib/geocoding.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
 import {
   SERVICE_STATUS_TRANSITIONS,
   ServiceStatus,
@@ -958,11 +959,14 @@ export const getServiceById = asyncHandler(async (req, res) => {
  * Active categories only (the UI whitelist).
  */
 export const listActiveCategories = asyncHandler(async (_req, res) => {
-  const categories = await prisma.serviceCategory.findMany({
-    where: { isActive: true },
-    orderBy: { namePt: 'asc' },
-    select: { id: true, nameSlug: true, namePt: true },
-  })
+  // Categorias activas mudam raramente (gestao admin). Cache 1h.
+  const categories = await cacheGetOrSet('services:active-categories:v1', 3600_000, async () =>
+    prisma.serviceCategory.findMany({
+      where: { isActive: true },
+      orderBy: { namePt: 'asc' },
+      select: { id: true, nameSlug: true, namePt: true },
+    }),
+  )
   res.set('Cache-Control', 'public, max-age=3600')
   res.json(categories)
 })
