@@ -16,10 +16,58 @@
 
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
+import { logger } from '../../lib/logger.js'
 import type { BreedMatchInput, BreedMatchResult, SponsoredBreederMini } from '@patacerta/shared'
 import { scoreBreed, penaltyToScore, type BreedForMatch } from './scoring.js'
 
 const MAX_SPONSORED_PER_BREED = 3
+const BREEDS_CACHE_KEY = 'breed-matcher:breeds:v1'
+const BREEDS_TTL_MS = 3600_000 // 1h — racas mudam raramente
+
+// Apenas os campos que o algoritmo de scoring + a resposta JSON usam.
+// Evita carregar descricoes longas, traducoes, etc. em cada submissao do quiz.
+const BREED_MATCH_SELECT = {
+  id: true,
+  nameSlug: true,
+  namePt: true,
+  fciGroup: true,
+  origin: true,
+  summaryPt: true,
+  size: true,
+  weightMinKg: true,
+  weightMaxKg: true,
+  lifespanMinYrs: true,
+  lifespanMaxYrs: true,
+  energyLevel: true,
+  exerciseDailyMin: true,
+  trainability: true,
+  groomingLevel: true,
+  shedding: true,
+  hypoallergenic: true,
+  apartmentFriendly: true,
+  noviceFriendly: true,
+  toleratesAlone: true,
+  goodWithKids: true,
+  goodWithDogs: true,
+  goodWithStrangers: true,
+  barkLevel: true,
+  coldTolerance: true,
+  heatTolerance: true,
+  imageUrl: true,
+} as const
+
+type CachedBreed = Awaited<ReturnType<typeof loadBreedsForMatching>>[number]
+
+async function loadBreedsForMatching() {
+  const rows = await prisma.breed.findMany({ select: BREED_MATCH_SELECT })
+  // Decimal -> number para serializacao JSON estavel via cache.
+  return rows.map((b) => ({
+    ...b,
+    weightMinKg: Number(b.weightMinKg),
+    weightMaxKg: Number(b.weightMaxKg),
+  }))
+}
 
 /**
  * Vai buscar até `MAX_SPONSORED_PER_BREED` criadores patrocinados por
@@ -76,10 +124,12 @@ async function fetchSponsoredByBreed(
     for (const [breedId, list] of grouped) {
       const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, MAX_SPONSORED_PER_BREED)
       const mini: SponsoredBreederMini[] = shuffled.map((s) => {
-        const ratings = s.breeder.reviews.map((r) => r.rating)
+        const ratings = s.breeder.reviews.map((r: { rating: number }) => r.rating)
         const avgRating =
           ratings.length > 0
-            ? Math.round((ratings.reduce((a, c) => a + c, 0) / ratings.length) * 10) / 10
+            ? Math.round(
+                (ratings.reduce((a: number, c: number) => a + c, 0) / ratings.length) * 10,
+              ) / 10
             : null
         return {
           slotId: s.id,
@@ -104,14 +154,12 @@ async function fetchSponsoredByBreed(
             data: { impressionCount: { increment: 1 } },
           })
           .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error('[breed-matcher] impression increment failed', err)
+            logger.warn({ err }, '[breed-matcher] impression increment failed')
           })
       }
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[breed-matcher] fetchSponsoredByBreed failed', err)
+    logger.error({ err }, '[breed-matcher] fetchSponsoredByBreed failed')
   }
 
   return result
@@ -120,7 +168,11 @@ async function fetchSponsoredByBreed(
 export const matchBreeds = asyncHandler(async (req, res) => {
   const input = req.body as BreedMatchInput
 
-  const breeds = await prisma.breed.findMany()
+  const breeds = await cacheGetOrSet<CachedBreed[]>(
+    BREEDS_CACHE_KEY,
+    BREEDS_TTL_MS,
+    loadBreedsForMatching,
+  )
 
   if (breeds.length === 0) {
     res.json({ results: [], input })

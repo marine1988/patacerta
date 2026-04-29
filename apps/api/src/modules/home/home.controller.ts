@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
 
 /**
  * GET /api/home/featured
@@ -11,15 +12,27 @@ import { asyncHandler } from '../../lib/helpers.js'
  * Regra: anuncios "promovidos" (featuredUntil > now()) aparecem sempre
  * primeiro, em ordem aleatoria entre si. Se nao chegarem a 12, completamos
  * com items nao-promovidos tambem em ordem aleatoria. Cada page-load
- * produz uma ordem diferente.
+ * produz uma ordem diferente (shuffle e' pos-cache).
  *
- * Sem cache HTTP: o conteudo varia a cada request.
+ * Cache: a query base (4 findMany + 1 groupBy) e' cacheada 60s em Redis
+ * — uma das paginas mais visitadas do site. O shuffle e o slice por SLOT_COUNT
+ * acontecem depois, garantindo variedade visual entre requests mesmo com
+ * cache quente.
  */
 const SLOT_COUNT = 12
+const FEATURED_TTL_MS = 60_000
+const FEATURED_CACHE_KEY = 'home:featured:v1'
 
-export const getFeatured = asyncHandler(async (_req, res) => {
+interface FeaturedCachePayload {
+  featuredServices: Array<Record<string, unknown>>
+  fallbackServices: Array<Record<string, unknown>>
+  featuredBreeders: Array<{ id: number } & Record<string, unknown>>
+  fallbackBreeders: Array<{ id: number } & Record<string, unknown>>
+  breederRatings: Array<{ id: number; avgRating: number | null; reviewCount: number }>
+}
+
+async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
   const now = new Date()
-
   const [featuredServices, fallbackServices, featuredBreeders, fallbackBreeders] =
     await Promise.all([
       prisma.service.findMany({
@@ -56,50 +69,62 @@ export const getFeatured = asyncHandler(async (_req, res) => {
       }),
     ])
 
+  // Agregar ratings dos breeders num so' groupBy (em vez de N+1).
+  const breederIds = [...featuredBreeders, ...fallbackBreeders].map((b) => b.id)
+  const breederRatings = await aggregateBreederRatings(breederIds)
+
+  return {
+    featuredServices,
+    fallbackServices,
+    featuredBreeders,
+    fallbackBreeders,
+    breederRatings,
+  }
+}
+
+export const getFeatured = asyncHandler(async (_req, res) => {
+  const payload = await cacheGetOrSet(
+    FEATURED_CACHE_KEY,
+    FEATURED_TTL_MS,
+    loadFeaturedPayload,
+  )
+
   const services = pickRandom(
-    [...shuffle(featuredServices), ...shuffle(fallbackServices)],
+    [...shuffle(payload.featuredServices), ...shuffle(payload.fallbackServices)],
     SLOT_COUNT,
   )
   const breedersRaw = pickRandom(
-    [...shuffle(featuredBreeders), ...shuffle(fallbackBreeders)],
+    [...shuffle(payload.featuredBreeders), ...shuffle(payload.fallbackBreeders)],
     SLOT_COUNT,
   )
 
-  // Breeders nao tem avgRating/reviewCount no model — agregamos a partir de Review.
-  const breeders = await attachBreederRatings(breedersRaw)
+  const ratingById = new Map(
+    payload.breederRatings.map((r) => [r.id, { avg: r.avgRating, count: r.reviewCount }]),
+  )
+  const breeders = breedersRaw.map((b) => ({
+    ...b,
+    avgRating: ratingById.get(b.id)?.avg ?? null,
+    reviewCount: ratingById.get(b.id)?.count ?? 0,
+  }))
 
   res.json({ services, breeders })
 })
 
-async function attachBreederRatings<T extends { id: number }>(
-  breeders: T[],
-): Promise<Array<T & { avgRating: number | null; reviewCount: number }>> {
-  if (breeders.length === 0) return []
-
-  const ids = breeders.map((b) => b.id)
+async function aggregateBreederRatings(
+  ids: number[],
+): Promise<Array<{ id: number; avgRating: number | null; reviewCount: number }>> {
+  if (ids.length === 0) return []
   const aggs = await prisma.review.groupBy({
     by: ['breederId'],
     where: { breederId: { in: ids }, status: 'PUBLISHED' },
     _avg: { rating: true },
     _count: { id: true },
   })
-
-  const byId = new Map<number, { avg: number | null; count: number }>()
-  for (const a of aggs) {
-    byId.set(a.breederId, {
-      avg: a._avg.rating != null ? Math.round(a._avg.rating * 10) / 10 : null,
-      count: a._count.id,
-    })
-  }
-
-  return breeders.map((b) => {
-    const r = byId.get(b.id)
-    return {
-      ...b,
-      avgRating: r?.avg ?? null,
-      reviewCount: r?.count ?? 0,
-    }
-  })
+  return aggs.map((a) => ({
+    id: a.breederId,
+    avgRating: a._avg.rating != null ? Math.round(a._avg.rating * 10) / 10 : null,
+    reviewCount: a._count.id,
+  }))
 }
 
 function shuffle<T>(arr: T[]): T[] {

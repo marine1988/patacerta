@@ -1,42 +1,38 @@
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
 
-interface BreedsCacheEntry {
-  data: Array<{
-    id: number
-    nameSlug: string
-    namePt: string
-    fciGroup: string | null
-    imageUrl: string | null
-  }>
-  expiresAt: number
+const TTL_MS = 3600_000 // 1h — catalogo de racas raramente muda
+const CACHE_KEY_BREEDS = 'breeds:list:v1'
+const CACHE_KEY_DOG_SPECIES = 'breeds:dogSpeciesId:v1'
+
+interface BreedListItem {
+  id: number
+  nameSlug: string
+  namePt: string
+  fciGroup: string | null
+  imageUrl: string | null
 }
 
-const TTL = 3600_000 // 1h
-let breedsCache: BreedsCacheEntry | null = null
-let dogSpeciesIdCache: number | null = null
-
 async function getDogSpeciesId(): Promise<number | null> {
-  if (dogSpeciesIdCache !== null) return dogSpeciesIdCache
-  const dog = await prisma.species.findUnique({
-    where: { nameSlug: 'cao' },
-    select: { id: true },
+  return cacheGetOrSet<number | null>(CACHE_KEY_DOG_SPECIES, TTL_MS, async () => {
+    const dog = await prisma.species.findUnique({
+      where: { nameSlug: 'cao' },
+      select: { id: true },
+    })
+    return dog?.id ?? null
   })
-  if (!dog) return null
-  dogSpeciesIdCache = dog.id
-  return dog.id
 }
 
 /**
  * GET /api/breeds
  * Catálogo público de raças de cão (MVP só-cães), ordenado por nome PT.
- * Cache TTL 1h — catálogo raramente muda.
+ * Cache TTL 1h via Redis (fallback in-memory) — partilhado entre instâncias.
  */
 export const listBreeds = asyncHandler(async (_req, res) => {
-  const now = Date.now()
-  if (!breedsCache || breedsCache.expiresAt < now) {
+  const data = await cacheGetOrSet<BreedListItem[]>(CACHE_KEY_BREEDS, TTL_MS, async () => {
     const dogSpeciesId = await getDogSpeciesId()
-    const data = await prisma.breed.findMany({
+    return prisma.breed.findMany({
       where: dogSpeciesId !== null ? { speciesId: dogSpeciesId } : undefined,
       orderBy: { namePt: 'asc' },
       select: {
@@ -47,8 +43,7 @@ export const listBreeds = asyncHandler(async (_req, res) => {
         imageUrl: true,
       },
     })
-    breedsCache = { data, expiresAt: now + TTL }
-  }
+  })
   res.set('Cache-Control', 'public, max-age=3600')
-  res.json(breedsCache!.data)
+  res.json(data)
 })
