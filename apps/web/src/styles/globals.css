@@ -356,6 +356,14 @@
   .dark .bg-bg {
     background-color: theme('colors.bg.dark');
   }
+  /* Tailwind JIT gera .bg-bg\/85 como rgba literal sem variante dark.
+   * Override explicito: usado pelo Navbar para o fundo translucido. */
+  .bg-bg\/85 {
+    background-color: rgb(247 243 236 / 0.85);
+  }
+  .dark .bg-bg\/85 {
+    background-color: rgb(20 19 18 / 0.85);
+  }
 
   .border-line {
     border-color: theme('colors.line.DEFAULT');
@@ -371,38 +379,94 @@
  * accent tints (`bg-green-50`, `bg-blue-50`, etc). These overrides
  * make them readable in dark mode without rewriting every page.
  * ============================================================ */
-.dark .text-gray-900 { color: theme('colors.ink.dark'); }
-.dark .text-gray-800 { color: theme('colors.ink.dark'); }
-.dark .text-gray-700 { color: #D6CFC1; }
-.dark .text-gray-600 { color: theme('colors.muted.dark'); }
-.dark .text-gray-500 { color: theme('colors.muted.dark'); }
-.dark .text-gray-400 { color: theme('colors.subtle.dark'); }
-.dark .text-gray-300 { color: theme('colors.subtle.dark'); }
+.dark .text-gray-900 {
+  color: theme('colors.ink.dark');
+}
+.dark .text-gray-800 {
+  color: theme('colors.ink.dark');
+}
+.dark .text-gray-700 {
+  color: #d6cfc1;
+}
+.dark .text-gray-600 {
+  color: theme('colors.muted.dark');
+}
+.dark .text-gray-500 {
+  color: theme('colors.muted.dark');
+}
+.dark .text-gray-400 {
+  color: theme('colors.subtle.dark');
+}
+.dark .text-gray-300 {
+  color: theme('colors.subtle.dark');
+}
 
-.dark .hover\:text-gray-700:hover { color: #D6CFC1; }
-.dark .hover\:text-gray-600:hover { color: theme('colors.muted.dark'); }
-.dark .hover\:text-gray-900:hover { color: theme('colors.ink.dark'); }
+.dark .hover\:text-gray-700:hover {
+  color: #d6cfc1;
+}
+.dark .hover\:text-gray-600:hover {
+  color: theme('colors.muted.dark');
+}
+.dark .hover\:text-gray-900:hover {
+  color: theme('colors.ink.dark');
+}
 
-.dark .bg-gray-50 { background-color: theme('colors.surface-alt.dark'); }
-.dark .bg-gray-100 { background-color: theme('colors.surface-alt.dark'); }
-.dark .bg-white { background-color: theme('colors.surface.dark'); }
-.dark .hover\:bg-gray-50:hover { background-color: theme('colors.surface-alt.dark'); }
-.dark .hover\:bg-gray-100:hover { background-color: theme('colors.surface-alt.dark'); }
-.dark .bg-gray-50\/50 { background-color: rgb(37 35 32 / 0.5); }
+.dark .bg-gray-50 {
+  background-color: theme('colors.surface-alt.dark');
+}
+.dark .bg-gray-100 {
+  background-color: theme('colors.surface-alt.dark');
+}
+.dark .bg-white {
+  background-color: theme('colors.surface.dark');
+}
+.dark .hover\:bg-gray-50:hover {
+  background-color: theme('colors.surface-alt.dark');
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: theme('colors.surface-alt.dark');
+}
+.dark .bg-gray-50\/50 {
+  background-color: rgb(37 35 32 / 0.5);
+}
 
-.dark .border-gray-100 { border-color: theme('colors.line.dark'); }
-.dark .border-gray-200 { border-color: theme('colors.line.dark'); }
-.dark .border-gray-300 { border-color: theme('colors.line.dark'); }
-.dark .divide-gray-100 > * + * { border-color: theme('colors.line.dark'); }
+.dark .border-gray-100 {
+  border-color: theme('colors.line.dark');
+}
+.dark .border-gray-200 {
+  border-color: theme('colors.line.dark');
+}
+.dark .border-gray-300 {
+  border-color: theme('colors.line.dark');
+}
+.dark .divide-gray-100 > * + * {
+  border-color: theme('colors.line.dark');
+}
 
 /* Colored tint cards (certification accents) */
-.dark .bg-green-50 { background-color: rgb(79 93 74 / 0.15); }
-.dark .text-green-600 { color: theme('colors.sage.300'); }
-.dark .text-green-800 { color: theme('colors.sage.200'); }
-.dark .bg-blue-50 { background-color: rgb(184 137 95 / 0.12); }
-.dark .text-blue-600 { color: theme('colors.caramel.300'); }
-.dark .text-blue-800 { color: theme('colors.caramel.200'); }
+.dark .bg-green-50 {
+  background-color: rgb(79 93 74 / 0.15);
+}
+.dark .text-green-600 {
+  color: theme('colors.sage.300');
+}
+.dark .text-green-800 {
+  color: theme('colors.sage.200');
+}
+.dark .bg-blue-50 {
+  background-color: rgb(184 137 95 / 0.12);
+}
+.dark .text-blue-600 {
+  color: theme('colors.caramel.300');
+}
+.dark .text-blue-800 {
+  color: theme('colors.caramel.200');
+}
 
 /* Red warnings slightly brighter in dark mode */
-.dark .text-red-600 { color: #F87171; }
-.dark .text-red-700 { color: #F87171; }
+.dark .text-red-600 {
+  color: #f87171;
+}
+.dark .text-red-700 {
+  color: #f87171;
+}
