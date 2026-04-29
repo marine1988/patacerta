@@ -1,6 +1,12 @@
 import { Router } from 'express'
 import { validate } from '../../middleware/validate.js'
-import { forgotPasswordEmailRateLimit } from '../../middleware/rate-limit.js'
+import {
+  forgotPasswordEmailRateLimit,
+  loginRateLimit,
+  registerRateLimit,
+  refreshRateLimit,
+  passwordResetRateLimit,
+} from '../../middleware/rate-limit.js'
 import {
   loginSchema,
   registerSchema,
@@ -30,16 +36,29 @@ const logoutSchema = z.object({
   refreshToken: z.string().min(1).optional(),
 })
 
-authRouter.post('/register', validate(registerSchema), register)
-authRouter.post('/login', validate(loginSchema), login)
-authRouter.post('/refresh', validate(refreshTokenSchema), refresh)
+// Cada endpoint tem o seu proprio bucket de rate-limit (ver rate-limit.ts).
+// Antes /api/auth/* partilhava um unico balde, e brute-force ao login podia
+// bloquear refresh tokens legitimos.
+authRouter.post('/register', registerRateLimit, validate(registerSchema), register)
+authRouter.post('/login', loginRateLimit, validate(loginSchema), login)
+authRouter.post('/refresh', refreshRateLimit, validate(refreshTokenSchema), refresh)
 authRouter.post('/logout', validate(logoutSchema), logout)
-authRouter.post('/verify-email', validate(verifyEmailSchema), verifyEmail)
-authRouter.post('/resend-verification', validate(resendVerificationSchema), resendVerification)
+authRouter.post('/verify-email', passwordResetRateLimit, validate(verifyEmailSchema), verifyEmail)
+authRouter.post(
+  '/resend-verification',
+  passwordResetRateLimit,
+  validate(resendVerificationSchema),
+  resendVerification,
+)
 authRouter.post(
   '/forgot-password',
   forgotPasswordEmailRateLimit,
   validate(forgotPasswordSchema),
   forgotPassword,
 )
-authRouter.post('/reset-password', validate(resetPasswordSchema), resetPassword)
+authRouter.post(
+  '/reset-password',
+  passwordResetRateLimit,
+  validate(resetPasswordSchema),
+  resetPassword,
+)

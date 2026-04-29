@@ -141,11 +141,51 @@ export function rateLimit(options: RateLimitOptions = {}) {
 }
 
 // Pre-configured rate limiters
+//
+// Os endpoints de auth tem perfis de abuso diferentes:
+// - login/register: alvo de brute-force, queremos limites apertados.
+// - refresh: chamado a cada ~15min em uso normal por cada cliente
+//   autenticado. Um limite global agressivo aqui ataca utilizadores
+//   legitimos quando varios separadores estao abertos.
+// - resend-verification / forgot-password / reset-password: cada um tem
+//   ja o seu controlo (token + email-rate-limit) mas queremos protecao
+//   IP separada para nao partilharem o balde do login.
+//
+// Mantemos `authRateLimit` exportado para back-compat (nao e usado mas
+// pode estar referenciado). Em producao usar os granulares abaixo.
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Demasiadas tentativas de autenticação. Tente em 15 minutos.',
   bucket: 'auth',
+})
+
+export const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Demasiadas tentativas de início de sessão. Tente em 15 minutos.',
+  bucket: 'auth-login',
+})
+
+export const registerRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Demasiadas contas criadas a partir deste IP. Tente em 1 hora.',
+  bucket: 'auth-register',
+})
+
+export const refreshRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 30,
+  message: 'Demasiadas renovações de sessão. Aguarde alguns minutos.',
+  bucket: 'auth-refresh',
+})
+
+export const passwordResetRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Demasiadas tentativas de reposição. Tente em 1 hora.',
+  bucket: 'auth-pw-reset',
 })
 
 export const apiRateLimit = rateLimit({

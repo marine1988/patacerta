@@ -4,7 +4,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { errorHandler } from './middleware/error-handler.js'
-import { apiRateLimit, authRateLimit } from './middleware/rate-limit.js'
+import { apiRateLimit } from './middleware/rate-limit.js'
 import { healthRouter } from './modules/health/health.router.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { usersRouter } from './modules/users/users.router.js'
@@ -32,6 +32,11 @@ app.set('trust proxy', 1)
 // ---- Global Middleware ----
 // Security headers. CSP is API-focused (no HTML rendered), so we keep defaults
 // but disable the cross-origin embedder policy that breaks JSON consumers.
+//
+// HSTS: forcamos 1 ano + includeSubDomains + preload em producao. Helmet ja
+// injecta HSTS por defeito mas com configuracao mais conservadora; em
+// producao todos os browsers devem honrar a politica completa.
+const isProd = process.env.NODE_ENV === 'production'
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -44,9 +49,40 @@ app.use(
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     referrerPolicy: { policy: 'no-referrer' },
+    strictTransportSecurity: isProd
+      ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+      : false,
   }),
 )
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }))
+
+// CORS: aceita lista separada por virgulas em CORS_ORIGIN.
+// - Em producao, CORS_ORIGIN e' obrigatorio (fail-fast).
+// - '*' com credentials e' explicitamente rejeitado pelo navegador, mas
+//   recusamos em config-time para evitar bypass por bug downstream.
+// - origin null (file://, sandboxed iframes) e bloqueado em prod.
+const corsOrigins = (process.env.CORS_ORIGIN || (isProd ? '' : 'http://localhost:5173'))
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+if (isProd && corsOrigins.length === 0) {
+  throw new Error(
+    '[PataCerta] CORS_ORIGIN obrigatorio em producao. Defina dominio(s) permitido(s).',
+  )
+}
+if (corsOrigins.includes('*')) {
+  throw new Error('[PataCerta] CORS_ORIGIN=* nao e permitido (credentials enabled).')
+}
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Pedidos same-origin / curl / health checks nao tem origin: aceita-os.
+      if (!origin) return cb(null, true)
+      if (corsOrigins.includes(origin)) return cb(null, true)
+      cb(new Error(`CORS bloqueado: origem ${origin} nao autorizada`))
+    },
+    credentials: true,
+  }),
+)
 app.use(express.json({ limit: '1mb' }))
 // cookie-parser: refresh_token vive em cookie httpOnly (ver auth.controller.ts).
 app.use(cookieParser())
@@ -54,7 +90,7 @@ app.use(apiRateLimit)
 
 // ---- Routes ----
 app.use('/api/health', healthRouter)
-app.use('/api/auth', authRateLimit, authRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/breeders', breedersRouter)
 app.use('/api/verification', verificationRouter)
