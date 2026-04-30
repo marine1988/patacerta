@@ -193,6 +193,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <div className="md:w-56">
               <label className="mb-1 block text-xs font-medium text-gray-700">Categoria</label>
               <Select
+                aria-label="Categoria"
                 value={categoryId}
                 onChange={(e) => updateFilter({ categoryId: e.target.value })}
                 options={[
@@ -204,6 +205,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <div className="md:w-48">
               <label className="mb-1 block text-xs font-medium text-gray-700">Ordenar</label>
               <Select
+                aria-label="Ordenar"
                 value={sort}
                 onChange={(e) => updateFilter({ sort: e.target.value })}
                 options={[
@@ -220,6 +222,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <div className="md:w-56">
               <label className="mb-1 block text-xs font-medium text-gray-700">Distrito</label>
               <Select
+                aria-label="Distrito"
                 value={districtId}
                 onChange={(e) => updateFilter({ districtId: e.target.value, municipalityId: '' })}
                 options={[
@@ -231,6 +234,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <div className="md:w-56">
               <label className="mb-1 block text-xs font-medium text-gray-700">Concelho</label>
               <Select
+                aria-label="Concelho"
                 value={municipalityId}
                 onChange={(e) => updateFilter({ municipalityId: e.target.value })}
                 disabled={!districtId}
@@ -297,6 +301,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
               <div className="md:w-48">
                 <label className="mb-1 block text-xs font-medium text-gray-700">Raio</label>
                 <Select
+                  aria-label="Raio de pesquisa"
                   value={radiusKm || '25'}
                   onChange={(e) => updateFilter({ radiusKm: e.target.value })}
                   options={[
