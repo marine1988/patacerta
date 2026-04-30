@@ -68,7 +68,7 @@ export function ServiceCard({
           </span>
         </div>
 
-        <h3 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{title}</h3>
+        <h2 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{title}</h2>
 
         <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
           <svg

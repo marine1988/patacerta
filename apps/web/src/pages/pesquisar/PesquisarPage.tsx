@@ -75,15 +75,15 @@ export function PesquisarPage() {
       </div>
 
       {/* Barra de controlos: tipo (esquerda) + vista (direita) */}
-      <div className="mt-4 flex flex-col gap-3 border-b border-gray-200 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-4 flex flex-col gap-3 border-b border-line sm:flex-row sm:items-end sm:justify-between">
         <nav className="-mb-px flex gap-6" aria-label="Tipo">
           <button
             type="button"
             onClick={() => setTipo('criadores')}
             className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
               tipo === 'criadores'
-                ? 'border-caramel-600 text-caramel-700'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                ? 'border-caramel-600 text-caramel-700 dark:text-caramel-300'
+                : 'border-transparent text-muted hover:border-line hover:text-ink'
             }`}
             aria-current={tipo === 'criadores' ? 'page' : undefined}
           >
@@ -94,8 +94,8 @@ export function PesquisarPage() {
             onClick={() => setTipo('servicos')}
             className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
               tipo === 'servicos'
-                ? 'border-caramel-600 text-caramel-700'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                ? 'border-caramel-600 text-caramel-700 dark:text-caramel-300'
+                : 'border-transparent text-muted hover:border-line hover:text-ink'
             }`}
             aria-current={tipo === 'servicos' ? 'page' : undefined}
           >
@@ -104,7 +104,7 @@ export function PesquisarPage() {
         </nav>
 
         <div
-          className="mb-2 inline-flex rounded-lg border border-gray-200 bg-white p-0.5"
+          className="mb-2 inline-flex rounded-lg border border-line bg-surface p-0.5"
           role="tablist"
           aria-label="Vista"
         >
@@ -115,8 +115,8 @@ export function PesquisarPage() {
             aria-selected={vista === 'lista'}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               vista === 'lista'
-                ? 'bg-caramel-100 text-caramel-700'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-caramel-100 text-caramel-700 dark:bg-caramel-900 dark:text-caramel-200'
+                : 'text-muted hover:text-ink'
             }`}
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
@@ -135,8 +135,8 @@ export function PesquisarPage() {
             aria-selected={vista === 'mapa'}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               vista === 'mapa'
-                ? 'bg-caramel-100 text-caramel-700'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-caramel-100 text-caramel-700 dark:bg-caramel-900 dark:text-caramel-200'
+                : 'text-muted hover:text-ink'
             }`}
           >
             <svg

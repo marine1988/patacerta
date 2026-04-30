@@ -263,11 +263,20 @@
   .badge-green {
     @apply badge text-sage-500;
   }
+  .dark .badge-green {
+    color: theme('colors.sage.300');
+  }
   .badge-yellow {
     @apply badge text-caramel-700;
   }
+  .dark .badge-yellow {
+    color: theme('colors.caramel.300');
+  }
   .badge-red {
     @apply badge text-red-700;
+  }
+  .dark .badge-red {
+    color: theme('colors.red.300');
   }
   .badge-blue {
     @apply badge text-ink;

@@ -60,7 +60,7 @@ export function BreederCard({
         )}
       </div>
       <div className="card-body">
-        <h3 className="line-clamp-2 text-base font-semibold text-gray-900">{businessName}</h3>
+        <h2 className="line-clamp-2 text-base font-semibold text-gray-900">{businessName}</h2>
 
         <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
           <svg
