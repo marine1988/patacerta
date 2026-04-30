@@ -16,10 +16,18 @@
 // Didomi), substituir `nonPersonalized` pelo sinal real do utilizador.
 
 import { useEffect, useRef } from 'react'
-
 const CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID ?? ''
 const ENABLED =
   import.meta.env.VITE_ADSENSE_ENABLED === 'true' || import.meta.env.VITE_ADSENSE_ENABLED === '1'
+
+/**
+ * `true` quando a integração AdSense está activa (env var ligada e
+ * client ID definido). Permite a outros componentes UI (ex:
+ * `AdContainer`) curtocircuitar a render quando não há nada a mostrar.
+ */
+export function adsEnabled(): boolean {
+  return ENABLED && CLIENT_ID.length > 0
+}
 
 const SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
 

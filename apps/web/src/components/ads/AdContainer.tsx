@@ -15,7 +15,7 @@
 // (o Google só decide o tamanho depois do `push`).
 
 import { useLocation } from 'react-router-dom'
-import { AdSlot } from './AdSlot'
+import { AdSlot, adsEnabled } from './AdSlot'
 import { useAdsAllowed } from './useAdsAllowed'
 
 interface AdContainerProps {
@@ -39,7 +39,11 @@ export function AdContainer({
   const { pathname } = useLocation()
   const allowed = useAdsAllowed(pathname)
 
+  // Sem ID configurado / flag desligada / em página excluída — não
+  // mostramos sequer o rótulo "Publicidade" (caso contrário ficaria um
+  // bloco vazio com legenda).
   if (!allowed) return null
+  if (!adsEnabled() || !slot) return null
 
   return (
     <aside
