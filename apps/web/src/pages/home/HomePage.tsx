@@ -230,7 +230,7 @@ export function HomePage() {
       {/* ============================================================
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
-      <section className="border-t border-line bg-surface-alt/40">
+      <section className="border-t border-line bg-surface-alt">
         <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
           <div className="mb-16 max-w-2xl">
             <p className="eyebrow mb-6">— O que nos distingue</p>
@@ -311,7 +311,7 @@ export function HomePage() {
       {/* ============================================================
        * CTA — registar criador
        * ============================================================ */}
-      <section className="border-t border-line bg-surface-alt/40">
+      <section className="border-t border-line bg-surface-alt">
         <div className="mx-auto max-w-[72rem] px-6 py-24 text-center lg:px-8">
           <p className="eyebrow mb-6">◆ Criador ou prestador certificado</p>
           <h2 className="font-serif text-h2 mx-auto max-w-2xl text-ink">
