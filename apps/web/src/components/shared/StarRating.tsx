@@ -53,7 +53,7 @@ export function StarRating({
   }
 
   return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} de 5 estrelas`}>
+    <div className="flex items-center gap-0.5" role="img" aria-label={`${rating} de 5 estrelas`}>
       {stars.map((star) => (
         <svg
           key={star}

@@ -22,15 +22,17 @@ function getInitials(name: string): string {
 }
 
 function getColor(name: string): string {
+  // Tons saturados (-500) falham contraste com texto branco (4.5:1).
+  // Usamos -700 para garantir AA em todos os hues.
   const colors = [
-    'bg-caramel-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-violet-500',
-    'bg-cyan-500',
-    'bg-orange-500',
-    'bg-teal-500',
+    'bg-caramel-700',
+    'bg-emerald-700',
+    'bg-amber-700',
+    'bg-rose-700',
+    'bg-violet-700',
+    'bg-cyan-700',
+    'bg-orange-700',
+    'bg-teal-700',
   ]
   let hash = 0
   for (const char of name) hash = char.charCodeAt(0) + ((hash << 5) - hash)

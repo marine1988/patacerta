@@ -113,7 +113,7 @@ export function ReviewCard({
           )}
         </div>
 
-        <h4 className="mt-1 text-sm font-semibold text-gray-900">{review.title}</h4>
+        <h3 className="mt-1 text-sm font-semibold text-gray-900">{review.title}</h3>
 
         {context && (
           <p className="mt-0.5 text-xs text-gray-500">

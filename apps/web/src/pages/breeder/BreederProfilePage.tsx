@@ -606,6 +606,7 @@ export function BreederProfilePage() {
               <div className="mt-4 flex items-center justify-between">
                 <div className="w-48">
                   <Select
+                    aria-label="Ordenar avaliações"
                     label=""
                     options={[
                       { value: 'recent', label: 'Mais recentes' },
