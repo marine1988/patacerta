@@ -423,7 +423,7 @@ export function MessagesTab() {
           <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
             &larr; Voltar
           </Button>
-          <EmptyState title="Conversa nÃ£o encontrada" />
+          <EmptyState title="Conversa não encontrada" />
         </div>
       )
     }
@@ -458,7 +458,7 @@ export function MessagesTab() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
-            &larr; Voltar Ã s conversas
+            &larr; Voltar às conversas
           </Button>
           <Button
             variant="secondary"
@@ -554,7 +554,7 @@ export function MessagesTab() {
                           onDelete={() => {
                             if (
                               window.confirm(
-                                'Eliminar esta mensagem? Esta aÃ§Ã£o nÃ£o pode ser desfeita.',
+                                'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
                               )
                             ) {
                               deleteMessageMutation.mutate(msg.id)
@@ -598,7 +598,7 @@ export function MessagesTab() {
                             onClick={() => {
                               const trimmed = editText.trim()
                               if (!trimmed) {
-                                setEditError('Mensagem nÃ£o pode estar vazia.')
+                                setEditError('Mensagem não pode estar vazia.')
                                 return
                               }
                               editMessageMutation.mutate({
@@ -791,8 +791,8 @@ export function MessagesTab() {
           title={showArchived ? 'Sem conversas arquivadas' : 'Sem mensagens'}
           description={
             showArchived
-              ? 'As conversas que arquivar aparecerÃ£o aqui.'
-              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerÃ£o aqui.'
+              ? 'As conversas que arquivar aparecerão aqui.'
+              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui.'
           }
         />
       ) : (

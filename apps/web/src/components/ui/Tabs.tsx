@@ -25,8 +25,16 @@ export function Tabs({ tabs, defaultTab, onChange }: TabsProps) {
 
   return (
     <div>
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Tabs">
+      <div className="relative border-b border-line">
+        {/* Fade lateral em mobile sinaliza que ha' mais tabs scrollaveis. */}
+        <div
+          className="pointer-events-none absolute right-0 top-0 z-10 h-full w-6 bg-gradient-to-l from-bg to-transparent sm:hidden"
+          aria-hidden="true"
+        />
+        <nav
+          className="-mb-px flex gap-6 overflow-x-auto scroll-smooth pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Tabs"
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -34,7 +42,7 @@ export function Tabs({ tabs, defaultTab, onChange }: TabsProps) {
               className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'border-caramel-600 text-caramel-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-transparent text-muted hover:border-line hover:text-ink'
               }`}
               aria-selected={activeTab === tab.id}
               role="tab"

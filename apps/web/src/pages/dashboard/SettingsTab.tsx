@@ -1,4 +1,4 @@
-﻿import { useState, type ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -54,13 +54,13 @@ export function SettingsTab() {
   return (
     <div className="space-y-6">
       <Card hover={false}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">NotificaÃ§Ãµes</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Notificações</h3>
         <div className="space-y-4">
           <label className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Novas mensagens</p>
               <p className="text-xs text-gray-500">
-                Receber notificaÃ§Ã£o quando receber uma nova mensagem.
+                Receber notificação quando receber uma nova mensagem.
               </p>
             </div>
             <input
@@ -72,9 +72,9 @@ export function SettingsTab() {
           </label>
           <label className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900">AtualizaÃ§Ãµes de verificaÃ§Ã£o</p>
+              <p className="text-sm font-medium text-gray-900">Atualizações de verificação</p>
               <p className="text-xs text-gray-500">
-                Receber notificaÃ§Ã£o sobre o estado da verificaÃ§Ã£o.
+                Receber notificação sobre o estado da verificação.
               </p>
             </div>
             <input
@@ -106,8 +106,8 @@ export function SettingsTab() {
         size="sm"
       >
         <p className="text-sm text-gray-600 mb-6">
-          Tem a certeza de que deseja eliminar a sua conta? Esta aÃ§Ã£o Ã© irreversÃ­vel e todos os seus
-          dados serÃ£o permanentemente apagados.
+          Tem a certeza de que deseja eliminar a sua conta? Esta ação é irreversível e todos os seus
+          dados serão permanentemente apagados.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>

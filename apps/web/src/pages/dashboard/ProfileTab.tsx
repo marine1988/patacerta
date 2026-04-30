@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -65,7 +65,7 @@ export function ProfileTab() {
     e.preventDefault()
     setPwMsg(null)
     if (newPassword !== confirmPassword) {
-      setPwMsg({ type: 'error', text: 'As palavras-passe nÃ£o coincidem.' })
+      setPwMsg({ type: 'error', text: 'As palavras-passe não coincidem.' })
       return
     }
     if (newPassword.length < 8) {

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Select, Spinner } from '../../components/ui'
 import { PatrocinadosTab } from './PatrocinadosTab'
 
@@ -41,7 +42,23 @@ interface TabDef {
 }
 
 export function AdminPage() {
-  const [activeTab, setActiveTab] = useState<string>('resumo')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<string>(tabParam ?? 'resumo')
+
+  // Sincroniza tab activa <-> ?tab=. Permite deep-linking e back/forward.
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam])
+
+  function changeTab(id: string) {
+    setActiveTab(id)
+    const next = new URLSearchParams(searchParams)
+    if (id === 'resumo') next.delete('tab')
+    else next.set('tab', id)
+    setSearchParams(next, { replace: true })
+  }
 
   const tabs: TabDef[] = [
     {
@@ -241,7 +258,7 @@ export function AdminPage() {
       <div className="mb-6 lg:hidden">
         <Select
           value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value)}
+          onChange={(e) => changeTab(e.target.value)}
           aria-label="Secção do painel"
           options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
         />
@@ -264,7 +281,7 @@ export function AdminPage() {
                     type="button"
                     role="tab"
                     aria-selected={isActive}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => changeTab(tab.id)}
                     className={`-ml-px flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left text-sm font-medium transition-colors ${
                       isActive
                         ? 'border-caramel-600 bg-caramel-50/40 text-caramel-700'

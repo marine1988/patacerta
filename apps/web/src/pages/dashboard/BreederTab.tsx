@@ -1,10 +1,4 @@
-﻿import {
-  useState,
-  useEffect,
-  useRef,
-  type FormEvent,
-  type ChangeEvent,
-} from 'react'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -25,10 +19,7 @@ import {
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
 import { BreedMultiCombobox } from '../../components/shared/BreedMultiCombobox'
-import {
-  breederProfileSchema,
-  updateBreederProfileSchema,
-} from '@patacerta/shared'
+import { breederProfileSchema, updateBreederProfileSchema } from '@patacerta/shared'
 interface BreederPhoto {
   id: number
   url: string
@@ -145,9 +136,9 @@ export function BreederTab() {
   const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const MAX_BREEDER_PHOTOS = 10
 
-  // Modo "criar perfil" â€” fotos e DGAV sÃ£o submetidos no mesmo fluxo
-  // do formulÃ¡rio (single submit). Capturamos os ficheiros aqui para
-  // depois fazer upload sequencial apÃ³s criar o breeder.
+  // Modo "criar perfil" — fotos e DGAV são submetidos no mesmo fluxo
+  // do formulário (single submit). Capturamos os ficheiros aqui para
+  // depois fazer upload sequencial após criar o breeder.
   const pendingPhotosRef = useRef<HTMLInputElement>(null)
   const pendingDgavRef = useRef<HTMLInputElement>(null)
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([])
@@ -155,7 +146,7 @@ export function BreederTab() {
   // URLs de preview para as fotos pendentes. Geridos via useEffect para
   // garantir cleanup (URL.revokeObjectURL) e evitar memory leaks.
   const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([])
-  // IDs das fotos cuja miniatura jÃ¡ carregou no <img> â€” usado para
+  // IDs das fotos cuja miniatura já carregou no <img> — usado para
   // mostrar spinner por foto enquanto o browser processa.
   const [loadedThumbs, setLoadedThumbs] = useState<Set<number>>(new Set())
 
@@ -261,15 +252,15 @@ export function BreederTab() {
     mutationFn: () => api.post('/breeders/me/submit-verification'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
-      setMsg({ type: 'success', text: 'Submetido para verificaÃ§Ã£o com sucesso.' })
+      setMsg({ type: 'success', text: 'Submetido para verificação com sucesso.' })
     },
     onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao submeter para verificaÃ§Ã£o.' })
+      setMsg({ type: 'error', text: 'Erro ao submeter para verificação.' })
     },
   })
 
   // Eliminar perfil de criador (apenas quando status != VERIFIED).
-  // Apaga em cascata fotos, documentos, raÃ§as, etc; user volta a OWNER.
+  // Apaga em cascata fotos, documentos, raças, etc; user volta a OWNER.
   const navigate = useNavigate()
   const { user, updateUser } = useAuth()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -278,14 +269,14 @@ export function BreederTab() {
     mutationFn: () => api.delete('/breeders/me'),
     onSuccess: () => {
       // Refresca user (role mudou) e limpa caches do perfil + probe
-      // (a probe controla a presenÃ§a da tab "Criador").
+      // (a probe controla a presença da tab "Criador").
       queryClient.removeQueries({ queryKey: ['breeder-profile'] })
       queryClient.removeQueries({ queryKey: ['breeder-profile-probe'] })
       queryClient.invalidateQueries({ queryKey: ['breeder-profile-probe'] })
       if (user) {
-        // Se o user era BREEDER, baixa para OWNER (server pode ter posto SP â€” mas
-        // mais comum Ã© OWNER). Resync via /auth/me na prÃ³xima mount; aqui
-        // sÃ³ ajustamos optimisticamente para refletir UI.
+        // Se o user era BREEDER, baixa para OWNER (server pode ter posto SP — mas
+        // mais comum é OWNER). Resync via /auth/me na próxima mount; aqui
+        // só ajustamos optimisticamente para refletir UI.
         updateUser({ ...user, role: user.role === 'BREEDER' ? 'OWNER' : user.role })
       }
       setDeleteOpen(false)
@@ -296,7 +287,7 @@ export function BreederTab() {
     },
   })
 
-  // Galeria â€” uploads, delete, reorder
+  // Galeria — uploads, delete, reorder
   const uploadPhotosMutation = useMutation({
     mutationFn: (formData: FormData) =>
       api.post('/breeders/me/photos', formData, {
@@ -361,7 +352,7 @@ export function BreederTab() {
     if (existing + files.length > MAX_BREEDER_PHOTOS) {
       setPhotoMsg({
         type: 'error',
-        text: `MÃ¡ximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
+        text: `Máximo ${MAX_BREEDER_PHOTOS} fotos (tem ${existing}).`,
       })
       return
     }
@@ -377,25 +368,25 @@ export function BreederTab() {
     if (form.breedIds.length === 0 && !otherBreedsNote) {
       setMsg({
         type: 'error',
-        text: 'Indique pelo menos uma raÃ§a do catÃ¡logo ou descreva as raÃ§as em "Outras raÃ§as".',
+        text: 'Indique pelo menos uma raça do catálogo ou descreva as raças em "Outras raças".',
       })
       return
     }
-    // No modo "criar" os campos abaixo sÃ£o obrigatÃ³rios.
+    // No modo "criar" os campos abaixo são obrigatórios.
     if (!breeder) {
       const requiredMissing: string[] = []
       if (!form.businessName.trim()) requiredMissing.push('Nome comercial')
       if (!form.nif.trim()) requiredMissing.push('NIF')
-      if (!form.dgavNumber.trim()) requiredMissing.push('NÃºmero DGAV')
+      if (!form.dgavNumber.trim()) requiredMissing.push('Número DGAV')
       if (!form.districtId) requiredMissing.push('Distrito')
       if (!form.municipalityId) requiredMissing.push('Concelho')
-      if (form.description.trim().length < 80) requiredMissing.push('ApresentaÃ§Ã£o (mÃ­n. 80)')
+      if (form.description.trim().length < 80) requiredMissing.push('Apresentação (mín. 80)')
       if (pendingPhotos.length === 0) requiredMissing.push('Pelo menos 1 foto')
       if (!pendingDgavFile) requiredMissing.push('Documento DGAV')
       if (requiredMissing.length > 0) {
         setMsg({
           type: 'error',
-          text: `Preencha os campos obrigatÃ³rios: ${requiredMissing.join(', ')}.`,
+          text: `Preencha os campos obrigatórios: ${requiredMissing.join(', ')}.`,
         })
         return
       }
@@ -429,7 +420,7 @@ export function BreederTab() {
       otherBreedsNote: otherBreedsNote ?? undefined,
     }
 
-    // ValidaÃ§Ã£o completa via schema partilhado (consistente com backend).
+    // Validação completa via schema partilhado (consistente com backend).
     // Em modo "criar" usamos o estrito; em "editar" o parcial.
     const schema = breeder ? updateBreederProfileSchema : breederProfileSchema
     const parsed = schema.safeParse(payload)
@@ -454,7 +445,7 @@ export function BreederTab() {
     }
 
     if (!breeder) {
-      // Fluxo "criar perfil" â€” cria breeder, depois faz upload sequencial
+      // Fluxo "criar perfil" — cria breeder, depois faz upload sequencial
       // das fotos e do documento DGAV. Tudo dentro do mesmo submit.
       try {
         await saveMutation.mutateAsync(finalPayload)
@@ -483,7 +474,7 @@ export function BreederTab() {
         queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
         setMsg({
           type: 'success',
-          text: 'Perfil criado com fotos e documento DGAV. Pode agora submeter para verificaÃ§Ã£o.',
+          text: 'Perfil criado com fotos e documento DGAV. Pode agora submeter para verificação.',
         })
       } catch (err) {
         setMsg({
@@ -519,12 +510,12 @@ export function BreederTab() {
     )
   }
 
-  // Sem perfil de criador ainda â€” entramos directos em modo "criar".
+  // Sem perfil de criador ainda — entramos directos em modo "criar".
   // O resto do tab (Status, Galeria, Documentos, Eliminar) so aparece
   // depois do perfil ser criado.
   const noProfile = !breeder
 
-  const docTypeOptions = [{ value: 'DGAV', label: 'DGAV (obrigatÃ³rio)' }]
+  const docTypeOptions = [{ value: 'DGAV', label: 'DGAV (obrigatório)' }]
 
   const docStatusVariant: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
     PENDING: 'yellow',
@@ -538,22 +529,22 @@ export function BreederTab() {
     REJECTED: 'Rejeitado',
   }
 
-  // Quando o criador ainda nÃ£o estÃ¡ verificado (DRAFT, PENDING_VERIFICATION
-  // ou SUSPENDED), todo o conteÃºdo de gestÃ£o (galeria + documentos) Ã©
+  // Quando o criador ainda não está verificado (DRAFT, PENDING_VERIFICATION
+  // ou SUSPENDED), todo o conteúdo de gestão (galeria + documentos) é
   // colapsado para dentro do modo Editar para reduzir clutter na vista
-  // pÃºblica do dashboard. Adicionamos um botÃ£o Eliminar ao lado do
+  // pública do dashboard. Adicionamos um botão Eliminar ao lado do
   // Editar nesses estados.
   const isUnverified = breeder ? breeder.status !== 'VERIFIED' : true
 
-  // Galeria + Documentos extraÃ­dos para variÃ¡veis para que possam ser
+  // Galeria + Documentos extraídos para variáveis para que possam ser
   // renderizados ou fora dos cards (status VERIFIED) ou dentro do
-  // formulÃ¡rio Editar (status nÃ£o-verificado).
+  // formulário Editar (status não-verificado).
   const galeriaSection = breeder ? (
     <PhotoGalleryManager
       photos={breeder.photos ?? []}
       max={MAX_BREEDER_PHOTOS}
       title="Galeria do criador"
-      emptyHint="Ainda nÃ£o adicionou fotos. Mostre as suas instalaÃ§Ãµes, cuidados, ambiente."
+      emptyHint="Ainda não adicionou fotos. Mostre as suas instalações, cuidados, ambiente."
       onUpload={handleUploadPhotos}
       uploadInputRef={photoInputRef}
       isUploading={uploadPhotosMutation.isPending}
@@ -610,11 +601,11 @@ export function BreederTab() {
         </div>
       ) : (
         <p className="mb-6 text-sm text-gray-500">
-          Nenhum documento enviado. Ã‰ obrigatÃ³rio enviar o certificado DGAV.
+          Nenhum documento enviado. É obrigatório enviar o certificado DGAV.
         </p>
       )}
 
-      {/* Upload â€” escondido quando ja existe um DGAV (so se permite 1) ou
+      {/* Upload — escondido quando ja existe um DGAV (so se permite 1) ou
           quando o perfil ja esta verificado. */}
       {canUploadMoreDocs && !dgavLocked ? (
         <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
@@ -638,12 +629,12 @@ export function BreederTab() {
         </form>
       ) : dgavLocked ? (
         <p className="text-xs text-muted">
-          O certificado DGAV estÃ¡ trancado apÃ³s verificaÃ§Ã£o do perfil. Para o substituir contacte o
+          O certificado DGAV está trancado após verificação do perfil. Para o substituir contacte o
           suporte.
         </p>
       ) : (
         <p className="text-xs text-muted">
-          Para enviar um novo certificado DGAV, elimine primeiro o atual (apenas possÃ­vel enquanto
+          Para enviar um novo certificado DGAV, elimine primeiro o atual (apenas possível enquanto
           estiver pendente).
         </p>
       )}
@@ -667,11 +658,11 @@ export function BreederTab() {
           disabled={!hasDgavDoc}
           onClick={() => submitVerificationMutation.mutate()}
         >
-          Submeter para verificaÃ§Ã£o
+          Submeter para verificação
         </Button>
         {!hasDgavDoc && (
           <p className="text-xs text-red-600">
-            Ã‰ necessÃ¡rio enviar o certificado DGAV antes de submeter.
+            É necessário enviar o certificado DGAV antes de submeter.
           </p>
         )}
       </div>
@@ -682,30 +673,30 @@ export function BreederTab() {
   const breederForm = (
     <form onSubmit={handleSave} className="space-y-4">
       <Accordion>
-        {/* Galeria â€” primeira seccao do form em modo edit. As fotos sao
+        {/* Galeria — primeira seccao do form em modo edit. As fotos sao
             o primeiro contacto visual com o criador, por isso ficam no
             topo. Em "criar" usa-se o uploader simples mais abaixo. */}
         {!noProfile && breeder && (
           <AccordionSection
             title={`Galeria do criador (${breeder.photos?.length ?? 0}/${MAX_BREEDER_PHOTOS})`}
-            eyebrow="ApresentaÃ§Ã£o visual *"
+            eyebrow="Apresentação visual *"
             defaultOpen
           >
             {galeriaSection}
           </AccordionSection>
         )}
-        {/* Certificado DGAV â€” segunda seccao em modo edit, pelo papel
+        {/* Certificado DGAV — segunda seccao em modo edit, pelo papel
             critico que tem na verificacao do perfil. */}
         {!noProfile && breeder && (
-          <AccordionSection title="Certificado DGAV" eyebrow="Documento obrigatÃ³rio *" defaultOpen>
+          <AccordionSection title="Certificado DGAV" eyebrow="Documento obrigatório *" defaultOpen>
             {documentosSection}
           </AccordionSection>
         )}
         {noProfile && (
-          <AccordionSection title="Fotos do canil" eyebrow="ApresentaÃ§Ã£o visual *" defaultOpen>
+          <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
             <p className="mb-3 text-xs text-gray-600">
-              Comece por escolher pelo menos uma foto â€” pode continuar a preencher o formulÃ¡rio
-              enquanto o browser processa as miniaturas. Pode adicionar atÃ© {MAX_BREEDER_PHOTOS}{' '}
+              Comece por escolher pelo menos uma foto — pode continuar a preencher o formulário
+              enquanto o browser processa as miniaturas. Pode adicionar até {MAX_BREEDER_PHOTOS}{' '}
               fotos. Formatos aceites: JPG, PNG, WebP.
             </p>
             <input
@@ -776,24 +767,24 @@ export function BreederTab() {
                 })}
               </div>
             ) : (
-              <p className="mt-2 text-xs text-gray-500">Nenhuma foto seleccionada (mÃ­n. 1).</p>
+              <p className="mt-2 text-xs text-gray-500">Nenhuma foto seleccionada (mín. 1).</p>
             )}
             {pendingPhotos.length > 0 && (
               <p className="mt-2 text-xs text-gray-500">
                 {pendingPhotos.length}/{MAX_BREEDER_PHOTOS} foto(s) seleccionada(s) Â·{' '}
                 {loadedThumbs.size === pendingPhotos.length
-                  ? 'prÃ©-visualizaÃ§Ãµes prontas'
-                  : `a processar ${pendingPhotos.length - loadedThumbs.size}â€¦`}
+                  ? 'pré-visualizações prontas'
+                  : `a processar ${pendingPhotos.length - loadedThumbs.size}…`}
               </p>
             )}
           </AccordionSection>
         )}
 
         {noProfile && (
-          <AccordionSection title="Documento DGAV" eyebrow="VerificaÃ§Ã£o *" defaultOpen>
+          <AccordionSection title="Documento DGAV" eyebrow="Verificação *" defaultOpen>
             <p className="mb-3 text-xs text-gray-600">
-              Envie o seu certificado DGAV. Este documento Ã© obrigatÃ³rio para submeter o perfil para
-              verificaÃ§Ã£o. Formatos aceites: PDF, JPG, PNG.
+              Envie o seu certificado DGAV. Este documento é obrigatório para submeter o perfil para
+              verificação. Formatos aceites: PDF, JPG, PNG.
             </p>
             <input
               ref={pendingDgavRef}
@@ -813,7 +804,7 @@ export function BreederTab() {
           </AccordionSection>
         )}
 
-        <AccordionSection title="IdentificaÃ§Ã£o" eyebrow="Dados oficiais" defaultOpen>
+        <AccordionSection title="Identificação" eyebrow="Dados oficiais" defaultOpen>
           <div className="space-y-4">
             <Input
               label="Nome comercial / canil"
@@ -828,11 +819,11 @@ export function BreederTab() {
                 value={form.nif}
                 onChange={(e) => setForm((p) => ({ ...p, nif: e.target.value }))}
                 disabled={isLocked}
-                placeholder="9 dÃ­gitos"
+                placeholder="9 dígitos"
                 required={noProfile}
               />
               <Input
-                label="NÃºmero DGAV"
+                label="Número DGAV"
                 value={form.dgavNumber}
                 onChange={(e) => setForm((p) => ({ ...p, dgavNumber: e.target.value }))}
                 disabled={isLocked}
@@ -855,12 +846,12 @@ export function BreederTab() {
               />
             </div>
             <div>
-              <label className="label">ApresentaÃ§Ã£o{noProfile ? ' *' : ''}</label>
+              <label className="label">Apresentação{noProfile ? ' *' : ''}</label>
               <textarea
                 className="input min-h-[100px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Conte-nos sobre o seu canil â€” experiÃªncia, filosofia, raÃ§as, instalaÃ§Ãµesâ€¦ (mÃ­n. 80 caracteres)"
+                placeholder="Conte-nos sobre o seu canil — experiência, filosofia, raças, instalações… (mín. 80 caracteres)"
                 maxLength={2000}
                 required={noProfile}
               />
@@ -876,10 +867,10 @@ export function BreederTab() {
                 }`}
               >
                 {form.description.length === 0 ? (
-                  <>0/2000 (mÃ­n. 80)</>
+                  <>0/2000 (mín. 80)</>
                 ) : form.description.length < 80 ? (
                   <>
-                    {form.description.length}/2000 â€” faltam {80 - form.description.length}{' '}
+                    {form.description.length}/2000 — faltam {80 - form.description.length}{' '}
                     caracteres
                   </>
                 ) : (
@@ -890,7 +881,7 @@ export function BreederTab() {
           </div>
         </AccordionSection>
 
-        <AccordionSection title="LocalizaÃ§Ã£o" eyebrow="Onde estÃ¡" defaultOpen={noProfile}>
+        <AccordionSection title="Localização" eyebrow="Onde está" defaultOpen={noProfile}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label="Distrito"
@@ -917,10 +908,10 @@ export function BreederTab() {
           </div>
         </AccordionSection>
 
-        <AccordionSection title="RaÃ§as" eyebrow="O que cria" defaultOpen={noProfile}>
+        <AccordionSection title="Raças" eyebrow="O que cria" defaultOpen={noProfile}>
           <p className="mb-3 text-xs text-gray-600">
-            Seleccione as raÃ§as do catÃ¡logo (LOP/CPC). Se trabalha com raÃ§as nÃ£o listadas, pode
-            descrevÃª-las em "Outras raÃ§as".
+            Seleccione as raças do catálogo (LOP/CPC). Se trabalha com raças não listadas, pode
+            descrevê-las em "Outras raças".
           </p>
           <BreedMultiCombobox
             breeds={breedsCatalog ?? []}
@@ -935,21 +926,21 @@ export function BreederTab() {
                 onChange={(e) => setForm((p) => ({ ...p, hasOtherBreeds: e.target.checked }))}
                 className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
               />
-              Tenho outras raÃ§as nÃ£o listadas
+              Tenho outras raças não listadas
             </label>
             {form.hasOtherBreeds && (
               <textarea
                 className="input mt-2 min-h-[80px]"
                 value={form.otherBreedsNote}
                 onChange={(e) => setForm((p) => ({ ...p, otherBreedsNote: e.target.value }))}
-                placeholder="Indique as raÃ§as que cria (mÃ¡x. 500 caracteres)â€¦"
+                placeholder="Indique as raças que cria (máx. 500 caracteres)…"
                 maxLength={500}
               />
             )}
           </div>
         </AccordionSection>
 
-        <AccordionSection title="Reconhecimentos e inclusÃµes" eyebrow="Credibilidade">
+        <AccordionSection title="Reconhecimentos e inclusões" eyebrow="Credibilidade">
           <div className="space-y-5">
             <div>
               <h4 className="mb-2 text-sm font-semibold text-gray-700">Reconhecimentos oficiais</h4>
@@ -961,7 +952,7 @@ export function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, cpcMember: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Membro do CPC (Clube PortuguÃªs de Canicultura)
+                  Membro do CPC (Clube Português de Canicultura)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -970,25 +961,25 @@ export function BreederTab() {
                     onChange={(e) => setForm((p) => ({ ...p, fciAffiliated: e.target.checked }))}
                     className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
                   />
-                  Filiado FCI (FÃ©dÃ©ration Cynologique Internationale)
+                  Filiado FCI (Fédération Cynologique Internationale)
                 </label>
               </div>
             </div>
 
             <div>
               <h4 className="mb-2 text-sm font-semibold text-gray-700">
-                O que estÃ¡ incluÃ­do com cada cachorro
+                O que está incluído com cada cachorro
               </h4>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(
                   [
-                    { key: 'vetCheckup', label: 'Check-up veterinÃ¡rio' },
+                    { key: 'vetCheckup', label: 'Check-up veterinário' },
                     { key: 'microchip', label: 'Microchip implantado' },
-                    { key: 'vaccinations', label: 'VacinaÃ§Ã£o em dia' },
+                    { key: 'vaccinations', label: 'Vacinação em dia' },
                     { key: 'lopRegistry', label: 'Registo no LOP' },
                     { key: 'kennelName', label: 'Nome de canil' },
                     { key: 'salesInvoice', label: 'Factura de venda' },
-                    { key: 'food', label: 'AlimentaÃ§Ã£o inicial' },
+                    { key: 'food', label: 'Alimentação inicial' },
                     { key: 'initialTraining', label: 'Treino inicial' },
                   ] as const
                 ).map(({ key, label }) => (
@@ -1007,10 +998,10 @@ export function BreederTab() {
 
             <div>
               <h4 className="mb-2 text-sm font-semibold text-gray-700">
-                VÃ­deo de apresentaÃ§Ã£o (YouTube)
+                Vídeo de apresentação (YouTube)
               </h4>
               <Input
-                label="URL ou ID do vÃ­deo"
+                label="URL ou ID do vídeo"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={form.youtubeVideoId}
                 onChange={(e) => setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))}
@@ -1040,7 +1031,7 @@ export function BreederTab() {
                 onChange={(e) => setForm((p) => ({ ...p, deliveryByCar: e.target.checked }))}
                 className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
               />
-              Entrega ao domicÃ­lio
+              Entrega ao domicílio
             </label>
           </div>
           <div className="mt-3">
@@ -1049,7 +1040,7 @@ export function BreederTab() {
               className="input min-h-[80px]"
               value={form.pickupNotes}
               onChange={(e) => setForm((p) => ({ ...p, pickupNotes: e.target.value }))}
-              placeholder="Custos, condiÃ§Ãµes, zonas cobertas..."
+              placeholder="Custos, condições, zonas cobertas..."
               maxLength={1000}
             />
           </div>
@@ -1087,7 +1078,7 @@ export function BreederTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header â€” modo criar */}
+      {/* Header — modo criar */}
       {noProfile && (
         <Card hover={false}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-caramel-500">
@@ -1096,13 +1087,13 @@ export function BreederTab() {
           </div>
           <h2 className="mt-1 font-serif text-2xl text-ink">Criar perfil de criador</h2>
           <p className="mt-2 text-sm text-muted">
-            Preencha os campos abaixo para criar o seu perfil. A apresentaÃ§Ã£o, pelo menos uma foto e
-            o documento DGAV sÃ£o obrigatÃ³rios. ApÃ³s criar, poderÃ¡ submeter para verificaÃ§Ã£o.
+            Preencha os campos abaixo para criar o seu perfil. A apresentação, pelo menos uma foto e
+            o documento DGAV são obrigatórios. Após criar, poderá submeter para verificação.
           </p>
         </Card>
       )}
 
-      {/* Status â€” apenas quando ja existe perfil. Card unico com
+      {/* Status — apenas quando ja existe perfil. Card unico com
           sub-seccoes: Estado, Form (quando editar), Galeria, Documentos.
           Tudo agrupado dentro do tab Criador para coerencia visual. */}
       {breeder && (
@@ -1135,11 +1126,11 @@ export function BreederTab() {
             )}
           </div>
 
-          {/* Form (apenas em modo editar) â€” inclui ja Galeria + Documentos
+          {/* Form (apenas em modo editar) — inclui ja Galeria + Documentos
               integrados, com Guardar/Cancelar no fim de tudo. */}
           {editing && <div className="mt-6 border-t border-line pt-6">{breederForm}</div>}
 
-          {/* Submit para verificacao â€” so visivel quando NAO esta a editar
+          {/* Submit para verificacao — so visivel quando NAO esta a editar
               para nao competir visualmente com Guardar/Cancelar. */}
           {!editing && submitVerificationButton && (
             <div className="mt-6 border-t border-line pt-6 flex justify-end">
@@ -1157,10 +1148,10 @@ export function BreederTab() {
         </Card>
       )}
 
-      {/* Modo criar (sem perfil) â€” form sozinho num card */}
+      {/* Modo criar (sem perfil) — form sozinho num card */}
       {noProfile && <Card hover={false}>{breederForm}</Card>}
 
-      {/* Modal â€” confirmaÃ§Ã£o de eliminaÃ§Ã£o do perfil de criador */}
+      {/* Modal — confirmação de eliminação do perfil de criador */}
       <Modal
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
@@ -1168,19 +1159,19 @@ export function BreederTab() {
       >
         <div className="space-y-4">
           <p className="text-sm text-ink">
-            Tem a certeza que pretende eliminar o seu perfil de criador? Esta acÃ§Ã£o Ã©{' '}
-            <strong className="text-red-600">irreversÃ­vel</strong> e vai apagar:
+            Tem a certeza que pretende eliminar o seu perfil de criador? Esta acção é{' '}
+            <strong className="text-red-600">irreversível</strong> e vai apagar:
           </p>
           <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-            <li>Todos os dados do perfil ({breeder?.businessName ?? 'â€”'})</li>
+            <li>Todos os dados do perfil ({breeder?.businessName ?? '—'})</li>
             <li>Galeria ({breeder?.photos?.length ?? 0} foto(s))</li>
-            <li>Documentos de verificaÃ§Ã£o ({breeder?.verificationDocs.length ?? 0})</li>
-            <li>RaÃ§as associadas</li>
+            <li>Documentos de verificação ({breeder?.verificationDocs.length ?? 0})</li>
+            <li>Raças associadas</li>
             <li>Conversas e mensagens recebidas</li>
-            <li>AvaliaÃ§Ãµes recebidas</li>
+            <li>Avaliações recebidas</li>
           </ul>
           <p className="text-xs text-muted">
-            A sua conta de utilizador Ã© mantida â€” pode voltar a criar um perfil de criador no
+            A sua conta de utilizador é mantida — pode voltar a criar um perfil de criador no
             futuro.
           </p>
           {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
