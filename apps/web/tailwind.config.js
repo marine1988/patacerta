@@ -55,7 +55,8 @@ export default {
         },
         subtle: {
           DEFAULT: '#8A837A',
-          dark: '#6F6A61',
+          // dark: subido de #6F6A61 para garantir contraste >=4.5:1 sobre bg.dark (#141312)
+          dark: '#9B9388',
         },
         line: {
           DEFAULT: '#E0D7C6',
