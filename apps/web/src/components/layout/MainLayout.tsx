@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Navbar } from './Navbar'
 import { Footer } from './Footer'
+import { ConsentBanner } from '../consent/ConsentBanner'
 
 export function MainLayout() {
   return (
@@ -10,6 +11,7 @@ export function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ConsentBanner />
     </div>
   )
 }

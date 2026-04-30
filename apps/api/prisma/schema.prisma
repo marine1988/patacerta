@@ -100,6 +100,7 @@ model User {
   serviceReportsReviewed ServiceReport[]     @relation("service_report_reviewer")
   auditLogs              AuditLog[]
   consentLogs            ConsentLog[]
+  cookieConsentLogs      CookieConsentLog[]
   refreshTokens          RefreshToken[]
 
   @@map("users")
@@ -567,6 +568,27 @@ model ConsentLog {
   @@index([userId])
   @@index([consentType])
   @@map("consent_logs")
+}
+
+// Cookie consent (CMP). Diferente de ConsentLog: este regista decisoes
+// do banner de cookies, podendo ser anonimas (visitantes) ou ligadas a
+// utilizador. Audit trail RGPD para CNPD.
+model CookieConsentLog {
+  id        Int      @id @default(autoincrement())
+  anonId    String   @map("anon_id") @db.Uuid
+  userId    Int?     @map("user_id")
+  decision  Json     // { necessary: true, analytics: bool, marketing: bool }
+  version   String   @db.VarChar(20)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([anonId])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("cookie_consent_logs")
 }
 
 // Refresh-token store. We persist a SHA-256 hash of every issued refresh

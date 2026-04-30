@@ -48,6 +48,17 @@ export function Footer() {
             <ul className="space-y-3">
               <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
               <FooterLink to="/termos">Termos de Utilização</FooterLink>
+              <li>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(new CustomEvent('patacerta:open-consent-settings'))
+                  }
+                  className="text-left text-sm text-ink transition-colors hover:text-caramel-500"
+                >
+                  Definições de cookies
+                </button>
+              </li>
             </ul>
           </div>
 

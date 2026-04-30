@@ -16,6 +16,7 @@
 // Didomi), substituir `nonPersonalized` pelo sinal real do utilizador.
 
 import { useEffect, useRef } from 'react'
+import { hasMarketingConsent } from '../../lib/consent'
 const CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID ?? ''
 const ENABLED =
   import.meta.env.VITE_ADSENSE_ENABLED === 'true' || import.meta.env.VITE_ADSENSE_ENABLED === '1'
@@ -97,8 +98,9 @@ export function AdSlot({
 
     try {
       const queue = (window.adsbygoogle = window.adsbygoogle || [])
-      // Modo non-personalized até existir um CMP integrado.
-      queue.requestNonPersonalizedAds = 1
+      // Personalized ads so' quando o utilizador deu consentimento
+      // explicito para marketing. Caso contrario, NPA=1 (genericos).
+      queue.requestNonPersonalizedAds = hasMarketingConsent() ? 0 : 1
       queue.push({})
       pushedRef.current = true
     } catch (err) {

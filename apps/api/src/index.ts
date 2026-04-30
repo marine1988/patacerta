@@ -20,6 +20,7 @@ import { homeRouter } from './modules/home/home.router.js'
 import { breedMatcherRouter } from './modules/breed-matcher/breed-matcher.router.js'
 import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
+import { consentRouter } from './modules/consent/consent.router.js'
 import { ensureBucket } from './lib/minio.js'
 import { isProd, isHttps } from './lib/env.js'
 
@@ -112,6 +113,7 @@ app.use('/api/home', homeRouter)
 app.use('/api/breed-matcher', breedMatcherRouter)
 app.use('/api/breeds', breedsRouter)
 app.use('/api/sponsored-slots', sponsoredSlotsRouter)
+app.use('/api/consent', consentRouter)
 app.use('/api/admin', adminRouter)
 
 // ---- Error handler (must be last) ----
