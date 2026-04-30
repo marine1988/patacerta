@@ -32,7 +32,7 @@ export function Footer() {
 
           {/* Plataforma */}
           <div>
-            <h4 className="eyebrow mb-5">— Plataforma</h4>
+            <h3 className="eyebrow mb-5">— Plataforma</h3>
             <ul className="space-y-3">
               <FooterLink to="/pesquisar">Criadores</FooterLink>
               <FooterLink to="/pesquisar?tipo=servicos">Serviços</FooterLink>
@@ -44,7 +44,7 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="eyebrow mb-5">— Legal</h4>
+            <h3 className="eyebrow mb-5">— Legal</h3>
             <ul className="space-y-3">
               <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
               <FooterLink to="/termos">Termos de Utilização</FooterLink>
@@ -53,7 +53,7 @@ export function Footer() {
 
           {/* Contacto */}
           <div>
-            <h4 className="eyebrow mb-5">— Contacto</h4>
+            <h3 className="eyebrow mb-5">— Contacto</h3>
             <ul className="space-y-3">
               <li className="text-sm text-muted">info@patacerta.pt</li>
               <li className="text-sm text-muted">Lisboa, Portugal</li>
@@ -65,7 +65,7 @@ export function Footer() {
         <div className="mt-16 border-t border-line pt-10">
           <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:items-start md:gap-12">
             <div>
-              <h4 className="eyebrow mb-3">◆ Adopção responsável</h4>
+              <h3 className="eyebrow mb-3">◆ Adopção responsável</h3>
               <p className="font-serif text-lg leading-snug text-ink">
                 Comprar a um criador ético é legítimo —{' '}
                 <em className="italic text-caramel-500">adoptar também</em>.

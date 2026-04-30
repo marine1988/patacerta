@@ -174,7 +174,7 @@ export function HomePage() {
       {/* ============================================================
        * SIMULADOR — banner editorial para o quiz de raça
        * ============================================================ */}
-      <section className="border-t border-line bg-caramel-100/40">
+      <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
         <div className="mx-auto max-w-[72rem] px-6 py-20 lg:px-8">
           <div className="grid items-center gap-12 md:grid-cols-[1.4fr_1fr]">
             <div>
@@ -378,7 +378,7 @@ function SimuladorTopic({
     <li className="flex gap-4">
       <span className="font-serif text-2xl italic text-caramel-500">{number}</span>
       <div>
-        <h4 className="font-serif text-base text-ink">{title}</h4>
+        <h3 className="font-serif text-base text-ink">{title}</h3>
         <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
       </div>
     </li>

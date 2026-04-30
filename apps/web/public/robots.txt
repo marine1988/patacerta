@@ -1,0 +1,13 @@
+# PataCerta — robots.txt
+# https://stage.patacerta.pt (staging) / https://patacerta.pt (produção)
+
+User-agent: *
+Allow: /
+
+# Áreas autenticadas / privadas
+Disallow: /admin
+Disallow: /area-pessoal
+Disallow: /verificar-email
+Disallow: /redefinir-password
+
+Sitemap: https://patacerta.pt/sitemap.xml

@@ -49,8 +49,16 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="label">Distrito</label>
-          <select className="select" value={district} onChange={(e) => setDistrict(e.target.value)}>
+          <label className="label" htmlFor="searchbar-district">
+            Distrito
+          </label>
+          <select
+            id="searchbar-district"
+            className="select"
+            aria-label="Distrito"
+            value={district}
+            onChange={(e) => setDistrict(e.target.value)}
+          >
             <option value="">Todos os distritos</option>
             {districtList.map((d) => (
               <option key={d.id} value={d.id}>
@@ -61,8 +69,16 @@ export function SearchBar({ compact = false }: SearchBarProps) {
         </div>
 
         <div>
-          <label className="label">Raça</label>
-          <select className="select" value={breed} onChange={(e) => setBreed(e.target.value)}>
+          <label className="label" htmlFor="searchbar-breed">
+            Raça
+          </label>
+          <select
+            id="searchbar-breed"
+            className="select"
+            aria-label="Raça"
+            value={breed}
+            onChange={(e) => setBreed(e.target.value)}
+          >
             <option value="">Todas as raças</option>
             {breedList.map((b) => (
               <option key={b.id} value={b.id}>
@@ -73,8 +89,11 @@ export function SearchBar({ compact = false }: SearchBarProps) {
         </div>
 
         <div>
-          <label className="label">Pesquisa</label>
+          <label className="label" htmlFor="searchbar-query">
+            Pesquisa
+          </label>
           <input
+            id="searchbar-query"
             type="text"
             className="input"
             placeholder="Nome do criador..."
