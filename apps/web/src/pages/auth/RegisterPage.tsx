@@ -227,7 +227,7 @@ export function RegisterPage() {
               autoComplete="tel"
             />
 
-            <p className="rounded-lg bg-caramel-50 p-3 text-xs text-caramel-900">
+            <p className="rounded-lg border border-line bg-surface-alt p-3 text-xs text-muted">
               Crie a sua conta agora. Mais tarde, se quiser anunciar como criador ou prestador de
               serviços, basta publicar o seu primeiro anúncio a partir da área pessoal.
             </p>
