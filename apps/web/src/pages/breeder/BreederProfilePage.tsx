@@ -27,6 +27,7 @@ import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
+import { AdContainer, AD_SLOTS } from '../../components/ads'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
@@ -731,6 +732,13 @@ export function BreederProfilePage() {
               )}
             </div>
           </Card>
+
+          {/* Slot de publicidade — só renderiza se VITE_ADSENSE_ENABLED */}
+          <AdContainer
+            slot={AD_SLOTS.breederDetail}
+            placement="breeder-detail-sidebar"
+            minHeight={250}
+          />
 
           <Card>
             <h3 className="text-base font-semibold text-gray-900">Localização</h3>

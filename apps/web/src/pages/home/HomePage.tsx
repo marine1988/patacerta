@@ -5,6 +5,7 @@ import { SearchBar } from '../../components/shared/SearchBar'
 import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
 import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
+import { AdContainer, AD_SLOTS } from '../../components/ads'
 
 interface PublicStats {
   breederCount: number
@@ -112,6 +113,17 @@ export function HomePage() {
             <Stat value={stats?.districtCount} label="Distritos" />
             <Stat value={stats?.reviewCount} label="Avaliações" />
           </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+       * AD — Banner mid-page, entre hero e listagens.
+       * Renderiza apenas quando VITE_ADSENSE_ENABLED=true e o slot
+       * estiver configurado em components/ads/slots.ts.
+       * ============================================================ */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-6 lg:px-8">
+          <AdContainer slot={AD_SLOTS.homepageMid} placement="homepage-mid" />
         </div>
       </section>
 

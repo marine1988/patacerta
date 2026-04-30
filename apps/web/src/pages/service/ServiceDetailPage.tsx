@@ -28,6 +28,7 @@ import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { Pagination } from '../../components/ui/Pagination'
 import { type ServiceBase, type ServiceCategory, type ServicePhoto } from '../../lib/services'
+import { AdContainer, AD_SLOTS } from '../../components/ads'
 
 const MiniMap = lazy(() =>
   import('../../components/map/MiniMap').then((m) => ({ default: m.MiniMap })),
@@ -835,6 +836,13 @@ export function ServiceDetailPage() {
               <ShareLinks title={service.title} url={shareUrl} />
             </div>
           </Card>
+
+          {/* Slot de publicidade — só renderiza se VITE_ADSENSE_ENABLED */}
+          <AdContainer
+            slot={AD_SLOTS.serviceDetail}
+            placement="service-detail-sidebar"
+            minHeight={250}
+          />
 
           {/* Location */}
           <Card hover={false}>
