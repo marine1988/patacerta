@@ -556,32 +556,32 @@ export const uploadPhotos = asyncHandler(async (req, res) => {
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   })
-  let nextSort = (last?.sortOrder ?? -1) + 1
+  const baseSort = (last?.sortOrder ?? -1) + 1
 
-  const created: Array<{ id: number; url: string; sortOrder: number }> = []
+  // Paraleliza pipeline sharp + upload S3 + create row por foto. Ver
+  // breeders.controller para racional. Schema do controller já valida N≤10.
+  const created = await Promise.all(
+    files.map(async (file, i) => {
+      const buffer = await sharp(file.buffer)
+        .rotate() // honour EXIF orientation
+        .resize({
+          width: PHOTO_MAX_DIMENSION,
+          height: PHOTO_MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: PHOTO_JPEG_QUALITY, mozjpeg: true })
+        .toBuffer()
 
-  for (const file of files) {
-    const buffer = await sharp(file.buffer)
-      .rotate() // honour EXIF orientation
-      .resize({
-        width: PHOTO_MAX_DIMENSION,
-        height: PHOTO_MAX_DIMENSION,
-        fit: 'inside',
-        withoutEnlargement: true,
+      const objectName = `services/${serviceId}/photo-${randomUUID()}.jpg`
+      const url = await uploadFile(objectName, buffer, 'image/jpeg')
+
+      return prisma.servicePhoto.create({
+        data: { serviceId, url, sortOrder: baseSort + i },
+        select: { id: true, url: true, sortOrder: true },
       })
-      .jpeg({ quality: PHOTO_JPEG_QUALITY, mozjpeg: true })
-      .toBuffer()
-
-    const objectName = `services/${serviceId}/photo-${randomUUID()}.jpg`
-    const url = await uploadFile(objectName, buffer, 'image/jpeg')
-
-    const photo = await prisma.servicePhoto.create({
-      data: { serviceId, url, sortOrder: nextSort },
-      select: { id: true, url: true, sortOrder: true },
-    })
-    created.push(photo)
-    nextSort++
-  }
+    }),
+  )
 
   await logAudit({
     userId,

@@ -475,32 +475,34 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   })
-  let nextSort = (last?.sortOrder ?? -1) + 1
+  const baseSort = (last?.sortOrder ?? -1) + 1
 
-  const created: Array<{ id: number; url: string; caption: string | null; sortOrder: number }> = []
+  // Paraleliza pipeline sharp + upload S3 + create row por foto. Cada item é
+  // independente; processá-los em série (await dentro do loop) inflava a
+  // latência ~N×. Concurrency limitada implicitamente pela memória do worker
+  // (já validámos N≤10 fotos no schema do controller).
+  const created = await Promise.all(
+    files.map(async (file, i) => {
+      const buffer = await sharp(file.buffer)
+        .rotate()
+        .resize({
+          width: PHOTO_MAX_DIMENSION,
+          height: PHOTO_MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: PHOTO_JPEG_QUALITY, mozjpeg: true })
+        .toBuffer()
 
-  for (const file of files) {
-    const buffer = await sharp(file.buffer)
-      .rotate()
-      .resize({
-        width: PHOTO_MAX_DIMENSION,
-        height: PHOTO_MAX_DIMENSION,
-        fit: 'inside',
-        withoutEnlargement: true,
+      const objectName = `breeders/${breeder.id}/photo-${randomUUID()}.jpg`
+      const url = await uploadFile(objectName, buffer, 'image/jpeg')
+
+      return prisma.breederPhoto.create({
+        data: { breederId: breeder.id, url, sortOrder: baseSort + i },
+        select: { id: true, url: true, caption: true, sortOrder: true },
       })
-      .jpeg({ quality: PHOTO_JPEG_QUALITY, mozjpeg: true })
-      .toBuffer()
-
-    const objectName = `breeders/${breeder.id}/photo-${randomUUID()}.jpg`
-    const url = await uploadFile(objectName, buffer, 'image/jpeg')
-
-    const photo = await prisma.breederPhoto.create({
-      data: { breederId: breeder.id, url, sortOrder: nextSort },
-      select: { id: true, url: true, caption: true, sortOrder: true },
-    })
-    created.push(photo)
-    nextSort++
-  }
+    }),
+  )
 
   await logAudit({
     userId,

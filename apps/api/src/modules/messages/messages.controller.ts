@@ -18,12 +18,14 @@ export const listThreads = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
   const { page, limit, archived } = req.query as unknown as ListThreadsInput
 
-  const breeder = await prisma.breeder.findUnique({ where: { userId } })
-  // IDs of services owned by the user — needed to include service-side threads.
-  const ownServices = await prisma.service.findMany({
-    where: { providerId: userId },
-    select: { id: true },
-  })
+  // Paralelizadas: queries independentes (breeder vs services) — corta latência ~50%.
+  const [breeder, ownServices] = await Promise.all([
+    prisma.breeder.findUnique({ where: { userId } }),
+    prisma.service.findMany({
+      where: { providerId: userId },
+      select: { id: true },
+    }),
+  ])
   const ownServiceIds = ownServices.map((s) => s.id)
 
   // A thread is "archived" relative to the current user: owner side checks
@@ -403,11 +405,13 @@ export const markThreadAsRead = asyncHandler(async (req, res) => {
 
 export const getUnreadCount = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
-  const breeder = await prisma.breeder.findUnique({ where: { userId } })
-  const ownServices = await prisma.service.findMany({
-    where: { providerId: userId },
-    select: { id: true },
-  })
+  const [breeder, ownServices] = await Promise.all([
+    prisma.breeder.findUnique({ where: { userId } }),
+    prisma.service.findMany({
+      where: { providerId: userId },
+      select: { id: true },
+    }),
+  ])
   const ownServiceIds = ownServices.map((s) => s.id)
 
   // Count unread across non-archived threads only, excluding soft-deleted messages.
@@ -607,11 +611,13 @@ export const searchMessages = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
   const { q, page, limit } = req.query as unknown as SearchMessagesInput
 
-  const breeder = await prisma.breeder.findUnique({ where: { userId } })
-  const ownServices = await prisma.service.findMany({
-    where: { providerId: userId },
-    select: { id: true },
-  })
+  const [breeder, ownServices] = await Promise.all([
+    prisma.breeder.findUnique({ where: { userId } }),
+    prisma.service.findMany({
+      where: { providerId: userId },
+      select: { id: true },
+    }),
+  ])
   const ownServiceIds = ownServices.map((s) => s.id)
 
   const threadOr: Prisma.ThreadWhereInput[] = [{ ownerId: userId }]

@@ -87,26 +87,27 @@ export const listReviews = asyncHandler(async (req, res) => {
     distribution: Record<1 | 2 | 3 | 4 | 5, number>
   } | null = null
   if (breederId) {
-    const [agg, groups] = await Promise.all([
-      prisma.review.aggregate({
-        where: { breederId, status: 'PUBLISHED' },
-        _avg: { rating: true },
-        _count: { id: true },
-      }),
-      prisma.review.groupBy({
-        by: ['rating'],
-        where: { breederId, status: 'PUBLISHED' },
-        _count: { rating: true },
-      }),
-    ])
+    // Uma única query: groupBy por rating já contém todos os dados necessários
+    // (total = soma counts; avg = soma(rating*count)/total). Elimina o aggregate
+    // duplicado e corta um round-trip à BD.
+    const groups = await prisma.review.groupBy({
+      by: ['rating'],
+      where: { breederId, status: 'PUBLISHED' },
+      _count: { rating: true },
+    })
     const distribution: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    let totalReviews = 0
+    let sumRating = 0
     for (const g of groups) {
       const r = g.rating as 1 | 2 | 3 | 4 | 5
-      distribution[r] = g._count.rating
+      const c = g._count.rating
+      distribution[r] = c
+      totalReviews += c
+      sumRating += r * c
     }
     summary = {
-      avgRating: agg._avg.rating ? Math.round(agg._avg.rating * 10) / 10 : null,
-      totalReviews: agg._count.id,
+      avgRating: totalReviews > 0 ? Math.round((sumRating / totalReviews) * 10) / 10 : null,
+      totalReviews,
       distribution,
     }
   }

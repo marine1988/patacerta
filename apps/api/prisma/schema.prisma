@@ -86,18 +86,18 @@ model User {
   updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   breeder                Breeder?
-  sentMessages           Message[]         @relation("sender")
-  threadsAsOwner         Thread[]          @relation("thread_owner")
-  reviewedDocs           VerificationDoc[] @relation("reviewer")
-  reviews                Review[]          @relation("review_author")
-  reviewFlags            ReviewFlag[]      @relation("review_flag_reporter")
-  serviceReviews         ServiceReview[]   @relation("service_review_author")
+  sentMessages           Message[]           @relation("sender")
+  threadsAsOwner         Thread[]            @relation("thread_owner")
+  reviewedDocs           VerificationDoc[]   @relation("reviewer")
+  reviews                Review[]            @relation("review_author")
+  reviewFlags            ReviewFlag[]        @relation("review_flag_reporter")
+  serviceReviews         ServiceReview[]     @relation("service_review_author")
   serviceReviewFlags     ServiceReviewFlag[] @relation("service_review_flag_reporter")
-  messageReportsFiled    MessageReport[]   @relation("message_report_reporter")
-  messageReportsReviewed MessageReport[]   @relation("message_report_reviewer")
-  services               Service[]         @relation("service_provider")
-  serviceReportsFiled    ServiceReport[]   @relation("service_report_reporter")
-  serviceReportsReviewed ServiceReport[]   @relation("service_report_reviewer")
+  messageReportsFiled    MessageReport[]     @relation("message_report_reporter")
+  messageReportsReviewed MessageReport[]     @relation("message_report_reviewer")
+  services               Service[]           @relation("service_provider")
+  serviceReportsFiled    ServiceReport[]     @relation("service_report_reporter")
+  serviceReportsReviewed ServiceReport[]     @relation("service_report_reviewer")
   auditLogs              AuditLog[]
   consentLogs            ConsentLog[]
   refreshTokens          RefreshToken[]
@@ -106,23 +106,23 @@ model User {
 }
 
 model Breeder {
-  id             Int           @id @default(autoincrement())
-  userId         Int           @unique @map("user_id")
-  businessName   String        @map("business_name") @db.VarChar(200)
-  nif            String        @unique @db.VarChar(9)
-  dgavNumber     String        @unique @map("dgav_number") @db.VarChar(50)
-  description    String?       @db.Text
-  website        String?       @db.VarChar(255)
-  phone          String?       @db.VarChar(20)
-  status         BreederStatus @default(DRAFT)
-  verifiedAt     DateTime?     @map("verified_at")
-  suspendedAt    DateTime?     @map("suspended_at")
-  suspendedReason String?      @map("suspended_reason") @db.VarChar(500)
-  featuredUntil  DateTime?     @map("featured_until")
-  districtId     Int           @map("district_id")
-  municipalityId Int           @map("municipality_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id              Int           @id @default(autoincrement())
+  userId          Int           @unique @map("user_id")
+  businessName    String        @map("business_name") @db.VarChar(200)
+  nif             String        @unique @db.VarChar(9)
+  dgavNumber      String        @unique @map("dgav_number") @db.VarChar(50)
+  description     String?       @db.Text
+  website         String?       @db.VarChar(255)
+  phone           String?       @db.VarChar(20)
+  status          BreederStatus @default(DRAFT)
+  verifiedAt      DateTime?     @map("verified_at")
+  suspendedAt     DateTime?     @map("suspended_at")
+  suspendedReason String?       @map("suspended_reason") @db.VarChar(500)
+  featuredUntil   DateTime?     @map("featured_until")
+  districtId      Int           @map("district_id")
+  municipalityId  Int           @map("municipality_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
   // Apresentacao publica adicional
   youtubeVideoId String? @map("youtube_video_id") @db.VarChar(20)
@@ -161,14 +161,14 @@ model Breeder {
   avgRating   Float? @map("avg_rating")
   reviewCount Int    @default(0) @map("review_count")
 
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  district         District          @relation(fields: [districtId], references: [id])
-  municipality     Municipality      @relation(fields: [municipalityId], references: [id])
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  district         District             @relation(fields: [districtId], references: [id])
+  municipality     Municipality         @relation(fields: [municipalityId], references: [id])
   species          BreederSpecies[]
   breeds           BreederBreed[]
   verificationDocs VerificationDoc[]
-  reviews          Review[]          @relation("reviewed_breeder")
-  threadsAsBreeder Thread[]          @relation("thread_breeder")
+  reviews          Review[]             @relation("reviewed_breeder")
+  threadsAsBreeder Thread[]             @relation("thread_breeder")
   photos           BreederPhoto[]
   sponsoredSlots   SponsoredBreedSlot[]
 
@@ -207,51 +207,51 @@ model Species {
 // Os valores são fontes editoriais nossas (inspiradas em FCI / Purina
 // / AKC / Wikipedia pt) — ver apps/api/prisma/seed-breeds.ts.
 model Breed {
-  id          Int    @id @default(autoincrement())
-  speciesId   Int    @map("species_id")
-  nameSlug    String @unique @map("name_slug") @db.VarChar(80)
-  namePt      String @map("name_pt") @db.VarChar(120)
-  fciGroup    String? @map("fci_group") @db.VarChar(80)
-  origin      String? @db.VarChar(120)
-  summaryPt   String  @map("summary_pt") @db.VarChar(500)
+  id        Int     @id @default(autoincrement())
+  speciesId Int     @map("species_id")
+  nameSlug  String  @unique @map("name_slug") @db.VarChar(80)
+  namePt    String  @map("name_pt") @db.VarChar(120)
+  fciGroup  String? @map("fci_group") @db.VarChar(80)
+  origin    String? @db.VarChar(120)
+  summaryPt String  @map("summary_pt") @db.VarChar(500)
 
   // ─ Atributos físicos ─
-  size            String @db.VarChar(10)    // "small" | "medium" | "large" | "giant"
-  weightMinKg     Float  @map("weight_min_kg")
-  weightMaxKg     Float  @map("weight_max_kg")
-  lifespanMinYrs  Int    @map("lifespan_min_yrs")
-  lifespanMaxYrs  Int    @map("lifespan_max_yrs")
-  coatLength      String @map("coat_length") @db.VarChar(10) // "short" | "medium" | "long"
-  shedding        Int    // 1-5
-  hypoallergenic  Boolean @default(false)
+  size           String  @db.VarChar(10) // "small" | "medium" | "large" | "giant"
+  weightMinKg    Float   @map("weight_min_kg")
+  weightMaxKg    Float   @map("weight_max_kg")
+  lifespanMinYrs Int     @map("lifespan_min_yrs")
+  lifespanMaxYrs Int     @map("lifespan_max_yrs")
+  coatLength     String  @map("coat_length") @db.VarChar(10) // "short" | "medium" | "long"
+  shedding       Int // 1-5
+  hypoallergenic Boolean @default(false)
 
   // ─ Necessidades / temperamento ─
-  energyLevel       Int @map("energy_level")        // 1-5
-  exerciseDailyMin  Int @map("exercise_daily_min")  // minutos por dia
-  trainability      Int                              // 1-5
-  barkLevel         String @map("bark_level") @db.VarChar(10) // "low" | "medium" | "high"
-  groomingLevel     Int @map("grooming_level")     // 1-5
+  energyLevel      Int    @map("energy_level") // 1-5
+  exerciseDailyMin Int    @map("exercise_daily_min") // minutos por dia
+  trainability     Int // 1-5
+  barkLevel        String @map("bark_level") @db.VarChar(10) // "low" | "medium" | "high"
+  groomingLevel    Int    @map("grooming_level") // 1-5
 
   // ─ Compatibilidades ─
-  goodWithKids      Int @map("good_with_kids")      // 1-5
-  goodWithDogs      Int @map("good_with_dogs")      // 1-5
-  goodWithStrangers Int @map("good_with_strangers") // 1-5
+  goodWithKids      Int     @map("good_with_kids") // 1-5
+  goodWithDogs      Int     @map("good_with_dogs") // 1-5
+  goodWithStrangers Int     @map("good_with_strangers") // 1-5
   apartmentFriendly Boolean @default(false) @map("apartment_friendly")
   noviceFriendly    Boolean @default(false) @map("novice_friendly")
-  toleratesAlone    Int @map("tolerates_alone")     // 1-5
+  toleratesAlone    Int     @map("tolerates_alone") // 1-5
 
   // ─ Ambiente ─
-  coldTolerance     Int @map("cold_tolerance")      // 1-5
-  heatTolerance     Int @map("heat_tolerance")      // 1-5
+  coldTolerance Int @map("cold_tolerance") // 1-5
+  heatTolerance Int @map("heat_tolerance") // 1-5
 
   // ─ Imagem ilustrativa (opcional) ─
-  imageUrl   String? @map("image_url") @db.VarChar(500)
+  imageUrl String? @map("image_url") @db.VarChar(500)
 
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  species Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
-  breeders BreederBreed[]
+  species        Species              @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  breeders       BreederBreed[]
   sponsoredSlots SponsoredBreedSlot[]
 
   @@index([speciesId])
@@ -370,6 +370,7 @@ model VerificationDoc {
 
   @@index([breederId])
   @@index([status])
+  @@index([breederId, docType])
   @@map("verification_docs")
 }
 
@@ -505,8 +506,8 @@ model ServiceReview {
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
 
-  service Service              @relation("reviewed_service", fields: [serviceId], references: [id], onDelete: Cascade)
-  author  User                 @relation("service_review_author", fields: [authorId], references: [id], onDelete: Cascade)
+  service Service             @relation("reviewed_service", fields: [serviceId], references: [id], onDelete: Cascade)
+  author  User                @relation("service_review_author", fields: [authorId], references: [id], onDelete: Cascade)
   flags   ServiceReviewFlag[]
 
   @@unique([serviceId, authorId])
@@ -548,6 +549,7 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([action, createdAt(sort: Desc)])
   @@map("audit_logs")
 }
 
