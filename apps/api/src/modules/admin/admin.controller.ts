@@ -368,12 +368,12 @@ export const getFlaggedReviews = asyncHandler(async (req, res) => {
     prisma.review.count({ where }),
     prisma.serviceReview.count({ where }),
     prisma.$queryRaw<UnionRow[]>`
-      SELECT id, 'breeder' AS kind, "createdAt" AS created_at
-      FROM "Review"
+      SELECT id, 'breeder' AS kind, created_at
+      FROM reviews
       WHERE status = 'FLAGGED'
       UNION ALL
-      SELECT id, 'service' AS kind, "createdAt" AS created_at
-      FROM "ServiceReview"
+      SELECT id, 'service' AS kind, created_at
+      FROM service_reviews
       WHERE status = 'FLAGGED'
       ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${skip}
