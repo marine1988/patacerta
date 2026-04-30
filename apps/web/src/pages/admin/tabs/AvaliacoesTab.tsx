@@ -31,7 +31,7 @@ function TypeFilterTabs({
     { value: 'service', label: 'Serviços' },
   ]
   return (
-    <div className="mb-4 flex gap-2 border-b border-gray-200">
+    <div className="mb-4 flex gap-2 border-b border-line">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -42,7 +42,7 @@ function TypeFilterTabs({
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
             typeFilter === opt.value
               ? 'border-orange-500 text-orange-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-muted hover:text-ink'
           }`}
         >
           {opt.label}
@@ -144,10 +144,87 @@ export function AvaliacoesTab() {
   return (
     <div>
       <TypeFilterTabs typeFilter={typeFilter} setTypeFilter={setTypeFilter} setPage={setPage} />
-      <div className="overflow-x-auto">
+
+      {/* Mobile: lista de cards */}
+      <ul className="space-y-3 md:hidden">
+        {data.data.map((review) => (
+          <li
+            key={`${review.type ?? 'breeder'}-${review.id}-card`}
+            className="rounded-lg border border-line bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-ink">{review.title}</p>
+                <p className="line-clamp-2 text-sm text-muted">{review.body}</p>
+              </div>
+              <Badge variant={statusBadgeVariant[review.status] ?? 'gray'}>
+                {statusLabel[review.status] ?? review.status}
+              </Badge>
+            </div>
+            <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+              <dt className="text-muted">Tipo</dt>
+              <dd>
+                <Badge variant={review.type === 'service' ? 'blue' : 'gray'}>
+                  {review.type === 'service' ? 'Serviço' : 'Criador'}
+                </Badge>
+              </dd>
+              <dt className="text-muted">Alvo</dt>
+              <dd className="text-ink">
+                {review.type === 'service'
+                  ? (review.service?.title ?? String.fromCharCode(8212))
+                  : (review.breeder?.businessName ?? String.fromCharCode(8212))}
+              </dd>
+              <dt className="text-muted">Autor</dt>
+              <dd className="text-ink">
+                {review.author.firstName} {review.author.lastName}
+              </dd>
+              <dt className="text-muted">Nota</dt>
+              <dd className="text-ink">{review.rating}/5</dd>
+              <dt className="text-muted">Data</dt>
+              <dd className="text-ink">{formatDateShort(review.createdAt)}</dd>
+            </dl>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setFlagsTarget(review)}>
+                Ver sinalizações
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setModerationTarget({ review, nextStatus: 'PUBLISHED' })}
+              >
+                Publicar
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setModerationTarget({ review, nextStatus: 'HIDDEN' })}
+              >
+                Ocultar
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={dismissFlagsMutation.isPending}
+                onClick={() => {
+                  if (confirm('Descartar todas as sinalizações desta avaliação?')) {
+                    dismissFlagsMutation.mutate(review)
+                  }
+                }}
+              >
+                Descartar sinalizações
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => setDeleteTarget(review)}>
+                Eliminar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: tabela tradicional */}
+      <div className="hidden md:block md:overflow-x-auto">
         <table className="table-auto w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-line text-left text-muted">
               <th className="px-3 py-2">Avaliação</th>
               <th className="px-3 py-2">Tipo</th>
               <th className="px-3 py-2">Alvo</th>
@@ -162,35 +239,35 @@ export function AvaliacoesTab() {
             {data.data.map((review, i) => (
               <tr
                 key={`${review.type ?? 'breeder'}-${review.id}`}
-                className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
               >
                 <td className="px-3 py-2">
-                  <div className="font-medium text-gray-900">{review.title}</div>
-                  <div className="text-xs text-gray-500 max-w-xs truncate">{review.body}</div>
+                  <div className="font-medium text-ink">{review.title}</div>
+                  <div className="text-xs text-muted max-w-xs truncate">{review.body}</div>
                 </td>
                 <td className="px-3 py-2">
                   <Badge variant={review.type === 'service' ? 'blue' : 'gray'}>
                     {review.type === 'service' ? 'Serviço' : 'Criador'}
                   </Badge>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-ink">
                   {review.type === 'service'
                     ? (review.service?.title ?? '—')
                     : (review.breeder?.businessName ?? '—')}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-ink">
                   <div>
                     {review.author.firstName} {review.author.lastName}
                   </div>
-                  <div className="text-xs text-gray-500">{review.author.email}</div>
+                  <div className="text-xs text-muted">{review.author.email}</div>
                 </td>
-                <td className="px-3 py-2">{review.rating}/5</td>
+                <td className="px-3 py-2 text-ink">{review.rating}/5</td>
                 <td className="px-3 py-2">
                   <Badge variant={statusBadgeVariant[review.status] ?? 'gray'}>
                     {statusLabel[review.status] ?? review.status}
                   </Badge>
                 </td>
-                <td className="px-3 py-2">{formatDateShort(review.createdAt)}</td>
+                <td className="px-3 py-2 text-ink">{formatDateShort(review.createdAt)}</td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="secondary" onClick={() => setFlagsTarget(review)}>
@@ -246,12 +323,12 @@ export function AvaliacoesTab() {
       >
         {moderationTarget && (
           <div className="space-y-4">
-            <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <div className="font-medium">{moderationTarget.review.title}</div>
-              <div className="text-gray-600">{moderationTarget.review.body}</div>
+            <div className="rounded-lg bg-surface-alt/40 p-3 text-sm">
+              <div className="font-medium text-ink">{moderationTarget.review.title}</div>
+              <div className="text-muted">{moderationTarget.review.body}</div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1 block text-sm font-medium text-ink">
                 Motivo da moderação (opcional)
               </label>
               <Input
@@ -302,13 +379,13 @@ export function AvaliacoesTab() {
         ) : flagsQuery.data && flagsQuery.data.data.length > 0 ? (
           <ul className="space-y-3">
             {flagsQuery.data.data.map((flag) => (
-              <li key={flag.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+              <li key={flag.id} className="rounded-lg border border-line p-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-900">{flag.reason}</span>
-                  <span className="text-xs text-gray-500">{formatDateShort(flag.createdAt)}</span>
+                  <span className="font-medium text-ink">{flag.reason}</span>
+                  <span className="text-xs text-muted">{formatDateShort(flag.createdAt)}</span>
                 </div>
-                {flag.detail && <p className="mt-1 text-gray-600">{flag.detail}</p>}
-                <p className="mt-1 text-xs text-gray-500">
+                {flag.detail && <p className="mt-1 text-muted">{flag.detail}</p>}
+                <p className="mt-1 text-xs text-muted">
                   por {flag.reporter.firstName} {flag.reporter.lastName} ({flag.reporter.email})
                 </p>
               </li>
@@ -330,13 +407,13 @@ export function AvaliacoesTab() {
       >
         {deleteTarget && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-ink">
               Tem a certeza que pretende eliminar permanentemente esta avaliação? Esta ação não pode
               ser revertida.
             </p>
-            <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <div className="font-medium">{deleteTarget.title}</div>
-              <div className="text-gray-600">{deleteTarget.body}</div>
+            <div className="rounded-lg bg-surface-alt/40 p-3 text-sm">
+              <div className="font-medium text-ink">{deleteTarget.title}</div>
+              <div className="text-muted">{deleteTarget.body}</div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setDeleteTarget(null)}>

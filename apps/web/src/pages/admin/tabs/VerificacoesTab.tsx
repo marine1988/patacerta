@@ -99,10 +99,60 @@ export function VerificacoesTab() {
 
   return (
     <div>
-      <div className="overflow-x-auto">
+      {/* Mobile: lista de cards */}
+      <ul className="space-y-3 md:hidden">
+        {data.data.map((doc) => (
+          <li key={doc.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+            <div className="mb-2">
+              <p className="truncate font-medium text-ink">{doc.breeder.businessName}</p>
+              <p className="truncate text-sm text-muted">
+                {doc.breeder.user.firstName} {doc.breeder.user.lastName} {String.fromCharCode(8212)}{' '}
+                {doc.breeder.user.email}
+              </p>
+            </div>
+            <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+              <dt className="text-muted">NIF</dt>
+              <dd className="text-ink">{doc.breeder.nif}</dd>
+              <dt className="text-muted">DGAV</dt>
+              <dd className="text-ink">{doc.docType}</dd>
+              <dt className="text-muted">Ficheiro</dt>
+              <dd>
+                <button
+                  className="text-caramel-600 hover:underline"
+                  onClick={() => handleViewDoc(doc.id)}
+                >
+                  {doc.fileName}
+                </button>
+              </dd>
+              <dt className="text-muted">Data</dt>
+              <dd className="text-ink">{formatDateShort(doc.createdAt)}</dd>
+            </dl>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleApprove(doc.id, doc.breeder.businessName)}
+                disabled={approveMutation.isPending}
+              >
+                Aprovar
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => openReject(doc.id)}
+                disabled={rejectMutation.isPending}
+              >
+                Rejeitar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: tabela tradicional */}
+      <div className="hidden md:block md:overflow-x-auto">
         <table className="table-auto w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-line text-left text-muted">
               <th className="px-3 py-2">Criador</th>
               <th className="px-3 py-2">NIF</th>
               <th className="px-3 py-2">DGAV</th>
@@ -115,17 +165,17 @@ export function VerificacoesTab() {
             {data.data.map((doc, i) => (
               <tr
                 key={doc.id}
-                className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
               >
                 <td className="px-3 py-2">
-                  <div className="font-medium text-gray-900">{doc.breeder.businessName}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="font-medium text-ink">{doc.breeder.businessName}</div>
+                  <div className="text-xs text-muted">
                     {doc.breeder.user.firstName} {doc.breeder.user.lastName}{' '}
                     {String.fromCharCode(8212)} {doc.breeder.user.email}
                   </div>
                 </td>
-                <td className="px-3 py-2">{doc.breeder.nif}</td>
-                <td className="px-3 py-2">{doc.docType}</td>
+                <td className="px-3 py-2 text-ink">{doc.breeder.nif}</td>
+                <td className="px-3 py-2 text-ink">{doc.docType}</td>
                 <td className="px-3 py-2">
                   <button
                     className="text-caramel-600 hover:underline"
@@ -134,7 +184,7 @@ export function VerificacoesTab() {
                     {doc.fileName}
                   </button>
                 </td>
-                <td className="px-3 py-2">{formatDateShort(doc.createdAt)}</td>
+                <td className="px-3 py-2 text-ink">{formatDateShort(doc.createdAt)}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
                     <Button
@@ -175,7 +225,7 @@ export function VerificacoesTab() {
             value={rejectNotes}
             onChange={(e) => setRejectNotes(e.target.value)}
             placeholder="Ex.: certificado ilegível, fora do prazo, NIF não corresponde, etc."
-            className="w-full min-h-[100px] border border-line bg-white p-3 text-sm"
+            className="w-full min-h-[100px] border border-line bg-surface p-3 text-sm text-ink"
             style={{ borderRadius: 2 }}
           />
           <div className="flex justify-end gap-2">

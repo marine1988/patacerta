@@ -13,11 +13,7 @@ export function AuditoriaTab() {
   const [entityFilter, setEntityFilter] = useState('')
 
   const { data, isLoading, isError } = useQuery<Paginated<AuditLog>>({
-    queryKey: queryKeys.admin.auditLogs(
-      page,
-      actionFilter || undefined,
-      entityFilter || undefined,
-    ),
+    queryKey: queryKeys.admin.auditLogs(page, actionFilter || undefined, entityFilter || undefined),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (actionFilter) params.set('action', actionFilter)
@@ -94,10 +90,50 @@ export function AuditoriaTab() {
         <EmptyState title="Sem registos" description="Nenhum registo de auditoria encontrado." />
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* Mobile: lista de cards */}
+          <ul className="space-y-3 md:hidden">
+            {data.data.map((log) => (
+              <li key={log.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-ink">
+                      {log.user ? (
+                        <>
+                          {log.user.firstName} {log.user.lastName}
+                        </>
+                      ) : (
+                        <span className="text-subtle">Sistema</span>
+                      )}
+                    </p>
+                    {log.user && <p className="truncate text-sm text-muted">{log.user.email}</p>}
+                  </div>
+                  <Badge variant="blue">{log.action}</Badge>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-muted">Data</dt>
+                  <dd className="text-ink">{new Date(log.createdAt).toLocaleString('pt-PT')}</dd>
+                  <dt className="text-muted">Entidade</dt>
+                  <dd className="text-ink">{log.entity}</dd>
+                  <dt className="text-muted">ID</dt>
+                  <dd className="font-mono text-ink">
+                    {log.entityId ?? String.fromCharCode(8212)}
+                  </dd>
+                  <dt className="text-muted">IP</dt>
+                  <dd className="text-ink">{log.ipAddress ?? String.fromCharCode(8212)}</dd>
+                  <dt className="text-muted">Detalhes</dt>
+                  <dd className="truncate text-muted">
+                    {log.details ? JSON.stringify(log.details) : String.fromCharCode(8212)}
+                  </dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: tabela tradicional */}
+          <div className="hidden md:block md:overflow-x-auto">
             <table className="table-auto w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2">Data</th>
                   <th className="px-3 py-2">Utilizador</th>
                   <th className="px-3 py-2">Ação</th>
@@ -111,32 +147,32 @@ export function AuditoriaTab() {
                 {data.data.map((log, i) => (
                   <tr
                     key={log.id}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                    className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                   >
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-3 py-2 whitespace-nowrap text-ink">
                       {new Date(log.createdAt).toLocaleString('pt-PT')}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-ink">
                       {log.user ? (
                         <div>
                           {log.user.firstName} {log.user.lastName}
-                          <div className="text-xs text-gray-500">{log.user.email}</div>
+                          <div className="text-xs text-muted">{log.user.email}</div>
                         </div>
                       ) : (
-                        <span className="text-gray-400">Sistema</span>
+                        <span className="text-subtle">Sistema</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="blue">{log.action}</Badge>
                     </td>
-                    <td className="px-3 py-2">{log.entity}</td>
-                    <td className="px-3 py-2 font-mono text-xs">
+                    <td className="px-3 py-2 text-ink">{log.entity}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-ink">
                       {log.entityId ?? String.fromCharCode(8212)}
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="px-3 py-2 text-xs text-ink">
                       {log.ipAddress ?? String.fromCharCode(8212)}
                     </td>
-                    <td className="px-3 py-2 max-w-xs truncate text-xs text-gray-500">
+                    <td className="px-3 py-2 max-w-xs truncate text-xs text-muted">
                       {log.details ? JSON.stringify(log.details) : String.fromCharCode(8212)}
                     </td>
                   </tr>

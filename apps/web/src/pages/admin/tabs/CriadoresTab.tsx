@@ -122,10 +122,97 @@ export function CriadoresTab() {
         <EmptyState title="Sem criadores" description="Nenhum criador encontrado." />
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* Mobile: lista de cards */}
+          <ul className="space-y-3 md:hidden">
+            {data.data.map((breeder) => {
+              const isSuspended = breeder.status === 'SUSPENDED'
+              const actionPending =
+                (suspendMutation.isPending &&
+                  suspendMutation.variables?.breederId === breeder.id) ||
+                (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
+              return (
+                <li
+                  key={breeder.id}
+                  className="rounded-lg border border-line bg-surface p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink">{breeder.businessName}</p>
+                      <p className="truncate text-sm text-muted">
+                        {breeder.user.firstName} {breeder.user.lastName}
+                      </p>
+                    </div>
+                    <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
+                      {statusLabel[breeder.status] ?? breeder.status}
+                    </Badge>
+                  </div>
+                  <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-muted">NIF</dt>
+                    <dd className="text-ink">{breeder.nif}</dd>
+                    <dt className="text-muted">DGAV</dt>
+                    <dd className="text-ink">{breeder.dgavNumber || String.fromCharCode(8212)}</dd>
+                    <dt className="text-muted">Distrito</dt>
+                    <dd className="text-ink">
+                      {breeder.district?.namePt ?? String.fromCharCode(8212)}
+                    </dd>
+                    <dt className="text-muted">Docs / Avaliações</dt>
+                    <dd className="text-ink">
+                      {breeder._count.verificationDocs} / {breeder._count.reviews}
+                    </dd>
+                    <dt className="text-muted">Data</dt>
+                    <dd className="text-ink">{formatDateShort(breeder.createdAt)}</dd>
+                  </dl>
+                  <div className="mb-3">
+                    <FeatureToggle
+                      featuredUntil={breeder.featuredUntil}
+                      isPending={
+                        featureBreederMutation.isPending &&
+                        featureBreederMutation.variables?.breederId === breeder.id
+                      }
+                      onSet={(days) =>
+                        featureBreederMutation.mutate({
+                          breederId: breeder.id,
+                          body: { days },
+                        })
+                      }
+                      onClear={() =>
+                        featureBreederMutation.mutate({
+                          breederId: breeder.id,
+                          body: { until: null },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    {isSuspended ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleUnsuspend(breeder)}
+                        disabled={actionPending}
+                      >
+                        Reactivar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleSuspend(breeder)}
+                        disabled={actionPending}
+                      >
+                        Suspender
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Desktop: tabela tradicional */}
+          <div className="hidden md:block md:overflow-x-auto">
             <table className="table-auto w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2">Nome comercial</th>
                   <th className="px-3 py-2">NIF</th>
                   <th className="px-3 py-2">DGAV</th>
@@ -147,19 +234,19 @@ export function CriadoresTab() {
                   return (
                     <tr
                       key={breeder.id}
-                      className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}
+                      className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                     >
                       <td className="px-3 py-2">
-                        <div className="font-medium text-gray-900">{breeder.businessName}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="font-medium text-ink">{breeder.businessName}</div>
+                        <div className="text-xs text-muted">
                           {breeder.user.firstName} {breeder.user.lastName}
                         </div>
                       </td>
-                      <td className="px-3 py-2">{breeder.nif}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-ink">{breeder.nif}</td>
+                      <td className="px-3 py-2 text-ink">
                         {breeder.dgavNumber || String.fromCharCode(8212)}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-ink">
                         {breeder.district?.namePt ?? String.fromCharCode(8212)}
                       </td>
                       <td className="px-3 py-2">
@@ -167,10 +254,10 @@ export function CriadoresTab() {
                           {statusLabel[breeder.status] ?? breeder.status}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-ink">
                         {breeder._count.verificationDocs} / {breeder._count.reviews}
                       </td>
-                      <td className="px-3 py-2">{formatDateShort(breeder.createdAt)}</td>
+                      <td className="px-3 py-2 text-ink">{formatDateShort(breeder.createdAt)}</td>
                       <td className="px-3 py-2">
                         {isSuspended ? (
                           <Button
@@ -230,7 +317,7 @@ export function CriadoresTab() {
         size="md"
       >
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted">
             O perfil deixará de aparecer em pesquisas e listas. O motivo é registado no histórico.
           </p>
           <div>
@@ -242,7 +329,7 @@ export function CriadoresTab() {
               minLength={15}
               maxLength={500}
             />
-            <p className="mt-1 text-xs text-gray-400">{suspendReason.length}/500</p>
+            <p className="mt-1 text-xs text-subtle">{suspendReason.length}/500</p>
           </div>
           {actionError && <p className="text-sm text-red-600">{actionError}</p>}
           <div className="flex justify-end gap-2">
