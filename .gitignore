@@ -50,6 +50,7 @@ coverage/
 *.tgz
 .cache/
 opencode.json
+tmp/
 
 # ========== Playwright ==========
 apps/web/playwright-report/
