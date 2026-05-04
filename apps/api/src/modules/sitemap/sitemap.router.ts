@@ -11,7 +11,9 @@ const SITE_URL = (process.env.PUBLIC_URL || 'https://patacerta.pt').replace(/\/$
  * /__redirect/breeder/:id (ver apps/web/nginx.conf).
  *
  * Resposta:
- * - 301 com Location se o breeder existe e tem slug
+ * - 301 com Location relativa (ex: `/criador/canil-do-norte`) — assim
+ *   funciona em qualquer host (stage, prod, dev local) sem depender de
+ *   PUBLIC_URL.
  * - 404 se não existe ou ainda não tem slug (deixa o SPA tratar)
  *
  * Cache: 5 min (redireccionamentos podem mudar se o businessName mudar
@@ -26,7 +28,7 @@ sitemapRouter.get('/__redirect/breeder/:id', async (req, res) => {
   })
   if (!breeder || !breeder.slug) return res.status(404).end()
   res.setHeader('Cache-Control', 'public, max-age=300')
-  return res.redirect(301, `${SITE_URL}/criador/${breeder.slug}`)
+  return res.redirect(301, `/criador/${breeder.slug}`)
 })
 
 sitemapRouter.get('/__redirect/service/:id', async (req, res) => {
@@ -38,7 +40,7 @@ sitemapRouter.get('/__redirect/service/:id', async (req, res) => {
   })
   if (!service || !service.slug) return res.status(404).end()
   res.setHeader('Cache-Control', 'public, max-age=300')
-  return res.redirect(301, `${SITE_URL}/servicos/${service.slug}`)
+  return res.redirect(301, `/servicos/${service.slug}`)
 })
 
 interface SitemapEntry {
