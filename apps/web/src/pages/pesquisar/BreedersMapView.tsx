@@ -10,6 +10,7 @@ import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { useBreeds, useDistricts } from '../../lib/useLookups'
+import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 
 interface MapBreederResult {
   id: number
@@ -71,6 +72,17 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
       speciesLabels: [],
     }))
   }, [data])
+
+  // ItemList JSON-LD para a vista Mapa: ajuda crawlers/LLMs a entender
+  // que `?vista=mapa` lista os mesmos criadores. Limitar a 50 entradas
+  // para evitar payloads gigantes em mapas com muitos marcadores.
+  useItemListJsonLd(
+    (data?.data ?? []).slice(0, 50).map((b) => ({
+      path: `/criador/${b.slug ?? b.id}`,
+      name: b.businessName,
+    })),
+    'Criadores Verificados em Portugal',
+  )
 
   function updateFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams)

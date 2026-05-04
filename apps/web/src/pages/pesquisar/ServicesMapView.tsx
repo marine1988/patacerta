@@ -14,6 +14,7 @@ import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { useGeolocation } from '../../hooks/useGeolocation'
 import { useDistricts, useServiceCategories } from '../../lib/useLookups'
+import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 
 interface MapServiceResult {
   id: number
@@ -97,6 +98,17 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
       priceUnit: s.priceUnit,
     }))
   }, [data])
+
+  // ItemList JSON-LD para a vista Mapa de serviços. Limitar a 50 para
+  // payloads razoáveis. Ajuda Google e LLMs a entender que esta URL
+  // (`?tipo=servicos&vista=mapa`) é uma listagem estruturada.
+  useItemListJsonLd(
+    (data?.data ?? []).slice(0, 50).map((s) => ({
+      path: `/servicos/${s.slug ?? s.id}`,
+      name: s.title,
+    })),
+    'Serviços para Cães em Portugal',
+  )
 
   function updateFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams)
