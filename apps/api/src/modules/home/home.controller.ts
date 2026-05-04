@@ -105,6 +105,7 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 function featuredServiceSelect() {
   return {
     id: true,
+    slug: true,
     title: true,
     priceCents: true,
     priceUnit: true,
@@ -126,6 +127,7 @@ function featuredServiceSelect() {
 function featuredBreederSelect() {
   return {
     id: true,
+    slug: true,
     businessName: true,
     description: true,
     avgRating: true,

@@ -46,6 +46,13 @@ fi
 echo "[PataCerta] Backfilling breeder stats..."
 node dist/jobs/backfill-breeder-stats.js || echo "[PataCerta] Backfill finished with non-zero exit"
 
+# Backfill de slugs para Breeder e Service. Necessario apos `prisma db push`
+# adicionar as colunas slug — registos existentes ficam com slug=NULL ate'
+# este job correr. Idempotente: salta os que ja' tem slug. Ver
+# apps/api/src/jobs/backfill-slugs.ts.
+echo "[PataCerta] Backfilling slugs..."
+node dist/jobs/backfill-slugs.js || echo "[PataCerta] Slug backfill finished with non-zero exit"
+
 echo "[PataCerta] Starting API server..."
 cd /app
 exec node apps/api/dist/index.js

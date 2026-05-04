@@ -20,6 +20,7 @@ interface PublicStats {
 
 interface FeaturedService {
   id: number
+  slug: string | null
   title: string
   priceCents: number
   priceUnit: ServicePriceUnit
@@ -36,6 +37,7 @@ interface FeaturedService {
 
 interface FeaturedBreeder {
   id: number
+  slug: string | null
   businessName: string
   description: string | null
   avgRating: number | string | null
@@ -445,7 +447,7 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
 
   return (
     <Link
-      to={`/servicos/${s.id}`}
+      to={`/servicos/${s.slug ?? s.id}`}
       className={`${ITEM_CLASSES} group block border border-line bg-surface transition-colors hover:border-caramel-500`}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
@@ -490,7 +492,7 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
 
   return (
     <Link
-      to={`/criador/${b.id}`}
+      to={`/criador/${b.slug ?? b.id}`}
       className={`${ITEM_CLASSES} group block border border-line bg-surface transition-colors hover:border-caramel-500`}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">

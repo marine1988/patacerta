@@ -45,6 +45,7 @@ interface BreederPhoto {
 
 interface BreederDetail {
   id: number
+  slug: string | null
   businessName: string
   nif: string
   dgavNumber: string | null
@@ -126,7 +127,15 @@ export function BreederProfilePage() {
   // LocalBusiness + AggregateRating + BreadcrumbList. Quando ainda não
   // há dados, usamos um título genérico "noindex" implícito (mas como o
   // crawler vai re-renderizar, o estado final é o que importa).
-  const breederPath = id ? `/criador/${id}` : '/criador'
+  // Path canonico = slug se disponivel, senao id (durante backfill).
+  // Quando o utilizador entra em `/criador/<id-numerico>`, o nginx ja'
+  // redirecciona 301 para `/criador/<slug>` antes de chegar ao SPA, logo
+  // este path acaba sempre por ser slug em estado estavel.
+  const breederPath = breeder?.slug
+    ? `/criador/${breeder.slug}`
+    : id
+      ? `/criador/${id}`
+      : '/criador'
   const breederPhotoUrl = breeder?.photos?.[0]?.url ?? null
   usePageMeta({
     title: breeder

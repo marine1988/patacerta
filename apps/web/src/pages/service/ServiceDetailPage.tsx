@@ -207,7 +207,13 @@ export function ServiceDetailPage() {
 
   // SEO — so' actualiza o head depois de termos os dados; o titulo/descricao
   // sao stable em re-renders gracas a' identidade dos campos.
-  const servicePath = id ? `/servicos/${id}` : '/servicos'
+  // Path canonico: prefere slug. Nginx redirecciona `/servicos/<id>` para
+  // `/servicos/<slug>` via 301, logo este path sera' o canonico final.
+  const servicePath = service?.slug
+    ? `/servicos/${service.slug}`
+    : id
+      ? `/servicos/${id}`
+      : '/servicos'
   usePageMeta({
     title: service ? `${service.title} — ${service.category.namePt}` : 'Anúncio',
     description: service ? buildMetaDescription(service) : undefined,

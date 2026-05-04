@@ -95,6 +95,7 @@ async function fetchSponsoredByBreed(
         breeder: {
           select: {
             id: true,
+            slug: true,
             businessName: true,
             avgRating: true,
             reviewCount: true,
@@ -130,6 +131,7 @@ async function fetchSponsoredByBreed(
         return {
           slotId: s.id,
           breederId: s.breeder.id,
+          breederSlug: s.breeder.slug,
           businessName: s.breeder.businessName,
           district: s.breeder.district,
           municipality: s.breeder.municipality,

@@ -53,6 +53,8 @@ export interface SponsoredBreederMini {
   /** Slot id — usado para tracking de cliques. */
   slotId: number
   breederId: number
+  /** Slug canónico do criador para URL SEO-friendly (null durante backfill). */
+  breederSlug: string | null
   businessName: string
   district: { id: number; namePt: string }
   municipality: { id: number; namePt: string }

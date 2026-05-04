@@ -3,6 +3,8 @@ import { Badge } from '../ui/Badge'
 
 interface BreederCardProps {
   id: number
+  /** Slug canónico para URL SEO-friendly. Quando ausente, fallback ao id (durante backfill). */
+  slug?: string | null
   businessName: string
   description?: string | null
   district: { id: number; namePt: string }
@@ -15,6 +17,7 @@ interface BreederCardProps {
 
 export function BreederCard({
   id,
+  slug,
   businessName,
   description,
   district,
@@ -28,7 +31,7 @@ export function BreederCard({
 
   return (
     <Link
-      to={`/criador/${id}`}
+      to={`/criador/${slug ?? id}`}
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">

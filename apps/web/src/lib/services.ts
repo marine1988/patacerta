@@ -37,6 +37,7 @@ export interface ServiceLocation {
  */
 export interface ServiceBase {
   id: number
+  slug: string | null
   providerId: number
   categoryId: number
   title: string

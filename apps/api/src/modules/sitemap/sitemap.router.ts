@@ -3,26 +3,43 @@ import { prisma } from '../../lib/prisma.js'
 
 export const sitemapRouter = Router()
 
-/**
- * `sitemap.xml` dinâmico. Devolve URLs estáticas (Home, pesquisar, simulador,
- * FAQ, legais) + todos os criadores VERIFIED + todos os serviços PUBLISHED.
- *
- * Convenções:
- * - O domínio público é lido de `PUBLIC_URL` (server-side); fallback para
- *   `https://patacerta.pt`. Crítico para que o sitemap seja válido em
- *   stage e produção sem hard-coding.
- * - URLs com query string (ex: `/pesquisar?tipo=servicos`) são incluídas
- *   porque representam páginas de listagem distintas com SEO próprio.
- * - `lastmod` para entidades vem do `updatedAt` da BD (Prisma) — para
- *   estáticas usamos a data do último deploy via `BUILD_TIME` (ou now).
- * - Cache: `public, max-age=3600` — ChatGPT-User/Googlebot revisitam algumas
- *   horas/dias, não precisamos de gerar a cada pedido.
- *
- * Montado **fora** do prefixo `/api`: o nginx tem que mapear `/sitemap.xml`
- * directamente para esta rota (ver `apps/web/nginx.conf`).
- */
-
 const SITE_URL = (process.env.PUBLIC_URL || 'https://patacerta.pt').replace(/\/$/, '')
+
+/**
+ * Redirect 301 server-side: /criador/:id -> /criador/:slug.
+ * Montado dentro do nginx via location regex que proxia para
+ * /__redirect/breeder/:id (ver apps/web/nginx.conf).
+ *
+ * Resposta:
+ * - 301 com Location se o breeder existe e tem slug
+ * - 404 se não existe ou ainda não tem slug (deixa o SPA tratar)
+ *
+ * Cache: 5 min (redireccionamentos podem mudar se o businessName mudar
+ * antes da verificação, embora seja raro).
+ */
+sitemapRouter.get('/__redirect/breeder/:id', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id) || id <= 0) return res.status(404).end()
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    select: { slug: true, status: true },
+  })
+  if (!breeder || !breeder.slug) return res.status(404).end()
+  res.setHeader('Cache-Control', 'public, max-age=300')
+  return res.redirect(301, `${SITE_URL}/criador/${breeder.slug}`)
+})
+
+sitemapRouter.get('/__redirect/service/:id', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id) || id <= 0) return res.status(404).end()
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: { slug: true },
+  })
+  if (!service || !service.slug) return res.status(404).end()
+  res.setHeader('Cache-Control', 'public, max-age=300')
+  return res.redirect(301, `${SITE_URL}/servicos/${service.slug}`)
+})
 
 interface SitemapEntry {
   loc: string
@@ -85,27 +102,30 @@ sitemapRouter.get('/sitemap.xml', async (_req, res) => {
     const [breeders, services] = await Promise.all([
       prisma.breeder.findMany({
         where: { status: 'VERIFIED' },
-        select: { id: true, updatedAt: true },
+        select: { id: true, slug: true, updatedAt: true },
         orderBy: { updatedAt: 'desc' },
         take: 10000,
       }),
       prisma.service.findMany({
         where: { status: 'ACTIVE' },
-        select: { id: true, updatedAt: true },
+        select: { id: true, slug: true, updatedAt: true },
         orderBy: { updatedAt: 'desc' },
         take: 10000,
       }),
     ])
 
+    // Preferimos slug quando existe; fallback para id durante o
+    // período de backfill. Quando o backfill estiver completo, todos
+    // têm slug e o fallback nunca é exercido.
     const breederEntries: SitemapEntry[] = breeders.map((b) => ({
-      loc: `${SITE_URL}/criador/${b.id}`,
+      loc: `${SITE_URL}/criador/${b.slug ?? b.id}`,
       lastmod: b.updatedAt.toISOString(),
       changefreq: 'weekly',
       priority: 0.8,
     }))
 
     const serviceEntries: SitemapEntry[] = services.map((s) => ({
-      loc: `${SITE_URL}/servicos/${s.id}`,
+      loc: `${SITE_URL}/servicos/${s.slug ?? s.id}`,
       lastmod: s.updatedAt.toISOString(),
       changefreq: 'weekly',
       priority: 0.7,

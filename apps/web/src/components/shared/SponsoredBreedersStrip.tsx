@@ -48,7 +48,7 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
         {breeders.map((b) => (
           <li key={b.slotId}>
             <Link
-              to={`/criador/${b.breederId}`}
+              to={`/criador/${b.breederSlug ?? b.breederId}`}
               onClick={() => trackClick(b.slotId)}
               className="group flex items-center gap-3 rounded border border-line bg-white p-3 transition-colors hover:border-caramel-300 hover:bg-cream-50"
               style={{ borderRadius: 2 }}

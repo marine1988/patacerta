@@ -28,6 +28,8 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { uploadFile, deleteFile } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
+import { generateServiceSlug } from '../../lib/service-slug.js'
+import { isNumericId } from '../../lib/slugify.js'
 import { logAudit } from '../../lib/audit.js'
 import { geocodeService } from '../../lib/geocoding.js'
 import { cacheGetOrSet } from '../../lib/cache.js'
@@ -139,6 +141,7 @@ async function syncCoverageAreas(serviceId: number, municipalityIds: number[]): 
 function publicServiceSelect() {
   return {
     id: true,
+    slug: true,
     providerId: true,
     categoryId: true,
     title: true,
@@ -224,11 +227,14 @@ export const createService = asyncHandler(async (req, res) => {
     municipalityId: input.municipalityId,
   })
 
+  const slug = await generateServiceSlug(input.title)
+
   const service = await prisma.service.create({
     data: {
       providerId: userId,
       categoryId: input.categoryId,
       title: input.title,
+      slug,
       description: input.description,
       priceCents: input.priceCents,
       priceUnit: input.priceUnit,
@@ -742,6 +748,7 @@ function latLngBoxFor(lat: number, lng: number, radiusKm: number) {
 function publicServicePublicSelect() {
   return {
     id: true,
+    slug: true,
     providerId: true,
     categoryId: true,
     title: true,
@@ -926,6 +933,7 @@ export const mapServices = asyncHandler(async (req, res) => {
     orderBy: { publishedAt: 'desc' },
     select: {
       id: true,
+      slug: true,
       title: true,
       priceCents: true,
       priceUnit: true,
@@ -943,10 +951,14 @@ export const mapServices = asyncHandler(async (req, res) => {
  * Public detail. Only ACTIVE services are exposed.
  */
 export const getServiceById = asyncHandler(async (req, res) => {
-  const serviceId = parseId(req.params.serviceId)
+  const param = req.params.serviceId
+  // Aceita id numérico (legado) ou slug textual.
+  const where = isNumericId(param)
+    ? { id: parseId(param), status: 'ACTIVE' as const }
+    : { slug: param, status: 'ACTIVE' as const }
 
   const service = await prisma.service.findFirst({
-    where: { id: serviceId, status: 'ACTIVE' },
+    where,
     select: publicServicePublicSelect(),
   })
   if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')

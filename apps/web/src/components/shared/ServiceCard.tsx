@@ -4,6 +4,8 @@ import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 
 export interface ServiceCardData {
   id: number
+  /** Slug canónico para URL SEO-friendly. Quando ausente, fallback ao id (durante backfill). */
+  slug?: string | null
   title: string
   description: string
   priceCents: number
@@ -27,6 +29,7 @@ export function formatDistance(km: number): string {
 
 export function ServiceCard({
   id,
+  slug,
   title,
   description,
   priceCents,
@@ -43,7 +46,7 @@ export function ServiceCard({
 
   return (
     <Link
-      to={`/servicos/${id}`}
+      to={`/servicos/${slug ?? id}`}
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">

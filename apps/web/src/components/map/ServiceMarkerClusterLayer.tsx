@@ -7,6 +7,8 @@ import { formatPrice } from '../../lib/format'
 
 export interface ServiceMapMarker {
   id: number
+  /** Slug canónico do serviço. Quando ausente, fallback ao id. */
+  slug?: string | null
   lat: number
   lng: number
   title: string
@@ -61,7 +63,7 @@ export function ServiceMarkerClusterLayer({ markers }: Props) {
           <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em">${escapeHtml(m.categoryName)}</div>
           <div style="margin-top:2px;font-weight:600;font-size:14px;color:#111827">${escapeHtml(m.title)}</div>
           <div style="margin-top:6px;font-size:13px;font-weight:600;color:#111827">${formatPrice(m.priceCents, m.priceUnit)}</div>
-          <a href="/servicos/${m.id}" data-spa-link="/servicos/${m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none;cursor:pointer">Ver anúncio →</a>
+          <a href="/servicos/${m.slug ?? m.id}" data-spa-link="/servicos/${m.slug ?? m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none;cursor:pointer">Ver anúncio →</a>
         </div>`,
         { closeButton: true, autoPan: true },
       )

@@ -5,6 +5,8 @@ import 'leaflet.markercluster'
 
 export interface MapMarker {
   id: number
+  /** Slug canónico do criador. Quando ausente, o link cai para o id (nginx redirecciona). */
+  slug?: string | null
   lat: number
   lng: number
   businessName: string
@@ -48,7 +50,7 @@ export function MarkerClusterLayer({ markers, onMarkerClick }: MarkerClusterProp
           <div style="font-weight:600;font-size:14px;color:#111827">${escapeHtml(m.businessName)}</div>
           <div style="margin-top:2px;font-size:12px;color:#6b7280">${escapeHtml(m.municipalityName)}, ${escapeHtml(m.districtName)}</div>
           ${rating}
-          <a href="/criador/${m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none">Ver perfil →</a>
+          <a href="/criador/${m.slug ?? m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none">Ver perfil →</a>
         </div>`,
         { closeButton: true, autoPan: true },
       )

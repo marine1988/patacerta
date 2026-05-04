@@ -33,6 +33,7 @@ export const searchBreeders = asyncHandler(async (req, res) => {
       where,
       select: {
         id: true,
+        slug: true,
         businessName: true,
         description: true,
         status: true,
@@ -96,6 +97,7 @@ export const mapBreeders = asyncHandler(async (req, res) => {
     where,
     select: {
       id: true,
+      slug: true,
       businessName: true,
       status: true,
       avgRating: true,
@@ -111,6 +113,7 @@ export const mapBreeders = asyncHandler(async (req, res) => {
     .filter((b) => b.district.latitude !== null && b.district.longitude !== null)
     .map((b) => ({
       id: b.id,
+      slug: b.slug,
       businessName: b.businessName,
       status: b.status,
       district: { id: b.district.id, namePt: b.district.namePt },

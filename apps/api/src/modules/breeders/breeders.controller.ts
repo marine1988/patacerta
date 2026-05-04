@@ -9,6 +9,8 @@ import { uploadFile, deleteFile } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
 import { Prisma } from '@prisma/client'
+import { generateBreederSlug } from '../../lib/breeder-slug.js'
+import { isNumericId } from '../../lib/slugify.js'
 import type { BreederProfileInput, ReorderBreederPhotosInput } from '@patacerta/shared'
 
 const MAX_PHOTOS_PER_BREEDER = 10
@@ -43,6 +45,7 @@ const BREEDER_INCLUDE = {
  */
 const BREEDER_PUBLIC_SELECT = {
   id: true,
+  slug: true,
   businessName: true,
   description: true,
   website: true,
@@ -144,10 +147,13 @@ async function getDogSpeciesId(): Promise<number> {
 }
 
 export const getBreederById = asyncHandler(async (req, res) => {
-  const id = parseId(req.params.id)
+  const param = req.params.id
+  // Aceita id numérico (legado) ou slug textual. Mantém o nome do
+  // handler para não quebrar o router; o param continua a chamar-se :id.
+  const where = isNumericId(param) ? { id: parseId(param) } : { slug: param }
 
   const breeder = await prisma.breeder.findUnique({
-    where: { id },
+    where,
     select: BREEDER_PUBLIC_SELECT,
   })
 
@@ -198,10 +204,16 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
 
   let breeder
   try {
+    // SEO: gera slug url-friendly a partir do businessName, único na
+    // tabela. businessName é imutável após verificação, por isso o slug
+    // criado aqui é estável para o resto da vida do registo.
+    const slug = await generateBreederSlug(data.businessName)
+
     breeder = await prisma.breeder.create({
       data: {
         userId,
         businessName: data.businessName,
+        slug,
         nif: data.nif,
         dgavNumber: data.dgavNumber,
         description: data.description,

@@ -17,6 +17,7 @@ import { useDistricts, useServiceCategories } from '../../lib/useLookups'
 
 interface MapServiceResult {
   id: number
+  slug: string | null
   title: string
   priceCents: number
   priceUnit: 'FIXED' | 'HOURLY' | 'PER_SESSION'
@@ -87,6 +88,7 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
   const markers: ServiceMapMarker[] = useMemo(() => {
     return (data?.data ?? []).map((s) => ({
       id: s.id,
+      slug: s.slug,
       lat: s.latitude,
       lng: s.longitude,
       title: s.title,

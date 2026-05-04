@@ -13,6 +13,7 @@ import { useBreeds, useDistricts } from '../../lib/useLookups'
 
 interface MapBreederResult {
   id: number
+  slug: string | null
   businessName: string
   status: string
   district: { id: number; namePt: string }
@@ -59,6 +60,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
   const markers: MapMarker[] = useMemo(() => {
     return (data?.data ?? []).map((b) => ({
       id: b.id,
+      slug: b.slug,
       lat: b.latitude,
       lng: b.longitude,
       businessName: b.businessName,
