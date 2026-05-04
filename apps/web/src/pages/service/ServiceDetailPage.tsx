@@ -9,6 +9,7 @@ import type { ServiceReviewItem } from '../../lib/reviews'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { serviceJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
+import { buildServiceMetaDescription } from '../../lib/seo'
 import { formatDate } from '../../lib/dates'
 import { formatPrice } from '../../lib/format'
 import { Badge } from '../../components/ui/Badge'
@@ -19,6 +20,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { StarRating } from '../../components/shared/StarRating'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
 import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
@@ -54,14 +56,6 @@ interface ServiceReviewsResponse {
 type ReviewSort = 'recent' | 'oldest' | 'highest' | 'lowest'
 
 const REVIEWS_PAGE_SIZE = 10
-
-/** Compoe uma descricao curta para meta description / og:description. */
-function buildMetaDescription(service: ServiceDetail): string {
-  const price = formatPrice(service.priceCents, service.priceUnit)
-  const location = `${service.municipality.namePt}, ${service.district.namePt}`
-  const summary = service.description.replace(/\s+/g, ' ').trim().slice(0, 140)
-  return `${service.category.namePt} em ${location} — ${price}. ${summary}`.slice(0, 200)
-}
 
 // ─── Skeleton ────────────────────────────────────────────────────────
 
@@ -214,9 +208,22 @@ export function ServiceDetailPage() {
     : id
       ? `/servicos/${id}`
       : '/servicos'
+  // Mesma fonte para Breadcrumbs visuais e JSON-LD: garantimos paridade
+  // entre o que o utilizador ve e o que Google indexa.
+  const breadcrumbs: BreadcrumbItem[] = service
+    ? [
+        { name: 'Início', path: '/' },
+        { name: 'Serviços', path: '/pesquisar?tipo=servicos' },
+        {
+          name: service.category.namePt,
+          path: `/pesquisar?tipo=servicos&categoria=${service.category.id}`,
+        },
+        { name: service.title, path: servicePath },
+      ]
+    : []
   usePageMeta({
     title: service ? `${service.title} — ${service.category.namePt}` : 'Anúncio',
-    description: service ? buildMetaDescription(service) : undefined,
+    description: service ? buildServiceMetaDescription(service) : undefined,
     canonicalPath: servicePath,
     imageUrl: service?.photos[0]?.url,
     type: 'article',
@@ -235,15 +242,7 @@ export function ServiceDetailPage() {
             avgRating: service.avgRating != null ? Number(service.avgRating) : null,
             reviewCount: service.reviewCount,
           }),
-          breadcrumbListJsonLd([
-            { name: 'Início', path: '/' },
-            { name: 'Serviços', path: '/pesquisar?tipo=servicos' },
-            {
-              name: service.category.namePt,
-              path: `/pesquisar?tipo=servicos&categoria=${service.category.id}`,
-            },
-            { name: service.title, path: servicePath },
-          ]),
+          breadcrumbListJsonLd(breadcrumbs),
         ]
       : undefined,
   })
@@ -485,30 +484,7 @@ export function ServiceDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Breadcrumbs */}
-      <nav
-        className="mb-6 flex flex-wrap items-center gap-1 text-sm text-gray-500"
-        aria-label="Breadcrumb"
-      >
-        <Link to="/" className="hover:text-gray-700">
-          Início
-        </Link>
-        <span aria-hidden="true">›</span>
-        <Link to="/pesquisar?tipo=servicos" className="hover:text-gray-700">
-          Serviços
-        </Link>
-        <span aria-hidden="true">›</span>
-        <Link
-          to={`/pesquisar?tipo=servicos&categoria=${service.category.id}`}
-          className="hover:text-gray-700"
-        >
-          {service.category.namePt}
-        </Link>
-        <span aria-hidden="true">›</span>
-        <span className="truncate text-gray-900" title={service.title}>
-          {service.title}
-        </span>
-      </nav>
+      <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Main */}

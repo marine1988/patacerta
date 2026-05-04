@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
+import { usePageMeta } from '../../hooks/usePageMeta'
 import { Tabs, Spinner } from '../../components/ui'
 
 // Tabs pesados — lazy-loaded para reduzir o bundle inicial do Dashboard.
@@ -41,6 +42,15 @@ function withFallback(node: React.ReactNode) {
 export default function DashboardPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+
+  // Defesa em profundidade: a area pessoal ja' esta bloqueada no
+  // robots.txt mas o noindex no HTML evita preview/title incorrecto em
+  // partilhas sociais e cobre crawlers que ignorem robots.txt.
+  usePageMeta({
+    title: 'Área pessoal',
+    canonicalPath: '/area-pessoal',
+    noIndex: true,
+  })
 
   // Tabs derivam de "tem perfil/servicos?", nao do role. Permite ter
   // simultaneamente perfil de criador e servicos no mesmo painel.

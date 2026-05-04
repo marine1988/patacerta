@@ -1,16 +1,24 @@
 import { Card } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { breadcrumbListJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 
 export function TermsPage() {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { name: 'Início', path: '/' },
+    { name: 'Termos e Condições', path: '/termos' },
+  ]
   usePageMeta({
     title: 'Termos e Condições',
     description:
       'Termos e condições de utilização da PataCerta — directório de criadores verificados e serviços para cães em Portugal.',
     canonicalPath: '/termos',
+    jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
 
   return (
     <div className="container-app py-12">
+      <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="prose mx-auto max-w-3xl p-8">
         <h1 className="mb-6 font-serif text-2xl font-bold text-ink">Termos e Condições</h1>
         <p className="mb-8 text-sm text-subtle">Última atualização: janeiro de 2025</p>

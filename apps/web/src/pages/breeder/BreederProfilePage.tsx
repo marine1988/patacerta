@@ -8,6 +8,7 @@ import type { ReviewItem as ReviewItemBase } from '../../lib/reviews'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { buildBreederMetaDescription } from '../../lib/seo'
 import { localBusinessJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 
 type ReviewItem = ReviewItemBase & {
   breeder: { id: number; businessName: string }
@@ -137,6 +138,15 @@ export function BreederProfilePage() {
       ? `/criador/${id}`
       : '/criador'
   const breederPhotoUrl = breeder?.photos?.[0]?.url ?? null
+  // Mesma fonte para Breadcrumbs visuais e JSON-LD: garantimos paridade
+  // entre o que o utilizador ve e o que Google indexa.
+  const breadcrumbs: BreadcrumbItem[] = breeder
+    ? [
+        { name: 'Início', path: '/' },
+        { name: 'Criadores', path: '/pesquisar' },
+        { name: breeder.businessName, path: breederPath },
+      ]
+    : []
   usePageMeta({
     title: breeder
       ? `${breeder.businessName} — Criador em ${breeder.municipality.namePt}`
@@ -161,11 +171,7 @@ export function BreederProfilePage() {
             reviewCount: breeder.reviewCount,
             sameAs: breeder.website ? [breeder.website] : null,
           }),
-          breadcrumbListJsonLd([
-            { name: 'Início', path: '/' },
-            { name: 'Criadores', path: '/pesquisar' },
-            { name: breeder.businessName, path: breederPath },
-          ]),
+          breadcrumbListJsonLd(breadcrumbs),
         ]
       : undefined,
   })
@@ -333,13 +339,7 @@ export function BreederProfilePage() {
 
   return (
     <div className="page-container">
-      <nav className="mb-6 text-sm text-gray-500">
-        <Link to="/pesquisar" className="hover:text-gray-700">
-          Criadores
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-gray-900">{breeder.businessName}</span>
-      </nav>
+      <Breadcrumbs items={breadcrumbs} className="mb-6" />
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Main content */}

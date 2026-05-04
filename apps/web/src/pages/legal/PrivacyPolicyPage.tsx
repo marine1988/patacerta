@@ -1,16 +1,24 @@
 import { Card } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { breadcrumbListJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 
 export function PrivacyPolicyPage() {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { name: 'Início', path: '/' },
+    { name: 'Política de Privacidade', path: '/politica-privacidade' },
+  ]
   usePageMeta({
     title: 'Política de Privacidade',
     description:
       'Política de privacidade da PataCerta. Como recolhemos, usamos e protegemos os seus dados pessoais ao abrigo do RGPD.',
     canonicalPath: '/politica-privacidade',
+    jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
 
   return (
     <div className="container-app py-12">
+      <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="prose mx-auto max-w-3xl p-8">
         <h1 className="mb-6 font-serif text-2xl font-bold text-ink">Política de Privacidade</h1>
         <p className="mb-8 text-sm text-subtle">Última atualização: 30 de Abril de 2026</p>

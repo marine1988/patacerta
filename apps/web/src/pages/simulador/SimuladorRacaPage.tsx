@@ -17,6 +17,8 @@ import { useMutation } from '@tanstack/react-query'
 import type { BreedMatchInput, BreedMatchResponse } from '@patacerta/shared'
 import { api } from '../../lib/api'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { breadcrumbListJsonLd, webApplicationJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
@@ -227,11 +229,25 @@ function BreedImage({
 // ─── Página ───────────────────────────────────────────────────────
 
 export function SimuladorRacaPage() {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { name: 'Início', path: '/' },
+    { name: 'Simulador de Raça', path: '/simulador-raca' },
+  ]
   usePageMeta({
     title: 'Simulador de Raça — Encontrar o cão ideal',
     description:
       'Quiz curto que sugere as raças de cão mais adequadas ao seu estilo de vida: energia, espaço, tempo disponível e experiência com cães. Recomendações personalizadas em segundos.',
     canonicalPath: '/simulador-raca',
+    jsonLd: [
+      webApplicationJsonLd({
+        path: '/simulador-raca',
+        name: 'Simulador de Raça PataCerta',
+        description:
+          'Ferramenta gratuita que recomenda raças de cão compatíveis com o estilo de vida do utilizador, com base em 11 perguntas sobre habitação, actividade, agregado familiar e preferências.',
+        applicationCategory: 'LifestyleApplication',
+      }),
+      breadcrumbListJsonLd(breadcrumbs),
+    ],
   })
 
   const [stepIndex, setStepIndex] = useState(0)
@@ -424,6 +440,7 @@ export function SimuladorRacaPage() {
   // ─── Quiz ───────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-[40rem] px-6 py-12 lg:px-8">
+      <Breadcrumbs items={breadcrumbs} className="mb-6" />
       <header className="mb-8 text-center">
         <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
           Simulador de raça

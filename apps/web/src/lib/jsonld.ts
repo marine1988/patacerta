@@ -202,3 +202,67 @@ export function organizationJsonLd() {
     knowsLanguage: 'pt-PT',
   }
 }
+
+export interface ItemListEntry {
+  /** Path absoluto (ex: `/criador/canil-do-norte`). */
+  path: string
+  /** Nome humano legivel. */
+  name: string
+}
+
+/**
+ * `ItemList` para paginas de listagem (pesquisa). Ajuda Google e LLMs a
+ * compreender a estrutura de paginas tipo "directorio" e habilita rich
+ * results em SERP. Listamos so' os primeiros N items para nao explodir
+ * o tamanho do JSON-LD (recomendacao Google: <= 100).
+ *
+ * Tipo aplicavel: 'ItemList' generico — funciona para qualquer mistura de
+ * Breeders + Services. Se houver necessidade de tipar items individuais
+ * (ex: cada um como LocalBusiness), passar para itemListElement como
+ * objectos ricos em vez de URL strings.
+ */
+export function itemListJsonLd(items: ItemListEntry[], options?: { name?: string }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    ...(options?.name ? { name: options.name } : {}),
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      url: absoluteUrl(item.path),
+    })),
+  }
+}
+
+/**
+ * `WebApplication` para tools tipo o simulador de raca. Ajuda LLMs a
+ * descrever a ferramenta como aplicacao gratuita (em vez de pagina
+ * estatica) e pode habilitar rich results.
+ */
+export function webApplicationJsonLd(input: {
+  path: string
+  name: string
+  description: string
+  applicationCategory?: string
+}) {
+  const url = absoluteUrl(input.path)
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    '@id': url,
+    name: input.name,
+    description: input.description,
+    url,
+    applicationCategory: input.applicationCategory ?? 'LifestyleApplication',
+    operatingSystem: 'Any',
+    inLanguage: 'pt-PT',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'EUR',
+    },
+    isAccessibleForFree: true,
+  }
+}

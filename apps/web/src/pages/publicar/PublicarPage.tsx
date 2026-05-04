@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 /**
  * Publicar — landing onde o utilizador escolhe o tipo de anuncio.
@@ -15,6 +16,14 @@ import { Card } from '../../components/ui/Card'
  * permissoes derivam do que ele tem (perfil/servicos), nao do role.
  */
 export function PublicarPage() {
+  // Pagina de fluxo autenticado — bloqueada em robots.txt; noIndex no
+  // HTML como defesa em profundidade.
+  usePageMeta({
+    title: 'Publicar anúncio',
+    canonicalPath: '/publicar',
+    noIndex: true,
+  })
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <div className="mb-8 text-center">

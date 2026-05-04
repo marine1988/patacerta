@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui/Spinner'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { breadcrumbListJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 
 // As views são lazy-loaded para que quem entra em /pesquisar só
 // descarregue o código das vistas que efectivamente abre. Em
@@ -40,6 +42,17 @@ export function PesquisarPage() {
 
   // SEO: título e descrição mudam com o tipo, mas o canónico é sempre
   // /pesquisar (ignoramos query params para não criar URLs duplicadas).
+  // Breadcrumb partilhada visual + schema.
+  const breadcrumbs: BreadcrumbItem[] =
+    tipo === 'servicos'
+      ? [
+          { name: 'Início', path: '/' },
+          { name: 'Serviços', path: '/pesquisar?tipo=servicos' },
+        ]
+      : [
+          { name: 'Início', path: '/' },
+          { name: 'Criadores', path: '/pesquisar' },
+        ]
   usePageMeta({
     title:
       tipo === 'servicos'
@@ -50,6 +63,7 @@ export function PesquisarPage() {
         ? 'Procure serviços para cães em Portugal: treino, banhos e tosquia, hotel, transporte, passeios. Filtre por distrito, município e preço.'
         : 'Procure criadores de cães verificados em Portugal. Filtre por raça, distrito e município. Perfis com NIF, número DGAV e avaliações reais.',
     canonicalPath: '/pesquisar',
+    jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
 
   function setTipo(next: PesquisarTipo) {
@@ -82,6 +96,7 @@ export function PesquisarPage() {
 
   return (
     <div className="page-container">
+      <Breadcrumbs items={breadcrumbs} className="mb-4" />
       <div className="page-header">
         <h1 className="page-title">Pesquisar</h1>
         <p className="page-subtitle">

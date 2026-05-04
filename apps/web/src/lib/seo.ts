@@ -7,6 +7,7 @@
  * obrigatório para gerar `og:url`/`canonical` consistentes em todas
  * as páginas. Em dev local é `http://localhost:5173`.
  */
+import { formatPrice, type ServicePriceUnit } from './format'
 export const SITE_URL = (import.meta.env.VITE_PUBLIC_URL || 'https://patacerta.pt').replace(
   /\/$/,
   '',
@@ -73,4 +74,28 @@ export function buildBreederMetaDescription(breeder: BreederMetaInput): string {
     : ''
 
   return `${head}${ratingPart}${descPart}`.slice(0, 200)
+}
+
+/**
+ * Compõe meta description curta para anúncio de serviço. Mantém-se
+ * abaixo dos 200 caracteres. Estrutura:
+ *   "{categoria} em {municipio}, {distrito} — {preco}. {descricao curta}"
+ *
+ * Vive em `seo.ts` (e não na página) para que possa ser reutilizado em
+ * futuros sítios — ex.: cards de partilha, e-mails, prerender.
+ */
+export interface ServiceMetaInput {
+  category: { namePt: string }
+  description: string
+  priceCents: number
+  priceUnit: ServicePriceUnit
+  municipality: { namePt: string }
+  district: { namePt: string }
+}
+
+export function buildServiceMetaDescription(service: ServiceMetaInput): string {
+  const price = formatPrice(service.priceCents, service.priceUnit)
+  const location = `${service.municipality.namePt}, ${service.district.namePt}`
+  const summary = service.description.replace(/\s+/g, ' ').trim().slice(0, 140)
+  return `${service.category.namePt} em ${location} — ${price}. ${summary}`.slice(0, 200)
 }

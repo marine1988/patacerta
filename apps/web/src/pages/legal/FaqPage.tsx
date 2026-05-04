@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { faqPageJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
+import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
 
 /**
  * Página de Perguntas Frequentes — pensada para SEO/GEO. Cada pergunta
@@ -72,22 +73,21 @@ const FAQS: FaqEntry[] = [
 ]
 
 export function FaqPage() {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { name: 'Início', path: '/' },
+    { name: 'Perguntas Frequentes', path: '/perguntas-frequentes' },
+  ]
   usePageMeta({
     title: 'Perguntas Frequentes',
     description:
       'Respostas às perguntas mais comuns sobre criadores verificados, serviços para cães, adopção, registo de pedigrees e como funciona a PataCerta.',
     canonicalPath: '/perguntas-frequentes',
-    jsonLd: [
-      faqPageJsonLd(FAQS),
-      breadcrumbListJsonLd([
-        { name: 'Início', path: '/' },
-        { name: 'Perguntas Frequentes', path: '/perguntas-frequentes' },
-      ]),
-    ],
+    jsonLd: [faqPageJsonLd(FAQS), breadcrumbListJsonLd(breadcrumbs)],
   })
 
   return (
     <div className="container-app py-12">
+      <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="mx-auto max-w-3xl p-8">
         <h1 className="mb-3 font-serif text-2xl font-bold text-ink">Perguntas Frequentes</h1>
         <p className="mb-8 text-muted">

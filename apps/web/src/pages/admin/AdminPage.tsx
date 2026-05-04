@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Select, Spinner } from '../../components/ui'
+import { usePageMeta } from '../../hooks/usePageMeta'
 import { PatrocinadosTab } from './PatrocinadosTab'
 
 /* ============================================================
@@ -45,6 +46,13 @@ export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<string>(tabParam ?? 'resumo')
+
+  // Painel privado — noIndex em complemento ao robots.txt.
+  usePageMeta({
+    title: 'Administração',
+    canonicalPath: '/admin',
+    noIndex: true,
+  })
 
   // Sincroniza tab activa <-> ?tab=. Permite deep-linking e back/forward.
   useEffect(() => {
