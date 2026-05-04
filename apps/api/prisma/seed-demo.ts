@@ -29,6 +29,8 @@ import {
   PriceUnit,
 } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { generateBreederSlug } from '../src/lib/breeder-slug.js'
+import { generateServiceSlug } from '../src/lib/service-slug.js'
 
 const prisma = new PrismaClient()
 
@@ -853,6 +855,10 @@ async function main() {
       create: {
         userId: user.id,
         businessName: b.businessName,
+        // slug é NOT NULL no schema; gerar a partir do businessName
+        // (collision-safe via sufixo numérico). Mantém-se idempotente
+        // entre runs porque o businessName é estável neste seed.
+        slug: await generateBreederSlug(b.businessName),
         nif: b.nif,
         dgavNumber: b.dgavNumber,
         description: b.description,
@@ -991,7 +997,10 @@ async function main() {
     if (existing) {
       service = await prisma.service.update({ where: { id: existing.id }, data })
     } else {
-      service = await prisma.service.create({ data })
+      // slug é NOT NULL no schema; só gerar quando criar (no update mantém-se
+      // o slug existente). Idempotente porque o title é estável neste seed.
+      const slug = await generateServiceSlug(s.title)
+      service = await prisma.service.create({ data: { ...data, slug } })
     }
     serviceCount++
 

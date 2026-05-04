@@ -19,6 +19,13 @@ if [ "$RESET_DB_ON_BOOT" = "true" ] || [ "$RESET_DB_ON_BOOT" = "1" ]; then
   "
 fi
 
+echo "[PataCerta] Pre-push: backfill de slugs (caso a DB tenha registos com slug=NULL antes do db push aplicar NOT NULL)..."
+# Schema-agnostic via SQL raw — corre antes do db push porque a coluna
+# slug e' agora NOT NULL no schema. Se houver NULLs na DB de boots
+# anteriores, o db push falharia ao aplicar a constraint sem este passo.
+# Idempotente: zero updates quando todos os registos ja' tem slug.
+node dist/jobs/backfill-slugs.js || echo "[PataCerta] Pre-push slug backfill finished with non-zero exit"
+
 echo "[PataCerta] Pushing database schema..."
 npx prisma db push --skip-generate --accept-data-loss
 
@@ -45,13 +52,6 @@ fi
 # de runtime so' tem dist/, package.json, prisma/ e node_modules.
 echo "[PataCerta] Backfilling breeder stats..."
 node dist/jobs/backfill-breeder-stats.js || echo "[PataCerta] Backfill finished with non-zero exit"
-
-# Backfill de slugs para Breeder e Service. Necessario apos `prisma db push`
-# adicionar as colunas slug — registos existentes ficam com slug=NULL ate'
-# este job correr. Idempotente: salta os que ja' tem slug. Ver
-# apps/api/src/jobs/backfill-slugs.ts.
-echo "[PataCerta] Backfilling slugs..."
-node dist/jobs/backfill-slugs.js || echo "[PataCerta] Slug backfill finished with non-zero exit"
 
 echo "[PataCerta] Starting API server..."
 cd /app

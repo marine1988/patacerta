@@ -39,22 +39,34 @@ export async function ensureBreederSlug(breederId: number): Promise<string> {
 
 /**
  * Backfill em massa: corre uma vez no boot (ver entrypoint.sh) para
- * preencher slugs em todos os Breeders existentes. Idempotente — saltam
- * os que já têm slug.
+ * preencher slugs em todos os Breeders existentes que ainda tenham
+ * slug NULL — registos legados de antes do campo ser introduzido, ou
+ * inseridos por seeds que não geraram slug.
  *
- * Não usa transacção: cada update é independente, e em caso de falha
- * parcial o próximo boot termina o trabalho.
+ * Idempotente — saltam os que já têm slug. Não usa transacção: cada
+ * update é independente, e em caso de falha parcial o próximo boot
+ * termina o trabalho.
+ *
+ * Usa SQL raw em vez de `prisma.findMany({ where: { slug: null } })`
+ * para ser **schema-agnostic**: com `slug` agora NOT NULL no schema,
+ * o cliente Prisma rejeitaria esse filtro em compile-time, mas a DB
+ * pode ainda ter NULLs nos primeiros boots após a migration. Este
+ * backfill tem que correr **antes** do `prisma db push` que introduz
+ * a constraint NOT NULL.
  */
 export async function backfillAllBreederSlugs(): Promise<{ scanned: number; updated: number }> {
-  const targets = await prisma.breeder.findMany({
-    where: { slug: null },
-    select: { id: true, businessName: true },
-  })
+  const targets = await prisma.$queryRawUnsafe<Array<{ id: number; business_name: string }>>(
+    `SELECT id, business_name FROM breeders WHERE slug IS NULL`,
+  )
   let updated = 0
   for (const t of targets) {
     try {
-      const slug = await generateBreederSlug(t.businessName)
-      await prisma.breeder.update({ where: { id: t.id }, data: { slug } })
+      const slug = await generateBreederSlug(t.business_name)
+      await prisma.$executeRawUnsafe(
+        `UPDATE breeders SET slug = $1 WHERE id = $2 AND slug IS NULL`,
+        slug,
+        t.id,
+      )
       updated += 1
     } catch (err) {
       console.error(`[breeder-slug] backfill falhou para id=${t.id}:`, err)

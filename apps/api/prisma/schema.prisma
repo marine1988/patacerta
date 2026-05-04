@@ -111,11 +111,10 @@ model Breeder {
   userId          Int           @unique @map("user_id")
   businessName    String        @map("business_name") @db.VarChar(200)
   nif             String        @unique @db.VarChar(9)
-  // SEO: slug url-friendly derivado do businessName. Nullable+unique
-  // permite múltiplos NULL em Postgres (UNIQUE só compara valores
-  // não-nulos), o que é necessário durante o backfill. Quando todos
-  // os registos estiverem preenchidos torna-se NOT NULL.
-  slug            String?       @unique @db.VarChar(120)
+  // SEO: slug url-friendly derivado do businessName. NOT NULL — o slug é
+  // gerado em `breeders.controller.ts` (create) e `seed-demo.ts` (seed).
+  // Backfill em `backfill-slugs.ts` cobre safety-net para registos legados.
+  slug            String        @unique @db.VarChar(120)
   dgavNumber      String        @unique @map("dgav_number") @db.VarChar(50)
   description     String?       @db.Text
   website         String?       @db.VarChar(255)
@@ -639,8 +638,9 @@ model Service {
   categoryId      Int           @map("category_id")
   title           String        @db.VarChar(200)
   // SEO: slug url-friendly derivado do title + sufixo numérico para
-  // colisões. Ver comentário em Breeder.slug.
-  slug            String?       @unique @db.VarChar(160)
+  // colisões. NOT NULL — gerado em `services.controller.ts` (create) e
+  // `seed-demo.ts` (seed). Backfill em `backfill-slugs.ts` é safety-net.
+  slug            String        @unique @db.VarChar(160)
   description     String        @db.Text
   priceCents      Int           @map("price_cents")
   priceUnit       PriceUnit     @map("price_unit")

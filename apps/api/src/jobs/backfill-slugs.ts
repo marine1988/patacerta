@@ -1,13 +1,17 @@
 /**
- * Backfill `Breeder.slug` e `Service.slug` para registos existentes que
- * foram criados antes do campo existir. Idempotente: salta os que já têm
- * slug.
+ * Backfill `Breeder.slug` e `Service.slug` para registos legados que
+ * foram criados antes do campo existir, ou inseridos por seeds antigas
+ * que não geravam slug. Idempotente: salta os que já têm slug.
  *
- * Corre no boot via entrypoint.sh, depois do `prisma db push`. Em
- * produção, depois de todos os registos terem slug, podemos tornar a
- * coluna NOT NULL (Fase B — não nesta sessão).
+ * Corre **antes** do `prisma db push` (ver entrypoint.sh) porque o
+ * schema declara agora `slug String` NOT NULL — se a DB tiver NULLs
+ * de boots anteriores, o db push falharia a aplicar a constraint sem
+ * este job correr primeiro. Schema-agnostic via SQL raw.
  *
- * Uso (manual): pnpm --filter @patacerta/api exec node dist/jobs/backfill-slugs.js
+ * Pós-Fase B este job é essencialmente uma no-op de safety, executando
+ * em zero updates na maioria dos boots.
+ *
+ * Uso (manual): node dist/jobs/backfill-slugs.js
  */
 import { prisma } from '../lib/prisma.js'
 import { logger } from '../lib/logger.js'
