@@ -13,9 +13,11 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import type { BreedMatchInput, BreedMatchResponse } from '@patacerta/shared'
 import { api } from '../../lib/api'
+import { useAuth } from '../../hooks/useAuth'
+import { queryKeys } from '../../lib/queryKeys'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { breadcrumbListJsonLd, webApplicationJsonLd } from '../../lib/jsonld'
 import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
@@ -365,6 +367,7 @@ export function SimuladorRacaPage() {
                   breedId={r.breed.id}
                   breedNamePt={r.breed.namePt}
                 />
+                <SponsorThisBreedCTA breedId={r.breed.id} breedNamePt={r.breed.namePt} />
               </Card>
             ))}
           </div>
@@ -524,3 +527,52 @@ export function SimuladorRacaPage() {
 }
 
 export default SimuladorRacaPage
+
+// ─── CTA: Comprar destaque nesta raça ──────────────────────────────
+//
+// Pequena chamada para criadores autenticados e VERIFIED. Para
+// utilizadores anónimos / não-criadores não rendermos nada (silencioso).
+// Click leva à área pessoal, tab "Destaque", com a raça pré-seleccionada
+// via query param `?prefillBreedId=...` que o tab consome para abrir o
+// modal de compra automaticamente.
+//
+// O fetch de `/breeders/me/profile` partilha cache com BreederTab e
+// DashboardPage probe (mesma queryKey), portanto não acrescenta um
+// request quando o utilizador já visitou a área pessoal.
+
+interface SponsorThisBreedCTAProps {
+  breedId: number
+  breedNamePt: string
+}
+
+function SponsorThisBreedCTA({ breedId, breedNamePt }: SponsorThisBreedCTAProps) {
+  const { user } = useAuth()
+
+  const { data: breeder } = useQuery<{ id: number; status: string } | null>({
+    queryKey: queryKeys.breeder.profile(),
+    queryFn: () =>
+      api
+        .get('/breeders/me/profile')
+        .then((r) => ({ id: r.data.id as number, status: r.data.status as string }))
+        .catch(() => null),
+    enabled: !!user,
+    retry: false,
+    staleTime: 60_000,
+  })
+
+  if (!user || breeder?.status !== 'VERIFIED') return null
+
+  const href = `/area-pessoal?tab=destaque&prefillBreedId=${breedId}`
+  return (
+    <div className="mt-3 rounded-lg border border-dashed border-caramel-300 bg-caramel-50 px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-caramel-900">
+          É criador de <strong>{breedNamePt}</strong>? Destaque-se aqui — 10 € por 30 dias.
+        </p>
+        <Link to={href} className="btn-primary btn-sm">
+          Comprar destaque
+        </Link>
+      </div>
+    </div>
+  )
+}

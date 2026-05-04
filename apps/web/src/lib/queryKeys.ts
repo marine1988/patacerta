@@ -91,4 +91,15 @@ export const queryKeys = {
   home: {
     featured: () => ['home-featured'] as const,
   },
+
+  // ── Payments / Sponsored Slots (lado criador) ──────────────────────
+  // O lado público (fetch de slots activos para o simulador) vive em
+  // `home.featured` / `breeder-matcher`. Aqui ficam só as queries do
+  // dono da conta autenticada — comprar destaque, ver histórico.
+  payments: {
+    all: () => ['payments'] as const,
+    mySlots: () => ['payments', 'my-sponsored-slots'] as const,
+    availability: (breedId: number | string | null | undefined) =>
+      ['payments', 'sponsored-slot-availability', breedId ?? null] as const,
+  },
 } as const
