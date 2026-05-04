@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { useGeolocation } from '../../hooks/useGeolocation'
+import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 import type { MunicipalityOption } from '../../lib/lookups'
 import { useDistricts, useServiceCategories } from '../../lib/useLookups'
 
@@ -118,6 +119,17 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
   const meta = data?.meta
   const accumulated = pages.flat()
   const hasMore = !!meta && accumulated.length < meta.total
+
+  // ItemList JSON-LD: apenas a primeira página (carregada inicialmente).
+  // O "carregar mais" não traz benefício SEO acrescido para os crawlers.
+  const firstPageServices = pages[0] ?? []
+  useItemListJsonLd(
+    firstPageServices.map((s) => ({
+      path: `/servicos/${s.slug ?? s.id}`,
+      name: s.title,
+    })),
+    'Serviços para Cães em Portugal',
+  )
 
   function updateFilter(updates: Record<string, string>) {
     const next = new URLSearchParams(searchParams)

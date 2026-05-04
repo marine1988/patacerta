@@ -6,9 +6,11 @@ import { BreederCard } from '../../components/shared/BreederCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Spinner } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
+import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 
 interface BreederResult {
   id: number
+  slug?: string | null
   businessName: string
   description: string | null
   status: string
@@ -51,6 +53,19 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
 
   const breeders = data?.data ?? []
   const meta = data?.meta
+
+  // ItemList JSON-LD ajuda Google e LLMs a compreender a estrutura da
+  // listagem. Só emitimos na primeira página (paginas seguintes não trazem
+  // benefício SEO acrescido e duplicariam URLs nos crawlers).
+  useItemListJsonLd(
+    page === 1
+      ? breeders.map((b) => ({
+          path: `/criador/${b.slug ?? b.id}`,
+          name: b.businessName,
+        }))
+      : [],
+    'Criadores Verificados em Portugal',
+  )
 
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams)
