@@ -479,10 +479,8 @@ export function MessagesTab() {
           <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
             <Avatar name={otherParty.avatarName} size="md" />
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-lg font-semibold text-gray-900">
-                {threadDetail.subject}
-              </h3>
-              <p className="text-sm text-gray-500">Com: {otherParty.name}</p>
+              <h2 className="truncate text-lg font-semibold text-ink">{threadDetail.subject}</h2>
+              <p className="text-sm text-muted">Com: {otherParty.name}</p>
             </div>
           </div>
 
@@ -750,7 +748,8 @@ export function MessagesTab() {
           />
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">
+            <h2 className="sr-only">Resultados de pesquisa</h2>
+            <p className="text-sm text-muted">
               {searchResults.meta.total} resultado(s) para{' '}
               <strong>&ldquo;{searchSubmitted}&rdquo;</strong>
             </p>
@@ -773,12 +772,12 @@ export function MessagesTab() {
                   <div className="flex items-start gap-3">
                     <Avatar name={otherName} size="md" />
                     <div className="min-w-0 flex-1">
-                      <h4 className="truncate text-sm font-semibold text-gray-900">
+                      <h3 className="truncate text-sm font-semibold text-ink">
                         {hit.thread.subject}
-                      </h4>
-                      <p className="text-xs text-gray-500">{otherName}</p>
-                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">{hit.body}</p>
-                      <p className="mt-1 text-xs text-gray-400">{formatDateTime(hit.createdAt)}</p>
+                      </h3>
+                      <p className="text-xs text-muted">{otherName}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted">{hit.body}</p>
+                      <p className="mt-1 text-xs text-subtle">{formatDateTime(hit.createdAt)}</p>
                     </div>
                   </div>
                 </Card>
@@ -797,6 +796,7 @@ export function MessagesTab() {
         />
       ) : (
         <div className="space-y-3">
+          <h2 className="sr-only">{showArchived ? 'Conversas arquivadas' : 'Conversas activas'}</h2>
           {threads.map((thread) => {
             const isOwner = user?.id === thread.owner.id
             const otherName = isOwner
@@ -817,23 +817,21 @@ export function MessagesTab() {
                   <Avatar name={otherName} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="truncate text-sm font-semibold text-gray-900">
-                        {thread.subject}
-                      </h4>
+                      <h3 className="truncate text-sm font-semibold text-ink">{thread.subject}</h3>
                       {thread.unreadCount > 0 && <Badge variant="blue">{thread.unreadCount}</Badge>}
                     </div>
-                    <p className="text-sm text-gray-500">{otherName}</p>
+                    <p className="text-sm text-muted">{otherName}</p>
                     {lastBody && (
                       <p
                         className={`truncate text-sm ${
-                          lastMessage?.deletedAt ? 'italic text-gray-400' : 'text-gray-400'
+                          lastMessage?.deletedAt ? 'italic text-subtle' : 'text-subtle'
                         }`}
                       >
                         {lastBody}
                       </p>
                     )}
                   </div>
-                  <span className="ml-4 shrink-0 text-xs text-gray-400">
+                  <span className="ml-4 shrink-0 text-xs text-subtle">
                     {formatSmart(thread.updatedAt)}
                   </span>
                 </div>
