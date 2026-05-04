@@ -423,7 +423,7 @@ export function MessagesTab() {
           <Button variant="ghost" onClick={() => setSelectedThreadId(null)}>
             &larr; Voltar
           </Button>
-          <EmptyState title="Conversa não encontrada" />
+          <EmptyState title="Conversa não encontrada" titleAs="h2" />
         </div>
       )
     }
@@ -745,6 +745,7 @@ export function MessagesTab() {
           <EmptyState
             title="Sem resultados"
             description={`Nenhuma mensagem corresponde a "${searchSubmitted}".`}
+            titleAs="h2"
           />
         ) : (
           <div className="space-y-3">
@@ -793,6 +794,7 @@ export function MessagesTab() {
               ? 'As conversas que arquivar aparecerão aqui.'
               : 'Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui.'
           }
+          titleAs="h2"
         />
       ) : (
         <div className="space-y-3">
