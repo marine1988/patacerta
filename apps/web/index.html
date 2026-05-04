@@ -64,33 +64,12 @@
       rel="stylesheet"
     />
 
-    <!-- JSON-LD: Organization (estático, presente em todas as páginas) -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "PataCerta",
-        "url": "https://patacerta.pt",
-        "logo": "https://patacerta.pt/icon-512.svg",
-        "description": "Directório de criadores verificados e serviços para cães em Portugal.",
-        "areaServed": { "@type": "Country", "name": "Portugal" },
-        "knowsLanguage": "pt-PT"
-      }
-    </script>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "PataCerta",
-        "url": "https://patacerta.pt",
-        "inLanguage": "pt-PT",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://patacerta.pt/pesquisar?q={search_term_string}",
-          "query-input": "required name=search_term_string"
-        }
-      }
-    </script>
+    <!--
+      JSON-LD Organization + WebSite são injectados em runtime pelo
+      componente `<SiteJsonLd />` em `src/App.tsx`, usando `SITE_URL` (que
+      respeita `VITE_PUBLIC_URL` por ambiente). Não duplicar aqui com URLs
+      estáticas — em stage essas URLs apontariam para `patacerta.pt` (prod).
+    -->
   </head>
   <body class="antialiased">
     <div id="root"></div>

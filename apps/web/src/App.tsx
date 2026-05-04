@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
+import { SiteJsonLd } from './components/shared/SiteJsonLd'
 import { Spinner } from './components/ui/Spinner'
 
 // Lazy-loaded pages — code-split at route level
@@ -122,6 +123,7 @@ function ErrorFallback({
 export function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <SiteJsonLd />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route element={<MainLayout />}>
