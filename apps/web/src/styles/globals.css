@@ -190,6 +190,16 @@
     color: theme('colors.ink.dark');
   }
 
+  /* Link inline em corpo de texto — caramelo escuro em light,
+   * caramelo medio (mais claro) em dark para manter contraste >= 4.5:1.
+   * Sempre com sublinhado para nao depender so de cor. */
+  .link-inline {
+    @apply text-caramel-700 underline decoration-caramel-500/40 underline-offset-2 transition-colors hover:text-caramel-500 hover:decoration-caramel-500;
+  }
+  .dark .link-inline {
+    @apply text-caramel-300 decoration-caramel-300/40 hover:text-caramel-200 hover:decoration-caramel-200;
+  }
+
   /* ============================================================
    * FORM ELEMENTS
    * ============================================================ */

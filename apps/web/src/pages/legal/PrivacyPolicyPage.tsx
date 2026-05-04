@@ -88,7 +88,7 @@ export function PrivacyPolicyPage() {
               onClick={() =>
                 window.dispatchEvent(new CustomEvent('patacerta:open-consent-settings'))
               }
-              className="text-caramel-700 underline underline-offset-2 hover:text-caramel-500"
+              className="link-inline"
             >
               Definições de cookies
             </button>{' '}
@@ -113,7 +113,7 @@ export function PrivacyPolicyPage() {
           <h2 className="mb-3 text-lg font-semibold text-ink">7. Contacto</h2>
           <p className="leading-relaxed text-muted">
             Para questões sobre privacidade, contacte-nos através de{' '}
-            <a href="mailto:privacidade@patacerta.pt" className="text-caramel-700 hover:underline">
+            <a href="mailto:privacidade@patacerta.pt" className="link-inline">
               privacidade@patacerta.pt
             </a>
             .
