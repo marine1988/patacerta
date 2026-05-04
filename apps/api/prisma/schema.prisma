@@ -102,6 +102,7 @@ model User {
   consentLogs            ConsentLog[]
   cookieConsentLogs      CookieConsentLog[]
   refreshTokens          RefreshToken[]
+  sponsoredSlotsPaid     SponsoredBreedSlot[] @relation("sponsored_slot_payer")
 
   @@map("users")
 }
@@ -304,11 +305,26 @@ model SponsoredBreedSlot {
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
+  // Pagamento (Stripe). Slots criados via admin (legacy) têm
+  // paymentStatus=LEGACY e paidAt=null. Slots auto-comprados pelos
+  // criadores via Stripe Checkout começam com PENDING e progridem
+  // para PAID/FAILED via webhook. Stripe é a fonte de verdade.
+  paymentStatus            SponsoredSlotPaymentStatus @default(LEGACY) @map("payment_status")
+  priceCents               Int?                       @map("price_cents")
+  currency                 String?                    @default("EUR") @db.VarChar(3)
+  stripeCheckoutSessionId  String?                    @unique @map("stripe_checkout_session_id") @db.VarChar(255)
+  stripePaymentIntentId    String?                    @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeReceiptUrl         String?                    @map("stripe_receipt_url") @db.VarChar(512)
+  paidAt                   DateTime?                  @map("paid_at")
+  paidByUserId             Int?                       @map("paid_by_user_id")
+
   breeder Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
   breed   Breed   @relation(fields: [breedId], references: [id], onDelete: Cascade)
+  paidBy  User?   @relation("sponsored_slot_payer", fields: [paidByUserId], references: [id], onDelete: SetNull)
 
   @@index([breedId, status, startsAt, endsAt])
   @@index([breederId])
+  @@index([paymentStatus])
   @@map("sponsored_breed_slots")
 }
 
@@ -316,6 +332,36 @@ enum SponsoredBreedSlotStatus {
   ACTIVE
   PAUSED
   EXPIRED
+}
+
+// Estado de pagamento do slot patrocinado.
+//   LEGACY  — criado via admin sem cobrança (back-compat).
+//   PENDING — sessão Checkout criada, à espera de pagamento (Multibanco
+//             pode demorar dias até referência ser paga).
+//   PAID    — webhook confirmou pagamento; slot pode estar ACTIVE.
+//   FAILED  — pagamento assíncrono falhou (Multibanco expirou, etc).
+//   REFUNDED — reembolsado total via Stripe.
+enum SponsoredSlotPaymentStatus {
+  LEGACY
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// Idempotência para webhooks Stripe. Cada event.id é processado
+// uma única vez; re-entries são no-op. Limpeza periódica recomendada
+// (Stripe re-tenta entregas até ~3 dias).
+model StripeEvent {
+  id          String   @id @db.VarChar(255) // evt_xxx do Stripe
+  type        String   @db.VarChar(100)
+  payload     Json
+  processedAt DateTime @default(now()) @map("processed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([processedAt])
+  @@map("stripe_events")
 }
 
 model BreederSpecies {

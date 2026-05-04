@@ -27,6 +27,7 @@ services:
         # SEO: dominio canonico baked-in pelo Vite. Override no painel
         # do orquestrador para stage/preview.
         VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-https://patacerta.pt}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
     depends_on:
       api:
         condition: service_healthy
@@ -71,6 +72,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
       CORS_ORIGIN: '*'
       FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.pt}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/health']

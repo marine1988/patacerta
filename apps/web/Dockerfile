@@ -19,6 +19,13 @@ COPY apps/web/ apps/web/
 ARG VITE_PUBLIC_URL=https://patacerta.pt
 ENV VITE_PUBLIC_URL=$VITE_PUBLIC_URL
 
+# Chave publica Stripe (pk_test_... ou pk_live_...). Vai parar ao
+# bundle do browser, exposicao publica e' segura por design.
+# Default vazio — sem chave configurada, o frontend esconde a UI de
+# pagamento.
+ARG VITE_STRIPE_PUBLISHABLE_KEY=
+ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
+
 RUN pnpm --filter @patacerta/shared build
 RUN pnpm --filter @patacerta/web build
 

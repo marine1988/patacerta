@@ -24,6 +24,11 @@ version: '3.8'
 #                     deixar vazio. Em stage definir:
 #                       add_header X-Robots-Tag "noindex, nofollow" always;
 #                     (impede o stage de aparecer em motores de pesquisa).
+#
+# Stripe (pagamentos):
+#   STRIPE_SECRET_KEY              — sk_test_... (stage) / sk_live_... (prod)
+#   STRIPE_WEBHOOK_SECRET          — whsec_... do endpoint criado no dashboard
+#   VITE_STRIPE_PUBLISHABLE_KEY    — pk_test_... / pk_live_... (build-arg, web)
 
 services:
   # ── Frontend (nginx + SPA + /api reverse proxy) ──
@@ -36,6 +41,9 @@ services:
         # build-arg, nao basta `environment:`. Default no Dockerfile
         # aponta para producao.
         VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-https://patacerta.pt}
+        # Chave publica do Stripe (segura para incluir no bundle do
+        # browser). Em stage usar pk_test_..., em prod pk_live_...
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
     depends_on:
       api:
         condition: service_healthy
@@ -101,6 +109,12 @@ services:
       RUN_SEED_ON_BOOT: ${RUN_SEED_ON_BOOT:-false}
       AUTH_SKIP_EMAIL_VERIFICATION: ${AUTH_SKIP_EMAIL_VERIFICATION:-false}
       DISABLE_RATE_LIMITS: ${DISABLE_RATE_LIMITS:-false}
+      # Stripe — definir no painel Dokploy. Em stage usar chaves de
+      # teste (sk_test_..., whsec_...). Em prod chaves live.
+      # STRIPE_WEBHOOK_SECRET é obtido após criar o endpoint webhook
+      # no dashboard Stripe apontando para /api/webhooks/stripe.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/health']

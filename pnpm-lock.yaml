@@ -65,6 +65,9 @@ importers:
       sharp:
         specifier: ^0.33.5
         version: 0.33.5
+      stripe:
+        specifier: ^22.1.0
+        version: 22.1.0(@types/node@20.19.39)
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -108,6 +111,9 @@ importers:
       '@patacerta/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@stripe/stripe-js':
+        specifier: ^9.4.0
+        version: 9.4.0
       '@tanstack/react-query':
         specifier: ^5.51.1
         version: 5.99.0(react@18.3.1)
@@ -881,6 +887,10 @@ packages:
     resolution: {integrity: sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ==}
     cpu: [x64]
     os: [win32]
+
+  '@stripe/stripe-js@9.4.0':
+    resolution: {integrity: sha512-zXG86DnoLU5nH2U18tX5ApTE3IAm+txoiPm4YFyEtRS0K5y7ZDH9M8e1Le/cZyI6wvW3BkJn2daZe2FqZOrSSg==}
+    engines: {node: '>=12.16'}
 
   '@tanstack/query-core@5.99.0':
     resolution: {integrity: sha512-3Jv3WQG0BCcH7G+7lf/bP8QyBfJOXeY+T08Rin3GZ1bshvwlbPt7NrDHMEzGdKIOmOzvIQmxjk28YEQX60k7pQ==}
@@ -2040,6 +2050,15 @@ packages:
   string_decoder@1.3.0:
     resolution: {integrity: sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==}
 
+  stripe@22.1.0:
+    resolution: {integrity: sha512-w/xHyJGxXWnLPbNHG13sz/fae0MrFGC80Oz7YbICQymbfpqfEcsoG+6yG+9BWb81PWc4rrkeSO4wmTcmefmbLw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   strnum@2.2.3:
     resolution: {integrity: sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg==}
 
@@ -2725,6 +2744,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
+
+  '@stripe/stripe-js@9.4.0': {}
 
   '@tanstack/query-core@5.99.0': {}
 
@@ -3981,6 +4002,10 @@ snapshots:
   string_decoder@1.3.0:
     dependencies:
       safe-buffer: 5.2.1
+
+  stripe@22.1.0(@types/node@20.19.39):
+    optionalDependencies:
+      '@types/node': 20.19.39
 
   strnum@2.2.3: {}
 
