@@ -21,6 +21,7 @@ import { breedMatcherRouter } from './modules/breed-matcher/breed-matcher.router
 import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
 import { consentRouter } from './modules/consent/consent.router.js'
+import { sitemapRouter } from './modules/sitemap/sitemap.router.js'
 import { ensureBucket } from './lib/minio.js'
 import { isProd, isHttps } from './lib/env.js'
 
@@ -115,6 +116,11 @@ app.use('/api/breeds', breedsRouter)
 app.use('/api/sponsored-slots', sponsoredSlotsRouter)
 app.use('/api/consent', consentRouter)
 app.use('/api/admin', adminRouter)
+
+// SEO: sitemap.xml em raiz (NÃO prefixado /api). O nginx do FE proxia
+// /sitemap.xml directamente para a API; alternativamente, motores de busca
+// podem aceder via api.patacerta.pt/sitemap.xml. Ver robots.txt do FE.
+app.use('/', sitemapRouter)
 
 // ---- Error handler (must be last) ----
 app.use(errorHandler)

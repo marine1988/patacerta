@@ -1,6 +1,14 @@
 import { Card } from '../../components/ui'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 export function TermsPage() {
+  usePageMeta({
+    title: 'Termos e Condições',
+    description:
+      'Termos e condições de utilização da PataCerta — directório de criadores verificados e serviços para cães em Portugal.',
+    canonicalPath: '/termos',
+  })
+
   return (
     <div className="container-app py-12">
       <Card className="prose mx-auto max-w-3xl p-8">

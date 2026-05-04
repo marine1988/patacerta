@@ -1,13 +1,106 @@
 # PataCerta — robots.txt
-# https://stage.patacerta.pt (staging) / https://patacerta.pt (produção)
+# https://patacerta.pt (produção) / https://stage.patacerta.pt (staging)
+# Documentação: https://www.robotstxt.org/
 
+# ============================================================
+# Crawlers de pesquisa generalistas (Google, Bing, DuckDuckGo, ...)
+# ============================================================
 User-agent: *
 Allow: /
-
-# Áreas autenticadas / privadas
 Disallow: /admin
 Disallow: /area-pessoal
+Disallow: /painel
+Disallow: /publicar
+Disallow: /onboarding
 Disallow: /verificar-email
+Disallow: /recuperar-palavra-passe
 Disallow: /redefinir-password
+# Rotas legacy que fazem 302 client-side (não indexar; preferir o canónico)
+Disallow: /diretorio
+Disallow: /servicos$
+Disallow: /mapa
+Disallow: /explorar
 
+# ============================================================
+# LLMs / AI training & retrieval
+# ============================================================
+# Política: PERMITIR retrieval (browsing em tempo real) para que
+# ChatGPT/Claude/Perplexity/Gemini possam citar a PataCerta como
+# fonte. NÃO permitir uso para treino sem opt-in explícito.
+#
+# Notas:
+# - Google-Extended controla treino do Gemini; Googlebot continua a
+#   indexar normalmente para Search.
+# - GPTBot é o crawler de treino da OpenAI; ChatGPT-User / OAI-SearchBot
+#   são os de browsing em tempo real.
+# - ClaudeBot é o crawler da Anthropic (treino + busca).
+# - PerplexityBot indexa para responder a queries em tempo real.
+# - CCBot é o Common Crawl, fonte de muitos datasets de treino.
+
+# OpenAI — bloquear treino
+User-agent: GPTBot
+Disallow: /
+
+# OpenAI — permitir browsing/retrieval
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /area-pessoal
+Disallow: /painel
+Disallow: /publicar
+Disallow: /onboarding
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /area-pessoal
+Disallow: /painel
+Disallow: /publicar
+Disallow: /onboarding
+
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /area-pessoal
+Disallow: /painel
+Disallow: /publicar
+Disallow: /onboarding
+
+User-agent: anthropic-ai
+Disallow: /
+
+# Google — Gemini training
+User-agent: Google-Extended
+Disallow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /area-pessoal
+Disallow: /painel
+Disallow: /publicar
+Disallow: /onboarding
+
+# Common Crawl (usado em datasets de treino) — bloqueado
+User-agent: CCBot
+Disallow: /
+
+# Bytedance / Apple / Meta — bloquear treino
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+# ============================================================
+# Sitemap
+# ============================================================
 Sitemap: https://patacerta.pt/sitemap.xml

@@ -5,8 +5,16 @@ import { forgotPasswordSchema, resetPasswordSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 export function ResetPasswordPage() {
+  usePageMeta({
+    title: 'Recuperar palavra-passe',
+    description: 'Recupere o acesso à sua conta PataCerta.',
+    canonicalPath: '/recuperar-palavra-passe',
+    noIndex: true,
+  })
+
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
 
@@ -50,13 +58,20 @@ function RequestResetForm() {
           <Card>
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Email enviado</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Se o email existir na nossa plataforma, receberá instruções para repor a palavra-passe.
+                Se o email existir na nossa plataforma, receberá instruções para repor a
+                palavra-passe.
               </p>
               <Link
                 to="/entrar"
@@ -77,15 +92,14 @@ function RequestResetForm() {
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Recuperar palavra-passe</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Introduza o email associado à sua conta e enviaremos instruções para repor a palavra-passe.
+            Introduza o email associado à sua conta e enviaremos instruções para repor a
+            palavra-passe.
           </p>
         </div>
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-            )}
+            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
             <Input
               label="Email"
@@ -154,13 +168,17 @@ function SetNewPasswordForm({ token }: { token: string }) {
           <Card>
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Palavra-passe atualizada
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Palavra-passe atualizada</h2>
               <p className="text-sm text-gray-600 mb-4">
                 A sua palavra-passe foi reposta com sucesso. Pode agora iniciar sessão.
               </p>
@@ -182,16 +200,12 @@ function SetNewPasswordForm({ token }: { token: string }) {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Nova palavra-passe</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Introduza a sua nova palavra-passe.
-          </p>
+          <p className="mt-2 text-sm text-gray-600">Introduza a sua nova palavra-passe.</p>
         </div>
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-            )}
+            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
             <Input
               label="Nova palavra-passe"

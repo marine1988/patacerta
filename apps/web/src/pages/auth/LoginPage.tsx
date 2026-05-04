@@ -5,8 +5,16 @@ import { loginSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 export function LoginPage() {
+  usePageMeta({
+    title: 'Entrar',
+    description: 'Aceda à sua conta PataCerta.',
+    canonicalPath: '/entrar',
+    noIndex: true,
+  })
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

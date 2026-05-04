@@ -5,6 +5,7 @@ import { registerSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 const PASSWORD_HINT = 'Mínimo 8 caracteres, com maiúscula, minúscula e número.'
 
@@ -22,6 +23,13 @@ function validatePassword(pw: string): string | null {
  * no servidor (BREEDER ou SERVICE_PROVIDER).
  */
 export function RegisterPage() {
+  usePageMeta({
+    title: 'Criar conta',
+    description: 'Crie a sua conta PataCerta para contactar criadores e publicar serviços.',
+    canonicalPath: '/registar',
+    noIndex: true,
+  })
+
   const [form, setForm] = useState({
     email: '',
     password: '',

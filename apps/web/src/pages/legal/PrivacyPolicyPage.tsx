@@ -1,6 +1,14 @@
 import { Card } from '../../components/ui'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 export function PrivacyPolicyPage() {
+  usePageMeta({
+    title: 'Política de Privacidade',
+    description:
+      'Política de privacidade da PataCerta. Como recolhemos, usamos e protegemos os seus dados pessoais ao abrigo do RGPD.',
+    canonicalPath: '/politica-privacidade',
+  })
+
   return (
     <div className="container-app py-12">
       <Card className="prose mx-auto max-w-3xl p-8">

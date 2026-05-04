@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui/Spinner'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 // As views são lazy-loaded para que quem entra em /pesquisar só
 // descarregue o código das vistas que efectivamente abre. Em
@@ -36,6 +37,20 @@ export function PesquisarPage() {
 
   const tipo: PesquisarTipo = searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores'
   const vista: PesquisarVista = searchParams.get('vista') === 'mapa' ? 'mapa' : 'lista'
+
+  // SEO: título e descrição mudam com o tipo, mas o canónico é sempre
+  // /pesquisar (ignoramos query params para não criar URLs duplicadas).
+  usePageMeta({
+    title:
+      tipo === 'servicos'
+        ? 'Pesquisar Serviços para Cães em Portugal'
+        : 'Pesquisar Criadores Verificados em Portugal',
+    description:
+      tipo === 'servicos'
+        ? 'Procure serviços para cães em Portugal: treino, banhos e tosquia, hotel, transporte, passeios. Filtre por distrito, município e preço.'
+        : 'Procure criadores de cães verificados em Portugal. Filtre por raça, distrito e município. Perfis com NIF, número DGAV e avaliações reais.',
+    canonicalPath: '/pesquisar',
+  })
 
   function setTipo(next: PesquisarTipo) {
     const params = new URLSearchParams(searchParams)

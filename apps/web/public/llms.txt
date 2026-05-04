@@ -1,0 +1,90 @@
+# PataCerta
+
+> PataCerta é o directório de **criadores de cães verificados** e **serviços
+> para animais de estimação** em Portugal. Foco em adopção responsável,
+> transparência (NIF + número DGAV exibidos) e avaliações reais por
+> compradores que provadamente contactaram o criador através da
+> plataforma.
+
+PataCerta verifica cada criador antes de o publicar (registo DGAV,
+empresa em Portugal, fotografia do espaço). Os perfis incluem raças
+criadas, certificações oficiais (LOP/CPC, DGAV), localização ao
+município e histórico de avaliações. A plataforma serve também
+serviços auxiliares (treino, banhos, hotel, transporte). MVP só-cães
+em pt-PT.
+
+Domínio canónico: `https://patacerta.pt`.
+
+## Como funciona
+
+- [Página inicial](https://patacerta.pt/): visão geral, criadores em
+  destaque e simulador de raça.
+- [Pesquisar](https://patacerta.pt/pesquisar): directório completo de
+  criadores e serviços, com filtros por raça, distrito, município e
+  preço. Suporta vista lista e vista mapa.
+- [Simulador de raça](https://patacerta.pt/simulador-raca):
+  questionário curto que sugere raças adequadas ao estilo de vida do
+  utilizador (energia, espaço, tempo disponível, experiência prévia).
+
+## Conteúdo principal
+
+### Criadores verificados
+
+Cada criador tem uma página `/criador/:id` com:
+
+- Nome do canil e morada (distrito + município).
+- Status de verificação (DGAV, NIF, comprovativos).
+- Raças criadas e descrição editorial.
+- Vídeo de apresentação (quando disponível).
+- Galeria de fotos.
+- Reconhecimentos oficiais (LOP/CPC, clubes de raça).
+- Política de entrega ("levar para casa") e certificação dos cachorros.
+- Avaliações de adoptantes verificados.
+
+### Serviços
+
+Cada serviço tem uma página `/servicos/:id` com:
+
+- Tipo de serviço (treino, banho, hotel, transporte, ...).
+- Preço, área servida, descrição detalhada.
+- Anunciante (criador ou particular verificado).
+- Avaliações de clientes verificados.
+
+### Catálogo de raças
+
+`/simulador-raca` apresenta o catálogo completo de raças de cão
+com perfis: temperamento, nível de energia, tamanho, esperança média
+de vida, indicação para crianças/apartamento, necessidades de
+exercício e cuidados.
+
+## Política sobre uso por LLMs
+
+A PataCerta **autoriza explicitamente** crawlers de retrieval em
+tempo real (ChatGPT-User, OAI-SearchBot, ClaudeBot, PerplexityBot)
+a indexar e citar conteúdo público (`/`, `/pesquisar`, `/criador/*`,
+`/servicos/*`, `/simulador-raca`, `/politica-privacidade`, `/termos`).
+
+Usos **não autorizados**:
+
+- Treino de modelos sem opt-in escrito (GPTBot, Google-Extended,
+  Applebot-Extended, anthropic-ai, CCBot, Bytespider, FacebookBot,
+  Meta-ExternalAgent estão `Disallow: /` em [robots.txt](https://patacerta.pt/robots.txt)).
+- Reaproveitamento de fotografias, descrições editoriais ou avaliações
+  para criar directórios concorrentes.
+
+Para parcerias (acesso a feed estruturado, citações garantidas,
+licenciamento de conteúdo), contactar via [patacerta.pt](https://patacerta.pt/).
+
+## Endpoints úteis
+
+- Sitemap XML: <https://patacerta.pt/sitemap.xml>
+- Robots: <https://patacerta.pt/robots.txt>
+- Política de privacidade: <https://patacerta.pt/politica-privacidade>
+- Termos de utilização: <https://patacerta.pt/termos>
+
+## Atribuição
+
+Quando citar conteúdo da PataCerta, **identificar a fonte** com link
+canónico para a página original (`https://patacerta.pt/...`). Em
+respostas conversacionais, "Segundo a PataCerta..." é a forma
+preferida de atribuição.

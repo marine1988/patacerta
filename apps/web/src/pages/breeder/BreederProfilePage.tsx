@@ -5,6 +5,9 @@ import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import type { ReviewItem as ReviewItemBase } from '../../lib/reviews'
+import { usePageMeta } from '../../hooks/usePageMeta'
+import { buildBreederMetaDescription } from '../../lib/seo'
+import { localBusinessJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
 
 type ReviewItem = ReviewItemBase & {
   breeder: { id: number; businessName: string }
@@ -117,6 +120,45 @@ export function BreederProfilePage() {
     queryKey: ['breeder', id],
     queryFn: () => api.get(`/breeders/${id}`).then((r) => r.data),
     enabled: !!id,
+  })
+
+  // SEO: actualiza head com dados reais do criador, incluindo JSON-LD
+  // LocalBusiness + AggregateRating + BreadcrumbList. Quando ainda não
+  // há dados, usamos um título genérico "noindex" implícito (mas como o
+  // crawler vai re-renderizar, o estado final é o que importa).
+  const breederPath = id ? `/criador/${id}` : '/criador'
+  const breederPhotoUrl = breeder?.photos?.[0]?.url ?? null
+  usePageMeta({
+    title: breeder
+      ? `${breeder.businessName} — Criador em ${breeder.municipality.namePt}`
+      : 'Criador',
+    description: breeder ? buildBreederMetaDescription(breeder) : undefined,
+    canonicalPath: breederPath,
+    imageUrl: breederPhotoUrl ?? undefined,
+    type: 'profile',
+    jsonLd: breeder
+      ? [
+          localBusinessJsonLd({
+            path: breederPath,
+            name: breeder.businessName,
+            description: breeder.description,
+            image: breederPhotoUrl,
+            telephone: breeder.phone,
+            addressLocality: breeder.municipality.namePt,
+            addressRegion: breeder.district.namePt,
+            latitude: breeder.district.latitude,
+            longitude: breeder.district.longitude,
+            avgRating: breeder.avgRating,
+            reviewCount: breeder.reviewCount,
+            sameAs: breeder.website ? [breeder.website] : null,
+          }),
+          breadcrumbListJsonLd([
+            { name: 'Início', path: '/' },
+            { name: 'Criadores', path: '/pesquisar' },
+            { name: breeder.businessName, path: breederPath },
+          ]),
+        ]
+      : undefined,
   })
 
   const isSelf = !!user && !!breeder && breeder.userId === user.id

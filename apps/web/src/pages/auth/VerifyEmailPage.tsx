@@ -4,10 +4,18 @@ import { api } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
+import { usePageMeta } from '../../hooks/usePageMeta'
 
 type Status = 'idle' | 'verifying' | 'success' | 'error'
 
 export function VerifyEmailPage() {
+  usePageMeta({
+    title: 'Verificar email',
+    description: 'Confirme o seu endereço de email para activar a conta PataCerta.',
+    canonicalPath: '/verificar-email',
+    noIndex: true,
+  })
+
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
 
@@ -71,8 +79,18 @@ export function VerifyEmailPage() {
           {status === 'success' && (
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <h1 className="text-xl font-bold text-gray-900">Email verificado</h1>
@@ -89,8 +107,18 @@ export function VerifyEmailPage() {
             <div>
               <div className="mb-4 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="h-6 w-6 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">Verificação falhou</h1>
@@ -122,8 +150,8 @@ export function VerifyEmailPage() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 text-center">Verificar email</h1>
               <p className="mt-2 text-sm text-gray-600 text-center">
-                Não encontrou o seu email de verificação? Introduza o seu email abaixo para
-                receber um novo link.
+                Não encontrou o seu email de verificação? Introduza o seu email abaixo para receber
+                um novo link.
               </p>
 
               <form onSubmit={handleResend} className="mt-6 space-y-3">

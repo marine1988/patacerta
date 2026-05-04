@@ -6,6 +6,8 @@ import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedC
 import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { AdContainer, AD_SLOTS } from '../../components/ads'
+import { usePageMeta } from '../../hooks/usePageMeta'
+import { organizationJsonLd, websiteJsonLd } from '../../lib/jsonld'
 
 interface PublicStats {
   breederCount: number
@@ -50,6 +52,14 @@ interface FeaturedResponse {
 }
 
 export function HomePage() {
+  usePageMeta({
+    title: 'Criadores Verificados e Serviços para Cães em Portugal',
+    description:
+      'PataCerta: directório de criadores verificados (DGAV/LOP) e serviços para cães em Portugal. Adopção responsável, perfis transparentes, simulador de raça e avaliações reais.',
+    canonicalPath: '/',
+    jsonLd: [organizationJsonLd(), websiteJsonLd()],
+  })
+
   const { data: stats } = useQuery<PublicStats>({
     queryKey: ['public-stats'],
     queryFn: () => api.get('/search/stats').then((r) => r.data),

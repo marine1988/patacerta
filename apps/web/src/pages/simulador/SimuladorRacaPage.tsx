@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import type { BreedMatchInput, BreedMatchResponse } from '@patacerta/shared'
 import { api } from '../../lib/api'
+import { usePageMeta } from '../../hooks/usePageMeta'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
@@ -226,6 +227,13 @@ function BreedImage({
 // ─── Página ───────────────────────────────────────────────────────
 
 export function SimuladorRacaPage() {
+  usePageMeta({
+    title: 'Simulador de Raça — Encontrar o cão ideal',
+    description:
+      'Quiz curto que sugere as raças de cão mais adequadas ao seu estilo de vida: energia, espaço, tempo disponível e experiência com cães. Recomendações personalizadas em segundos.',
+    canonicalPath: '/simulador-raca',
+  })
+
   const [stepIndex, setStepIndex] = useState(0)
   const [answers, setAnswers] = useState<Partial<BreedMatchInput>>({})
 

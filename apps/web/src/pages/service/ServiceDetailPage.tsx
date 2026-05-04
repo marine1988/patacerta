@@ -8,6 +8,7 @@ import type { PaginatedMeta } from '../../lib/pagination'
 import type { ServiceReviewItem } from '../../lib/reviews'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { serviceJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
 import { formatDate } from '../../lib/dates'
 import { formatPrice } from '../../lib/format'
 import { Badge } from '../../components/ui/Badge'
@@ -206,11 +207,39 @@ export function ServiceDetailPage() {
 
   // SEO — so' actualiza o head depois de termos os dados; o titulo/descricao
   // sao stable em re-renders gracas a' identidade dos campos.
+  const servicePath = id ? `/servicos/${id}` : '/servicos'
   usePageMeta({
-    title: service ? `${service.title} — PataCerta` : 'Anúncio — PataCerta',
+    title: service ? `${service.title} — ${service.category.namePt}` : 'Anúncio',
     description: service ? buildMetaDescription(service) : undefined,
+    canonicalPath: servicePath,
     imageUrl: service?.photos[0]?.url,
     type: 'article',
+    jsonLd: service
+      ? [
+          serviceJsonLd({
+            path: servicePath,
+            name: service.title,
+            description: service.description.replace(/\s+/g, ' ').trim().slice(0, 500),
+            image: service.photos[0]?.url ?? null,
+            priceCents: service.priceCents,
+            currency: 'EUR',
+            areaServed: `${service.municipality.namePt}, ${service.district.namePt}`,
+            providerName:
+              `${service.provider.firstName} ${service.provider.lastName}`.trim() || null,
+            avgRating: service.avgRating != null ? Number(service.avgRating) : null,
+            reviewCount: service.reviewCount,
+          }),
+          breadcrumbListJsonLd([
+            { name: 'Início', path: '/' },
+            { name: 'Serviços', path: '/pesquisar?tipo=servicos' },
+            {
+              name: service.category.namePt,
+              path: `/pesquisar?tipo=servicos&categoria=${service.category.id}`,
+            },
+            { name: service.title, path: servicePath },
+          ]),
+        ]
+      : undefined,
   })
 
   const isSelf = !!user && !!service && service.providerId === user.id

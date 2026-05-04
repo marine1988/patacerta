@@ -2,19 +2,95 @@
 <html lang="pt-PT">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/paw.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <title>PataCerta — Criadores Verificados e Serviços para Cães em Portugal</title>
     <meta
       name="description"
-      content="PataCerta — Criadores verificados e serviços para animais de estimação em Portugal"
+      content="PataCerta: directório de criadores verificados e serviços para cães em Portugal. Adopção responsável, perfis com certificação DGAV, simulador de raça e avaliações reais."
     />
+    <meta
+      name="keywords"
+      content="criadores cães, criadores verificados Portugal, serviços para cães, adopção responsável, raças cão, DGAV, LOP, simulador raça"
+    />
+    <meta name="author" content="PataCerta" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
+    <meta name="theme-color" content="#8F6541" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Canonical (default; cada página sobrepõe via usePageMeta) -->
+    <link rel="canonical" href="https://patacerta.pt/" />
+
+    <!-- Icons & PWA -->
+    <link rel="icon" type="image/svg+xml" href="/paw.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PataCerta" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:title" content="PataCerta — Criadores Verificados em Portugal" />
+    <meta
+      property="og:description"
+      content="Directório de criadores verificados e serviços para cães em Portugal. Adopção responsável, com transparência e avaliações reais."
+    />
+    <meta property="og:url" content="https://patacerta.pt/" />
+    <meta property="og:image" content="https://patacerta.pt/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PataCerta — Criadores verificados de cães em Portugal" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PataCerta — Criadores Verificados em Portugal" />
+    <meta
+      name="twitter:description"
+      content="Directório de criadores verificados e serviços para cães em Portugal."
+    />
+    <meta name="twitter:image" content="https://patacerta.pt/og-image.svg" />
+    <meta
+      name="twitter:image:alt"
+      content="PataCerta — Criadores verificados de cães em Portugal"
+    />
+
+    <!-- Performance: pre-connect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Open+Sans:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>PataCerta — Criadores Verificados</title>
+
+    <!-- JSON-LD: Organization (estático, presente em todas as páginas) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "PataCerta",
+        "url": "https://patacerta.pt",
+        "logo": "https://patacerta.pt/icon-512.svg",
+        "description": "Directório de criadores verificados e serviços para cães em Portugal.",
+        "areaServed": { "@type": "Country", "name": "Portugal" },
+        "knowsLanguage": "pt-PT"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "PataCerta",
+        "url": "https://patacerta.pt",
+        "inLanguage": "pt-PT",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://patacerta.pt/pesquisar?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
   </head>
   <body class="antialiased">
     <div id="root"></div>
