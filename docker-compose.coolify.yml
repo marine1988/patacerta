@@ -23,11 +23,19 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # SEO: dominio canonico baked-in pelo Vite. Override no painel
+        # do orquestrador para stage/preview.
+        VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-https://patacerta.pt}
     depends_on:
       api:
         condition: service_healthy
     ports:
       - '80:80'
+    environment:
+      # Em stage/preview definir:
+      #   ROBOTS_HEADER='add_header X-Robots-Tag "noindex, nofollow" always;'
+      ROBOTS_HEADER: ${ROBOTS_HEADER:-}
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:80/']

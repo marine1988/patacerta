@@ -11,11 +11,29 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared/ packages/shared/
 COPY apps/web/ apps/web/
 
+# `VITE_PUBLIC_URL` e' resolvida em build-time pelo Vite (vai parar ao
+# bundle JS, nao' a' env runtime). Por isso aceita-se como build-arg e
+# expoe-se como ENV antes do `vite build`. Em prod esperamos
+# `https://patacerta.pt`; em stage `https://stage.patacerta.pt`. Ver
+# `apps/web/src/lib/seo.ts` (canonical, og:url, JSON-LD URLs).
+ARG VITE_PUBLIC_URL=https://patacerta.pt
+ENV VITE_PUBLIC_URL=$VITE_PUBLIC_URL
+
 RUN pnpm --filter @patacerta/shared build
 RUN pnpm --filter @patacerta/web build
 
 FROM nginx:alpine AS runner
 COPY --from=base /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Templating do nginx.conf: a imagem oficial corre
+# `/docker-entrypoint.d/20-envsubst-on-templates.sh` que processa
+# `/etc/nginx/templates/*.template` e escreve o resultado em
+# `/etc/nginx/conf.d/`. `NGINX_ENVSUBST_FILTER` restringe a
+# substituicao a `ROBOTS_HEADER`, evitando que `$host`, `$remote_addr`,
+# etc. (variaveis de runtime do nginx) sejam comidos pelo envsubst.
+COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV NGINX_ENVSUBST_FILTER=ROBOTS_HEADER
+ENV ROBOTS_HEADER=""
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -13,7 +13,17 @@ version: '3.8'
 #   ADMIN_EMAIL          — super-admin email
 #   ADMIN_PASSWORD       — super-admin password (min 8 chars, upper+lower+number)
 #   MINIO_ROOT_PASSWORD  — strong random password for MinIO
-#   FRONTEND_URL         — your public URL (e.g. https://patacerta.rogeriofigueiredo.us)
+#   FRONTEND_URL         — your public URL (e.g. https://patacerta.pt)
+#
+# SEO env vars (per-environment — production vs stage):
+#   VITE_PUBLIC_URL  — domínio canónico que vai parar a `<link rel=canonical>`,
+#                     `og:url` e URLs em JSON-LD. Build-time (Vite). Define:
+#                       prod:  https://patacerta.pt
+#                       stage: https://stage.patacerta.pt
+#   ROBOTS_HEADER    — string nginx injectada no server block. Em prod
+#                     deixar vazio. Em stage definir:
+#                       add_header X-Robots-Tag "noindex, nofollow" always;
+#                     (impede o stage de aparecer em motores de pesquisa).
 
 services:
   # ── Frontend (nginx + SPA + /api reverse proxy) ──
@@ -21,11 +31,22 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Vite resolve VITE_PUBLIC_URL em build-time; tem que vir como
+        # build-arg, nao basta `environment:`. Default no Dockerfile
+        # aponta para producao.
+        VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-https://patacerta.pt}
     depends_on:
       api:
         condition: service_healthy
     expose:
       - '80'
+    environment:
+      # ROBOTS_HEADER e' aplicado em runtime via envsubst no template
+      # do nginx (ver apps/web/Dockerfile + apps/web/nginx.conf.template).
+      # Em prod fica vazio. Em stage definir:
+      #   ROBOTS_HEADER='add_header X-Robots-Tag "noindex, nofollow" always;'
+      ROBOTS_HEADER: ${ROBOTS_HEADER:-}
     networks:
       - dokploy-network
       - default

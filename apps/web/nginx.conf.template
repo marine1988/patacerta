@@ -4,6 +4,17 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # SEO: header configuravel por ambiente. Em producao fica vazio (linha
+    # vira no-op). Em ambientes nao-publicos (stage, preview) e' definido
+    # como `add_header X-Robots-Tag "noindex, nofollow" always;` via
+    # variavel `ROBOTS_HEADER` no docker-compose / Dokploy.
+    #
+    # Substituicao via envsubst no entrypoint da imagem nginx oficial
+    # (template em /etc/nginx/templates/default.conf.template). A
+    # `NGINX_ENVSUBST_FILTER` esta definida no Dockerfile para limitar
+    # as variaveis substituidas e nao quebrar `$host`, `$remote_addr`, etc.
+    ${ROBOTS_HEADER}
+
     # Proxy API requests to the backend service
     location /api/ {
         proxy_pass http://api:3001;
