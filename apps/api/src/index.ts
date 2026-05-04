@@ -22,6 +22,8 @@ import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
 import { consentRouter } from './modules/consent/consent.router.js'
 import { sitemapRouter } from './modules/sitemap/sitemap.router.js'
+import { paymentsRouter } from './modules/payments/payments.router.js'
+import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
 import { ensureBucket } from './lib/minio.js'
 import { isProd, isHttps } from './lib/env.js'
 
@@ -94,6 +96,12 @@ app.use(
     credentials: true,
   }),
 )
+
+// ⚠ Stripe webhooks: precisa do body raw para validar a assinatura, por
+// isso é montado ANTES de express.json(). Caso contrário o middleware
+// global converte para JSON e perdemos o Buffer original.
+app.use('/api/webhooks', webhooksRouter)
+
 app.use(express.json({ limit: '1mb' }))
 // cookie-parser: refresh_token vive em cookie httpOnly (ver auth.controller.ts).
 app.use(cookieParser())
@@ -114,6 +122,7 @@ app.use('/api/home', homeRouter)
 app.use('/api/breed-matcher', breedMatcherRouter)
 app.use('/api/breeds', breedsRouter)
 app.use('/api/sponsored-slots', sponsoredSlotsRouter)
+app.use('/api/payments', paymentsRouter)
 app.use('/api/consent', consentRouter)
 app.use('/api/admin', adminRouter)
 

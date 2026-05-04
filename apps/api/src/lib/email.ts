@@ -130,3 +130,66 @@ Se não foi você, ignore este email — a sua palavra-passe permanece inalterad
   )
   await sendMail({ to, subject, html, text })
 }
+
+interface SponsoredSlotPaidParams {
+  breederName: string
+  breedName: string
+  breedSlug: string
+  endsAt: Date
+  priceCents: number
+  currency: string
+  receiptUrl: string | null
+}
+
+/**
+ * Email enviado quando um Sponsored Slot é confirmado pelo Stripe
+ * (cartão imediatamente, ou Multibanco quando a referência é paga).
+ *
+ * Conteúdo: confirmação do destaque activo, raça onde aparece, prazo
+ * (data fim), valor pago, link para recibo Stripe (quando disponível).
+ */
+export async function sendSponsoredSlotPaidEmail(
+  to: string,
+  params: SponsoredSlotPaidParams,
+): Promise<void> {
+  const { breederName, breedName, endsAt, priceCents, currency, receiptUrl } = params
+  const formattedPrice = `${(priceCents / 100).toFixed(2)} ${currency.toUpperCase()}`
+  const endsAtFmt = endsAt.toLocaleDateString('pt-PT', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+  const subject = `Destaque activado — ${breedName} | Patacerta`
+  const text = `Olá,
+
+O seu destaque no simulador de raça foi activado.
+
+  Criador: ${breederName}
+  Raça: ${breedName}
+  Activo até: ${endsAtFmt}
+  Valor pago: ${formattedPrice}
+${receiptUrl ? `\nRecibo: ${receiptUrl}\n` : ''}
+A sua ficha aparece agora como criador recomendado para "${breedName}" no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.
+
+Obrigado pelo apoio!
+Equipa Patacerta`
+  const html = baseLayout(
+    subject,
+    `<p>O seu destaque no simulador de raça foi <strong>activado</strong>.</p>
+     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Criador:</td><td style="padding:6px 0;font-weight:600">${breederName}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Raça:</td><td style="padding:6px 0;font-weight:600">${breedName}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Activo até:</td><td style="padding:6px 0;font-weight:600">${endsAtFmt}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Valor pago:</td><td style="padding:6px 0;font-weight:600">${formattedPrice}</td></tr>
+     </table>
+     ${
+       receiptUrl
+         ? `<p style="margin:16px 0"><a href="${receiptUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Ver recibo</a></p>`
+         : ''
+     }
+     <p>A sua ficha aparece agora como criador recomendado para <strong>${breedName}</strong> no simulador da Patacerta.</p>
+     <p>Pode acompanhar impressões e cliques na sua <em>área pessoal</em>.</p>
+     <p>Obrigado pelo apoio!<br>Equipa Patacerta</p>`,
+  )
+  await sendMail({ to, subject, html, text })
+}
