@@ -47,6 +47,7 @@ export const listSponsoredSlotsSchema = z.object({
   breedId: z.coerce.number().int().positive().optional(),
   breederId: z.coerce.number().int().positive().optional(),
   status: z.enum(['ACTIVE', 'PAUSED', 'EXPIRED']).optional(),
+  paymentStatus: z.enum(['LEGACY', 'PENDING', 'PAID', 'FAILED', 'REFUNDED']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 })

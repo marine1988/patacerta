@@ -32,13 +32,14 @@ const SLOT_INCLUDE = {
 }
 
 export const listSponsoredSlots = asyncHandler(async (req, res) => {
-  const { breedId, breederId, status, page, limit } =
+  const { breedId, breederId, status, paymentStatus, page, limit } =
     req.query as unknown as ListSponsoredSlotsInput
 
   const where: Prisma.SponsoredBreedSlotWhereInput = {}
   if (breedId) where.breedId = breedId
   if (breederId) where.breederId = breederId
   if (status) where.status = status
+  if (paymentStatus) where.paymentStatus = paymentStatus
 
   const [slots, total] = await Promise.all([
     prisma.sponsoredBreedSlot.findMany({

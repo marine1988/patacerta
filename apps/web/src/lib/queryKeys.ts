@@ -51,8 +51,12 @@ export const queryKeys = {
       ['admin-audit-logs', page, action ?? null, entity ?? null] as const,
     reviewFlags: (type: string | null, id: number | string | null | undefined) =>
       ['review-flags', type, id ?? null] as const,
-    sponsoredSlots: (page: number, status: string, breedId: number | string | null | undefined) =>
-      ['admin-sponsored-slots', page, status, breedId ?? null] as const,
+    sponsoredSlots: (
+      page: number,
+      status: string,
+      breedId: number | string | null | undefined,
+      paymentStatus: string,
+    ) => ['admin-sponsored-slots', page, status, breedId ?? null, paymentStatus] as const,
     sponsoredSlotsAll: () => ['admin-sponsored-slots'] as const,
     breedersVerified: (search: string) => ['admin-breeders-verified', search] as const,
     breedsMini: () => ['breeds-mini'] as const,

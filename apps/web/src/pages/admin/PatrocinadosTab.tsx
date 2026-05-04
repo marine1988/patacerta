@@ -20,6 +20,8 @@ import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from '
 
 type SlotStatus = 'ACTIVE' | 'PAUSED' | 'EXPIRED'
 
+type SlotPaymentStatus = 'LEGACY' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'
+
 interface SponsoredSlot {
   id: number
   breederId: number
@@ -32,6 +34,11 @@ interface SponsoredSlot {
   notes: string | null
   createdAt: string
   updatedAt: string
+  paymentStatus: SlotPaymentStatus
+  priceCents: number | null
+  currency: string | null
+  paidAt: string | null
+  stripeReceiptUrl: string | null
   breeder: {
     id: number
     businessName: string
@@ -67,6 +74,28 @@ const statusLabel: Record<SlotStatus, string> = {
   EXPIRED: 'Expirado',
 }
 
+const paymentVariant: Record<SlotPaymentStatus, 'green' | 'yellow' | 'red' | 'gray' | 'blue'> = {
+  PAID: 'green',
+  PENDING: 'yellow',
+  FAILED: 'red',
+  REFUNDED: 'gray',
+  LEGACY: 'blue',
+}
+
+const paymentLabel: Record<SlotPaymentStatus, string> = {
+  PAID: 'Pago',
+  PENDING: 'Pendente',
+  FAILED: 'Falhou',
+  REFUNDED: 'Reembolsado',
+  LEGACY: 'Legacy',
+}
+
+function formatPrice(cents: number | null, currency: string | null): string {
+  if (cents == null) return '—'
+  const value = (cents / 100).toFixed(2)
+  return `${value} ${currency ?? 'EUR'}`
+}
+
 function toDateInputValue(iso: string): string {
   // Converte ISO string para o formato YYYY-MM-DD usado por <input type="date">.
   return iso.slice(0, 10)
@@ -83,17 +112,24 @@ export function PatrocinadosTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<'' | SlotStatus>('')
+  const [paymentFilter, setPaymentFilter] = useState<'' | SlotPaymentStatus>('')
   const [breedFilter, setBreedFilter] = useState<string>('')
   const [editing, setEditing] = useState<SponsoredSlot | null>(null)
   const [creating, setCreating] = useState(false)
 
   // Listagem
   const { data, isLoading, isError } = useQuery<Paginated<SponsoredSlot>>({
-    queryKey: queryKeys.admin.sponsoredSlots(page, statusFilter, breedFilter || null),
+    queryKey: queryKeys.admin.sponsoredSlots(
+      page,
+      statusFilter,
+      breedFilter || null,
+      paymentFilter,
+    ),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (statusFilter) params.set('status', statusFilter)
       if (breedFilter) params.set('breedId', breedFilter)
+      if (paymentFilter) params.set('paymentStatus', paymentFilter)
       return api.get(`/admin/sponsored-slots?${params}`).then((r) => r.data)
     },
   })
@@ -175,6 +211,25 @@ export function PatrocinadosTab() {
               options={breedOptions}
             />
           </div>
+          <div className="min-w-[180px]">
+            <Select
+              label="Pagamento"
+              name="paymentFilter"
+              value={paymentFilter}
+              onChange={(e) => {
+                setPaymentFilter(e.target.value as '' | SlotPaymentStatus)
+                setPage(1)
+              }}
+              options={[
+                { value: '', label: 'Todos' },
+                { value: 'PAID', label: 'Pago' },
+                { value: 'PENDING', label: 'Pendente' },
+                { value: 'FAILED', label: 'Falhou' },
+                { value: 'REFUNDED', label: 'Reembolsado' },
+                { value: 'LEGACY', label: 'Legacy' },
+              ]}
+            />
+          </div>
         </div>
         <Button onClick={() => setCreating(true)}>+ Novo slot patrocinado</Button>
       </div>
@@ -199,6 +254,7 @@ export function PatrocinadosTab() {
                   <th className="px-3 py-2">Raça</th>
                   <th className="px-3 py-2">Janela</th>
                   <th className="px-3 py-2">Estado</th>
+                  <th className="px-3 py-2">Pagamento</th>
                   <th className="px-3 py-2">Impr.</th>
                   <th className="px-3 py-2">Cliques</th>
                   <th className="px-3 py-2">CTR</th>
@@ -226,6 +282,28 @@ export function PatrocinadosTab() {
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant={statusVariant[slot.status]}>{statusLabel[slot.status]}</Badge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant={paymentVariant[slot.paymentStatus]}>
+                          {paymentLabel[slot.paymentStatus]}
+                        </Badge>
+                        {slot.paymentStatus === 'PAID' && (
+                          <span className="text-xs text-gray-500">
+                            {formatPrice(slot.priceCents, slot.currency)}
+                          </span>
+                        )}
+                        {slot.stripeReceiptUrl && (
+                          <a
+                            href={slot.stripeReceiptUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-caramel-600 hover:underline"
+                          >
+                            Recibo ↗
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">{slot.impressionCount}</td>
                     <td className="px-3 py-2">{slot.clickCount}</td>
