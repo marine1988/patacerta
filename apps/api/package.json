@@ -19,7 +19,8 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "job:cleanup-refresh-tokens": "tsx src/jobs/cleanup-refresh-tokens.ts",
-    "job:backfill-breeder-stats": "tsx src/jobs/backfill-breeder-stats.ts"
+    "job:backfill-breeder-stats": "tsx src/jobs/backfill-breeder-stats.ts",
+    "job:expire-sponsored-slots": "tsx src/jobs/expire-sponsored-slots.ts"
   },
   "dependencies": {
     "@patacerta/shared": "workspace:*",
