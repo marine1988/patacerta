@@ -54,6 +54,9 @@ const PrivacyPolicyPage = lazy(() =>
 const TermsPage = lazy(() =>
   import('./pages/legal/TermsPage').then((m) => ({ default: m.TermsPage })),
 )
+const PaymentTermsPage = lazy(() =>
+  import('./pages/legal/PaymentTermsPage').then((m) => ({ default: m.PaymentTermsPage })),
+)
 const FaqPage = lazy(() => import('./pages/legal/FaqPage').then((m) => ({ default: m.FaqPage })))
 const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
@@ -143,6 +146,7 @@ export function App() {
             <Route path="/servicos/:id" element={<ServiceDetailPage />} />
             <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />
             <Route path="/termos" element={<TermsPage />} />
+            <Route path="/termos-pagamento" element={<PaymentTermsPage />} />
             <Route path="/perguntas-frequentes" element={<FaqPage />} />
 
             {/* Protected — any authenticated user */}

@@ -48,6 +48,7 @@ export function Footer() {
             <ul className="space-y-3">
               <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
               <FooterLink to="/termos">Termos de Utilização</FooterLink>
+              <FooterLink to="/termos-pagamento">Termos de Pagamento</FooterLink>
               <li>
                 <button
                   type="button"

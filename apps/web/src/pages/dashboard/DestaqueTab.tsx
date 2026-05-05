@@ -396,13 +396,27 @@ function PurchaseModal({
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button variant="ghost" onClick={onClose} disabled={checkoutMutation.isPending}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canBuy} loading={checkoutMutation.isPending}>
-            Avançar para pagamento
-          </Button>
+        <div className="flex flex-col gap-3 pt-2">
+          <p className="text-xs text-subtle">
+            Ao avançar, aceita os{' '}
+            <a
+              href="/termos-pagamento"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-inline"
+            >
+              Termos de Pagamento
+            </a>
+            .
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={onClose} disabled={checkoutMutation.isPending}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={!canBuy} loading={checkoutMutation.isPending}>
+              Avançar para pagamento
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
