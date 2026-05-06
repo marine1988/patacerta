@@ -4,6 +4,18 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # DNS resolver interno do Docker (127.0.0.11). Necessario para que o
+    # nginx re-resolva o hostname `api` (e `minio`) periodicamente em
+    # vez de cachear o IP descoberto no boot. Sem isto, qualquer
+    # redeploy da API muda o IP do contentor mas o nginx continua a
+    # tentar o IP velho => 502 "Host is unreachable" sustained ate
+    # alguem reiniciar o contentor web manualmente. Ver issue tipico:
+    # https://stackoverflow.com/q/35744650
+    #
+    # `valid=10s` faz o nginx voltar a resolver de 10 em 10s.
+    # `ipv6=off` evita warnings ipv6 no docker network.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     # SEO: header configuravel por ambiente. Em producao fica vazio (linha
     # vira no-op). Em ambientes nao-publicos (stage, preview) e' definido
     # como `add_header X-Robots-Tag "noindex, nofollow" always;` via
@@ -15,9 +27,14 @@ server {
     # as variaveis substituidas e nao quebrar `$host`, `$remote_addr`, etc.
     ${ROBOTS_HEADER}
 
-    # Proxy API requests to the backend service
+    # Proxy API requests to the backend service.
+    # IMPORTANTE: usar variavel `$api_upstream` (em vez de literal
+    # `http://api:3001`) forca o nginx a re-resolver o hostname a cada
+    # request via `resolver` definido acima — evita IP cacheado quando
+    # o contentor API reaparece com novo IP apos redeploy.
     location /api/ {
-        proxy_pass http://api:3001;
+        set $api_upstream http://api:3001;
+        proxy_pass $api_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -31,7 +48,8 @@ server {
     # (motores procuram /sitemap.xml), não dentro de /api/. O API
     # define Cache-Control: public, max-age=3600 — não duplicar aqui.
     location = /sitemap.xml {
-        proxy_pass http://api:3001/sitemap.xml;
+        set $api_upstream http://api:3001;
+        proxy_pass $api_upstream/sitemap.xml;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -43,7 +61,8 @@ server {
     # absoluta (PUBLIC_URL). Só intercepta IDs puramente numéricos —
     # slugs (que têm letras/hífens) caem no SPA fallback abaixo.
     location ~ ^/criador/(\d+)$ {
-        proxy_pass http://api:3001/__redirect/breeder/$1;
+        set $api_upstream http://api:3001;
+        proxy_pass $api_upstream/__redirect/breeder/$1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -55,7 +74,8 @@ server {
     }
 
     location ~ ^/servicos/(\d+)$ {
-        proxy_pass http://api:3001/__redirect/service/$1;
+        set $api_upstream http://api:3001;
+        proxy_pass $api_upstream/__redirect/service/$1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -74,7 +94,8 @@ server {
     # URLs would fall through to the static-asset cache rule and hit a
     # local 404 instead of being proxied to MinIO.
     location ^~ /patacerta-uploads/ {
-        proxy_pass http://minio:9000;
+        set $minio_upstream http://minio:9000;
+        proxy_pass $minio_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
