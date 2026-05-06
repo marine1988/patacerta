@@ -88,7 +88,9 @@ test.describe('Sponsored Slot — checkout completo', () => {
     await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)
 
     // ── 2. Descobrir uma raca com slot disponivel ─────────────────────────
-    // Buscamos a lista de racas e iteramos ate' encontrar uma com available>0.
+    // Buscamos a lista de racas e iteramos ate' encontrar uma com available>0
+    // E onde o proprio criador ainda nao tenha slot (PENDING/ACTIVE/PAUSED).
+    // O backend bloqueia novo checkout com 409 DUPLICATE_SLOT se ja' existir.
     const breedsRes = await request.get(`${API_BASE_URL}/breeds`)
     expect(breedsRes.ok(), 'GET /breeds tem de responder 200').toBe(true)
     // A API devolve um array directo (nao envelope). Mantemos compatibilidade
@@ -101,11 +103,31 @@ test.describe('Sponsored Slot — checkout completo', () => {
       : (breedsBody.breeds ?? breedsBody.data ?? [])
     expect(breeds.length, 'API tem de devolver pelo menos uma raca seedada').toBeGreaterThan(0)
 
+    // Buscar slots existentes do criador para nao tentar comprar de novo na
+    // mesma raca (gera 409 DUPLICATE_SLOT). Precisamos do access token para
+    // este endpoint autenticado — extraido do localStorage injectado pelo
+    // loginViaApi.
+    const accessTokenForLookup = await page.evaluate(() =>
+      window.localStorage.getItem('access_token'),
+    )
+    expect(
+      accessTokenForLookup,
+      'access_token tem de estar em localStorage apos login',
+    ).toBeTruthy()
+    const mineRes = await request.get(`${API_BASE_URL}/payments/sponsored-slot/mine`, {
+      headers: { Authorization: `Bearer ${accessTokenForLookup}` },
+    })
+    const mineBody = mineRes.ok()
+      ? ((await mineRes.json()) as { data: Array<{ breedId: number }> })
+      : { data: [] }
+    const breedsAlreadyOwned = new Set(mineBody.data.map((s) => s.breedId))
+
     let targetBreed: BreedListItem | null = null
     let availability: AvailabilityResponse | null = null
-    // Tentar ate' 10 racas para nao gastar demasiados pedidos. Em stage limpo
-    // a primeira ja deve ter available=3.
-    for (const breed of breeds.slice(0, 10)) {
+    // Tentar ate' 20 racas (em vez de 10) para acomodar acumulacao de PENDING
+    // de execucoes anteriores em stage.
+    for (const breed of breeds.slice(0, 20)) {
+      if (breedsAlreadyOwned.has(breed.id)) continue
       const availRes = await request.get(
         `${API_BASE_URL}/payments/sponsored-slot/availability?breedId=${breed.id}`,
       )
@@ -117,7 +139,10 @@ test.describe('Sponsored Slot — checkout completo', () => {
         break
       }
     }
-    expect(targetBreed, 'Tem de existir pelo menos uma raca com slot disponivel').not.toBeNull()
+    expect(
+      targetBreed,
+      'Tem de existir pelo menos uma raca com slot disponivel e sem slot pre-existente do criador',
+    ).not.toBeNull()
     expect(availability!.priceCents).toBe(1000)
     expect(availability!.currency).toBe('EUR')
     console.log(
@@ -127,8 +152,14 @@ test.describe('Sponsored Slot — checkout completo', () => {
 
     // ── 3. Navegar para Dashboard > Destaque ──────────────────────────────
     await page.goto('/area-pessoal?tab=destaque')
-    // O tab "Destaque" so existe para criadores; se este passo falha o
-    // utilizador nao foi reconhecido como breeder.
+    // O tab "Destaque" so existe para criadores VERIFIED. Esperamos que o
+    // tab apareca (depende de /breeders/me/profile resolver com status
+    // VERIFIED) e clicamos explicitamente — o defaultTab da pagina pode
+    // resolver para "profile" se o probe ainda nao retornou no momento da
+    // primeira render.
+    const destaqueTab = page.getByRole('tab', { name: /Destaque/i })
+    await expect(destaqueTab).toBeVisible({ timeout: 15_000 })
+    await destaqueTab.click()
     await expect(page.getByRole('button', { name: /Comprar destaque/i })).toBeVisible({
       timeout: 15_000,
     })
@@ -137,8 +168,9 @@ test.describe('Sponsored Slot — checkout completo', () => {
     await page.getByRole('button', { name: /Comprar destaque/i }).click()
 
     // O modal usa Modal partilhado com title="Comprar destaque" — h2/dialog
-    // role esta presente.
-    const modal = page.getByRole('dialog')
+    // role esta presente. Usamos `name` (= aria-labelledby) para distinguir
+    // do banner de cookies que tambem e' um role=dialog.
+    const modal = page.getByRole('dialog', { name: /Comprar destaque/i })
     await expect(modal).toBeVisible()
     await expect(modal.getByText(/10,00\s*€\s*por\s*30\s*dias/i)).toBeVisible()
 
@@ -216,7 +248,7 @@ test.describe('Sponsored Slot — checkout completo', () => {
     // Independente disso, fazemos polling ao endpoint listMySponsoredSlots
     // para confirmar que o webhook activou o slot. O webhook e' best-effort
     // assincrono — pode demorar alguns segundos.
-    const accessToken = await page.evaluate(() => window.localStorage.getItem('accessToken'))
+    const accessToken = await page.evaluate(() => window.localStorage.getItem('access_token'))
     expect(accessToken, 'accessToken tem de estar presente apos redirect').toBeTruthy()
 
     let slotIsActive = false

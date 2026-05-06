@@ -372,7 +372,7 @@ describe('createSponsoredSlotCheckout — happy path', () => {
     })
   })
 
-  it('chama Stripe Checkout com payment_method_types=[card,multibanco], locale=pt, expires_at=+7d', async () => {
+  it('chama Stripe Checkout com payment_method_types=[card,multibanco], locale=pt, expires_at=+23h', async () => {
     setupHappyPath()
     const req = makeReq({ body: { breedId: 1 }, email: 'novo@example.com' })
     const res = makeRes()
@@ -405,9 +405,10 @@ describe('createSponsoredSlotCheckout — happy path', () => {
       breedId: '1',
       userId: '7',
     })
-    // expires_at = now + 7 dias (±2s de tolerância para tempo de execução)
-    const expectedMin = tBefore + 7 * 24 * 60 * 60
-    const expectedMax = tAfter + 7 * 24 * 60 * 60
+    // expires_at = now + 23h (Stripe limita Checkout a 24h max em modo
+    // `payment`; usamos 23h para margem de seguranca contra clock drift).
+    const expectedMin = tBefore + 23 * 60 * 60
+    const expectedMax = tAfter + 23 * 60 * 60
     expect(callArg.expires_at).toBeGreaterThanOrEqual(expectedMin)
     expect(callArg.expires_at).toBeLessThanOrEqual(expectedMax + 1)
   })

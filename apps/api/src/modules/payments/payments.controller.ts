@@ -165,38 +165,59 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
   const cancelUrl = `${frontendUrl}/area-pessoal?tab=destaque&checkout=cancelled`
 
   const stripe = getStripe()
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    payment_method_types: ['card', 'multibanco'],
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: SPONSORED_SLOT_CURRENCY,
-          unit_amount: SPONSORED_SLOT_PRICE_CENTS,
-          product_data: {
-            name: `Destaque no Simulador — ${breed.namePt}`,
-            description: `Aparecer no simulador de raça do PataCerta como criador recomendado para "${breed.namePt}" durante ${SPONSORED_SLOT_DURATION_DAYS} dias.`,
+  // Importante: se a chamada a Stripe falhar (ex: chave invalida, rate
+  // limit, parametro rejeitado), apagamos o slot que acabamos de criar.
+  // Caso contrario fica um PAUSED+PENDING orfao a ocupar vaga (ate' 24h
+  // no countOccupyingSlots) e a impedir o proprio criador de tentar de
+  // novo (DUPLICATE_SLOT). Esta limpeza torna o endpoint idempotente do
+  // ponto de vista do utilizador.
+  let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card', 'multibanco'],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: SPONSORED_SLOT_CURRENCY,
+            unit_amount: SPONSORED_SLOT_PRICE_CENTS,
+            product_data: {
+              name: `Destaque no Simulador — ${breed.namePt}`,
+              description: `Aparecer no simulador de raça do PataCerta como criador recomendado para "${breed.namePt}" durante ${SPONSORED_SLOT_DURATION_DAYS} dias.`,
+            },
           },
         },
+      ],
+      metadata: {
+        slotId: String(slot.id),
+        breederId: String(breeder.id),
+        breedId: String(breed.id),
+        userId: String(userId),
       },
-    ],
-    metadata: {
-      slotId: String(slot.id),
-      breederId: String(breeder.id),
-      breedId: String(breed.id),
-      userId: String(userId),
-    },
-    // Em modo `payment` (one-shot, não subscription), a payment_intent
-    // criada herda automaticamente este metadata (não duplicado aqui).
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    locale: 'pt',
-    customer_email: req.user!.email,
-    // Multibanco precisa de até 7 dias para o cliente pagar a referência;
-    // sem isto, sessões expiram em 24h. Ajustar para 7 dias.
-    expires_at: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
-  })
+      // Em modo `payment` (one-shot, não subscription), a payment_intent
+      // criada herda automaticamente este metadata (não duplicado aqui).
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      locale: 'pt',
+      customer_email: req.user!.email,
+      // A Stripe limita `expires_at` a um maximo de 24h apos a criacao da
+      // sessao Checkout (em modo `payment`). Usamos 23h para deixar margem
+      // de seguranca contra clock drift entre os nossos servidores e a
+      // Stripe. Para Multibanco isto nao limita o pagamento da referencia
+      // em si — apenas a janela em que o cliente pode abrir a pagina de
+      // Checkout para gerar/ver a referencia. Apos a referencia gerada,
+      // o cliente tem ate 7 dias para pagar (controlado pela Stripe).
+      expires_at: Math.floor(Date.now() / 1000) + 23 * 60 * 60,
+    })
+  } catch (err) {
+    // Cleanup do slot orfao. Best-effort: se o delete falhar, deixamos
+    // o erro original ser lancado para nao mascarar a causa-raiz.
+    await prisma.sponsoredBreedSlot.delete({ where: { id: slot.id } }).catch(() => {
+      /* ignore */
+    })
+    throw err
+  }
 
   // Persistir o ID da sessão para podermos correlacionar no webhook.
   await prisma.sponsoredBreedSlot.update({

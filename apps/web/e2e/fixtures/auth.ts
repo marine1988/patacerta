@@ -31,29 +31,31 @@ export async function loginViaApi(
     user: unknown
   }
 
+  // IMPORTANTE: as chaves reais usadas pelo AuthContext sao `access_token` e
+  // `user` (ver apps/web/src/contexts/AuthContext.tsx). NAO sao "accessToken"
+  // / "refreshToken". O refresh token vive em cookie HTTPOnly definido pela
+  // API. Aqui so' precisamos de injectar o access token + user.
   // Garantir que existe um document para correr addInitScript em qualquer URL
   // do baseURL.
   await page.goto('/')
   await page.addInitScript(
-    ({ accessToken, refreshToken, user }) => {
+    ({ accessToken, user }) => {
       try {
-        window.localStorage.setItem('accessToken', accessToken)
-        window.localStorage.setItem('refreshToken', refreshToken)
+        window.localStorage.setItem('access_token', accessToken)
         if (user) window.localStorage.setItem('user', JSON.stringify(user))
       } catch {
         // ignore
       }
     },
-    { accessToken: body.accessToken, refreshToken: body.refreshToken, user: body.user },
+    { accessToken: body.accessToken, user: body.user },
   )
   // Persistir já no contexto atual também (caso o caller não recarregue)
   await page.evaluate(
-    ({ accessToken, refreshToken, user }) => {
-      window.localStorage.setItem('accessToken', accessToken)
-      window.localStorage.setItem('refreshToken', refreshToken)
+    ({ accessToken, user }) => {
+      window.localStorage.setItem('access_token', accessToken)
       if (user) window.localStorage.setItem('user', JSON.stringify(user))
     },
-    { accessToken: body.accessToken, refreshToken: body.refreshToken, user: body.user },
+    { accessToken: body.accessToken, user: body.user },
   )
 
   return body
@@ -61,8 +63,7 @@ export async function loginViaApi(
 
 export async function logout(page: Page) {
   await page.evaluate(() => {
-    window.localStorage.removeItem('accessToken')
-    window.localStorage.removeItem('refreshToken')
+    window.localStorage.removeItem('access_token')
     window.localStorage.removeItem('user')
   })
 }
