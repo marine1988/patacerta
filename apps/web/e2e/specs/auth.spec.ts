@@ -12,11 +12,20 @@ test.describe('Autenticação — login', () => {
   test('mostra erro com credenciais inválidas', async ({ page }) => {
     await page.goto('/entrar')
 
-    await page.getByLabel('Email').fill('nao-existe@example.pt')
+    // Esperar que o form esteja realmente interactivo antes de preencher
+    // (evita race com hydration React onde o controlled state ainda não
+    // está pronto e o fill é descartado).
+    const emailInput = page.getByLabel('Email')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.fill('nao-existe@example.pt')
     await page.getByLabel('Palavra-passe').fill('SenhaErrada123')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
-    await expect(page.locator('div.bg-red-50')).toBeVisible({ timeout: 10_000 })
+    // Banner de erro tem texto vindo do backend ("Email ou palavra-passe
+    // incorretos"). Procurar por role/texto é mais robusto que CSS class.
+    await expect(page.getByText(/Email ou palavra-passe incorretos/i)).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
   test('login com utilizador demo redireciona para home', async ({ page }) => {
@@ -52,10 +61,18 @@ test.describe('Autenticação — login', () => {
 
   test('logout limpa sessão e volta a mostrar Entrar', async ({ page }) => {
     await page.goto('/entrar')
-    await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[2])
+    const emailInput = page.getByLabel('Email')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.fill(DEMO_CLIENT_EMAILS[2])
     await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
-    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
+    // Após login, ou redireciona para `/` (sem rota original) ou ficam
+    // visíveis controlos de utilizador autenticado. Esperar pela URL
+    // pode falhar em cold-start lento — em vez disso esperamos o link
+    // "Publicar" que só aparece autenticado (ver Navbar).
+    await expect(page.getByRole('link', { name: 'Publicar', exact: true })).toBeVisible({
+      timeout: 30_000,
+    })
 
     // Abrir o dropdown do utilizador (botão com aria-haspopup="menu")
     // e clicar Sair. Usamos locator CSS porque getByRole não filtra por aria-haspopup.

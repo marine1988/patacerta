@@ -41,7 +41,25 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Auth endpoints publicos (login, register, refresh) podem devolver
+    // 401 legitimamente (credenciais erradas, refresh token inexistente).
+    // Auto-refresh nestes casos provoca:
+    //  1. POST /auth/login -> 401 (credenciais erradas)
+    //  2. interceptor faz POST /auth/refresh -> 401 (sem cookie)
+    //  3. catch: window.location.href = '/entrar' -> reload, form perdido
+    // Resultado: o utilizador nunca ve a mensagem de erro porque a pagina
+    // recarrega antes do React renderizar o setError().
+    const url: string = originalRequest?.url ?? ''
+    const isAuthEndpoint =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/refresh') ||
+      url.includes('/auth/verify-email') ||
+      url.includes('/auth/resend-verification') ||
+      url.includes('/auth/forgot-password') ||
+      url.includes('/auth/reset-password')
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // Another refresh is in progress — queue this request
         return new Promise((resolve, reject) => {
