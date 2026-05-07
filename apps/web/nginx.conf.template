@@ -60,6 +60,11 @@ server {
     # Usa um proxy interno para o API que devolve 301 com Location
     # absoluta (PUBLIC_URL). Só intercepta IDs puramente numéricos —
     # slugs (que têm letras/hífens) caem no SPA fallback abaixo.
+    #
+    # Quando o ID não existe (404 do API), interceptamos o erro e
+    # delegamos para o SPA — assim a página /criador/:id renderiza
+    # o estado "Criador não encontrado" em vez de servir HTML 404
+    # do nginx (que rebenta toda a navegação client-side).
     location ~ ^/criador/(\d+)$ {
         set $api_upstream http://api:3001;
         proxy_pass $api_upstream/__redirect/breeder/$1;
@@ -67,10 +72,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        # Importante: deixar o 301 do API passar para o cliente; sem
-        # isto o nginx tentaria seguir o redirect internamente.
-        proxy_intercept_errors off;
+        # Deixar 301 (Location) passar para o cliente.
         proxy_redirect off;
+        # Mas interceptar 404 (ID inexistente) e cair no SPA.
+        proxy_intercept_errors on;
+        error_page 404 = @spa_fallback;
     }
 
     location ~ ^/servicos/(\d+)$ {
@@ -80,8 +86,15 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_intercept_errors off;
         proxy_redirect off;
+        proxy_intercept_errors on;
+        error_page 404 = @spa_fallback;
+    }
+
+    # Named location usado pelos blocos /criador/:id e /servicos/:id
+    # para fallback ao SPA quando o API devolve 404 (ID inexistente).
+    location @spa_fallback {
+        rewrite ^ /index.html last;
     }
 
     # Proxy MinIO public objects (breeder photos, service photos, etc.).
