@@ -1,4 +1,5 @@
 import jwt, { type SignOptions } from 'jsonwebtoken'
+import crypto from 'node:crypto'
 
 const MIN_SECRET_LENGTH = 32
 
@@ -49,6 +50,11 @@ export function signAccessToken(payload: TokenPayload): string {
   const opts: SignOptions = {
     expiresIn: JWT_EXPIRES_IN as string & SignOptions['expiresIn'],
     algorithm: 'HS256',
+    // jti aleatório garante token único mesmo com payload + iat idênticos.
+    // Sem isto, dois logins do mesmo user no mesmo segundo geram JWTs
+    // bit-a-bit iguais e — para o refresh token — colidem na unique
+    // constraint `tokenHash` do RefreshToken (Prisma P2002 → 500).
+    jwtid: crypto.randomBytes(16).toString('hex'),
   }
   return jwt.sign(payload, JWT_SECRET, opts)
 }
@@ -57,6 +63,9 @@ export function signRefreshToken(payload: TokenPayload): string {
   const opts: SignOptions = {
     expiresIn: JWT_REFRESH_EXPIRES_IN as string & SignOptions['expiresIn'],
     algorithm: 'HS256',
+    // ver comentário em signAccessToken — crítico aqui porque o
+    // refresh token é hashado e armazenado com unique constraint.
+    jwtid: crypto.randomBytes(16).toString('hex'),
   }
   return jwt.sign(payload, JWT_REFRESH_SECRET, opts)
 }
