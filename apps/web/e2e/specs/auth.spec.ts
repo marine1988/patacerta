@@ -60,16 +60,26 @@ test.describe('Autenticação — login', () => {
   })
 
   test('logout limpa sessão e volta a mostrar Entrar', async ({ page }) => {
+    // Stage pode ter cold-start no API que faz o login demorar > 30s.
+    // test.slow() triplica o timeout (90s) sem precisar de retries.
+    test.slow()
     await page.goto('/entrar')
     const emailInput = page.getByLabel('Email')
     await emailInput.waitFor({ state: 'visible' })
     await emailInput.fill(DEMO_CLIENT_EMAILS[2])
     await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+
+    // Esperar a resposta do login antes de procurar UI pos-login —
+    // evita flake quando o stage tem cold-start lento e a UI demora
+    // a re-renderizar com user autenticado.
+    const loginResponse = page.waitForResponse(
+      (r) => r.url().includes('/auth/login') && r.request().method() === 'POST',
+      { timeout: 60_000 },
+    )
     await page.getByRole('button', { name: 'Entrar' }).click()
-    // Após login, ou redireciona para `/` (sem rota original) ou ficam
-    // visíveis controlos de utilizador autenticado. Esperar pela URL
-    // pode falhar em cold-start lento — em vez disso esperamos o link
-    // "Publicar" que só aparece autenticado (ver Navbar).
+    await loginResponse
+
+    // Após login: link "Publicar" só aparece autenticado (ver Navbar).
     await expect(page.getByRole('link', { name: 'Publicar', exact: true })).toBeVisible({
       timeout: 30_000,
     })

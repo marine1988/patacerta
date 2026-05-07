@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { getFirstBreeder, getFirstService } from '../fixtures/api'
+import { dismissConsentBanner } from '../fixtures/auth'
+
+test.beforeEach(async ({ page }) => {
+  await dismissConsentBanner(page)
+})
 
 test.describe('Detalhe de criador', () => {
   test('abre perfil a partir da pesquisa', async ({ page }) => {
@@ -40,7 +45,9 @@ test.describe('Detalhe de serviço', () => {
     await firstServiceLink.click()
     // Pode ser id numérico ou slug (front prefere slug quando existe).
     await expect(page).toHaveURL(/\/servicos\/[\w-]+/)
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    // O h1 do título do serviço aparece após o detalhe carregar — dar
+    // tempo extra (cold start API + render).
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 })
   })
 
   test('carrega serviço via URL direto', async ({ request, page }) => {
