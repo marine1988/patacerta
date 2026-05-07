@@ -18,8 +18,10 @@ export interface ServiceCard {
  * Se nenhum breeder existir, lança erro (sinal claro que as seeds não correram).
  */
 export async function getFirstBreeder(request: APIRequestContext): Promise<BreederCard> {
-  const res = await request.get(`${API_BASE_URL}/breeders?limit=1`)
-  if (!res.ok()) throw new Error(`GET /breeders falhou: ${res.status()}`)
+  // Endpoint público de listagem é /search/breeders (ver search.router.ts).
+  // /breeders só expõe detalhe por id e endpoints owner-scoped (/me/...).
+  const res = await request.get(`${API_BASE_URL}/search/breeders?limit=1`)
+  if (!res.ok()) throw new Error(`GET /search/breeders falhou: ${res.status()}`)
   const json = (await res.json()) as { data?: BreederCard[]; items?: BreederCard[] }
   const list = json.data ?? json.items ?? []
   const first = list[0]

@@ -73,3 +73,29 @@ export function uniqueEmail(prefix = 'e2e'): string {
   const rand = Math.random().toString(36).slice(2, 8)
   return `${prefix}+${stamp}${rand}@e2e.patacerta.test`
 }
+
+/**
+ * Injecta uma decisão de consent já tomada no localStorage para que o
+ * `ConsentBanner` não apareça e bloqueie cliques/inputs em testes.
+ * Tem de ser chamado ANTES de `page.goto(...)` (usa `addInitScript`).
+ *
+ * Versão e schema têm de bater certo com `apps/web/src/lib/consent.ts`
+ * (`COOKIE_CONSENT_VERSION` e `STORAGE_KEY`).
+ */
+export async function dismissConsentBanner(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem(
+        'pc_consent_v1',
+        JSON.stringify({
+          anonId: 'e2e-' + Math.random().toString(36).slice(2, 10),
+          decision: { necessary: true, analytics: false, marketing: false },
+          version: '2026-04-30',
+          decidedAt: new Date().toISOString(),
+        }),
+      )
+    } catch {
+      // ignore
+    }
+  })
+}

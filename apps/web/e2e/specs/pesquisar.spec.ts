@@ -43,7 +43,7 @@ test.describe('Pesquisa — criadores e serviços', () => {
 
     // Espera que a lista carregue (aguardar a chamada à API resolver)
     await page.waitForResponse(
-      (r) => r.url().includes('/api/breeders') && r.request().method() === 'GET',
+      (r) => r.url().includes('/api/search/breeders') && r.request().method() === 'GET',
       { timeout: 15_000 },
     )
 

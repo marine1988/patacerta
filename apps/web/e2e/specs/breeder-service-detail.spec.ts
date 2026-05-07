@@ -38,7 +38,8 @@ test.describe('Detalhe de serviço', () => {
     await expect(firstServiceLink).toBeVisible({ timeout: 15_000 })
 
     await firstServiceLink.click()
-    await expect(page).toHaveURL(/\/servicos\/\d+/)
+    // Pode ser id numérico ou slug (front prefere slug quando existe).
+    await expect(page).toHaveURL(/\/servicos\/[\w-]+/)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 

@@ -55,7 +55,7 @@ test.describe('Homepage e navegação', () => {
   test('navbar mostra Entrar / Juntar-me quando não autenticado', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Juntar-me' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Juntar-me', exact: true })).toBeVisible()
   })
 
   test('URL inválido devolve a página 404', async ({ page }) => {
