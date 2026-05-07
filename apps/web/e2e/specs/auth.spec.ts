@@ -59,51 +59,39 @@ test.describe('Autenticação — login', () => {
     await expect(page).toHaveURL(/\/area-pessoal/, { timeout: 15_000 })
   })
 
-  test('logout limpa sessão e volta a mostrar Entrar', async ({ browser }) => {
-    test.slow()
-
-    // FLAKE conhecido em stage: ao executar a suite E2E completa, o POST
-    // /api/auth/login deste teste fica preso (status -1 no Chromium, sem
-    // resposta nem erro de rede) MESMO com browser context novo. Reprodução
-    // manual via curl/Invoke-WebRequest funciona sempre em ~1s.
+  test('logout limpa sessão e volta a mostrar Entrar', async ({ page }) => {
+    // Em máquinas corporativas com proxy de inspeção TLS (Netskope, Zscaler,
+    // BlueCoat, etc.) o POST /api/auth/login deste teste fica preso (status -1
+    // no Chromium, sem timeout do edge real). Confirmado: cert TLS de
+    // stage.patacerta.pt vem assinado por "Deloitte/netskope.com" na máquina
+    // dev → tráfego é intercetado e o proxy ocasionalmente engasga em POSTs
+    // sequenciais para o mesmo endpoint.
     //
-    // Hipótese mais provável: edge/WAF/Cloudflare em stage detecta o pattern
-    // de muitos POST /auth/login do mesmo IP a partir de runners CI/dev e
-    // faz drop silencioso por algum tempo. Em isolamento (apenas spec auth)
-    // o teste passa; no contexto da suite completa há ~10+ logins acumulados
-    // de outros specs (Stripe, dashboard, etc.).
-    //
-    // O fluxo de logout em si está coberto manualmente e por outros specs
-    // que fazem login (cliente1/cliente2 no início desta spec). Skipped
-    // até resolvermos o edge layer (issue tracker: edge rate limit auth).
+    // Em CI (runners limpos) e stage/prod reais o teste corre normalmente.
+    // Localmente, definir E2E_SKIP_FLAKY_LOGOUT=1 para saltar este teste.
     test.skip(
-      !!process.env.E2E_BASE_URL && process.env.E2E_BASE_URL.includes('stage.patacerta.pt'),
-      'flake do edge layer em stage — POST /auth/login fica preso após ~10 logins acumulados pela suite',
+      process.env.E2E_SKIP_FLAKY_LOGOUT === '1',
+      'logout flake — proxy corporativo de inspeção TLS interfere com POST /auth/login (Netskope/Zscaler)',
     )
 
-    const context = await browser.newContext()
-    const page = await context.newPage()
-    await dismissConsentBanner(page)
+    await page.goto('/entrar')
+    await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[2])
+    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByRole('button', { name: 'Entrar' }).click()
 
-    try {
-      await page.goto('/entrar')
-      await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[2])
-      await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
-      await page.getByRole('button', { name: 'Entrar' }).click()
+    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
 
-      await expect(page).toHaveURL(/\/$/, { timeout: 30_000 })
+    // Após login, link "Publicar" só aparece autenticado (ver Navbar).
+    await expect(page.getByRole('link', { name: 'Publicar', exact: true })).toBeVisible({
+      timeout: 15_000,
+    })
 
-      await expect(page.getByRole('link', { name: 'Publicar', exact: true })).toBeVisible({
-        timeout: 30_000,
-      })
+    // Abrir o dropdown do utilizador (botão com aria-haspopup="menu")
+    // e clicar Sair. Usamos locator CSS porque getByRole não filtra por aria-haspopup.
+    await page.locator('button[aria-haspopup="menu"]').first().click()
+    await page.getByRole('menuitem', { name: /Sair/i }).click()
 
-      await page.locator('button[aria-haspopup="menu"]').first().click()
-      await page.getByRole('menuitem', { name: /Sair/i }).click()
-
-      await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
-    } finally {
-      await context.close()
-    }
+    await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
   })
 })
 
