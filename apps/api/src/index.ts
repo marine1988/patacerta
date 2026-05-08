@@ -164,6 +164,32 @@ app.listen(PORT, () => {
     process.exit(1)
   }
 
+  // SMTP fail-fast em producao.
+  //
+  // o fallback silencioso para console.log em apps/api/src/lib/email.ts
+  // mantem-se para dev local e stage (onde AUTH_SKIP_EMAIL_VERIFICATION
+  // contorna a necessidade de email verificado), mas em prod nao podemos
+  // arrancar sem SMTP — emails de verificacao, reset de password e
+  // confirmacao de pagamentos Stripe sao essenciais e silenciar falhas
+  // tornar-se-ia uma armadilha invisivel.
+  //
+  // Operador pode optar por sair deste guard definindo
+  // ALLOW_NO_SMTP_IN_PROD=1 (ex: rolling deploy de uma feature que nao
+  // depende de email, ou janela de manutencao do provider). Nao
+  // recomendado em uso normal.
+  if (isProd && !process.env.SMTP_HOST) {
+    if (process.env.ALLOW_NO_SMTP_IN_PROD === '1' || process.env.ALLOW_NO_SMTP_IN_PROD === 'true') {
+      console.warn(
+        '[PataCerta API] ⚠  ALLOW_NO_SMTP_IN_PROD=1 e SMTP_HOST ausente — emails serao apenas logados. NAO usar em uso normal.',
+      )
+    } else {
+      console.error(
+        '[PataCerta API] FATAL: SMTP_HOST e obrigatorio em producao (verificacao de email, reset de password, confirmacao Stripe). Defina SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM ou ALLOW_NO_SMTP_IN_PROD=1 para contornar (nao recomendado). Exiting.',
+      )
+      process.exit(1)
+    }
+  }
+
   if (skipOn) {
     console.warn(
       '[PataCerta API] ⚠  AUTH_SKIP_EMAIL_VERIFICATION=true — email verification bypassed (do NOT use in production)',
