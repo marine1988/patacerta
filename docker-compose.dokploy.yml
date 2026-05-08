@@ -156,6 +156,34 @@ services:
       retries: 5
       start_period: 30s
 
+  # ── Cron jobs ──
+  # Reusa a mesma imagem do API (mesmo build context + Dockerfile), mas
+  # sobrepoe o entrypoint para arrancar busybox crond em foreground em
+  # vez do servidor Express. Compose/BuildKit fazem cache hit do layer
+  # de build, portanto nao ha duplicacao real de tempo de build.
+  #
+  # Jobs agendados (ver apps/api/cron-entrypoint.sh):
+  #   - expire-sponsored-slots:  horario (minuto 0 de cada hora UTC)
+  #   - cleanup-refresh-tokens:  diario 03:00 UTC
+  #
+  # Sem porta exposta (nao serve trafego). Acede a Postgres pela mesma
+  # rede 'default'. Restart unless-stopped garante que se um job
+  # individual falhar e levar o crond abaixo, o container reinicia.
+  cron:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgresql://patacerta:${POSTGRES_PASSWORD}@postgres:5432/patacerta?schema=public&connection_limit=2&pool_timeout=20&connect_timeout=10&socket_timeout=30
+    entrypoint: ['/app/cron-entrypoint.sh']
+    restart: unless-stopped
+
   # ── PostgreSQL 16 ──
   postgres:
     image: postgres:16-alpine

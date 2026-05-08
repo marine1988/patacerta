@@ -28,7 +28,8 @@ COPY --from=base /app/apps/api/package.json ./apps/api/package.json
 COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY apps/api/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY apps/api/cron-entrypoint.sh /app/cron-entrypoint.sh
+RUN chmod +x /app/entrypoint.sh /app/cron-entrypoint.sh
 
 EXPOSE 3001
 ENV NODE_ENV=production
