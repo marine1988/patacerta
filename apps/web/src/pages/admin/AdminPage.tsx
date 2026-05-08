@@ -42,10 +42,38 @@ interface TabDef {
   content: ReactNode
 }
 
+// Chave localStorage para o estado collapsed da sidebar do admin.
+// Mantida fora do componente para nao recriar a cada render.
+const SIDEBAR_COLLAPSED_KEY = 'pc-admin-sidebar-collapsed'
+
 export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<string>(tabParam ?? 'resumo')
+
+  // Estado collapsed da sidebar — persistido em localStorage para se
+  // lembrar entre sessoes. Lazy initializer para evitar ler localStorage
+  // em SSR ou em cada render. Tolerante a localStorage inacessivel
+  // (private mode, quotas, etc) — falha silenciosamente para "expandida".
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  function toggleSidebar() {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        // ignore — nao bloqueia UX se localStorage estiver indisponivel
+      }
+      return next
+    })
+  }
 
   // Painel privado — noIndex em complemento ao robots.txt.
   usePageMeta({
@@ -272,14 +300,54 @@ export function AdminPage() {
         />
       </div>
 
-      {/* Desktop: vertical sidebar + content */}
-      <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-8">
+      {/* Desktop: vertical sidebar + content.
+       *
+       * Largura da sidebar e' uma CSS var --sidebar-w controlada pelo estado
+       * sidebarCollapsed (220px expandida, 64px collapsed). Usar var em vez
+       * de duplicar grid-cols-[...] permite transicoes CSS suaves e mantem
+       * o grid-template estavel para o React (sem reflow do main content).
+       */}
+      <div
+        className="lg:grid lg:gap-8"
+        style={{ gridTemplateColumns: sidebarCollapsed ? '64px 1fr' : '220px 1fr' }}
+      >
         <nav
           className="hidden lg:block"
           aria-label="Secções do painel de administração"
           role="tablist"
           aria-orientation="vertical"
         >
+          {/* Botao toggle no topo. Quando collapsed, aponta para a direita
+           * (expandir); quando expandida, aponta para a esquerda (collapsar).
+           * Acessibilidade: aria-expanded reflecte o estado actual da sidebar,
+           * aria-label muda para descrever a accao que o click vai fazer.
+           */}
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+              title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-surface-alt hover:text-ink transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d={sidebarCollapsed ? 'M8.25 4.5l7.5 7.5-7.5 7.5' : 'M15.75 19.5L8.25 12l7.5-7.5'}
+                />
+              </svg>
+            </button>
+          </div>
           <ul className="flex flex-col gap-1 border-l border-gray-200">
             {tabs.map((tab) => {
               const isActive = tab.id === activeTab
@@ -290,14 +358,21 @@ export function AdminPage() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => changeTab(tab.id)}
-                    className={`-ml-px flex w-full items-center gap-3 border-l-2 px-4 py-2 text-left text-sm font-medium transition-colors ${
+                    // Quando collapsed: usar `title` nativo como tooltip
+                    // (suficiente — sem dependencia de Tippy/Radix). Em
+                    // collapsed centramos o icone com justify-center, e
+                    // escondemos a label via classe condicional.
+                    title={sidebarCollapsed ? tab.label : undefined}
+                    className={`-ml-px flex w-full items-center gap-3 border-l-2 py-2 text-left text-sm font-medium transition-colors ${
+                      sidebarCollapsed ? 'justify-center px-2' : 'px-4'
+                    } ${
                       isActive
                         ? 'border-caramel-600 bg-caramel-50/40 text-caramel-700'
                         : 'border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900'
                     }`}
                   >
                     <span className="shrink-0">{tab.icon}</span>
-                    <span>{tab.label}</span>
+                    {!sidebarCollapsed && <span className="truncate">{tab.label}</span>}
                   </button>
                 </li>
               )

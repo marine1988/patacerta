@@ -208,9 +208,38 @@ export function CriadoresTab() {
             })}
           </ul>
 
-          {/* Desktop: tabela tradicional */}
-          <div className="hidden md:block md:overflow-x-auto">
-            <table className="table-auto w-full text-sm">
+          {/* Desktop: tabela com larguras fixas para evitar scroll horizontal.
+           *
+           * Estrategia: table-fixed + colgroup com larguras explicitas. Sem
+           * isto, o table-auto deixaria o browser distribuir o espaco e os
+           * conteudos longos (Nome comercial, motivos, etc) faziam overflow
+           * forcando scroll horizontal — especialmente apertado quando a
+           * sidebar do AdminPage esta expandida (220px).
+           *
+           * Larguras escolhidas com base no conteudo real:
+           *   Nome comercial: auto (col flexivel) com truncate
+           *   NIF: 9ch (sempre 9 digitos)
+           *   DGAV: 12ch (formato "DGAV-2020-077" ou "pt-504651")
+           *   Distrito: 9rem (nomes tipo "Viana do Castelo" cabem em 2 linhas)
+           *   Estado: 8rem (badges "Pendente de verificação" precisam espaco)
+           *   Docs/Aval: 5rem (formato "1 / 0")
+           *   Data: 6rem (formato curto "28/04/2026")
+           *   Accao: 7rem (botao Suspender/Reactivar)
+           *   Destaque: 8rem (FeatureToggle compacto)
+           */}
+          <div className="hidden md:block">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col />
+                <col className="w-[6.5rem]" />
+                <col className="w-[8rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[7.5rem]" />
+                <col className="w-[5rem]" />
+                <col className="w-[5.5rem]" />
+                <col className="w-[6.5rem]" />
+                <col className="w-[8rem]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2">Nome comercial</th>
@@ -218,7 +247,7 @@ export function CriadoresTab() {
                   <th className="px-3 py-2">DGAV</th>
                   <th className="px-3 py-2">Distrito</th>
                   <th className="px-3 py-2">Estado</th>
-                  <th className="px-3 py-2">Docs / Avaliações</th>
+                  <th className="px-3 py-2">Docs/Aval.</th>
                   <th className="px-3 py-2">Data</th>
                   <th className="px-3 py-2">Acção</th>
                   <th className="px-3 py-2">Destaque</th>
@@ -231,22 +260,38 @@ export function CriadoresTab() {
                     (suspendMutation.isPending &&
                       suspendMutation.variables?.breederId === breeder.id) ||
                     (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
+                  const ownerName = `${breeder.user.firstName} ${breeder.user.lastName}`
                   return (
                     <tr
                       key={breeder.id}
                       className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                     >
                       <td className="px-3 py-2">
-                        <div className="font-medium text-ink">{breeder.businessName}</div>
-                        <div className="text-xs text-muted">
-                          {breeder.user.firstName} {breeder.user.lastName}
+                        {/* min-w-0 + truncate dentro da celula:
+                         * o div precisa ser block para o truncate funcionar,
+                         * e o `title` serve fallback para nomes cortados. */}
+                        <div className="min-w-0">
+                          <div
+                            className="truncate font-medium text-ink"
+                            title={breeder.businessName}
+                          >
+                            {breeder.businessName}
+                          </div>
+                          <div className="truncate text-xs text-muted" title={ownerName}>
+                            {ownerName}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-ink">{breeder.nif}</td>
-                      <td className="px-3 py-2 text-ink">
+                      <td className="px-3 py-2 text-ink truncate" title={breeder.nif}>
+                        {breeder.nif}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-ink truncate"
+                        title={breeder.dgavNumber || undefined}
+                      >
                         {breeder.dgavNumber || String.fromCharCode(8212)}
                       </td>
-                      <td className="px-3 py-2 text-ink">
+                      <td className="px-3 py-2 text-ink" title={breeder.district?.namePt}>
                         {breeder.district?.namePt ?? String.fromCharCode(8212)}
                       </td>
                       <td className="px-3 py-2">
