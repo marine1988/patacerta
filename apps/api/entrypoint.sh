@@ -59,7 +59,45 @@ if [ "$USE_DB_PUSH" = "true" ] || [ "$USE_DB_PUSH" = "1" ]; then
   echo "[PataCerta] ⚠  USE_DB_PUSH=$USE_DB_PUSH — usando 'prisma db push --accept-data-loss' (legado, sem audit trail)"
   npx prisma db push --skip-generate --accept-data-loss
 else
-  # Detectar estado da DB: existe alguma tabela aplicacional? existe _prisma_migrations?
+  # ────────────────────────────────────────────────────────────────────────
+  # Estrategia de baseline robusta para DBs criadas via `db push`.
+  #
+  # Problema: as migrations versionadas geradas por `prisma migrate dev`
+  # nao usam IF NOT EXISTS (CREATE TABLE, CREATE TYPE, ALTER TABLE ADD
+  # COLUMN, etc.). Num schema ja' totalmente provisionado por `db push`
+  # anterior, qualquer `migrate deploy` falhara' com "already exists" /
+  # P3018 / P3009.
+  #
+  # Solucao: para cada migration versionada que NAO esteja em
+  # `_prisma_migrations` com finished_at IS NOT NULL E rolled_back_at IS
+  # NULL (ou seja, "applied limpo"), marcamo-la como applied antes de
+  # correr `migrate deploy`. Isto cobre os 3 cenarios:
+  #
+  #   1. DB EMPTY (nova): nenhuma esta marcada → marcamos todas como
+  #      applied → migrate deploy detecta "tudo applied", cria
+  #      `_prisma_migrations` se nao existir... mas espera, nao corre
+  #      o SQL. Aqui SIM precisamos de comportamento diferente: se DB
+  #      vazia, `migrate deploy` directo (sem pre-baseline) cria tudo.
+  #
+  #   2. DB com schema (db push) sem `_prisma_migrations`: marcamos
+  #      todas como applied → migrate deploy zero-op.
+  #
+  #   3. DB com schema sem `_prisma_migrations`, com algumas marcadas
+  #      como FAILED (estado intermedio dos boots anteriores): para
+  #      cada FAILED, primeiro `resolve --rolled-back`, depois
+  #      `resolve --applied`. Para as nao registadas, `resolve --applied`.
+  #      → migrate deploy zero-op.
+  #
+  #   4. Steady-state (futuro): adicionamos uma migration nova → ela nao
+  #      esta registada → marcamo-la como applied antes do deploy. ⚠ ISSO
+  #      E' MAU: salta o SQL da migration nova!
+  #
+  # Para evitar o caso 4, distinguimos: so' fazemos o "pre-baseline" se
+  # a DB ja' tem tabelas aplicacionais MAS as migrations nao estao todas
+  # registadas (sintoma de db push legado). Se a DB esta MIGRATED limpo,
+  # `migrate deploy` corre normalmente.
+  # ────────────────────────────────────────────────────────────────────────
+
   echo "[PataCerta] A inspeccionar estado da base de dados..."
   DB_STATE=$(node --input-type=module -e "
     import { PrismaClient } from '@prisma/client'
@@ -71,9 +109,10 @@ else
       const names = tables.map(t => t.tablename)
       const hasMigrations = names.includes('_prisma_migrations')
       const hasAppTables = names.some(n => n !== '_prisma_migrations')
-      if (!hasAppTables) process.stdout.write('EMPTY')
+      if (!hasAppTables && !hasMigrations) process.stdout.write('EMPTY')
+      else if (!hasAppTables && hasMigrations) process.stdout.write('EMPTY')
       else if (!hasMigrations) process.stdout.write('NEEDS_BASELINE')
-      else process.stdout.write('MIGRATED')
+      else process.stdout.write('HAS_MIGRATIONS_TABLE')
     } catch (err) {
       process.stderr.write('[detector] ' + (err && err.message || err) + '\n')
       process.exit(2)
@@ -83,7 +122,7 @@ else
   ")
 
   case "$DB_STATE" in
-    EMPTY|NEEDS_BASELINE|MIGRATED)
+    EMPTY|NEEDS_BASELINE|HAS_MIGRATIONS_TABLE)
       echo "[PataCerta] Estado da DB: $DB_STATE"
       ;;
     *)
@@ -92,66 +131,103 @@ else
       ;;
   esac
 
-  if [ "$DB_STATE" = "NEEDS_BASELINE" ]; then
-    echo "[PataCerta] DB tem schema mas falta _prisma_migrations — a fazer baseline das migrations existentes..."
+  # Para HAS_MIGRATIONS_TABLE precisamos saber se ha migrations nao-aplicadas
+  # ou em estado FAILED — sintoma de drift db-push-legacy.
+  NEEDS_DRIFT_REPAIR=0
+  if [ "$DB_STATE" = "HAS_MIGRATIONS_TABLE" ] || [ "$DB_STATE" = "NEEDS_BASELINE" ]; then
+    # Conta migrations versionadas no disco
+    DISK_COUNT=$(ls -1 prisma/migrations/ 2>/dev/null | grep -E '^[0-9]+_' | wc -l | tr -d ' ')
+
+    # Conta migrations applied limpo na DB (0 se _prisma_migrations nao existe)
+    if [ "$DB_STATE" = "NEEDS_BASELINE" ]; then
+      APPLIED_COUNT=0
+      FAILED_COUNT=0
+    else
+      APPLIED_COUNT=$(node --input-type=module -e "
+        import { PrismaClient } from '@prisma/client'
+        const p = new PrismaClient()
+        try {
+          const r = await p.\$queryRawUnsafe(
+            \"SELECT COUNT(*)::int AS c FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL\"
+          )
+          process.stdout.write(String(r[0].c))
+        } finally { await p.\$disconnect() }
+      ")
+      FAILED_COUNT=$(node --input-type=module -e "
+        import { PrismaClient } from '@prisma/client'
+        const p = new PrismaClient()
+        try {
+          const r = await p.\$queryRawUnsafe(
+            \"SELECT COUNT(*)::int AS c FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL\"
+          )
+          process.stdout.write(String(r[0].c))
+        } finally { await p.\$disconnect() }
+      ")
+    fi
+
+    echo "[PataCerta] Migrations no disco: $DISK_COUNT | applied limpo: $APPLIED_COUNT | failed/rolled-back: $FAILED_COUNT"
+
+    # Drift se ha tabelas aplicacionais MAS o numero applied e' menor que o total
+    # no disco (sintoma classico de db push legado, ou de boot intermedio falhado).
+    if [ "$APPLIED_COUNT" -lt "$DISK_COUNT" ] || [ "$FAILED_COUNT" -gt 0 ]; then
+      NEEDS_DRIFT_REPAIR=1
+    fi
+  fi
+
+  if [ "$NEEDS_DRIFT_REPAIR" = "1" ]; then
+    echo "[PataCerta] A reparar drift: schema fisico ja' contem efeito das migrations versionadas"
+    echo "[PataCerta] (DB criada/expandida via 'db push' antes da introducao de migrate deploy)."
+
     for migration_dir in prisma/migrations/*/; do
       migration_name=$(basename "$migration_dir")
-      # Saltar pasta migration_lock.toml ou similar
-      if [ ! -f "${migration_dir}migration.sql" ]; then
-        continue
-      fi
-      echo "[PataCerta]   resolve --applied $migration_name"
-      npx prisma migrate resolve --applied "$migration_name" || {
-        echo "[PataCerta] AVISO: resolve falhou para $migration_name (provavelmente ja' marcada)"
-      }
+      [ ! -f "${migration_dir}migration.sql" ] && continue
+
+      # Verifica estado actual desta migration na DB.
+      # Nome da migration vem do nome do directorio, sempre [0-9a-z_], seguro
+      # para interpolacao directa (sem risco de SQL injection).
+      MIG_STATE=$(node --input-type=module -e "
+        import { PrismaClient } from '@prisma/client'
+        const p = new PrismaClient()
+        try {
+          const r = await p.\$queryRawUnsafe(
+            \"SELECT finished_at, rolled_back_at FROM _prisma_migrations WHERE migration_name = '$migration_name'\"
+          )
+          if (r.length === 0) process.stdout.write('MISSING')
+          else if (r[0].rolled_back_at) process.stdout.write('ROLLED_BACK')
+          else if (!r[0].finished_at) process.stdout.write('FAILED')
+          else process.stdout.write('APPLIED')
+        } catch (err) {
+          process.stdout.write('MISSING')
+        } finally { await p.\$disconnect() }
+      " 2>/dev/null)
+
+      case "$MIG_STATE" in
+        APPLIED)
+          echo "[PataCerta]   $migration_name: ja' APPLIED, skip"
+          ;;
+        FAILED)
+          echo "[PataCerta]   $migration_name: FAILED → rolled-back + applied"
+          npx prisma migrate resolve --rolled-back "$migration_name" || \
+            echo "[PataCerta]   AVISO: rolled-back falhou para $migration_name"
+          npx prisma migrate resolve --applied "$migration_name" || \
+            echo "[PataCerta]   AVISO: applied falhou para $migration_name"
+          ;;
+        ROLLED_BACK|MISSING)
+          echo "[PataCerta]   $migration_name: $MIG_STATE → applied"
+          npx prisma migrate resolve --applied "$migration_name" || \
+            echo "[PataCerta]   AVISO: applied falhou para $migration_name"
+          ;;
+        *)
+          echo "[PataCerta]   $migration_name: estado desconhecido '$MIG_STATE', skip"
+          ;;
+      esac
     done
-    echo "[PataCerta] Baseline concluido."
+
+    echo "[PataCerta] Reparacao concluida."
   fi
 
   echo "[PataCerta] A correr 'prisma migrate deploy'..."
-  if ! npx prisma migrate deploy; then
-    # P3009: ha entradas FAILED em _prisma_migrations. Caso comum em DBs
-    # que originalmente foram criadas via `db push` e em que o primeiro
-    # `migrate deploy` tentou correr migrations cujo SQL nao usa
-    # IF NOT EXISTS — Prisma marca-as como failed mesmo que o schema
-    # real esteja completo.
-    #
-    # Estrategia: listar as migrations marcadas FAILED, marca-las como
-    # applied (sabemos que o schema esta correcto porque db push o criou
-    # antes), depois correr migrate deploy outra vez (zero-op esperado).
-    echo "[PataCerta] migrate deploy falhou. A tentar recuperar de migrations FAILED..."
-    FAILED_MIGRATIONS=$(node --input-type=module -e "
-      import { PrismaClient } from '@prisma/client'
-      const p = new PrismaClient()
-      try {
-        const rows = await p.\$queryRawUnsafe(
-          \"SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL\"
-        )
-        for (const r of rows) process.stdout.write(r.migration_name + '\n')
-      } catch (err) {
-        process.stderr.write('[recovery] ' + (err && err.message || err) + '\n')
-        process.exit(2)
-      } finally {
-        await p.\$disconnect()
-      }
-    ")
-
-    if [ -z "$FAILED_MIGRATIONS" ]; then
-      echo "[PataCerta] ERRO: migrate deploy falhou mas nao ha migrations FAILED. Causa desconhecida. A abortar."
-      exit 1
-    fi
-
-    echo "$FAILED_MIGRATIONS" | while IFS= read -r mig; do
-      [ -z "$mig" ] && continue
-      echo "[PataCerta]   resolve --applied $mig (assumindo que schema ja' tem o efeito da migration)"
-      npx prisma migrate resolve --applied "$mig" || {
-        echo "[PataCerta] AVISO: resolve falhou para $mig"
-      }
-    done
-
-    echo "[PataCerta] A correr 'prisma migrate deploy' apos recuperacao..."
-    npx prisma migrate deploy
-  fi
+  npx prisma migrate deploy
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
