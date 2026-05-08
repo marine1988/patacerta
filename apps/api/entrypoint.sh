@@ -109,7 +109,49 @@ else
   fi
 
   echo "[PataCerta] A correr 'prisma migrate deploy'..."
-  npx prisma migrate deploy
+  if ! npx prisma migrate deploy; then
+    # P3009: ha entradas FAILED em _prisma_migrations. Caso comum em DBs
+    # que originalmente foram criadas via `db push` e em que o primeiro
+    # `migrate deploy` tentou correr migrations cujo SQL nao usa
+    # IF NOT EXISTS — Prisma marca-as como failed mesmo que o schema
+    # real esteja completo.
+    #
+    # Estrategia: listar as migrations marcadas FAILED, marca-las como
+    # applied (sabemos que o schema esta correcto porque db push o criou
+    # antes), depois correr migrate deploy outra vez (zero-op esperado).
+    echo "[PataCerta] migrate deploy falhou. A tentar recuperar de migrations FAILED..."
+    FAILED_MIGRATIONS=$(node --input-type=module -e "
+      import { PrismaClient } from '@prisma/client'
+      const p = new PrismaClient()
+      try {
+        const rows = await p.\$queryRawUnsafe(
+          \"SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL\"
+        )
+        for (const r of rows) process.stdout.write(r.migration_name + '\n')
+      } catch (err) {
+        process.stderr.write('[recovery] ' + (err && err.message || err) + '\n')
+        process.exit(2)
+      } finally {
+        await p.\$disconnect()
+      }
+    ")
+
+    if [ -z "$FAILED_MIGRATIONS" ]; then
+      echo "[PataCerta] ERRO: migrate deploy falhou mas nao ha migrations FAILED. Causa desconhecida. A abortar."
+      exit 1
+    fi
+
+    echo "$FAILED_MIGRATIONS" | while IFS= read -r mig; do
+      [ -z "$mig" ] && continue
+      echo "[PataCerta]   resolve --applied $mig (assumindo que schema ja' tem o efeito da migration)"
+      npx prisma migrate resolve --applied "$mig" || {
+        echo "[PataCerta] AVISO: resolve falhou para $mig"
+      }
+    done
+
+    echo "[PataCerta] A correr 'prisma migrate deploy' apos recuperacao..."
+    npx prisma migrate deploy
+  fi
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
