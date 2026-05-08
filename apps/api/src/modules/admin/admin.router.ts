@@ -35,6 +35,10 @@ adminRouter.patch('/users/:id/suspend', validate(suspendUserSchema), ctrl.suspen
 // A promocao para VERIFIED acontece exclusivamente via aprovacao do
 // documento DGAV (PATCH /verification/:docId/review).
 adminRouter.get('/breeders', ctrl.listAllBreeders)
+// Detalhe completo (perfil + docs + dono + racas) usado pela pagina
+// /admin/criadores/:id para o admin verificar o cartao DGAV antes de
+// aprovar a verificacao.
+adminRouter.get('/breeders/:id', ctrl.getBreederDetail)
 adminRouter.patch('/breeders/:id/suspend', validate(suspendBreederSchema), ctrl.suspendBreeder)
 adminRouter.patch('/breeders/:id/unsuspend', ctrl.unsuspendBreeder)
 

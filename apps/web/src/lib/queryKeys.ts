@@ -58,6 +58,8 @@ export const queryKeys = {
       paymentStatus: string,
     ) => ['admin-sponsored-slots', page, status, breedId ?? null, paymentStatus] as const,
     sponsoredSlotsAll: () => ['admin-sponsored-slots'] as const,
+    breederDetail: (id: number | string | null | undefined) =>
+      ['admin-breeder-detail', id ?? null] as const,
     breedersVerified: (search: string) => ['admin-breeders-verified', search] as const,
     breedsMini: () => ['breeds-mini'] as const,
   },

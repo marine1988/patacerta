@@ -208,6 +208,80 @@ export const listAllBreeders = asyncHandler(async (req, res) => {
   res.json(paginatedResponse(breeders, total, page, limit))
 })
 
+// Detalhe completo de um criador para a pagina /admin/criadores/:id.
+//
+// Inclui dados que o admin precisa para verificar o cartao DGAV e
+// confirmar identidade do criador:
+//  - Perfil completo (todos os campos, incluindo morada e flags)
+//  - Dono (user) com email, telefone, role, datas de criacao e verificacao
+//  - District + municipality completos
+//  - Especies + racas autorizadas (com nome PT do catalogo)
+//  - TODOS os verification docs (qualquer status), com info do reviewer
+//    para historico (quem aprovou/rejeitou e quando)
+//  - Contagens agregadas (reviews, photos, threads)
+//
+// O ficheiro em si nao e' devolvido aqui — frontend usa
+// GET /verification/:docId/view para presigned URL on-demand.
+export const getBreederDetail = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+      },
+      district: { select: { id: true, namePt: true, code: true } },
+      municipality: { select: { id: true, namePt: true, code: true } },
+      species: {
+        include: {
+          species: { select: { id: true, nameSlug: true, namePt: true } },
+        },
+      },
+      breeds: {
+        include: {
+          breed: { select: { id: true, nameSlug: true, namePt: true } },
+        },
+      },
+      verificationDocs: {
+        // Ordem: PENDING primeiro (precisam de accao), depois mais recentes.
+        // Prisma nao suporta ordering por enum custom — usamos createdAt desc
+        // como proxy razoavel (docs novos sao normalmente PENDING).
+        orderBy: { createdAt: 'desc' },
+        include: {
+          reviewer: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      },
+      _count: {
+        select: {
+          reviews: true,
+          photos: true,
+          threadsAsBreeder: true,
+          breeds: true,
+        },
+      },
+    },
+  })
+
+  if (!breeder) {
+    throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+  }
+
+  res.json(breeder)
+})
+
 // Apenas SUSPEND / UNSUSPEND sao expostos como acoes do admin.
 // A transicao para VERIFIED so acontece quando o admin aprova o
 // documento DGAV em PATCH /verification/:docId/review. Isto evita que

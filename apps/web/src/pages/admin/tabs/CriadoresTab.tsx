@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -11,6 +12,7 @@ import { FeatureToggle } from '../_components/FeatureToggle'
 
 export function CriadoresTab() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [suspendingBreeder, setSuspendingBreeder] = useState<Breeder | null>(null)
@@ -133,7 +135,8 @@ export function CriadoresTab() {
               return (
                 <li
                   key={breeder.id}
-                  className="rounded-lg border border-line bg-surface p-4 shadow-sm"
+                  onClick={() => navigate(`/admin/criadores/${breeder.id}`)}
+                  className="cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-caramel-300 hover:bg-caramel-50/30"
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -162,7 +165,7 @@ export function CriadoresTab() {
                     <dt className="text-muted">Data</dt>
                     <dd className="text-ink">{formatDateShort(breeder.createdAt)}</dd>
                   </dl>
-                  <div className="mb-3">
+                  <div className="mb-3" onClick={(e) => e.stopPropagation()}>
                     <FeatureToggle
                       featuredUntil={breeder.featuredUntil}
                       isPending={
@@ -183,7 +186,7 @@ export function CriadoresTab() {
                       }
                     />
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     {isSuspended ? (
                       <Button
                         size="sm"
@@ -264,7 +267,8 @@ export function CriadoresTab() {
                   return (
                     <tr
                       key={breeder.id}
-                      className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
+                      onClick={() => navigate(`/admin/criadores/${breeder.id}`)}
+                      className={`cursor-pointer border-b border-line/60 transition-colors hover:bg-caramel-50/40 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                     >
                       <td className="px-3 py-2">
                         {/* min-w-0 + truncate dentro da celula:
@@ -303,7 +307,7 @@ export function CriadoresTab() {
                         {breeder._count.verificationDocs} / {breeder._count.reviews}
                       </td>
                       <td className="px-3 py-2 text-ink">{formatDateShort(breeder.createdAt)}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         {isSuspended ? (
                           <Button
                             size="sm"
@@ -323,7 +327,7 @@ export function CriadoresTab() {
                           </Button>
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <FeatureToggle
                           featuredUntil={breeder.featuredUntil}
                           isPending={
