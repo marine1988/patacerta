@@ -16,7 +16,29 @@ RUN pnpm --filter @patacerta/api db:generate
 RUN pnpm --filter @patacerta/api build
 
 FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl
+# Ferramentas runtime:
+#   openssl              — usado pelo Prisma client (requirido em alpine)
+#   postgresql16-client  — pg_dump/pg_restore para backups (versao tem que
+#                          casar com o servidor: postgres:16-alpine).
+#                          Em alpine 3.19+ o pacote chama-se postgresql16-client.
+#   age                  — encriptacao moderna (chave Ed25519) para backups.
+#   wget                 — usado pelos scripts de backup para Healthchecks pings
+#                          (ja vem na maior parte dos node:20-alpine, garantimos).
+#   ca-certificates      — necessario para wget HTTPS (Healthchecks.io)
+#   tar                  — empacotar uploads MinIO antes de encriptar
+# Nota: o cliente MinIO `mc` e' descarregado como binario standalone
+# (nao esta nos repos do alpine). E' fixado a uma release especifica para
+# reprodutibilidade do build.
+RUN apk add --no-cache \
+      openssl \
+      postgresql16-client \
+      age \
+      wget \
+      ca-certificates \
+      tar \
+  && wget -qO /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc.RELEASE.2025-08-13T08-35-41Z \
+  && chmod +x /usr/local/bin/mc \
+  && /usr/local/bin/mc --version
 
 WORKDIR /app
 COPY --from=base /app/node_modules ./node_modules
@@ -29,7 +51,8 @@ COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY apps/api/entrypoint.sh /app/entrypoint.sh
 COPY apps/api/cron-entrypoint.sh /app/cron-entrypoint.sh
-RUN chmod +x /app/entrypoint.sh /app/cron-entrypoint.sh
+COPY apps/api/scripts/ /app/scripts/
+RUN chmod +x /app/entrypoint.sh /app/cron-entrypoint.sh /app/scripts/*.sh
 
 EXPOSE 3001
 ENV NODE_ENV=production

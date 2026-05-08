@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ================================================
 # PataCerta — Docker Compose for Dokploy
 # ================================================
@@ -51,6 +49,36 @@ version: '3.8'
 #   Em prod, SMTP_HOST e' obrigatorio (fail-fast em apps/api/src/index.ts).
 #   Escape hatch: ALLOW_NO_SMTP_IN_PROD=1 (nao recomendado, emails apenas
 #   logados em consola).
+#
+# Backups (Postgres + MinIO uploads, encriptados com age):
+#   AGE_RECIPIENT             — chave publica age (age1...). Encripta backups.
+#                               Gerar localmente:
+#                                 age-keygen -o ~/patacerta-backup-key.txt
+#                               Guarda o ficheiro OFFLINE (USB, 1Password, etc).
+#                               Copiar a linha "# public key: age1..." para esta var.
+#                               A chave privada NUNCA deve estar no servidor.
+#
+#   MINIO_BACKUP_BUCKET       — bucket alvo dos backups (default: patacerta-backups).
+#                               Criado automaticamente pelo primeiro backup.
+#
+#   Healthchecks.io (dead-man-switch — recomendado):
+#     1. Criar conta gratuita em https://healthchecks.io
+#     2. Criar 3 checks (Period: 1 day, Grace: 2h):
+#        - "patacerta-backup-postgres"
+#        - "patacerta-backup-minio"
+#        - "patacerta-backup-rotate"
+#     3. Copiar URLs (formato: https://hc-ping.com/<uuid>) para:
+#        HEALTHCHECKS_URL_BACKUP=https://hc-ping.com/...
+#        HEALTHCHECKS_URL_BACKUP_MINIO=https://hc-ping.com/...
+#        HEALTHCHECKS_URL_ROTATE=https://hc-ping.com/...
+#     4. Configurar canal de notificacao (email/Slack/Discord) em healthchecks.io.
+#
+#   Politica GFS (override opcional via env):
+#     RETENTION_DAILY=7 RETENTION_WEEKLY=4 RETENTION_MONTHLY=6
+#
+#   Restore: ver docs/RESTORE.md (runbook completo).
+#
+#   TODO Fase B: push offsite para Unraid via Cloudflare Tunnel.
 
 services:
   # ── Frontend (nginx + SPA + /api reverse proxy) ──
@@ -163,11 +191,14 @@ services:
   # de build, portanto nao ha duplicacao real de tempo de build.
   #
   # Jobs agendados (ver apps/api/cron-entrypoint.sh):
+  #   - backup-postgres:         diario 02:00 UTC
+  #   - backup-minio (uploads):  diario 02:05 UTC
+  #   - rotate-backups (GFS):    diario 02:30 UTC
   #   - expire-sponsored-slots:  horario (minuto 0 de cada hora UTC)
   #   - cleanup-refresh-tokens:  diario 03:00 UTC
   #
-  # Sem porta exposta (nao serve trafego). Acede a Postgres pela mesma
-  # rede 'default'. Restart unless-stopped garante que se um job
+  # Sem porta exposta (nao serve trafego). Acede a Postgres/MinIO pela
+  # mesma rede 'default'. Restart unless-stopped garante que se um job
   # individual falhar e levar o crond abaixo, o container reinicia.
   cron:
     build:
@@ -176,11 +207,35 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       - default
     environment:
       NODE_ENV: ${NODE_ENV:-production}
+      # DATABASE_URL — usado por jobs node E por backup-postgres.sh (via pg_dump).
+      # connection_limit=2 chega para 2 jobs node sequenciais.
       DATABASE_URL: postgresql://patacerta:${POSTGRES_PASSWORD}@postgres:5432/patacerta?schema=public&connection_limit=2&pool_timeout=20&connect_timeout=10&socket_timeout=30
+      # MinIO — backup-minio.sh usa para mc mirror do bucket uploads,
+      # ambos backups usam para enviar para bucket de backups.
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: patacerta
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: patacerta-uploads
+      MINIO_BACKUP_BUCKET: ${MINIO_BACKUP_BUCKET:-patacerta-backups}
+      # Encriptacao backups — chave publica age. Sem isto, backups falham
+      # (script aborta com mensagem clara). Definir no painel Dokploy.
+      AGE_RECIPIENT: ${AGE_RECIPIENT:-}
+      # Healthchecks.io URLs (opcionais — sem isto, falhas so' aparecem
+      # em docker logs).
+      HEALTHCHECKS_URL_BACKUP: ${HEALTHCHECKS_URL_BACKUP:-}
+      HEALTHCHECKS_URL_BACKUP_MINIO: ${HEALTHCHECKS_URL_BACKUP_MINIO:-}
+      HEALTHCHECKS_URL_ROTATE: ${HEALTHCHECKS_URL_ROTATE:-}
+      # Politica GFS — defaults sensatos, override apenas se necessario.
+      RETENTION_DAILY: ${RETENTION_DAILY:-7}
+      RETENTION_WEEKLY: ${RETENTION_WEEKLY:-4}
+      RETENTION_MONTHLY: ${RETENTION_MONTHLY:-6}
     entrypoint: ['/app/cron-entrypoint.sh']
     restart: unless-stopped
 
