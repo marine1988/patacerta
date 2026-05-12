@@ -1,12 +1,19 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '../../../lib/api'
-import { queryKeys } from '../../../lib/queryKeys'
-import { formatDateShort } from '../../../lib/dates'
-import { Pagination } from '../../../components/ui/Pagination'
-import type { Paginated } from '../../../lib/pagination'
-import { Badge, Button, Spinner, EmptyState, Modal, Input } from '../../../components/ui'
-import { type Review, statusBadgeVariant, statusLabel } from '../_shared'
+import { api } from '../../../../lib/api'
+import { queryKeys } from '../../../../lib/queryKeys'
+import { formatDateShort } from '../../../../lib/dates'
+import { Pagination } from '../../../../components/ui/Pagination'
+import type { Paginated } from '../../../../lib/pagination'
+import { Badge, Button, Spinner, EmptyState, Modal, Input } from '../../../../components/ui'
+import { type Review, statusBadgeVariant, statusLabel } from '../../_shared'
+
+/**
+ * Vista de avaliacoes sinalizadas (FLAGGED). Anteriormente vivia em
+ * AvaliacoesTab.tsx como tab top-level; foi extraida para sub-componente
+ * da nova tab "Moderacao" para consolidar todos os fluxos de moderacao
+ * num so lugar.
+ */
 
 interface ReviewFlag {
   id: number
@@ -52,7 +59,7 @@ function TypeFilterTabs({
   )
 }
 
-export function AvaliacoesTab() {
+export function AvaliacoesReportsView() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [typeFilter, setTypeFilter] = useState<'all' | 'breeder' | 'service'>('all')
@@ -75,6 +82,7 @@ export function AvaliacoesTab() {
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] })
     queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+    queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() })
     queryClient.invalidateQueries({ queryKey: queryKeys.reviews.serviceReviewsAll() })
   }
