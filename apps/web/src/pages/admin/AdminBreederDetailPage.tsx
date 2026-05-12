@@ -332,8 +332,15 @@ export function AdminBreederDetailPage() {
             {ownerName} {String.fromCharCode(8212)} {breeder.user.email}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
+        <div className="flex flex-wrap items-stretch gap-3">
+          {/* Badge no header partilha altura com o botao Suspender/Reactivar
+              ao lado. Por defeito o Badge tem padding menor que btn-sm
+              (py-1 vs py-2.5); igualamos via px-5/py-2.5 para a barra
+              ficar visualmente alinhada. */}
+          <Badge
+            variant={statusBadgeVariant[breeder.status] ?? 'gray'}
+            className="px-5 py-2.5"
+          >
             {statusLabel[breeder.status] ?? breeder.status}
           </Badge>
           {breeder.status === 'SUSPENDED' ? (
