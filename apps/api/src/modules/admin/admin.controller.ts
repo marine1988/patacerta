@@ -516,8 +516,12 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   const userId = req.query.userId ? Number(req.query.userId) : undefined
 
   const where: Record<string, unknown> = {}
-  if (action) where.action = action
-  if (entity) where.entity = entity
+  // Filtros usam `contains` case-insensitive para suportar agrupamentos
+  // (ex.: "VERIFICATION" matches VERIFICATION_DOC_APPROVED, etc.) e
+  // tolerar inconsistencias historicas no schema (Breeder vs breeder,
+  // SERVICE.UPDATE vs service.create).
+  if (action) where.action = { contains: action, mode: 'insensitive' }
+  if (entity) where.entity = { equals: entity, mode: 'insensitive' }
   if (userId && !isNaN(userId)) where.userId = userId
 
   const [logs, total] = await Promise.all([

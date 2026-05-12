@@ -77,6 +77,7 @@ export function UtilizadoresTab() {
             { value: '', label: 'Todos' },
             { value: 'ADMIN', label: 'Administrador' },
             { value: 'BREEDER', label: 'Criador' },
+            { value: 'SERVICE_PROVIDER', label: 'Serviços' },
             { value: 'OWNER', label: 'Utilizador' },
           ]}
         />

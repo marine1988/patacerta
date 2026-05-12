@@ -7,6 +7,65 @@ import type { Paginated } from '../../../lib/pagination'
 import { Badge, Spinner, EmptyState, Select } from '../../../components/ui'
 import type { AuditLog } from '../_shared'
 
+// Tradução de actions/entidades brutas para labels PT-PT.
+// As actions historicamente foram registadas em formatos diversos
+// (UPPER_SNAKE, lower.dot, PascalCase). Aqui mapeamos os mais
+// frequentes para algo legivel ao admin. Para os nao mapeados
+// devolvemos a string original em titlecase suave.
+const actionLabel: Record<string, string> = {
+  BREEDER_FEATURED: 'Criador destacado',
+  CHANGE_BREEDER_STATUS: 'Estado de criador alterado',
+  MESSAGE_DELETED: 'Mensagem eliminada',
+  MESSAGE_EDITED: 'Mensagem editada',
+  MESSAGE_SENT: 'Mensagem enviada',
+  REVIEW_CREATED: 'Avaliação criada',
+  REVIEW_FLAGGED: 'Avaliação sinalizada',
+  SERVICE_FEATURED: 'Serviço destacado',
+  SUSPEND_USER: 'Utilizador suspenso',
+  THREAD_CREATED: 'Conversa criada',
+  VERIFICATION_DOC_APPROVED: 'DGAV aprovado',
+  VERIFICATION_DOC_REJECTED: 'DGAV rejeitado',
+  VERIFICATION_DOC_APPROVED_CHANGED: 'DGAV reaprovado',
+  VERIFICATION_DOC_REJECTED_CHANGED: 'DGAV re-rejeitado',
+  'breeder.delete': 'Criador eliminado',
+  'breeder.photos.delete': 'Foto de criador eliminada',
+  'breeder.photos.reorder': 'Fotos de criador reordenadas',
+  'breeder.photos.upload': 'Foto de criador enviada',
+  'service.create': 'Serviço criado',
+  'service.update': 'Serviço actualizado',
+  'service.delete': 'Serviço eliminado',
+  'service.photos.upload': 'Foto de serviço enviada',
+  'service.contact.message_sent': 'Contacto: mensagem enviada',
+  'service.contact.thread_created': 'Contacto: conversa iniciada',
+  'sponsored_slot.delete': 'Slot patrocinado eliminado',
+  'SPONSORED_SLOT.DELETE': 'Slot patrocinado eliminado',
+  'SERVICE.UPDATE': 'Serviço actualizado',
+}
+
+const entityLabel: Record<string, string> = {
+  User: 'Utilizador',
+  Breeder: 'Criador',
+  breeder: 'Criador',
+  VerificationDoc: 'Verificação',
+  service: 'Serviço',
+  service_report: 'Denúncia de serviço',
+  message: 'Mensagem',
+  review: 'Avaliação',
+  sponsored_slot: 'Slot patrocinado',
+  thread: 'Conversa',
+}
+
+function humanizeAction(raw: string): string {
+  if (actionLabel[raw]) return actionLabel[raw]
+  // fallback: substituir _ e . por espacos e capitalizar 1a letra
+  const cleaned = raw.replace(/[._]/g, ' ').toLowerCase()
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+}
+
+function humanizeEntity(raw: string): string {
+  return entityLabel[raw] ?? raw
+}
+
 export function AuditoriaTab() {
   const [page, setPage] = useState(1)
   const [actionFilter, setActionFilter] = useState('')
@@ -42,7 +101,13 @@ export function AuditoriaTab() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-4">
-        <div className="w-48">
+        <div className="w-56">
+          {/*
+           * As opcoes usam substrings significativas. O backend faz
+           * `contains` case-insensitive, por isso "VERIFICATION" apanha
+           * VERIFICATION_DOC_APPROVED, _REJECTED, _CHANGED, etc.
+           * "service" apanha service.create, service.update, SERVICE.UPDATE.
+           */}
           <Select
             label="Ação"
             name="actionFilter"
@@ -53,17 +118,19 @@ export function AuditoriaTab() {
             }}
             options={[
               { value: '', label: 'Todas' },
-              { value: 'CREATE', label: 'Criar' },
-              { value: 'UPDATE', label: 'Atualizar' },
-              { value: 'DELETE', label: 'Eliminar' },
-              { value: 'LOGIN', label: 'Login' },
-              { value: 'SUSPEND', label: 'Suspender' },
-              { value: 'VERIFY', label: 'Verificar' },
-              { value: 'MODERATE', label: 'Moderar' },
+              { value: 'VERIFICATION', label: 'Verificações DGAV' },
+              { value: 'BREEDER', label: 'Criadores' },
+              { value: 'service', label: 'Serviços' },
+              { value: 'MESSAGE', label: 'Mensagens' },
+              { value: 'THREAD', label: 'Conversas' },
+              { value: 'REVIEW', label: 'Avaliações' },
+              { value: 'SUSPEND', label: 'Suspensões' },
+              { value: 'FEATURED', label: 'Destaques' },
+              { value: 'SPONSORED', label: 'Slots patrocinados' },
             ]}
           />
         </div>
-        <div className="w-48">
+        <div className="w-56">
           <Select
             label="Entidade"
             name="entityFilter"
@@ -74,13 +141,15 @@ export function AuditoriaTab() {
             }}
             options={[
               { value: '', label: 'Todas' },
-              { value: 'USER', label: 'Utilizador' },
-              { value: 'BREEDER', label: 'Criador' },
-              { value: 'REVIEW', label: 'Avaliação' },
-              { value: 'VERIFICATION', label: 'Verificação' },
-              { value: 'MESSAGE', label: 'Mensagem' },
+              { value: 'User', label: 'Utilizador' },
+              { value: 'Breeder', label: 'Criador' },
+              { value: 'VerificationDoc', label: 'Verificação' },
+              { value: 'review', label: 'Avaliação' },
               { value: 'service', label: 'Serviço' },
               { value: 'service_report', label: 'Denúncia de serviço' },
+              { value: 'message', label: 'Mensagem' },
+              { value: 'thread', label: 'Conversa' },
+              { value: 'sponsored_slot', label: 'Slot patrocinado' },
             ]}
           />
         </div>
@@ -107,13 +176,17 @@ export function AuditoriaTab() {
                     </p>
                     {log.user && <p className="truncate text-sm text-muted">{log.user.email}</p>}
                   </div>
-                  <Badge variant="blue">{log.action}</Badge>
+                  <Badge variant="blue" title={log.action}>
+                    {humanizeAction(log.action)}
+                  </Badge>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted">Data</dt>
                   <dd className="text-ink">{new Date(log.createdAt).toLocaleString('pt-PT')}</dd>
                   <dt className="text-muted">Entidade</dt>
-                  <dd className="text-ink">{log.entity}</dd>
+                  <dd className="text-ink" title={log.entity}>
+                    {humanizeEntity(log.entity)}
+                  </dd>
                   <dt className="text-muted">ID</dt>
                   <dd className="font-mono text-ink">
                     {log.entityId ?? String.fromCharCode(8212)}
@@ -163,9 +236,13 @@ export function AuditoriaTab() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <Badge variant="blue">{log.action}</Badge>
+                      <Badge variant="blue" title={log.action}>
+                        {humanizeAction(log.action)}
+                      </Badge>
                     </td>
-                    <td className="px-3 py-2 text-ink">{log.entity}</td>
+                    <td className="px-3 py-2 text-ink" title={log.entity}>
+                      {humanizeEntity(log.entity)}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs text-ink">
                       {log.entityId ?? String.fromCharCode(8212)}
                     </td>

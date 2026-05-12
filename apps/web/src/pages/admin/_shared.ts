@@ -96,9 +96,10 @@ export const statusBadgeVariant: Record<string, 'green' | 'yellow' | 'red' | 'gr
   HIDDEN: 'gray',
 }
 
-export const roleBadgeVariant: Record<string, 'green' | 'blue' | 'gray'> = {
+export const roleBadgeVariant: Record<string, 'green' | 'blue' | 'gray' | 'yellow'> = {
   ADMIN: 'blue',
   BREEDER: 'green',
+  SERVICE_PROVIDER: 'yellow',
   OWNER: 'gray',
 }
 
@@ -116,5 +117,6 @@ export const statusLabel: Record<string, string> = {
 export const roleLabel: Record<string, string> = {
   ADMIN: 'Administrador',
   BREEDER: 'Criador',
+  SERVICE_PROVIDER: 'Serviços',
   OWNER: 'Utilizador',
 }
