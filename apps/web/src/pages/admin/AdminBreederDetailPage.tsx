@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -82,6 +82,7 @@ interface BreederDetail {
 }
 
 interface DocViewResponse {
+  /** Blob URL local (createObjectURL) — nao expoe o storage backend. */
   url: string
   fileName: string
   docType?: string
@@ -134,17 +135,42 @@ export function AdminBreederDetailPage() {
     enabled: !isNaN(breederId),
   })
 
-  // Presigned URL do doc activo. So' faz fetch quando viewingDocId muda,
-  // e o resultado expira (URLs S3 presigned validas tipicamente 5-15min).
-  // Re-fetch on focus desactivado para evitar abrir multiplas chamadas
-  // a S3 sem necessidade — o admin abre o doc e revisa.
+  // Bytes do doc activo. Fazemos fetch via API (autenticado) e criamos
+  // um Blob URL local para passar ao <img>/PDF viewer — assim nao
+  // dependemos de o MinIO ter hostname publico (em stage/prod sem
+  // subdomain S3 a presigned URL apontaria para `minio:9000` interno).
+  // O Blob URL e' revogado quando o doc activo muda ou ao desmontar.
   const { data: docView, isLoading: isDocLoading } = useQuery<DocViewResponse>({
-    queryKey: ['admin-doc-view', viewingDocId],
-    queryFn: () => api.get(`/verification/${viewingDocId}/view`).then((r) => r.data),
+    queryKey: ['admin-doc-file', viewingDocId],
+    queryFn: async () => {
+      const res = await api.get(`/verification/${viewingDocId}/file`, {
+        responseType: 'blob',
+      })
+      const blob = res.data as Blob
+      // Tenta extrair o filename do Content-Disposition; fallback para
+      // o que ja' temos no doc activo (vem do payload do detalhe).
+      const cd = res.headers['content-disposition'] as string | undefined
+      const match = cd?.match(/filename="?([^";]+)"?/i)
+      const fileName = match?.[1] ?? ''
+      return {
+        url: URL.createObjectURL(blob),
+        fileName,
+      }
+    },
     enabled: viewingDocId !== null,
-    staleTime: 5 * 60 * 1000, // URLs presigned sao validas ~15min
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
+
+  // Cleanup do Blob URL quando muda de doc ou desmonta. URL.createObjectURL
+  // mantem o blob em memoria ate' ser explicitamente revogado.
+  useEffect(() => {
+    const url = docView?.url
+    if (!url) return
+    return () => {
+      URL.revokeObjectURL(url)
+    }
+  }, [docView?.url])
 
   // Aprovar = aprovar o documento DGAV. Backend promove o criador a
   // VERIFIED automaticamente quando aplicavel.

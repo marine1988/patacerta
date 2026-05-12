@@ -8,6 +8,7 @@ import {
   getPrivatePresignedUrl,
   deleteFile as deletePublicFile,
   getPresignedUrl as getPublicPresignedUrl,
+  streamObject,
 } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
@@ -311,4 +312,49 @@ export const viewDocument = asyncHandler(async (req, res) => {
     : await getPublicPresignedUrl(objectName, 900)
 
   res.json({ url, fileName: doc.fileName, docType: doc.docType })
+})
+
+// Stream document bytes — alternativa a viewDocument para ambientes em
+// que o MinIO nao tem hostname publico (e portanto presigned URLs apontam
+// para `minio:9000` interno e falham no browser). Aqui o API faz proxy
+// dos bytes, mantendo a auth via JWT bearer (que ja vem no axios).
+//
+// Resposta: bytes brutos com Content-Type correcto + Content-Disposition
+// inline. O frontend faz `fetch -> blob -> URL.createObjectURL` e usa
+// como src do <img>/PDF viewer.
+export const streamDocument = asyncHandler(async (req, res) => {
+  const docId = parseId(req.params.docId)
+  const isAdmin = req.user!.role === 'ADMIN'
+
+  const doc = await prisma.verificationDoc.findUnique({
+    where: { id: docId },
+    include: { breeder: { select: { userId: true } } },
+  })
+  if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
+
+  if (!isAdmin && doc.breeder.userId !== req.user!.userId) {
+    throw new AppError(403, 'Sem permissão', 'FORBIDDEN')
+  }
+
+  const { isPrivate, objectName } = resolveDocStorage(doc.fileUrl)
+  const { stream, contentType, contentLength } = await streamObject(
+    isPrivate ? 'private' : 'public',
+    objectName,
+  )
+
+  // Cabecalhos: forcar inline (nao download), Content-Type detectado no
+  // upload, Cache-Control privado curto (browser pode reusar entre
+  // re-renders mas nao caches partilhadas — o doc e' privado).
+  res.setHeader('Content-Type', contentType)
+  res.setHeader('Content-Length', contentLength)
+  res.setHeader('Content-Disposition', `inline; filename="${doc.fileName}"`)
+  res.setHeader('Cache-Control', 'private, max-age=300')
+
+  stream.pipe(res)
+  stream.on('error', (err) => {
+    // Se o stream falhar a meio, ja enviamos headers — apenas destruir
+    // a resposta para o browser saber que algo correu mal.
+    console.error('[streamDocument] stream error', err)
+    res.destroy(err)
+  })
 })

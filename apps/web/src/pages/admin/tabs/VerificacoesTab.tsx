@@ -67,8 +67,20 @@ export function VerificacoesTab() {
 
   async function handleViewDoc(docId: number) {
     try {
-      const { data: result } = await api.get<{ url: string }>(`/verification/${docId}/view`)
-      window.open(result.url, '_blank')
+      // Fetch via API (autenticado) e abrir em blob URL. Evita expor
+      // presigned URLs do MinIO (que em stage/prod apontam para o
+      // hostname interno Docker e falham no browser).
+      const res = await api.get(`/verification/${docId}/file`, {
+        responseType: 'blob',
+      })
+      const blobUrl = URL.createObjectURL(res.data as Blob)
+      const win = window.open(blobUrl, '_blank')
+      // Se o popup foi bloqueado, libertar a memoria imediatamente.
+      if (!win) {
+        URL.revokeObjectURL(blobUrl)
+      }
+      // Senao, deixar o browser libertar quando a tab fechar — nao temos
+      // hook fiavel para detectar isso de outra origem.
     } catch {
       // silently fail
     }

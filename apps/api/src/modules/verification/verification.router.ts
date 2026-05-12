@@ -31,5 +31,10 @@ verificationRouter.patch(
   ctrl.reviewDocument,
 )
 
-// Breeder or Admin: view a doc (presigned URL)
+// Breeder or Admin: view a doc (presigned URL — legacy)
 verificationRouter.get('/:docId/view', requireAuth, ctrl.viewDocument)
+
+// Breeder or Admin: stream a doc directly (proxy via API). Preferido
+// sobre /view porque nao expoe presigned URLs e funciona em ambientes
+// onde o MinIO nao tem hostname publico (stage/prod sem subdomain S3).
+verificationRouter.get('/:docId/file', requireAuth, ctrl.streamDocument)

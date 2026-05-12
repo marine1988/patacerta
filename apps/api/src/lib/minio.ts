@@ -108,12 +108,41 @@ export async function getPresignedUrl(objectName: string, expirySeconds = 3600):
 /**
  * Generate a presigned GET URL for a PRIVATE bucket object. Apenas via
  * este metodo se acede a documentos de verificacao.
+ *
+ * @deprecated Em ambientes onde o MinIO nao tem hostname publico, a URL
+ * gerada aponta para o hostname interno Docker (`minio:9000`) e fica
+ * inacessivel ao browser (Mixed Content + DNS resolution). Preferir
+ * `streamObject` + endpoint que faz proxy server-side.
  */
 export async function getPrivatePresignedUrl(
   objectName: string,
   expirySeconds = 900,
 ): Promise<string> {
   return minioClient.presignedGetObject(PRIVATE_BUCKET, objectName, expirySeconds)
+}
+
+/**
+ * Stream um objecto de qualquer um dos buckets, devolvendo o stream Node
+ * + metadados (Content-Type, tamanho). Usado pelos endpoints que fazem
+ * proxy de ficheiros privados ao browser autenticado, evitando expor
+ * presigned URLs (que requerem MinIO acessivel publicamente).
+ */
+export async function streamObject(
+  bucket: 'public' | 'private',
+  objectName: string,
+): Promise<{
+  stream: NodeJS.ReadableStream
+  contentType: string
+  contentLength: number
+}> {
+  const targetBucket = bucket === 'private' ? PRIVATE_BUCKET : PUBLIC_BUCKET
+  const stat = await minioClient.statObject(targetBucket, objectName)
+  const stream = await minioClient.getObject(targetBucket, objectName)
+  return {
+    stream,
+    contentType: stat.metaData?.['content-type'] ?? 'application/octet-stream',
+    contentLength: stat.size,
+  }
 }
 
 /** Delete a file from the public bucket. */
