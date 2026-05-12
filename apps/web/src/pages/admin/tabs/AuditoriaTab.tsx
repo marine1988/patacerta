@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -70,13 +70,35 @@ export function AuditoriaTab() {
   const [page, setPage] = useState(1)
   const [actionFilter, setActionFilter] = useState('')
   const [entityFilter, setEntityFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  // Conjunto de IDs com a linha "detalhes" expandida. Local-only — nao
+  // persiste entre paginacoes nem refetches.
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+
+  function toggleExpanded(id: number) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const { data, isLoading, isError } = useQuery<Paginated<AuditLog>>({
-    queryKey: queryKeys.admin.auditLogs(page, actionFilter || undefined, entityFilter || undefined),
+    queryKey: queryKeys.admin.auditLogs(
+      page,
+      actionFilter || undefined,
+      entityFilter || undefined,
+      dateFrom || undefined,
+      dateTo || undefined,
+    ),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (actionFilter) params.set('action', actionFilter)
       if (entityFilter) params.set('entity', entityFilter)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
       return api.get(`/admin/audit-logs?${params}`).then((r) => r.data)
     },
   })
@@ -153,6 +175,55 @@ export function AuditoriaTab() {
             ]}
           />
         </div>
+        <div className="w-44">
+          <label className="label" htmlFor="audit-date-from">
+            De
+          </label>
+          <input
+            id="audit-date-from"
+            type="date"
+            className="input"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => {
+              setDateFrom(e.target.value)
+              setPage(1)
+            }}
+          />
+        </div>
+        <div className="w-44">
+          <label className="label" htmlFor="audit-date-to">
+            Até
+          </label>
+          <input
+            id="audit-date-to"
+            type="date"
+            className="input"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => {
+              setDateTo(e.target.value)
+              setPage(1)
+            }}
+          />
+        </div>
+        {(actionFilter || entityFilter || dateFrom || dateTo) && (
+          <div className="flex items-end">
+            <button
+              type="button"
+              className="text-sm text-caramel-700 underline-offset-2 hover:underline"
+              onClick={() => {
+                setActionFilter('')
+                setEntityFilter('')
+                setDateFrom('')
+                setDateTo('')
+                setPage(1)
+              }}
+            >
+              Limpar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       {!data || data.data.length === 0 ? (
@@ -161,45 +232,71 @@ export function AuditoriaTab() {
         <>
           {/* Mobile: lista de cards */}
           <ul className="space-y-3 md:hidden">
-            {data.data.map((log) => (
-              <li key={log.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">
-                      {log.user ? (
-                        <>
-                          {log.user.firstName} {log.user.lastName}
-                        </>
-                      ) : (
-                        <span className="text-subtle">Sistema</span>
-                      )}
-                    </p>
-                    {log.user && <p className="truncate text-sm text-muted">{log.user.email}</p>}
+            {data.data.map((log) => {
+              const hasDetails = !!log.details
+              const isOpen = expanded.has(log.id)
+              return (
+                <li key={log.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink">
+                        {log.user ? (
+                          <>
+                            {log.user.firstName} {log.user.lastName}
+                          </>
+                        ) : (
+                          <span className="text-subtle">Sistema</span>
+                        )}
+                      </p>
+                      {log.user && <p className="truncate text-sm text-muted">{log.user.email}</p>}
+                    </div>
+                    <Badge variant="blue" title={log.action}>
+                      {humanizeAction(log.action)}
+                    </Badge>
                   </div>
-                  <Badge variant="blue" title={log.action}>
-                    {humanizeAction(log.action)}
-                  </Badge>
-                </div>
-                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                  <dt className="text-muted">Data</dt>
-                  <dd className="text-ink">{new Date(log.createdAt).toLocaleString('pt-PT')}</dd>
-                  <dt className="text-muted">Entidade</dt>
-                  <dd className="text-ink" title={log.entity}>
-                    {humanizeEntity(log.entity)}
-                  </dd>
-                  <dt className="text-muted">ID</dt>
-                  <dd className="font-mono text-ink">
-                    {log.entityId ?? String.fromCharCode(8212)}
-                  </dd>
-                  <dt className="text-muted">IP</dt>
-                  <dd className="text-ink">{log.ipAddress ?? String.fromCharCode(8212)}</dd>
-                  <dt className="text-muted">Detalhes</dt>
-                  <dd className="truncate text-muted">
-                    {log.details ? JSON.stringify(log.details) : String.fromCharCode(8212)}
-                  </dd>
-                </dl>
-              </li>
-            ))}
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-muted">Data</dt>
+                    <dd className="text-ink">{new Date(log.createdAt).toLocaleString('pt-PT')}</dd>
+                    <dt className="text-muted">Entidade</dt>
+                    <dd className="text-ink" title={log.entity}>
+                      {humanizeEntity(log.entity)}
+                    </dd>
+                    <dt className="text-muted">ID</dt>
+                    <dd className="font-mono text-ink">
+                      {log.entityId ?? String.fromCharCode(8212)}
+                    </dd>
+                    <dt className="text-muted">IP</dt>
+                    <dd className="text-ink">{log.ipAddress ?? String.fromCharCode(8212)}</dd>
+                  </dl>
+                  {hasDetails && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(log.id)}
+                        className="flex items-center gap-1 text-xs text-caramel-700 underline-offset-2 hover:underline"
+                        aria-expanded={isOpen}
+                      >
+                        <span>{isOpen ? 'Ocultar detalhes' : 'Ver detalhes'}</span>
+                        <svg
+                          className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth="2"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isOpen && (
+                        <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-line bg-surface-alt/60 p-2 font-mono text-[11px] text-ink">
+                          {JSON.stringify(log.details, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
 
           {/* Desktop: tabela tradicional */}
@@ -217,43 +314,82 @@ export function AuditoriaTab() {
                 </tr>
               </thead>
               <tbody>
-                {data.data.map((log, i) => (
-                  <tr
-                    key={log.id}
-                    className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap text-ink">
-                      {new Date(log.createdAt).toLocaleString('pt-PT')}
-                    </td>
-                    <td className="px-3 py-2 text-ink">
-                      {log.user ? (
-                        <div>
-                          {log.user.firstName} {log.user.lastName}
-                          <div className="text-xs text-muted">{log.user.email}</div>
-                        </div>
-                      ) : (
-                        <span className="text-subtle">Sistema</span>
+                {data.data.map((log, i) => {
+                  const hasDetails = !!log.details
+                  const isOpen = expanded.has(log.id)
+                  const detailsStr = hasDetails ? JSON.stringify(log.details, null, 2) : ''
+                  return (
+                    <Fragment key={log.id}>
+                      <tr
+                        className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap text-ink">
+                          {new Date(log.createdAt).toLocaleString('pt-PT')}
+                        </td>
+                        <td className="px-3 py-2 text-ink">
+                          {log.user ? (
+                            <div>
+                              {log.user.firstName} {log.user.lastName}
+                              <div className="text-xs text-muted">{log.user.email}</div>
+                            </div>
+                          ) : (
+                            <span className="text-subtle">Sistema</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge variant="blue" title={log.action}>
+                            {humanizeAction(log.action)}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-ink" title={log.entity}>
+                          {humanizeEntity(log.entity)}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-ink">
+                          {log.entityId ?? String.fromCharCode(8212)}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-ink">
+                          {log.ipAddress ?? String.fromCharCode(8212)}
+                        </td>
+                        <td className="px-3 py-2 max-w-xs text-xs text-muted">
+                          {hasDetails ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(log.id)}
+                              className="flex items-center gap-1 text-caramel-700 underline-offset-2 hover:underline"
+                              aria-expanded={isOpen}
+                              aria-controls={`audit-details-${log.id}`}
+                            >
+                              <span>{isOpen ? 'Ocultar' : 'Ver detalhes'}</span>
+                              <svg
+                                className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                              </svg>
+                            </button>
+                          ) : (
+                            String.fromCharCode(8212)
+                          )}
+                        </td>
+                      </tr>
+                      {hasDetails && isOpen && (
+                        <tr
+                          id={`audit-details-${log.id}`}
+                          className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
+                        >
+                          <td colSpan={7} className="px-3 pb-3">
+                            <pre className="whitespace-pre-wrap break-words rounded-md border border-line bg-surface-alt/60 p-3 font-mono text-xs text-ink">
+                              {detailsStr}
+                            </pre>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Badge variant="blue" title={log.action}>
-                        {humanizeAction(log.action)}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-ink" title={log.entity}>
-                      {humanizeEntity(log.entity)}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs text-ink">
-                      {log.entityId ?? String.fromCharCode(8212)}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-ink">
-                      {log.ipAddress ?? String.fromCharCode(8212)}
-                    </td>
-                    <td className="px-3 py-2 max-w-xs truncate text-xs text-muted">
-                      {log.details ? JSON.stringify(log.details) : String.fromCharCode(8212)}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

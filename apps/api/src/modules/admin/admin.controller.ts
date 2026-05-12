@@ -111,9 +111,20 @@ export const getPendingVerifications = asyncHandler(async (req, res) => {
 export const listAllUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
   const role = req.query.role as string | undefined
+  const q = (req.query.q as string | undefined)?.trim()
 
   const where: Record<string, unknown> = {}
   if (role) where.role = role
+  if (q) {
+    // Pesquisa case-insensitive em nome (firstName/lastName) e email.
+    // Util para encontrar utilizadores em listas grandes sem ter de
+    // paginar manualmente.
+    where.OR = [
+      { firstName: { contains: q, mode: 'insensitive' } },
+      { lastName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+    ]
+  }
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
@@ -125,6 +136,9 @@ export const listAllUsers = asyncHandler(async (req, res) => {
         lastName: true,
         role: true,
         createdAt: true,
+        isActive: true,
+        suspendedAt: true,
+        suspendedReason: true,
         breeder: { select: { id: true, status: true } },
       },
       skip,
@@ -514,6 +528,8 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   const action = req.query.action as string | undefined
   const entity = req.query.entity as string | undefined
   const userId = req.query.userId ? Number(req.query.userId) : undefined
+  const dateFrom = req.query.dateFrom as string | undefined
+  const dateTo = req.query.dateTo as string | undefined
 
   const where: Record<string, unknown> = {}
   // Filtros usam `contains` case-insensitive para suportar agrupamentos
@@ -523,6 +539,22 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   if (action) where.action = { contains: action, mode: 'insensitive' }
   if (entity) where.entity = { equals: entity, mode: 'insensitive' }
   if (userId && !isNaN(userId)) where.userId = userId
+
+  // Intervalo de datas inclusivo. dateTo cobre o dia inteiro (23:59:59.999).
+  // Datas invalidas sao silenciosamente ignoradas para nao bloquear a query.
+  const createdAt: Record<string, Date> = {}
+  if (dateFrom) {
+    const d = new Date(dateFrom)
+    if (!isNaN(d.getTime())) createdAt.gte = d
+  }
+  if (dateTo) {
+    const d = new Date(dateTo)
+    if (!isNaN(d.getTime())) {
+      d.setHours(23, 59, 59, 999)
+      createdAt.lte = d
+    }
+  }
+  if (Object.keys(createdAt).length > 0) where.createdAt = createdAt
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({

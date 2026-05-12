@@ -35,7 +35,8 @@ export const queryKeys = {
     pendingCounts: () => ['admin', 'pending-counts'] as const,
     stats: () => ['admin-stats'] as const,
     verifications: (page: number) => ['admin-verifications', page] as const,
-    users: (page: number, role?: string) => ['admin-users', page, role ?? null] as const,
+    users: (page: number, role?: string, q?: string) =>
+      ['admin-users', page, role ?? null, q ?? null] as const,
     breeders: (page: number, status?: string) => ['admin-breeders', page, status ?? null] as const,
     flaggedReviews: (page: number, type: 'all' | 'breeder' | 'service') =>
       ['admin-flagged-reviews', page, type] as const,
@@ -47,8 +48,14 @@ export const queryKeys = {
       ['admin-service-reports', page, status] as const,
     services: (page: number, status: string, q: string) =>
       ['admin-services', page, status, q] as const,
-    auditLogs: (page: number, action?: string, entity?: string) =>
-      ['admin-audit-logs', page, action ?? null, entity ?? null] as const,
+    auditLogs: (
+      page: number,
+      action?: string,
+      entity?: string,
+      dateFrom?: string,
+      dateTo?: string,
+    ) =>
+      ['admin-audit-logs', page, action ?? null, entity ?? null, dateFrom ?? null, dateTo ?? null] as const,
     reviewFlags: (type: string | null, id: number | string | null | undefined) =>
       ['review-flags', type, id ?? null] as const,
     sponsoredSlots: (

@@ -40,6 +40,9 @@ export interface User {
   lastName: string
   role: string
   createdAt: string
+  isActive: boolean
+  suspendedAt: string | null
+  suspendedReason: string | null
   breeder: { id: number; status: string } | null
 }
 

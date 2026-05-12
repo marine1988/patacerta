@@ -1,26 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
-import { Badge, Button, Spinner, EmptyState, Select, Modal } from '../../../components/ui'
+import { Badge, Button, SearchInput, Spinner, EmptyState, Select, Modal } from '../../../components/ui'
 import { type User, statusBadgeVariant, roleBadgeVariant, statusLabel, roleLabel } from '../_shared'
 
 export function UtilizadoresTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [roleFilter, setRoleFilter] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
   const [suspendingUser, setSuspendingUser] = useState<User | null>(null)
   const [suspendReason, setSuspendReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
 
+  // Debounce do input de pesquisa: evita uma query por keystroke.
+  // 300ms e' o sweet-spot tipico para search-as-you-type em admin.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const { data, isLoading, isError } = useQuery<Paginated<User>>({
-    queryKey: queryKeys.admin.users(page, roleFilter || undefined),
+    queryKey: queryKeys.admin.users(page, roleFilter || undefined, search || undefined),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (roleFilter) params.set('role', roleFilter)
+      if (search) params.set('q', search)
       return api.get(`/admin/users?${params}`).then((r) => r.data)
     },
   })
@@ -64,23 +77,37 @@ export function UtilizadoresTab() {
 
   return (
     <div>
-      <div className="mb-4 max-w-xs">
-        <Select
-          label="Filtrar por papel"
-          name="roleFilter"
-          value={roleFilter}
-          onChange={(e) => {
-            setRoleFilter(e.target.value)
-            setPage(1)
-          }}
-          options={[
-            { value: '', label: 'Todos' },
-            { value: 'ADMIN', label: 'Administrador' },
-            { value: 'BREEDER', label: 'Criador' },
-            { value: 'SERVICE_PROVIDER', label: 'Serviços' },
-            { value: 'OWNER', label: 'Utilizador' },
-          ]}
-        />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1 sm:max-w-sm">
+          <label className="label" htmlFor="user-search">
+            Pesquisar
+          </label>
+          <SearchInput
+            id="user-search"
+            placeholder="Nome ou email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onClear={() => setSearchInput('')}
+          />
+        </div>
+        <div className="sm:max-w-xs sm:flex-1">
+          <Select
+            label="Filtrar por papel"
+            name="roleFilter"
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value)
+              setPage(1)
+            }}
+            options={[
+              { value: '', label: 'Todos' },
+              { value: 'ADMIN', label: 'Administrador' },
+              { value: 'BREEDER', label: 'Criador' },
+              { value: 'SERVICE_PROVIDER', label: 'Serviços' },
+              { value: 'OWNER', label: 'Utilizador' },
+            ]}
+          />
+        </div>
       </div>
 
       {!data || data.data.length === 0 ? (
@@ -100,9 +127,16 @@ export function UtilizadoresTab() {
                     </p>
                     <p className="truncate text-sm text-muted">{user.email}</p>
                   </div>
-                  <Badge variant={roleBadgeVariant[user.role] ?? 'gray'}>
-                    {roleLabel[user.role] ?? user.role}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={roleBadgeVariant[user.role] ?? 'gray'}>
+                      {roleLabel[user.role] ?? user.role}
+                    </Badge>
+                    {!user.isActive && (
+                      <Badge variant="red" title={user.suspendedReason ?? undefined}>
+                        Suspenso
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted">Criador</dt>
@@ -122,7 +156,8 @@ export function UtilizadoresTab() {
                   <Button
                     variant="danger"
                     size="sm"
-                    disabled={suspendMutation.isPending}
+                    disabled={suspendMutation.isPending || !user.isActive}
+                    title={!user.isActive ? 'Utilizador já suspenso' : undefined}
                     onClick={() => handleSuspend(user)}
                   >
                     Suspender
@@ -156,9 +191,16 @@ export function UtilizadoresTab() {
                     </td>
                     <td className="px-3 py-2 text-ink">{user.email}</td>
                     <td className="px-3 py-2">
-                      <Badge variant={roleBadgeVariant[user.role] ?? 'gray'}>
-                        {roleLabel[user.role] ?? user.role}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={roleBadgeVariant[user.role] ?? 'gray'}>
+                          {roleLabel[user.role] ?? user.role}
+                        </Badge>
+                        {!user.isActive && (
+                          <Badge variant="red" title={user.suspendedReason ?? undefined}>
+                            Suspenso
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       {user.breeder ? (
@@ -174,7 +216,8 @@ export function UtilizadoresTab() {
                       <Button
                         variant="danger"
                         size="sm"
-                        disabled={suspendMutation.isPending}
+                        disabled={suspendMutation.isPending || !user.isActive}
+                        title={!user.isActive ? 'Utilizador já suspenso' : undefined}
                         onClick={() => handleSuspend(user)}
                       >
                         Suspender
