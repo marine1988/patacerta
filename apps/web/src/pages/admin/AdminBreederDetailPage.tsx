@@ -82,8 +82,8 @@ interface BreederDetail {
 }
 
 interface DocViewResponse {
-  /** Blob URL local (createObjectURL) — nao expoe o storage backend. */
-  url: string
+  /** Blob bruto — a URL local e' criada/revogada via useEffect no consumidor. */
+  blob: Blob
   fileName: string
   docType?: string
 }
@@ -135,11 +135,10 @@ export function AdminBreederDetailPage() {
     enabled: !isNaN(breederId),
   })
 
-  // Bytes do doc activo. Fazemos fetch via API (autenticado) e criamos
-  // um Blob URL local para passar ao <img>/PDF viewer — assim nao
-  // dependemos de o MinIO ter hostname publico (em stage/prod sem
-  // subdomain S3 a presigned URL apontaria para `minio:9000` interno).
-  // O Blob URL e' revogado quando o doc activo muda ou ao desmontar.
+  // Bytes do doc activo. Fazemos fetch via API (autenticado) e devolvemos
+  // o Blob — a URL local (createObjectURL) e' criada num useEffect mais
+  // abaixo, o que garante que o lifecycle da URL acompanha o do componente
+  // (importante em React 18 strict mode dev, que monta-desmonta-remonta).
   const { data: docView, isLoading: isDocLoading } = useQuery<DocViewResponse>({
     queryKey: ['admin-doc-file', viewingDocId],
     queryFn: async () => {
@@ -147,30 +146,31 @@ export function AdminBreederDetailPage() {
         responseType: 'blob',
       })
       const blob = res.data as Blob
-      // Tenta extrair o filename do Content-Disposition; fallback para
-      // o que ja' temos no doc activo (vem do payload do detalhe).
       const cd = res.headers['content-disposition'] as string | undefined
       const match = cd?.match(/filename="?([^";]+)"?/i)
-      const fileName = match?.[1] ?? ''
-      return {
-        url: URL.createObjectURL(blob),
-        fileName,
-      }
+      return { blob, fileName: match?.[1] ?? '' }
     },
     enabled: viewingDocId !== null,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 
-  // Cleanup do Blob URL quando muda de doc ou desmonta. URL.createObjectURL
-  // mantem o blob em memoria ate' ser explicitamente revogado.
+  // Cria/revoga o Blob URL com lifecycle ligado ao Blob, nao ao URL.
+  // Garante que cada mount cria uma URL valida (vs. revogar uma URL que
+  // ja' esta na cache do TanStack Query e foi revogada no unmount anterior).
+  const [docBlobUrl, setDocBlobUrl] = useState<string | null>(null)
   useEffect(() => {
-    const url = docView?.url
-    if (!url) return
+    const blob = docView?.blob
+    if (!blob) {
+      setDocBlobUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(blob)
+    setDocBlobUrl(url)
     return () => {
       URL.revokeObjectURL(url)
     }
-  }, [docView?.url])
+  }, [docView?.blob])
 
   // Aprovar = aprovar o documento DGAV. Backend promove o criador a
   // VERIFIED automaticamente quando aplicavel.
@@ -382,9 +382,108 @@ export function AdminBreederDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Coluna esquerda: dados do criador */}
-        <div className="space-y-4 lg:col-span-1">
+      {/* Layout: Documentos em destaque no topo (motivo principal desta
+          pagina), seguido de grelha 2-col com os dados administrativos.
+          Bio publica fica em rodape se existir. */}
+      <div className="space-y-4">
+        {/* Documentos de verificacao — destaque ao topo */}
+        <SectionCard title="Documentos de verificação">
+          {breeder.verificationDocs.length === 0 ? (
+            <EmptyState
+              title="Sem documentos"
+              description="Este criador ainda não enviou nenhum documento de verificação."
+            />
+          ) : (
+            <ul className="space-y-4">
+              {breeder.verificationDocs.map((doc) => {
+                const isViewing = viewingDocId === doc.id
+                const isPending = doc.status === 'PENDING'
+                return (
+                  <li key={doc.id} className="rounded-lg border border-line bg-surface-alt/40 p-4">
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink">{doc.fileName}</p>
+                        <p className="text-xs text-muted">
+                          Tipo: {doc.docType} · Enviado em {formatDateShort(doc.createdAt)}
+                        </p>
+                        {doc.reviewedAt && doc.reviewer && (
+                          <p className="mt-0.5 text-xs text-muted">
+                            Revisto em {formatDateShort(doc.reviewedAt)} por{' '}
+                            {doc.reviewer.firstName} {doc.reviewer.lastName}
+                          </p>
+                        )}
+                        {doc.notes && (
+                          <p className="mt-1 text-xs text-muted">
+                            <span className="font-medium">Notas:</span> {doc.notes}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant={docStatusBadge[doc.status] ?? 'gray'}>
+                        {docStatusLabel[doc.status] ?? doc.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setViewingDocId(isViewing ? null : doc.id)}
+                      >
+                        {isViewing ? 'Esconder pré-visualização' : 'Ver documento'}
+                      </Button>
+                      {isPending && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(doc)}
+                            disabled={approveMutation.isPending}
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => openReject(doc.id)}
+                            disabled={rejectMutation.isPending}
+                          >
+                            Rejeitar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {isViewing && (
+                      <div className="mt-3">
+                        {isDocLoading || !docBlobUrl ? (
+                          <div className="flex justify-center py-8">
+                            <Spinner />
+                          </div>
+                        ) : (
+                          <Suspense
+                            fallback={
+                              <div className="flex justify-center py-8">
+                                <Spinner />
+                              </div>
+                            }
+                          >
+                            <DocumentViewer
+                              url={docBlobUrl}
+                              fileName={docView?.fileName || doc.fileName}
+                            />
+                          </Suspense>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </SectionCard>
+
+        {/* Grelha 2-col com dados administrativos. Auto-flow: dense para
+            evitar buracos quando alturas dos cards forem muito diferentes. */}
+        <div className="grid gap-4 md:grid-cols-2">
           <SectionCard title="Dono da conta">
             <Field label="Nome" value={ownerName} />
             <Field label="Email" value={breeder.user.email} />
@@ -451,108 +550,11 @@ export function AdminBreederDetailPage() {
           </SectionCard>
         </div>
 
-        {/* Coluna direita: documentos de verificacao */}
-        <div className="space-y-4 lg:col-span-2">
-          <SectionCard title="Documentos de verificação">
-            {breeder.verificationDocs.length === 0 ? (
-              <EmptyState
-                title="Sem documentos"
-                description="Este criador ainda não enviou nenhum documento de verificação."
-              />
-            ) : (
-              <ul className="space-y-4">
-                {breeder.verificationDocs.map((doc) => {
-                  const isViewing = viewingDocId === doc.id
-                  const isPending = doc.status === 'PENDING'
-                  return (
-                    <li key={doc.id} className="rounded-lg border border-line bg-surface p-4">
-                      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-ink">{doc.fileName}</p>
-                          <p className="text-xs text-muted">
-                            Tipo: {doc.docType} · Enviado em {formatDateShort(doc.createdAt)}
-                          </p>
-                          {doc.reviewedAt && doc.reviewer && (
-                            <p className="mt-0.5 text-xs text-muted">
-                              Revisto em {formatDateShort(doc.reviewedAt)} por{' '}
-                              {doc.reviewer.firstName} {doc.reviewer.lastName}
-                            </p>
-                          )}
-                          {doc.notes && (
-                            <p className="mt-1 text-xs text-muted">
-                              <span className="font-medium">Notas:</span> {doc.notes}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={docStatusBadge[doc.status] ?? 'gray'}>
-                          {docStatusLabel[doc.status] ?? doc.status}
-                        </Badge>
-                      </div>
-
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setViewingDocId(isViewing ? null : doc.id)}
-                        >
-                          {isViewing ? 'Esconder pré-visualização' : 'Ver documento'}
-                        </Button>
-                        {isPending && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApprove(doc)}
-                              disabled={approveMutation.isPending}
-                            >
-                              Aprovar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => openReject(doc.id)}
-                              disabled={rejectMutation.isPending}
-                            >
-                              Rejeitar
-                            </Button>
-                          </>
-                        )}
-                      </div>
-
-                      {isViewing && (
-                        <div className="mt-3">
-                          {isDocLoading || !docView ? (
-                            <div className="flex justify-center py-8">
-                              <Spinner />
-                            </div>
-                          ) : (
-                            <Suspense
-                              fallback={
-                                <div className="flex justify-center py-8">
-                                  <Spinner />
-                                </div>
-                              }
-                            >
-                              <DocumentViewer
-                                url={docView.url}
-                                fileName={docView.fileName || doc.fileName}
-                              />
-                            </Suspense>
-                          )}
-                        </div>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+        {breeder.bio && (
+          <SectionCard title="Bio pública">
+            <p className="whitespace-pre-wrap text-sm text-ink">{breeder.bio}</p>
           </SectionCard>
-
-          {breeder.bio && (
-            <SectionCard title="Bio pública">
-              <p className="whitespace-pre-wrap text-sm text-ink">{breeder.bio}</p>
-            </SectionCard>
-          )}
-        </div>
+        )}
       </div>
 
       {actionError && (
