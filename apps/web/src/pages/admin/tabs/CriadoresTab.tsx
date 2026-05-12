@@ -172,11 +172,11 @@ export function CriadoresTab() {
            *   Nome comercial: auto (col flexivel) com truncate
            *   NIF: 6.5rem (sempre 9 digitos)
            *   DGAV: 8rem (formato 'DGAV-2020-077' ou 'pt-504651')
-           *   Estado: 7.5rem (badge 'Pendente de verificação' em 2 linhas)
+           *   Estado: 8.5rem (badge 'Pendente de verificação' em 2 linhas)
            *   Docs/Aval: 5rem (formato '1 / 0')
            *   Data: 5.5rem (formato curto '28/04/2026')
-           *   Destaque: 19rem (4 pills 'X dias' + 'Promover:' label, ou
-           *     'Destaque até dd/mm/yyyy' + 'Remover')
+           *   Destaque: 13rem (4 pills compactos '1d/7d/30d/90d' +
+           *     'Promover:' label, ou 'Destaque até dd/mm/yyyy' + 'Remover')
            */}
           <div className="hidden md:block">
             <table className="w-full table-fixed text-sm">
@@ -184,10 +184,10 @@ export function CriadoresTab() {
                 <col />
                 <col className="w-[6.5rem]" />
                 <col className="w-[8rem]" />
-                <col className="w-[7.5rem]" />
+                <col className="w-[8.5rem]" />
                 <col className="w-[5rem]" />
                 <col className="w-[5.5rem]" />
-                <col className="w-[19rem]" />
+                <col className="w-[13rem]" />
               </colgroup>
               <thead>
                 <tr className="border-b border-line text-left text-muted">

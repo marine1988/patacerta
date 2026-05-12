@@ -9,10 +9,10 @@
  */
 
 const FEATURE_PRESETS: Array<{ days: number; label: string }> = [
-  { days: 1, label: '1 dia' },
-  { days: 7, label: '7 dias' },
-  { days: 30, label: '30 dias' },
-  { days: 90, label: '90 dias' },
+  { days: 1, label: '1d' },
+  { days: 7, label: '7d' },
+  { days: 30, label: '30d' },
+  { days: 90, label: '90d' },
 ]
 
 export function FeatureToggle({
