@@ -217,7 +217,15 @@ export const deleteDocument = asyncHandler(async (req, res) => {
   res.status(204).send()
 })
 
-// B-15 + B-16: Guard doc status and breeder suspension on review
+// Admin pode rever um documento DGAV em qualquer altura, mesmo apos uma
+// revisao previa. Cenarios:
+//   - PENDING -> APPROVED/REJECTED  (revisao inicial)
+//   - REJECTED -> APPROVED          (admin enganou-se a rejeitar)
+//   - APPROVED -> REJECTED          (admin descobre fraude post-aprovacao)
+//   - mesmo status (no-op): permitimos para simplificar a UI; backend
+//     evita updates desnecessarios.
+// O criador e' re-promovido/despromovido conforme o novo status do DGAV.
+// Audit log distingue revisao inicial de mudanca (action sufixo _CHANGED).
 export const reviewDocument = asyncHandler(async (req, res) => {
   const docId = parseId(req.params.docId)
   // Body shape is enforced by reviewVerificationDocSchema on the router; the
@@ -230,9 +238,20 @@ export const reviewDocument = asyncHandler(async (req, res) => {
   })
   if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
 
-  // B-15: Only allow reviewing PENDING documents
-  if (doc.status !== 'PENDING') {
-    throw new AppError(400, 'Este documento já foi revisto', 'DOC_ALREADY_REVIEWED')
+  const previousStatus = doc.status
+  const isStatusChange = previousStatus !== 'PENDING' && previousStatus !== status
+
+  // No-op idempotente: se o admin clica Rejeitar num doc ja rejeitado
+  // sem alterar notas, nao escrevemos nada (evita audit-log spam).
+  if (previousStatus === status && (notes ?? null) === doc.notes) {
+    res.json({
+      id: doc.id,
+      docType: doc.docType,
+      status: doc.status,
+      notes: doc.notes,
+      reviewedAt: doc.reviewedAt,
+    })
+    return
   }
 
   const updated = await prisma.verificationDoc.update({
@@ -256,15 +275,26 @@ export const reviewDocument = asyncHandler(async (req, res) => {
   // Aprovar DGAV -> breeder VERIFIED. Rejeitar DGAV -> breeder DRAFT
   // (criador re-submete depois). Outros docs ja nao sao usados, mas se
   // existirem dados antigos sao revistos sem afectar status.
+  // SUSPENDED nao e' tocado: suspensao e' uma decisao administrativa
+  // separada que sobrepoe a verificacao.
   let breederStatusChange: 'VERIFIED' | 'DRAFT' | null = null
   if (doc.docType === 'DGAV' && doc.breeder.status !== 'SUSPENDED') {
-    if (status === 'APPROVED') {
+    if (status === 'APPROVED' && doc.breeder.status !== 'VERIFIED') {
       await prisma.breeder.update({
         where: { id: doc.breederId },
         data: { status: 'VERIFIED', verifiedAt: new Date() },
       })
       breederStatusChange = 'VERIFIED'
-    } else if (status === 'REJECTED') {
+    } else if (status === 'REJECTED' && doc.breeder.status === 'VERIFIED') {
+      // Despromover de VERIFIED para DRAFT quando o admin reverte uma
+      // aprovacao previa. Limpa verifiedAt.
+      await prisma.breeder.update({
+        where: { id: doc.breederId },
+        data: { status: 'DRAFT', verifiedAt: null },
+      })
+      breederStatusChange = 'DRAFT'
+    } else if (status === 'REJECTED' && doc.breeder.status !== 'DRAFT') {
+      // Rejeicao inicial (PENDING -> REJECTED): garantir DRAFT.
       await prisma.breeder.update({
         where: { id: doc.breederId },
         data: { status: 'DRAFT', verifiedAt: null },
@@ -273,12 +303,15 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     }
   }
 
+  // Audit log distingue revisao inicial vs mudanca de revisao previa.
+  // O detail inclui sempre a transicao para facilitar troubleshooting.
+  const baseAction = status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED'
   await logAudit({
     userId: req.user!.userId,
-    action: status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED',
+    action: isStatusChange ? `${baseAction}_CHANGED` : baseAction,
     entity: 'VerificationDoc',
     entityId: docId,
-    details: `${doc.docType} ${status} for breeder ${doc.breederId}${
+    details: `${doc.docType} ${previousStatus}->${status} for breeder ${doc.breederId}${
       breederStatusChange ? ` -> breeder.status=${breederStatusChange}` : ''
     }${notes ? `: ${notes}` : ''}`,
     ipAddress: req.ip,

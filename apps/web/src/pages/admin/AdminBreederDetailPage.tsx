@@ -249,12 +249,12 @@ export function AdminBreederDetailPage() {
   })
 
   function handleApprove(doc: BreederDetailVerificationDoc) {
-    if (
-      !window.confirm(
-        `Aprovar o documento "${doc.fileName}"? Se for o cartão DGAV, o criador será promovido automaticamente a Verificado.`,
-      )
-    )
-      return
+    // Texto adapta-se: aprovacao inicial vs reverter rejeicao previa.
+    const isRevert = doc.status === 'REJECTED'
+    const message = isRevert
+      ? `Reverter a rejeição do documento "${doc.fileName}" e aprovar? O criador será promovido a Verificado.`
+      : `Aprovar o documento "${doc.fileName}"? Se for o cartão DGAV, o criador será promovido automaticamente a Verificado.`
+    if (!window.confirm(message)) return
     approveMutation.mutate(doc.id)
   }
 
@@ -397,7 +397,11 @@ export function AdminBreederDetailPage() {
             <ul className="space-y-4">
               {breeder.verificationDocs.map((doc) => {
                 const isViewing = viewingDocId === doc.id
-                const isPending = doc.status === 'PENDING'
+                // Aprovar fica disponivel sempre que o doc nao esta APPROVED;
+                // Rejeitar idem para REJECTED. Isto permite ao admin corrigir
+                // erros de revisao (re-aprovar um doc rejeitado por engano).
+                const canApprove = doc.status !== 'APPROVED'
+                const canReject = doc.status !== 'REJECTED'
                 return (
                   <li key={doc.id} className="rounded-lg border border-line bg-surface-alt/40 p-4">
                     <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
@@ -431,24 +435,24 @@ export function AdminBreederDetailPage() {
                       >
                         {isViewing ? 'Esconder pré-visualização' : 'Ver documento'}
                       </Button>
-                      {isPending && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleApprove(doc)}
-                            disabled={approveMutation.isPending}
-                          >
-                            Aprovar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => openReject(doc.id)}
-                            disabled={rejectMutation.isPending}
-                          >
-                            Rejeitar
-                          </Button>
-                        </>
+                      {canApprove && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(doc)}
+                          disabled={approveMutation.isPending}
+                        >
+                          {doc.status === 'REJECTED' ? 'Reverter — Aprovar' : 'Aprovar'}
+                        </Button>
+                      )}
+                      {canReject && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => openReject(doc.id)}
+                          disabled={rejectMutation.isPending}
+                        >
+                          {doc.status === 'APPROVED' ? 'Reverter — Rejeitar' : 'Rejeitar'}
+                        </Button>
                       )}
                     </div>
 
@@ -617,8 +621,9 @@ export function AdminBreederDetailPage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-ink">
-            Indique o motivo da rejeição. Se for o cartão DGAV, o criador volta ao estado{' '}
-            <strong>Rascunho</strong> para poder enviar um novo certificado.
+            Indique o motivo da rejeição. Se o criador estava{' '}
+            <strong>Verificado</strong>, esta acção despromove-o para{' '}
+            <strong>Rascunho</strong> e ele tera de submeter um novo certificado DGAV.
           </p>
           <textarea
             value={rejectNotes}
