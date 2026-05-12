@@ -29,7 +29,9 @@ adminRouter.get('/verifications/pending', ctrl.getPendingVerifications)
 
 // Users management
 adminRouter.get('/users', ctrl.listAllUsers)
+adminRouter.get('/users/:id', ctrl.getUserDetail)
 adminRouter.patch('/users/:id/suspend', validate(suspendUserSchema), ctrl.suspendUser)
+adminRouter.patch('/users/:id/unsuspend', ctrl.unsuspendUser)
 
 // Breeders management — admin so pode suspender/reactivar.
 // A promocao para VERIFIED acontece exclusivamente via aprovacao do

@@ -51,6 +51,11 @@ const AdminBreederDetailPage = lazy(() =>
     default: m.AdminBreederDetailPage,
   })),
 )
+const AdminUserDetailPage = lazy(() =>
+  import('./pages/admin/AdminUserDetailPage').then((m) => ({
+    default: m.AdminUserDetailPage,
+  })),
+)
 const PrivacyPolicyPage = lazy(() =>
   import('./pages/legal/PrivacyPolicyPage').then((m) => ({
     default: m.PrivacyPolicyPage,
@@ -204,6 +209,14 @@ export function App() {
               element={
                 <ProtectedRoute roles={['ADMIN']}>
                   <AdminBreederDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/utilizadores/:id"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <AdminUserDetailPage />
                 </ProtectedRoute>
               }
             />

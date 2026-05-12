@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -122,9 +123,12 @@ export function UtilizadoresTab() {
               <li key={user.id} className="rounded-lg border border-line bg-surface p-4 shadow-sm">
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">
+                    <Link
+                      to={`/admin/utilizadores/${user.id}`}
+                      className="block truncate font-medium text-ink hover:text-caramel-700 hover:underline"
+                    >
                       {user.firstName} {user.lastName}
-                    </p>
+                    </Link>
                     <p className="truncate text-sm text-muted">{user.email}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -152,7 +156,13 @@ export function UtilizadoresTab() {
                   <dt className="text-muted">Registado</dt>
                   <dd className="text-ink">{formatDateShort(user.createdAt)}</dd>
                 </dl>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Link
+                    to={`/admin/utilizadores/${user.id}`}
+                    className="inline-flex items-center justify-center rounded border border-line px-3 py-1 text-xs font-medium text-ink hover:bg-surface-alt"
+                  >
+                    Ver detalhe
+                  </Link>
                   <Button
                     variant="danger"
                     size="sm"
@@ -187,7 +197,12 @@ export function UtilizadoresTab() {
                     className={`border-b border-line/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                   >
                     <td className="px-3 py-2 font-medium text-ink">
-                      {user.firstName} {user.lastName}
+                      <Link
+                        to={`/admin/utilizadores/${user.id}`}
+                        className="hover:text-caramel-700 hover:underline"
+                      >
+                        {user.firstName} {user.lastName}
+                      </Link>
                     </td>
                     <td className="px-3 py-2 text-ink">{user.email}</td>
                     <td className="px-3 py-2">
@@ -213,15 +228,23 @@ export function UtilizadoresTab() {
                     </td>
                     <td className="px-3 py-2 text-ink">{formatDateShort(user.createdAt)}</td>
                     <td className="px-3 py-2">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        disabled={suspendMutation.isPending || !user.isActive}
-                        title={!user.isActive ? 'Utilizador já suspenso' : undefined}
-                        onClick={() => handleSuspend(user)}
-                      >
-                        Suspender
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/admin/utilizadores/${user.id}`}
+                          className="inline-flex items-center justify-center rounded border border-line px-2 py-1 text-xs font-medium text-ink hover:bg-surface-alt"
+                        >
+                          Detalhe
+                        </Link>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={suspendMutation.isPending || !user.isActive}
+                          title={!user.isActive ? 'Utilizador já suspenso' : undefined}
+                          onClick={() => handleSuspend(user)}
+                        >
+                          Suspender
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

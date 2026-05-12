@@ -118,11 +118,14 @@ export const listAllUsers = asyncHandler(async (req, res) => {
   if (q) {
     // Pesquisa case-insensitive em nome (firstName/lastName) e email.
     // Util para encontrar utilizadores em listas grandes sem ter de
-    // paginar manualmente.
+    // paginar manualmente. Se `q` for inteiro, tambem aceita match
+    // exacto por id (atalho para deep-links e suporte ao admin).
+    const qNum = /^\d+$/.test(q) ? Number(q) : null
     where.OR = [
       { firstName: { contains: q, mode: 'insensitive' } },
       { lastName: { contains: q, mode: 'insensitive' } },
       { email: { contains: q, mode: 'insensitive' } },
+      ...(qNum !== null && Number.isSafeInteger(qNum) ? [{ id: qNum }] : []),
     ]
   }
 
@@ -195,6 +198,233 @@ export const suspendUser = asyncHandler(async (req, res) => {
   })
 
   res.status(204).send()
+})
+
+/**
+ * Reactiva uma conta de utilizador previamente suspensa.
+ *
+ * Limpa `isActive=true` + `suspendedAt`/`suspendedReason`. Se o
+ * utilizador tem perfil de criador associado e este foi suspenso na
+ * sequencia da suspensao da conta (status=SUSPENDED), reactiva-o
+ * tambem com a logica do `unsuspendBreeder`: VERIFIED se o DGAV
+ * permanecia aprovado, DRAFT caso contrario. Assim a reactivacao da
+ * conta nao deixa o criador num limbo.
+ *
+ * Retorna 204 (mesma convencao do suspendUser).
+ */
+export const unsuspendUser = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      breeder: { include: { verificationDocs: true } },
+    },
+  })
+  if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+  if (user.isActive) throw new AppError(400, 'Utilizador não está suspenso', 'NOT_SUSPENDED')
+
+  await prisma.user.update({
+    where: { id },
+    data: { isActive: true, suspendedAt: null, suspendedReason: null },
+  })
+
+  // Se o criador associado tambem ficou SUSPENDED em consequencia da
+  // suspensao da conta, reactiva-o aplicando a mesma regra usada em
+  // unsuspendBreeder. Se o admin suspendeu o criador isoladamente
+  // (sem suspender a conta), nao mexemos aqui — fica para o fluxo
+  // dedicado em /admin/breeders/:id/unsuspend.
+  if (user.breeder && user.breeder.status === 'SUSPENDED') {
+    const dgavApproved = user.breeder.verificationDocs.some(
+      (d) => d.docType === 'DGAV' && d.status === 'APPROVED',
+    )
+    const nextStatus = dgavApproved ? 'VERIFIED' : 'DRAFT'
+    await prisma.breeder.update({
+      where: { id: user.breeder.id },
+      data: {
+        status: nextStatus,
+        verifiedAt: dgavApproved ? (user.breeder.verifiedAt ?? new Date()) : null,
+        suspendedAt: null,
+        suspendedReason: null,
+      },
+    })
+  }
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'UNSUSPEND_USER',
+    entity: 'User',
+    entityId: id,
+    details: `Reactivated user ${user.email}`,
+    ipAddress: req.ip,
+  })
+
+  res.status(204).send()
+})
+
+/**
+ * Detalhe completo de um utilizador para o painel de admin.
+ *
+ * Devolve perfil + perfil de criador (se aplicavel) + servicos
+ * publicados + contagens agregadas + os ultimos 50 audit logs em que
+ * o utilizador foi alvo (entity ~ 'User' case-insensitive). Tambem
+ * devolve denuncias feitas e recebidas (head 10 cada) para inspeccao
+ * rapida sem ter de saltar para outras tabs.
+ *
+ * Nao inclui passwordHash, resetToken nem tokens de email — esses
+ * campos nunca devem sair da API.
+ */
+export const getUserDetail = asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id)
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      phone: true,
+      avatarUrl: true,
+      isActive: true,
+      suspendedAt: true,
+      suspendedReason: true,
+      emailVerified: true,
+      createdAt: true,
+      updatedAt: true,
+      breeder: {
+        select: {
+          id: true,
+          businessName: true,
+          slug: true,
+          nif: true,
+          dgavNumber: true,
+          status: true,
+          verifiedAt: true,
+          suspendedAt: true,
+          suspendedReason: true,
+          avgRating: true,
+          reviewCount: true,
+          featuredUntil: true,
+          createdAt: true,
+        },
+      },
+      services: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          status: true,
+          priceCents: true,
+          priceUnit: true,
+          currency: true,
+          avgRating: true,
+          reviewCount: true,
+          createdAt: true,
+          publishedAt: true,
+          removedAt: true,
+          removedReason: true,
+          featuredUntil: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      _count: {
+        select: {
+          sentMessages: true,
+          threadsAsOwner: true,
+          reviews: true,
+          serviceReviews: true,
+          messageReportsFiled: true,
+          serviceReportsFiled: true,
+          refreshTokens: true,
+          auditLogs: true,
+        },
+      },
+    },
+  })
+  if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+
+  // Audit trail focado no utilizador alvo (NAO o actor). Limitamos a
+  // 50 entradas — chega para uma visao executiva sem inundar o JSON.
+  const targetedAuditLogs = await prisma.auditLog.findMany({
+    where: {
+      entity: { equals: 'User', mode: 'insensitive' },
+      entityId: id,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    include: {
+      user: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  })
+
+  // Denuncias feitas pelo utilizador (head 10) — util para detectar
+  // padroes de abuso (denunciante serial). Inclui o estado e um pouco
+  // de contexto da entidade alvo.
+  const messageReportsFiled = await prisma.messageReport.findMany({
+    where: { reporterId: id },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      id: true,
+      reason: true,
+      status: true,
+      createdAt: true,
+      reviewedAt: true,
+      message: {
+        select: {
+          id: true,
+          sender: { select: { id: true, firstName: true, lastName: true, email: true } },
+        },
+      },
+    },
+  })
+  const serviceReportsFiled = await prisma.serviceReport.findMany({
+    where: { reporterId: id },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      id: true,
+      reason: true,
+      status: true,
+      createdAt: true,
+      reviewedAt: true,
+      service: { select: { id: true, title: true, slug: true } },
+    },
+  })
+
+  // Denuncias recebidas — apenas service reports (mensagens nao tem
+  // relacao directa pelo `reportedUser`, sao por `messageId`). Para
+  // mensagens, fariamos join via Message.senderId, mas isso obriga a
+  // varrer todas as denuncias — preferimos lazy-load se necessario
+  // numa segunda fase.
+  const serviceReportsReceived = await prisma.serviceReport.findMany({
+    where: { service: { providerId: id } },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      id: true,
+      reason: true,
+      status: true,
+      createdAt: true,
+      reviewedAt: true,
+      reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
+      service: { select: { id: true, title: true, slug: true } },
+    },
+  })
+
+  res.json({
+    user,
+    auditLogs: targetedAuditLogs,
+    reportsFiled: {
+      messages: messageReportsFiled,
+      services: serviceReportsFiled,
+    },
+    reportsReceived: {
+      services: serviceReportsReceived,
+    },
+  })
 })
 
 export const listAllBreeders = asyncHandler(async (req, res) => {
