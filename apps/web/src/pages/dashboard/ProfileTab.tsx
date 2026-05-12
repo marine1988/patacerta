@@ -8,7 +8,7 @@ export function ProfileTab() {
   const [editing, setEditing] = useState(false)
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState(user?.phone ?? '')
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   )
@@ -22,6 +22,7 @@ export function ProfileTab() {
     if (user) {
       setFirstName(user.firstName)
       setLastName(user.lastName)
+      setPhone(user.phone ?? '')
     }
   }, [user])
 

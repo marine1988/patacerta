@@ -10,6 +10,8 @@ export interface User {
   role: string
   firstName: string
   lastName: string
+  phone?: string | null
+  avatarUrl?: string | null
 }
 
 interface AuthContextValue {
