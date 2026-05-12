@@ -121,6 +121,9 @@ export function AdminPage() {
     const next = new URLSearchParams(searchParams)
     if (id === 'resumo') next.delete('tab')
     else next.set('tab', id)
+    // ?sub= so faz sentido na tab Moderacao. Limpar ao mudar de tab
+    // top-level evita querystrings stale como ?tab=servicos&sub=servicos.
+    if (id !== 'moderacao') next.delete('sub')
     setSearchParams(next, { replace: true })
   }
 
