@@ -61,6 +61,22 @@ export const updateMe = asyncHandler(async (req, res) => {
 export const deleteMe = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
 
+  // Guard: impedir que o último ADMIN activo se auto-elimine, deixando
+  // o sistema sem administrador. Verificamos antes da transacção para
+  // devolver erro claro.
+  if (req.user!.role === 'ADMIN') {
+    const activeAdminCount = await prisma.user.count({
+      where: { role: 'ADMIN', isActive: true },
+    })
+    if (activeAdminCount <= 1) {
+      throw new AppError(
+        400,
+        'Não é possível eliminar a conta: é o último administrador activo. Promova outro utilizador a administrador antes de eliminar a sua conta.',
+        'LAST_ACTIVE_ADMIN',
+      )
+    }
+  }
+
   // RGPD-compliant soft-delete: deactivate + pseudonymize personal data
   await prisma.$transaction(async (tx) => {
     // 1. Deactivate and pseudonymize the user
@@ -160,6 +176,22 @@ export const changeUserRole = asyncHandler(async (req, res) => {
     select: { id: true, email: true, role: true },
   })
   if (!target) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+
+  // Guard: impedir despromover o último ADMIN activo. Sem este check,
+  // um admin podia retirar o papel ao único colega ADMIN restante e
+  // depois ficar bloqueado por SELF_ROLE_CHANGE no proprio.
+  if (target.role === 'ADMIN' && role !== 'ADMIN') {
+    const activeAdminCount = await prisma.user.count({
+      where: { role: 'ADMIN', isActive: true },
+    })
+    if (activeAdminCount <= 1) {
+      throw new AppError(
+        400,
+        'Não é possível remover o papel ADMIN: é o último administrador activo.',
+        'LAST_ACTIVE_ADMIN',
+      )
+    }
+  }
 
   const updated = await prisma.user.update({
     where: { id },
