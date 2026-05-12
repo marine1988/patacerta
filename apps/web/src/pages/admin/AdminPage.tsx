@@ -1,6 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Select, Spinner } from '../../components/ui'
+import { api } from '../../lib/api'
+import { queryKeys } from '../../lib/queryKeys'
+import { pollingQueryDefaults } from '../../lib/queryDefaults'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { PatrocinadosTab } from './PatrocinadosTab'
 
@@ -37,6 +41,7 @@ interface TabDef {
   label: string
   icon: ReactNode
   content: ReactNode
+  badge?: number
 }
 
 // Chave localStorage para o estado collapsed da sidebar do admin.
@@ -78,6 +83,32 @@ export function AdminPage() {
     canonicalPath: '/admin',
     noIndex: true,
   })
+
+  // Contagens de items pendentes para mostrar badges na sidebar.
+  // Reutiliza a mesma query key da Navbar — partilha cache, polling
+  // suave de 60s.
+  const { data: pending } = useQuery({
+    queryKey: queryKeys.admin.pendingCounts(),
+    queryFn: async () => {
+      const res = await api.get<{
+        pendingDocs: number
+        pendingBreeders: number
+        flaggedReviews: number
+        pendingMessageReports: number
+        pendingServiceReports: number
+        total: number
+      }>('/admin/pending-counts')
+      return res.data
+    },
+    ...pollingQueryDefaults(),
+  })
+
+  const verificacoesPending =
+    (pending?.pendingDocs ?? 0) + (pending?.pendingBreeders ?? 0)
+  const moderacaoPending =
+    (pending?.pendingMessageReports ?? 0) +
+    (pending?.pendingServiceReports ?? 0) +
+    (pending?.flaggedReviews ?? 0)
 
   // Sincroniza tab activa <-> ?tab=. Permite deep-linking e back/forward.
   useEffect(() => {
@@ -133,6 +164,7 @@ export function AdminPage() {
         </svg>
       ),
       content: <VerificacoesTab />,
+      badge: verificacoesPending,
     },
     {
       id: 'utilizadores',
@@ -213,6 +245,7 @@ export function AdminPage() {
         </svg>
       ),
       content: <ModeracaoTab />,
+      badge: moderacaoPending,
     },
     {
       id: 'patrocinados',
@@ -273,7 +306,10 @@ export function AdminPage() {
           value={activeTab}
           onChange={(e) => changeTab(e.target.value)}
           aria-label="Secção do painel"
-          options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
+          options={tabs.map((tab) => ({
+            value: tab.id,
+            label: tab.badge && tab.badge > 0 ? `${tab.label} (${tab.badge})` : tab.label,
+          }))}
         />
       </div>
 
@@ -340,7 +376,7 @@ export function AdminPage() {
                     // collapsed centramos o icone com justify-center, e
                     // escondemos a label via classe condicional.
                     title={sidebarCollapsed ? tab.label : undefined}
-                    className={`-ml-px flex w-full items-center gap-3 border-l-2 py-2 text-left text-sm font-medium transition-colors ${
+                    className={`-ml-px relative flex w-full items-center gap-3 border-l-2 py-2 text-left text-sm font-medium transition-colors ${
                       sidebarCollapsed ? 'justify-center px-2' : 'px-4'
                     } ${
                       isActive
@@ -350,6 +386,17 @@ export function AdminPage() {
                   >
                     <span className="shrink-0">{tab.icon}</span>
                     {!sidebarCollapsed && <span className="truncate">{tab.label}</span>}
+                    {tab.badge && tab.badge > 0 ? (
+                      <span
+                        className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-caramel-500 px-1.5 text-[10px] font-semibold leading-none text-white ${
+                          sidebarCollapsed ? 'absolute -mt-4 ml-4' : 'ml-auto'
+                        }`}
+                        aria-label={`${tab.badge} pendente(s)`}
+                        title={`${tab.badge} pendente(s)`}
+                      >
+                        {tab.badge > 99 ? '99+' : tab.badge}
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               )

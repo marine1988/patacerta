@@ -4,7 +4,7 @@ import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
-import { Badge, Spinner, EmptyState, Select } from '../../../components/ui'
+import { Badge, Spinner, EmptyState, Select, Button } from '../../../components/ui'
 import type { AuditLog } from '../_shared'
 
 // Tradução de actions/entidades brutas para labels PT-PT.
@@ -75,6 +75,8 @@ export function AuditoriaTab() {
   // Conjunto de IDs com a linha "detalhes" expandida. Local-only — nao
   // persiste entre paginacoes nem refetches.
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [exporting, setExporting] = useState<null | 'csv' | 'json'>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   function toggleExpanded(id: number) {
     setExpanded((prev) => {
@@ -83,6 +85,98 @@ export function AuditoriaTab() {
       else next.add(id)
       return next
     })
+  }
+
+  // CSV escape — duplica aspas internas e envolve em aspas.
+  function csvCell(v: unknown): string {
+    if (v === null || v === undefined) return ''
+    const s = typeof v === 'string' ? v : JSON.stringify(v)
+    return `"${s.replace(/"/g, '""')}"`
+  }
+
+  function triggerDownload(content: string, mime: string, filename: string) {
+    const blob = new Blob([content], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // Pagina pelo backend ate esgotar resultados (limit 100, max 50 paginas
+  // = 5000 registos por export — chega para inspeccoes pontuais sem
+  // saturar memoria/rede). Aplica os filtros activos.
+  async function fetchAllLogs(): Promise<AuditLog[]> {
+    const acc: AuditLog[] = []
+    const MAX_PAGES = 50
+    const LIMIT = 100
+    for (let p = 1; p <= MAX_PAGES; p++) {
+      const params = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
+      if (actionFilter) params.set('action', actionFilter)
+      if (entityFilter) params.set('entity', entityFilter)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
+      const res = await api.get<Paginated<AuditLog>>(`/admin/audit-logs?${params}`)
+      acc.push(...res.data.data)
+      if (res.data.data.length < LIMIT) break
+    }
+    return acc
+  }
+
+  async function handleExport(format: 'csv' | 'json') {
+    setExportError(null)
+    setExporting(format)
+    try {
+      const logs = await fetchAllLogs()
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+      if (format === 'json') {
+        triggerDownload(
+          JSON.stringify(logs, null, 2),
+          'application/json',
+          `auditoria-${stamp}.json`,
+        )
+      } else {
+        const header = [
+          'id',
+          'createdAt',
+          'userId',
+          'userName',
+          'userEmail',
+          'action',
+          'entity',
+          'entityId',
+          'ipAddress',
+          'details',
+        ]
+        const rows = logs.map((l) =>
+          [
+            l.id,
+            l.createdAt,
+            l.user?.id ?? '',
+            l.user ? `${l.user.firstName} ${l.user.lastName}` : '',
+            l.user?.email ?? '',
+            l.action,
+            l.entity,
+            l.entityId ?? '',
+            l.ipAddress ?? '',
+            l.details ?? '',
+          ]
+            .map(csvCell)
+            .join(','),
+        )
+        // BOM \ufeff para o Excel reconhecer UTF-8 com acentos.
+        const csv = '\ufeff' + [header.map(csvCell).join(','), ...rows].join('\r\n')
+        triggerDownload(csv, 'text/csv;charset=utf-8', `auditoria-${stamp}.csv`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha ao exportar'
+      setExportError(msg)
+    } finally {
+      setExporting(null)
+    }
   }
 
   const { data, isLoading, isError } = useQuery<Paginated<AuditLog>>({
@@ -224,7 +318,32 @@ export function AuditoriaTab() {
             </button>
           </div>
         )}
+        <div className="ml-auto flex items-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => handleExport('csv')}
+            loading={exporting === 'csv'}
+            disabled={exporting !== null}
+            aria-label="Exportar registos em CSV"
+          >
+            Exportar CSV
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => handleExport('json')}
+            loading={exporting === 'json'}
+            disabled={exporting !== null}
+            aria-label="Exportar registos em JSON"
+          >
+            Exportar JSON
+          </Button>
+        </div>
       </div>
+      {exportError && (
+        <p className="mb-3 text-sm text-red-600" role="alert">
+          {exportError}
+        </p>
+      )}
 
       {!data || data.data.length === 0 ? (
         <EmptyState title="Sem registos" description="Nenhum registo de auditoria encontrado." />
