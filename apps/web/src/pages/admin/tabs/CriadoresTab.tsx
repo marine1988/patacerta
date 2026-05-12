@@ -6,7 +6,7 @@ import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
-import { Badge, Button, Spinner, EmptyState, Select, Modal } from '../../../components/ui'
+import { Badge, Spinner, EmptyState, Select } from '../../../components/ui'
 import { type Breeder, statusBadgeVariant, statusLabel } from '../_shared'
 import { FeatureToggle } from '../_components/FeatureToggle'
 
@@ -15,9 +15,6 @@ export function CriadoresTab() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
-  const [suspendingBreeder, setSuspendingBreeder] = useState<Breeder | null>(null)
-  const [suspendReason, setSuspendReason] = useState('')
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const breederStatusOptions = [
     { value: 'DRAFT', label: 'Rascunho' },
@@ -35,32 +32,12 @@ export function CriadoresTab() {
     },
   })
 
-  // Admin so pode suspender ou reactivar. Promocao para VERIFIED acontece
-  // exclusivamente via aprovacao do certificado DGAV no separador
-  // "Verificações".
-  const suspendMutation = useMutation({
-    mutationFn: ({ breederId, reason }: { breederId: number; reason: string }) =>
-      api.patch(`/admin/breeders/${breederId}/suspend`, { reason }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
-      setSuspendingBreeder(null)
-      setSuspendReason('')
-      setActionError(null)
-    },
-    onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender criador.')
-    },
-  })
-  const unsuspendMutation = useMutation({
-    mutationFn: (breederId: number) => api.patch(`/admin/breeders/${breederId}/unsuspend`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
-    },
-  })
+  // Suspender/Reactivar foram movidos para a pagina de detalhe
+  // (/admin/criadores/:id) — a tabela e' apenas overview navegavel.
+  // Isto reduz a pressao horizontal das colunas e evita que o botao
+  // 'Suspender' (vermelho, larga acçao destrutiva) seja clicavel
+  // acidentalmente. Destaque mantem-se na tabela porque e' frequente
+  // (toggle rapido) e idempotente.
 
   const featureBreederMutation = useMutation({
     mutationFn: ({
@@ -75,21 +52,6 @@ export function CriadoresTab() {
       queryClient.invalidateQueries({ queryKey: queryKeys.home.featured() })
     },
   })
-
-  function handleSuspend(breeder: Breeder) {
-    setSuspendingBreeder(breeder)
-    setSuspendReason('')
-    setActionError(null)
-  }
-  function handleUnsuspend(breeder: Breeder) {
-    if (
-      !window.confirm(
-        `Reactivar "${breeder.businessName}"? Volta ao estado anterior (Verificado se já tinha DGAV aprovado, caso contrário Rascunho).`,
-      )
-    )
-      return
-    unsuspendMutation.mutate(breeder.id)
-  }
 
   if (isLoading) {
     return (
@@ -127,11 +89,6 @@ export function CriadoresTab() {
           {/* Mobile: lista de cards */}
           <ul className="space-y-3 md:hidden">
             {data.data.map((breeder) => {
-              const isSuspended = breeder.status === 'SUSPENDED'
-              const actionPending =
-                (suspendMutation.isPending &&
-                  suspendMutation.variables?.breederId === breeder.id) ||
-                (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
               return (
                 <li
                   key={breeder.id}
@@ -165,7 +122,7 @@ export function CriadoresTab() {
                     <dt className="text-muted">Data</dt>
                     <dd className="text-ink">{formatDateShort(breeder.createdAt)}</dd>
                   </dl>
-                  <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <FeatureToggle
                       featuredUntil={breeder.featuredUntil}
                       isPending={
@@ -186,26 +143,6 @@ export function CriadoresTab() {
                       }
                     />
                   </div>
-                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                    {isSuspended ? (
-                      <Button
-                        size="sm"
-                        onClick={() => handleUnsuspend(breeder)}
-                        disabled={actionPending}
-                      >
-                        Reactivar
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleSuspend(breeder)}
-                        disabled={actionPending}
-                      >
-                        Suspender
-                      </Button>
-                    )}
-                  </div>
                 </li>
               )
             })}
@@ -219,16 +156,27 @@ export function CriadoresTab() {
            * forcando scroll horizontal — especialmente apertado quando a
            * sidebar do AdminPage esta expandida (220px).
            *
+           * Distrito e Accao (Suspender) foram removidos da tabela:
+           *  - Distrito esta visivel na pagina de detalhe e raramente e'
+           *    o filtro principal aqui (filtro principal = Estado, ja em
+           *    cima)
+           *  - Suspender/Reactivar agora vivem na pagina de detalhe
+           *    /admin/criadores/:id, onde o admin tem mais contexto antes
+           *    de uma accao destrutiva.
+           *
+           * Isto liberta ~13.5rem que vao para a coluna Destaque (que
+           * agora pode mostrar os 4 pills 'Promover: 1 dia | 7 dias |
+           * 30 dias | 90 dias' sem encavalitar).
+           *
            * Larguras escolhidas com base no conteudo real:
            *   Nome comercial: auto (col flexivel) com truncate
-           *   NIF: 9ch (sempre 9 digitos)
-           *   DGAV: 12ch (formato "DGAV-2020-077" ou "pt-504651")
-           *   Distrito: 9rem (nomes tipo "Viana do Castelo" cabem em 2 linhas)
-           *   Estado: 8rem (badges "Pendente de verificação" precisam espaco)
-           *   Docs/Aval: 5rem (formato "1 / 0")
-           *   Data: 6rem (formato curto "28/04/2026")
-           *   Accao: 7rem (botao Suspender/Reactivar)
-           *   Destaque: 8rem (FeatureToggle compacto)
+           *   NIF: 6.5rem (sempre 9 digitos)
+           *   DGAV: 8rem (formato 'DGAV-2020-077' ou 'pt-504651')
+           *   Estado: 7.5rem (badge 'Pendente de verificação' em 2 linhas)
+           *   Docs/Aval: 5rem (formato '1 / 0')
+           *   Data: 5.5rem (formato curto '28/04/2026')
+           *   Destaque: 19rem (4 pills 'X dias' + 'Promover:' label, ou
+           *     'Destaque até dd/mm/yyyy' + 'Remover')
            */}
           <div className="hidden md:block">
             <table className="w-full table-fixed text-sm">
@@ -236,33 +184,24 @@ export function CriadoresTab() {
                 <col />
                 <col className="w-[6.5rem]" />
                 <col className="w-[8rem]" />
-                <col className="w-[7rem]" />
                 <col className="w-[7.5rem]" />
                 <col className="w-[5rem]" />
                 <col className="w-[5.5rem]" />
-                <col className="w-[6.5rem]" />
-                <col className="w-[8rem]" />
+                <col className="w-[19rem]" />
               </colgroup>
               <thead>
                 <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2">Nome comercial</th>
                   <th className="px-3 py-2">NIF</th>
                   <th className="px-3 py-2">DGAV</th>
-                  <th className="px-3 py-2">Distrito</th>
                   <th className="px-3 py-2">Estado</th>
                   <th className="px-3 py-2">Docs/Aval.</th>
                   <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Acção</th>
                   <th className="px-3 py-2">Destaque</th>
                 </tr>
               </thead>
               <tbody>
                 {data.data.map((breeder, i) => {
-                  const isSuspended = breeder.status === 'SUSPENDED'
-                  const actionPending =
-                    (suspendMutation.isPending &&
-                      suspendMutation.variables?.breederId === breeder.id) ||
-                    (unsuspendMutation.isPending && unsuspendMutation.variables === breeder.id)
                   const ownerName = `${breeder.user.firstName} ${breeder.user.lastName}`
                   return (
                     <tr
@@ -295,9 +234,6 @@ export function CriadoresTab() {
                       >
                         {breeder.dgavNumber || String.fromCharCode(8212)}
                       </td>
-                      <td className="px-3 py-2 text-ink" title={breeder.district?.namePt}>
-                        {breeder.district?.namePt ?? String.fromCharCode(8212)}
-                      </td>
                       <td className="px-3 py-2">
                         <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
                           {statusLabel[breeder.status] ?? breeder.status}
@@ -307,26 +243,6 @@ export function CriadoresTab() {
                         {breeder._count.verificationDocs} / {breeder._count.reviews}
                       </td>
                       <td className="px-3 py-2 text-ink">{formatDateShort(breeder.createdAt)}</td>
-                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                        {isSuspended ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleUnsuspend(breeder)}
-                            disabled={actionPending}
-                          >
-                            Reactivar
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => handleSuspend(breeder)}
-                            disabled={actionPending}
-                          >
-                            Suspender
-                          </Button>
-                        )}
-                      </td>
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <FeatureToggle
                           featuredUntil={breeder.featuredUntil}
@@ -357,51 +273,6 @@ export function CriadoresTab() {
           <Pagination variant="summary" meta={data.meta} page={page} onChange={setPage} />
         </>
       )}
-
-      {/* Suspend modal */}
-      <Modal
-        isOpen={suspendingBreeder !== null}
-        onClose={() => setSuspendingBreeder(null)}
-        title="Suspender criador"
-        size="md"
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-muted">
-            O perfil deixará de aparecer em pesquisas e listas. O motivo é registado no histórico.
-          </p>
-          <div>
-            <label className="label">Motivo (mín. 15, máx. 500)</label>
-            <textarea
-              className="input min-h-[80px]"
-              value={suspendReason}
-              onChange={(e) => setSuspendReason(e.target.value)}
-              minLength={15}
-              maxLength={500}
-            />
-            <p className="mt-1 text-xs text-subtle">{suspendReason.length}/500</p>
-          </div>
-          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setSuspendingBreeder(null)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="danger"
-              disabled={suspendReason.trim().length < 15}
-              loading={suspendMutation.isPending}
-              onClick={() =>
-                suspendingBreeder &&
-                suspendMutation.mutate({
-                  breederId: suspendingBreeder.id,
-                  reason: suspendReason.trim(),
-                })
-              }
-            >
-              Suspender
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }

@@ -113,6 +113,9 @@ export function AdminBreederDetailPage() {
   const [rejectingDocId, setRejectingDocId] = useState<number | null>(null)
   const [rejectNotes, setRejectNotes] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+  // Modal de suspensao (motivo obrigatorio, min 15 chars).
+  const [suspendOpen, setSuspendOpen] = useState(false)
+  const [suspendReason, setSuspendReason] = useState('')
 
   usePageMeta({
     title: 'Detalhe de criador',
@@ -180,6 +183,42 @@ export function AdminBreederDetailPage() {
       const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
         ?.response?.data
       setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao rejeitar documento.')
+    },
+  })
+
+  // Suspender / Reactivar criador. Reusa endpoints existentes.
+  // Backend: ao reactivar, status volta para VERIFIED se houver DGAV
+  // APPROVED, caso contrario para DRAFT (ver admin.controller.unsuspendBreeder).
+  const suspendMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      api.patch(`/admin/breeders/${id}/suspend`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.breederDetail(breederId) })
+      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+      setSuspendOpen(false)
+      setSuspendReason('')
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender criador.')
+    },
+  })
+
+  const unsuspendMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/admin/breeders/${id}/unsuspend`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.breederDetail(breederId) })
+      queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao reactivar criador.')
     },
   })
 
@@ -267,9 +306,41 @@ export function AdminBreederDetailPage() {
             {ownerName} {String.fromCharCode(8212)} {breeder.user.email}
           </p>
         </div>
-        <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
-          {statusLabel[breeder.status] ?? breeder.status}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant={statusBadgeVariant[breeder.status] ?? 'gray'}>
+            {statusLabel[breeder.status] ?? breeder.status}
+          </Badge>
+          {breeder.status === 'SUSPENDED' ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Reactivar "${breeder.businessName}"? Volta ao estado anterior (Verificado se já tinha DGAV aprovado, caso contrário Rascunho).`,
+                  )
+                ) {
+                  unsuspendMutation.mutate(breeder.id)
+                }
+              }}
+              disabled={unsuspendMutation.isPending}
+            >
+              Reactivar
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => {
+                setSuspendReason('')
+                setActionError(null)
+                setSuspendOpen(true)
+              }}
+              disabled={suspendMutation.isPending}
+            >
+              Suspender
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Aviso de suspensao em destaque */}
@@ -463,6 +534,49 @@ export function AdminBreederDetailPage() {
           {actionError}
         </div>
       )}
+
+      {/* Modal de suspensao */}
+      <Modal
+        isOpen={suspendOpen}
+        onClose={() => {
+          setSuspendOpen(false)
+          setActionError(null)
+        }}
+        title="Suspender criador"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink">
+            O perfil deixará de aparecer em pesquisas e listas. O motivo é registado no histórico
+            de auditoria.
+          </p>
+          <textarea
+            value={suspendReason}
+            onChange={(e) => setSuspendReason(e.target.value)}
+            placeholder="Motivo da suspensão (mín. 15 caracteres)"
+            className="w-full min-h-[100px] border border-line bg-surface p-3 text-sm text-ink"
+            style={{ borderRadius: 2 }}
+            minLength={15}
+            maxLength={500}
+          />
+          <p className="text-xs text-subtle">{suspendReason.length}/500 (mín. 15)</p>
+          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setSuspendOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              loading={suspendMutation.isPending}
+              disabled={suspendReason.trim().length < 15}
+              onClick={() =>
+                suspendMutation.mutate({ id: breeder.id, reason: suspendReason.trim() })
+              }
+            >
+              Suspender
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal de rejeicao */}
       <Modal
