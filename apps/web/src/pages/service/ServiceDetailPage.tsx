@@ -228,6 +228,9 @@ export function ServiceDetailPage() {
     canonicalPath: servicePath,
     imageUrl: service?.photos[0]?.url,
     type: 'article',
+    // noIndex defensivo durante loading/erro: evita indexar páginas com
+    // title genérico "Anúncio" e canonical truncado.
+    noIndex: isError || (!isLoading && !service),
     jsonLd: service
       ? [
           serviceJsonLd({

@@ -49,8 +49,6 @@ interface BreederDetail {
   id: number
   slug: string | null
   businessName: string
-  nif: string
-  dgavNumber: string | null
   verifiedAt: string | null
   description: string | null
   website: string | null
@@ -156,6 +154,11 @@ export function BreederProfilePage() {
     canonicalPath: breederPath,
     imageUrl: breederPhotoUrl ?? undefined,
     type: 'profile',
+    // noIndex defensivo: enquanto carrega ou em erro/404, o head poderia
+    // ser indexado com title genérico "Criador" e canonical truncado;
+    // sinalizamos noindex até termos dados estáveis para evitar duplicação
+    // SEO e indexação de páginas de erro.
+    noIndex: isError || (!isLoading && !breeder),
     jsonLd: breeder
       ? [
           localBusinessJsonLd({
@@ -388,7 +391,6 @@ export function BreederProfilePage() {
                   <h1 className="text-2xl font-bold text-gray-900">{breeder.businessName}</h1>
                   <VerificationBadge
                     status={breeder.status}
-                    dgavNumber={breeder.dgavNumber}
                     verifiedAt={breeder.verifiedAt}
                   />
                 </div>
@@ -613,27 +615,6 @@ export function BreederProfilePage() {
               </Card>
             )
           })()}
-
-          {breeder.status === 'VERIFIED' && breeder.dgavNumber && (
-            <Card>
-              <h2 className="text-lg font-semibold text-gray-900">Certificação</h2>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg bg-green-50 p-4">
-                  <p className="text-xs font-medium text-green-600">Registo DGAV</p>
-                  <p className="mt-1 text-sm font-semibold text-green-800">{breeder.dgavNumber}</p>
-                </div>
-                <div className="rounded-lg bg-blue-50 p-4">
-                  <p className="text-xs font-medium text-blue-600">NIF</p>
-                  <p className="mt-1 text-sm font-semibold text-blue-800">{breeder.nif}</p>
-                </div>
-              </div>
-              {breeder.verifiedAt && (
-                <p className="mt-3 text-xs text-gray-500">
-                  Verificado pela equipa PataCerta em {formatDate(breeder.verifiedAt)}
-                </p>
-              )}
-            </Card>
-          )}
 
           {/* Reviews section */}
           <Card>
