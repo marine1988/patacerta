@@ -1,8 +1,14 @@
+import type { Request, Response } from 'express'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import { uploadFile, deleteFile } from '../../lib/minio.js'
+import { assertFileKind } from '../../lib/file-validation.js'
 import bcrypt from 'bcryptjs'
+import multer from 'multer'
+import sharp from 'sharp'
+import { randomUUID } from 'crypto'
 import type { ChangeUserRoleInput } from '@patacerta/shared'
 
 const USER_SELECT = {
@@ -211,4 +217,161 @@ export const changeUserRole = asyncHandler(async (req, res) => {
   })
 
   res.json(updated)
+})
+
+// ---------------------------------------------------------------------------
+// Avatar upload — POST /users/me/avatar (multipart "file") + DELETE
+// ---------------------------------------------------------------------------
+//
+// Avatar e' uma imagem publica, redimensionada server-side para 512x512
+// JPEG (mozjpeg q85, EXIF orientation respeitado). Substitui qualquer
+// avatar anterior, apagando o objecto antigo do MinIO em best-effort
+// (sem falhar o request se a remocao falhar — pior caso e' orfa no
+// bucket que cron pode varrer).
+//
+// Limite 2MB no upload bruto; sharp re-encodifica, eliminando metadados.
+// Magic-bytes validados antes do sharp.
+
+const AVATAR_MAX_DIMENSION = 512
+const AVATAR_JPEG_QUALITY = 85
+const AVATAR_UPLOAD_BYTES = 2 * 1024 * 1024
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: AVATAR_UPLOAD_BYTES },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(
+        new AppError(
+          400,
+          'Tipo de ficheiro não suportado. Use JPG, PNG ou WebP.',
+          'INVALID_FILE_TYPE',
+        ) as unknown as Error,
+      )
+    }
+  },
+}).single('file')
+
+function runAvatarMulter(req: Request, res: Response): Promise<void> {
+  return new Promise((resolve, reject) => {
+    avatarUpload(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return reject(new AppError(400, 'Avatar pode ter no máximo 2MB', 'FILE_TOO_LARGE'))
+        }
+        return reject(err)
+      }
+      resolve()
+    })
+  })
+}
+
+/**
+ * Extrai o objectName a partir de uma URL no formato `/{bucket}/{object}`
+ * (devolvido por `uploadFile`). Retorna `null` se a URL nao seguir esse
+ * padrao (e.g. avatar externo pre-existente). Usado para apagar o avatar
+ * antigo do MinIO ao substituir.
+ */
+function extractPublicObjectName(url: string): string | null {
+  if (!url || !url.startsWith('/')) return null
+  const m = url.match(/^\/[^/]+\/(.+)$/)
+  return m ? m[1] : null
+}
+
+export const uploadMyAvatar = asyncHandler(async (req, res) => {
+  await runAvatarMulter(req, res)
+
+  if (!req.file) throw new AppError(400, 'Nenhum ficheiro enviado', 'NO_FILE')
+
+  // Magic-bytes: header mimetype e' client-supplied. Garantir que e' uma
+  // imagem real antes de a passar ao sharp (que aceitaria PDFs como input
+  // e silenciosamente erraria; melhor erro claro 400).
+  assertFileKind(req.file.buffer, ['image/jpeg', 'image/png', 'image/webp'])
+
+  const userId = req.user!.userId
+
+  const buffer = await sharp(req.file.buffer)
+    .rotate()
+    .resize({
+      width: AVATAR_MAX_DIMENSION,
+      height: AVATAR_MAX_DIMENSION,
+      fit: 'cover',
+      position: 'centre',
+    })
+    .jpeg({ quality: AVATAR_JPEG_QUALITY, mozjpeg: true })
+    .toBuffer()
+
+  const objectName = `avatars/${userId}/${randomUUID()}.jpg`
+  const url = await uploadFile(objectName, buffer, 'image/jpeg')
+
+  // Apaga avatar anterior em best-effort. Lemos primeiro o valor actual
+  // (e nao o usamos como condicao optimistic) — concorrencia de duas
+  // uploads simultaneos do mesmo user vai apenas deixar o mais antigo
+  // orfa, aceitavel.
+  const previous = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarUrl: true },
+  })
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { avatarUrl: url },
+    select: USER_SELECT,
+  })
+
+  if (previous?.avatarUrl) {
+    const oldObject = extractPublicObjectName(previous.avatarUrl)
+    if (oldObject) {
+      await deleteFile(oldObject).catch(() => {
+        // best-effort: orfa no bucket nao bloqueia o request
+      })
+    }
+  }
+
+  await logAudit({
+    userId,
+    action: 'USER_AVATAR_UPLOADED',
+    entity: 'User',
+    entityId: userId,
+    ipAddress: req.ip,
+  })
+
+  res.status(201).json(updated)
+})
+
+export const deleteMyAvatar = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+
+  const current = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarUrl: true },
+  })
+  if (!current?.avatarUrl) {
+    throw new AppError(404, 'Não tem avatar definido', 'AVATAR_NOT_FOUND')
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { avatarUrl: null },
+  })
+
+  const oldObject = extractPublicObjectName(current.avatarUrl)
+  if (oldObject) {
+    await deleteFile(oldObject).catch(() => {
+      // best-effort
+    })
+  }
+
+  await logAudit({
+    userId,
+    action: 'USER_AVATAR_DELETED',
+    entity: 'User',
+    entityId: userId,
+    ipAddress: req.ip,
+  })
+
+  res.status(204).send()
 })
