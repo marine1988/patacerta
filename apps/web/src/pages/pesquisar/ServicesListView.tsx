@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -39,9 +39,19 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
 
   const geo = useGeolocation()
 
-  const [pages, setPages] = useState<ServiceCardData[][]>([])
-  const [page, setPage] = useState(1)
-  const limit = 12
+  // Tamanho da "página" lógica do botão "Carregar mais".
+  const PAGE_SIZE = 12
+  // Máximo de itens carregados numa única vista (limite do backend).
+  const MAX_LIMIT = 120
+  // O ?page=N na URL persiste o número de páginas que o utilizador
+  // já carregou. Ao recarregar a página ou usar back/forward,
+  // pedimos `page=1, limit=N*PAGE_SIZE` num único request para
+  // repor o estado visível.
+  const pageFromUrl = Math.max(
+    1,
+    Math.min(Math.floor(MAX_LIMIT / PAGE_SIZE), Number(searchParams.get('page')) || 1),
+  )
+  const limit = Math.min(MAX_LIMIT, pageFromUrl * PAGE_SIZE)
 
   const filtersKey = useMemo(
     () =>
@@ -60,9 +70,14 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
     [categoryId, districtId, municipalityId, query, priceMin, priceMax, sort, radiusKm, geo.coords],
   )
 
+  // Ao mudar de filtros, voltamos sempre à página 1 (limpa `?page=` se existir).
   useEffect(() => {
-    setPages([])
-    setPage(1)
+    if (searchParams.get('page') && Number(searchParams.get('page')) !== 1) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('page')
+      setSearchParams(next)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey])
 
   const { data: categories = [] } = useServiceCategories()
@@ -85,7 +100,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
   const effectiveSort: typeof sort = !radiusActive && sort === 'distance' ? 'recent' : sort
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery<ServicesPaginatedResponse>({
-    queryKey: ['services', filtersKey, page],
+    queryKey: ['services', filtersKey, limit],
     queryFn: () =>
       api
         .get('/services', {
@@ -100,29 +115,26 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             lng: radiusActive ? geo.coords!.lng : undefined,
             radiusKm: radiusActive ? Number(radiusKm) : undefined,
             sort: effectiveSort,
-            page,
+            page: 1,
             limit,
           },
         })
         .then((r) => r.data),
   })
 
-  useEffect(() => {
-    if (!data) return
-    setPages((prev) => {
-      const next = [...prev]
-      next[page - 1] = data.data
-      return next
-    })
-  }, [data, page])
-
   const meta = data?.meta
-  const accumulated = pages.flat()
-  const hasMore = !!meta && accumulated.length < meta.total
+  const accumulated = data?.data ?? []
+  const hasMore = !!meta && accumulated.length < meta.total && limit < MAX_LIMIT
+
+  function loadMore() {
+    const next = new URLSearchParams(searchParams)
+    next.set('page', String(pageFromUrl + 1))
+    setSearchParams(next)
+  }
 
   // ItemList JSON-LD: apenas a primeira página (carregada inicialmente).
   // O "carregar mais" não traz benefício SEO acrescido para os crawlers.
-  const firstPageServices = pages[0] ?? []
+  const firstPageServices = accumulated.slice(0, PAGE_SIZE)
   useItemListJsonLd(
     firstPageServices.map((s) => ({
       path: `/servicos/${s.slug ?? s.id}`,
@@ -191,7 +203,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
     geo.coords,
   )
 
-  const showInitialSkeleton = isLoading && pages.length === 0
+  const showInitialSkeleton = isLoading && accumulated.length === 0
 
   return (
     <>
@@ -348,7 +360,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <ServiceCardSkeleton key={i} />
           ))}
         </div>
-      ) : isError && pages.length === 0 ? (
+      ) : isError && accumulated.length === 0 ? (
         <EmptyState
           title="Erro ao carregar anúncios"
           description="Ocorreu um erro ao pesquisar. Tente novamente."
@@ -392,12 +404,18 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             <div className="mt-8 flex justify-center">
               <Button
                 variant="secondary"
-                onClick={() => setPage((p) => p + 1)}
-                loading={isFetching && page > 1}
+                onClick={loadMore}
+                loading={isFetching && pageFromUrl > 1}
               >
                 Carregar mais
               </Button>
             </div>
+          )}
+          {!hasMore && meta && limit >= MAX_LIMIT && accumulated.length < meta.total && (
+            <p className="mt-6 text-center text-sm text-gray-500">
+              Mostrando os primeiros {accumulated.length} anúncios. Use os filtros para reduzir os
+              resultados.
+            </p>
           )}
         </>
       )}

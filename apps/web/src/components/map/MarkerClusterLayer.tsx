@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useMap } from 'react-leaflet'
+import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 
@@ -26,9 +27,13 @@ interface MarkerClusterProps {
 /**
  * Renders markers via leaflet.markercluster (no react-leaflet binding).
  * We manage the cluster group imperatively inside the existing MapContainer.
+ *
+ * O link "Ver perfil" no popup é interceptado e navegado via SPA
+ * (react-router) para preservar o estado da página e evitar full reload.
  */
 export function MarkerClusterLayer({ markers, onMarkerClick }: MarkerClusterProps) {
   const map = useMap()
+  const navigate = useNavigate()
 
   useEffect(() => {
     // markerClusterGroup is augmented onto L by the leaflet.markercluster plugin
@@ -45,12 +50,13 @@ export function MarkerClusterLayer({ markers, onMarkerClick }: MarkerClusterProp
         m.avgRating !== null
           ? `<div style="margin-top:4px;font-size:12px;color:#6b7280">★ ${m.avgRating.toFixed(1)} (${m.reviewCount} avaliações)</div>`
           : `<div style="margin-top:4px;font-size:12px;color:#9ca3af">Sem avaliações</div>`
+      const path = `/criador/${m.slug ?? m.id}`
       marker.bindPopup(
         `<div style="min-width:200px">
           <div style="font-weight:600;font-size:14px;color:#111827">${escapeHtml(m.businessName)}</div>
           <div style="margin-top:2px;font-size:12px;color:#6b7280">${escapeHtml(m.municipalityName)}, ${escapeHtml(m.districtName)}</div>
           ${rating}
-          <a href="/criador/${m.slug ?? m.id}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none">Ver perfil →</a>
+          <a href="${path}" data-spa-link="${path}" style="display:inline-block;margin-top:10px;font-size:13px;font-weight:500;color:#A07548;text-decoration:none;cursor:pointer">Ver perfil →</a>
         </div>`,
         { closeButton: true, autoPan: true },
       )
@@ -61,10 +67,27 @@ export function MarkerClusterLayer({ markers, onMarkerClick }: MarkerClusterProp
     })
 
     map.addLayer(cluster)
+
+    // Intercepta cliques nos links dos popups e navega via SPA.
+    function onPopupOpen(e: L.LeafletEvent) {
+      const popup = (e as L.PopupEvent).popup
+      const el = popup.getElement()
+      if (!el) return
+      const link = el.querySelector<HTMLAnchorElement>('a[data-spa-link]')
+      if (!link) return
+      link.addEventListener('click', (ev) => {
+        ev.preventDefault()
+        const target = link.getAttribute('data-spa-link')
+        if (target) navigate(target)
+      })
+    }
+    map.on('popupopen', onPopupOpen)
+
     return () => {
+      map.off('popupopen', onPopupOpen)
       map.removeLayer(cluster)
     }
-  }, [map, markers, onMarkerClick])
+  }, [map, markers, onMarkerClick, navigate])
 
   return null
 }

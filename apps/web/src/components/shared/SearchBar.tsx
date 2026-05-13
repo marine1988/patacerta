@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../ui/Button'
 import { useBreeds, useDistricts } from '../../lib/useLookups'
 
@@ -9,19 +9,47 @@ interface SearchBarProps {
 
 export function SearchBar({ compact = false }: SearchBarProps) {
   const navigate = useNavigate()
-  const [district, setDistrict] = useState('')
-  const [breed, setBreed] = useState('')
-  const [query, setQuery] = useState('')
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  // Quando renderizamos dentro de `/pesquisar`, queremos hidratar os campos
+  // com os filtros activos. Em outras páginas (ex: home), os params estão
+  // vazios e os campos começam vazios — o comportamento é o mesmo.
+  const isOnSearch = location.pathname.startsWith('/pesquisar')
+  const [district, setDistrict] = useState(() =>
+    isOnSearch ? (searchParams.get('districtId') ?? '') : '',
+  )
+  const [breed, setBreed] = useState(() =>
+    isOnSearch ? (searchParams.get('breedId') ?? '') : '',
+  )
+  const [query, setQuery] = useState(() => (isOnSearch ? (searchParams.get('query') ?? '') : ''))
+
+  // Mantém o estado sincronizado quando o utilizador altera a URL por outro caminho
+  // (ex: botão "Limpar" ou navegação back/forward) enquanto está em `/pesquisar`.
+  useEffect(() => {
+    if (!isOnSearch) return
+    setDistrict(searchParams.get('districtId') ?? '')
+    setBreed(searchParams.get('breedId') ?? '')
+    setQuery(searchParams.get('query') ?? '')
+  }, [isOnSearch, searchParams])
 
   const { data: districtList = [] } = useDistricts()
   const { data: breedList = [] } = useBreeds()
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    const params = new URLSearchParams()
+    // Preserva params alheios (ex: `tipo`, `vista`, `page`) que pertencem
+    // a outros controlos da página `/pesquisar`.
+    const params = isOnSearch ? new URLSearchParams(searchParams) : new URLSearchParams()
     if (district) params.set('districtId', district)
+    else params.delete('districtId')
     if (breed) params.set('breedId', breed)
-    if (query.trim()) params.set('query', query.trim())
+    else params.delete('breedId')
+    const q = query.trim()
+    if (q) params.set('query', q)
+    else params.delete('query')
+    // Ao mudar filtros, voltamos sempre à página 1.
+    params.delete('page')
     navigate(`/pesquisar?${params.toString()}`)
   }
 

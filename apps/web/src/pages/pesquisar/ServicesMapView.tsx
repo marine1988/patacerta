@@ -51,6 +51,22 @@ function MapAutoCenter({ target, zoom }: { target: [number, number] | null; zoom
   return null
 }
 
+/**
+ * Distância Haversine em km entre dois pontos. Suficientemente precisa
+ * para filtrar markers num raio à escala nacional (erro &lt; 0.5%).
+ */
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(bLat - aLat)
+  const dLng = toRad(bLng - aLng)
+  const lat1 = toRad(aLat)
+  const lat2 = toRad(bLat)
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2)
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+
 export function ServicesMapView({ searchParams, setSearchParams }: Props) {
   const categoryId = searchParams.get('categoryId') || ''
   const districtId = searchParams.get('districtId') || ''
@@ -87,7 +103,7 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
   })
 
   const markers: ServiceMapMarker[] = useMemo(() => {
-    return (data?.data ?? []).map((s) => ({
+    const all = (data?.data ?? []).map((s) => ({
       id: s.id,
       slug: s.slug,
       lat: s.latitude,
@@ -97,7 +113,16 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
       priceCents: s.priceCents,
       priceUnit: s.priceUnit,
     }))
-  }, [data])
+    // Filtro geográfico client-side: o endpoint `/services/map` aceita
+    // bbox mas não raio em km. Quando o utilizador activa "A minha
+    // localização", reduzimos os markers ao raio configurado para que
+    // o círculo azul reflicta os resultados visíveis no mapa.
+    if (geo.coords) {
+      const { lat, lng } = geo.coords
+      return all.filter((m) => haversineKm(lat, lng, m.lat, m.lng) <= radiusKm)
+    }
+    return all
+  }, [data, geo.coords])
 
   // ItemList JSON-LD para a vista Mapa de serviços. Limitar a 50 para
   // payloads razoáveis. Ajuda Google e LLMs a entender que esta URL
@@ -222,7 +247,13 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
                   onClick={() => geo.request()}
                   disabled={geo.loading}
                 >
-                  {geo.loading ? 'A localizar...' : '📍 A minha localização'}
+                  {geo.loading ? (
+                    'A localizar...'
+                  ) : (
+                    <>
+                      <span aria-hidden>📍</span> A minha localização
+                    </>
+                  )}
                 </Button>
               )}
               {hasFilters && (
@@ -241,6 +272,12 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
         <p className="text-gray-600">
           {isLoading ? (
             'A carregar...'
+          ) : geo.coords ? (
+            <>
+              <span className="font-semibold text-gray-900">{markers.length}</span> anúncios num
+              raio de {radiusKm} km{' '}
+              <span className="text-gray-400">(total nacional: {data?.total ?? 0})</span>
+            </>
           ) : (
             <>
               <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> anúncios no
