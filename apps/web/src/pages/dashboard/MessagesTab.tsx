@@ -197,6 +197,10 @@ export function MessagesTab() {
   // NOT when older pages are loaded via fetchNextPage.
   const lastMessageIdRef = useRef<number | null>(null)
   const lastThreadIdRef = useRef<number | null>(null)
+  // Track o id da ultima mensagem para a qual disparamos markRead, para evitar
+  // mutations duplicadas em re-renders consecutivos (ex: invalidacao de cache
+  // que devolve a mesma mensagem ainda sem readAt antes do servidor propagar).
+  const lastMarkReadMessageIdRef = useRef<number | null>(null)
   useEffect(() => {
     if (!threadDetail) return
     const newestId = allMessages.length > 0 ? allMessages[allMessages.length - 1].id : null
@@ -210,6 +214,10 @@ export function MessagesTab() {
         })
       })
     }
+    if (threadChanged) {
+      // Ao mudar de thread, reset do dedup para permitir markRead na nova.
+      lastMarkReadMessageIdRef.current = null
+    }
     lastThreadIdRef.current = threadDetail.id
     lastMessageIdRef.current = newestId
 
@@ -222,8 +230,10 @@ export function MessagesTab() {
       newestMessage &&
       newestMessage.senderId !== user?.id &&
       newestMessage.id > 0 &&
-      !newestMessage.readAt
+      !newestMessage.readAt &&
+      lastMarkReadMessageIdRef.current !== newestMessage.id
     ) {
+      lastMarkReadMessageIdRef.current = newestMessage.id
       markReadMutation.mutate(threadDetail.id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
