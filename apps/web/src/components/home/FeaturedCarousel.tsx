@@ -5,6 +5,10 @@ interface FeaturedCarouselProps {
   title: string
   emptyMessage?: string
   isLoading?: boolean
+  /** Mensagem de erro a apresentar quando a query falhar. */
+  errorMessage?: string | null
+  /** Callback opcional para botao "Tentar novamente". */
+  onRetry?: () => void
   children: ReactNode
   /** Quantos skeletons mostrar enquanto carrega. */
   skeletonCount?: number
@@ -26,6 +30,8 @@ export function FeaturedCarousel({
   title,
   emptyMessage = 'Nada por aqui de momento.',
   isLoading,
+  errorMessage,
+  onRetry,
   children,
   skeletonCount = 4,
   skeleton,
@@ -123,6 +129,23 @@ export function FeaturedCarousel({
                 {skeleton}
               </div>
             ))
+          ) : errorMessage ? (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="flex w-full flex-col items-center gap-3 py-12 text-center"
+            >
+              <p className="text-sm text-red-700">{errorMessage}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="text-xs font-medium uppercase tracking-caps text-caramel-700 underline-offset-4 hover:underline"
+                >
+                  Tentar novamente
+                </button>
+              )}
+            </div>
           ) : hasChildren ? (
             children
           ) : (

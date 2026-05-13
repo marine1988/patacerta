@@ -62,13 +62,22 @@ export function HomePage() {
     // (App.tsx). Não duplicar aqui.
   })
 
-  const { data: stats } = useQuery<PublicStats>({
+  const {
+    data: stats,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useQuery<PublicStats>({
     queryKey: ['public-stats'],
     queryFn: () => api.get('/search/stats').then((r) => r.data),
     staleTime: 3600_000,
   })
 
-  const { data: featured, isLoading: featuredLoading } = useQuery<FeaturedResponse>({
+  const {
+    data: featured,
+    isLoading: featuredLoading,
+    isError: featuredError,
+    refetch: refetchFeatured,
+  } = useQuery<FeaturedResponse>({
     queryKey: ['home-featured'],
     queryFn: () => api.get('/home/featured').then((r) => r.data),
     // Cache curto para nao reembaralhar a cada navegacao mas variar entre sessoes.
@@ -125,6 +134,24 @@ export function HomePage() {
             <Stat value={stats?.districtCount} label="Distritos" />
             <Stat value={stats?.reviewCount} label="Avaliações" />
           </div>
+          {statsError && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="mt-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4"
+            >
+              <p className="text-sm text-red-700">
+                Não foi possível carregar as estatísticas.
+              </p>
+              <button
+                type="button"
+                onClick={() => refetchStats()}
+                className="text-xs font-medium uppercase tracking-caps text-caramel-700 underline-offset-4 hover:underline"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -161,6 +188,10 @@ export function HomePage() {
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
             isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os serviços em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
             emptyMessage="Sem serviços em destaque de momento."
             skeleton={<FeaturedServiceSkeleton />}
           >
@@ -173,6 +204,10 @@ export function HomePage() {
             eyebrow="◆ Destaques · Criadores"
             title="Criadores em foco"
             isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os criadores em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
             emptyMessage="Sem criadores em destaque de momento."
             skeleton={<FeaturedBreederSkeleton />}
           >
