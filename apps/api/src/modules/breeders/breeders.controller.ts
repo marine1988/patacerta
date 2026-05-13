@@ -154,15 +154,25 @@ export const getBreederById = asyncHandler(async (req, res) => {
 
   const breeder = await prisma.breeder.findUnique({
     where,
-    select: BREEDER_PUBLIC_SELECT,
+    // Incluir user.isActive/suspendedAt para validar disponibilidade
+    // após o fetch. Não fazem parte do BREEDER_PUBLIC_SELECT (que protege
+    // PII como NIF/DGAV) por isso pedimos só o necessário.
+    select: { ...BREEDER_PUBLIC_SELECT, user: { select: { ...BREEDER_PUBLIC_SELECT.user.select, isActive: true, suspendedAt: true } } },
   })
 
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
   if (breeder.status !== 'VERIFIED')
     throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+  // Esconder também criadores cujo utilizador foi suspenso/desactivado.
+  // Mesmo critério que searchBreeders/mapBreeders para coerência.
+  if (!breeder.user.isActive || breeder.user.suspendedAt) {
+    throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
+  }
 
-  // avgRating/reviewCount ja' vem desnormalizado em Breeder.
-  res.json(breeder)
+  // Remover campos sensíveis (isActive/suspendedAt) antes de devolver
+  // ao cliente. Foram usados só para a guarda acima.
+  const { isActive: _ia, suspendedAt: _sa, ...publicUser } = breeder.user
+  res.json({ ...breeder, user: publicUser })
 })
 
 export const createBreederProfile = asyncHandler(async (req, res) => {

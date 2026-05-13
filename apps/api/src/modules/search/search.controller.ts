@@ -14,7 +14,14 @@ export const searchBreeders = asyncHandler(async (req, res) => {
   const { districtId, municipalityId, breedId, query, page, limit } =
     req.query as unknown as SearchBreedersInput
 
-  const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
+  // Filtro de disponibilidade: além de status=VERIFIED, exigir que o
+  // utilizador associado esteja activo e não suspenso. Sem isto, perfis
+  // de criadores cuja conta foi suspensa/desactivada continuavam visíveis
+  // na pesquisa até alguém alterar o status do Breeder manualmente.
+  const where: Prisma.BreederWhereInput = {
+    status: 'VERIFIED',
+    user: { isActive: true, suspendedAt: null },
+  }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
@@ -64,7 +71,10 @@ export const mapBreeders = asyncHandler(async (req, res) => {
   const { districtId, municipalityId, breedId, query, minLat, maxLat, minLng, maxLng, limit } =
     req.query as unknown as MapBreedersInput
 
-  const where: Prisma.BreederWhereInput = { status: 'VERIFIED' }
+  const where: Prisma.BreederWhereInput = {
+    status: 'VERIFIED',
+    user: { isActive: true, suspendedAt: null },
+  }
 
   if (districtId) where.districtId = districtId
   if (municipalityId) where.municipalityId = municipalityId
@@ -162,11 +172,17 @@ export const listMunicipalities = asyncHandler(async (req, res) => {
 export const getPublicStats = asyncHandler(async (_req, res) => {
   const data = await cacheGetOrSet(CACHE_KEY_STATS, TTL_MS, async () => {
     const [breederCount, breedCount, districtCount, reviewCount, serviceCount] = await Promise.all([
-      prisma.breeder.count({ where: { status: 'VERIFIED' } }),
+      // Mesmo filtro de disponibilidade que searchBreeders/mapBreeders:
+      // ignora criadores cujo user está suspenso/desactivado.
+      prisma.breeder.count({
+        where: { status: 'VERIFIED', user: { isActive: true, suspendedAt: null } },
+      }),
       prisma.breed.count(),
       prisma.district.count(),
       prisma.review.count({ where: { status: 'PUBLISHED' } }),
-      prisma.service.count({ where: { status: 'ACTIVE' } }),
+      prisma.service.count({
+        where: { status: 'ACTIVE', provider: { isActive: true, suspendedAt: null } },
+      }),
     ])
     return { breederCount, breedCount, districtCount, reviewCount, serviceCount }
   })

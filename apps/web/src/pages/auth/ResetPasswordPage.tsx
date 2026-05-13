@@ -68,7 +68,7 @@ function RequestResetForm() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Email enviado</h2>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Email enviado</h1>
               <p className="text-sm text-gray-600 mb-4">
                 Se o email existir na nossa plataforma, receberá instruções para repor a
                 palavra-passe.
@@ -178,7 +178,7 @@ function SetNewPasswordForm({ token }: { token: string }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Palavra-passe atualizada</h2>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Palavra-passe atualizada</h1>
               <p className="text-sm text-gray-600 mb-4">
                 A sua palavra-passe foi reposta com sucesso. Pode agora iniciar sessão.
               </p>

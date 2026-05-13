@@ -810,7 +810,14 @@ export const listServices = asyncHandler(async (req, res) => {
     )
   }
 
-  const where: Prisma.ServiceWhereInput = { status: 'ACTIVE' }
+  // Lista pública: apenas serviços ACTIVE de providers activos e não
+  // suspensos. Sem este filtro, anúncios continuavam visíveis após o
+  // utilizador ser suspenso/desactivado pelo admin até o admin pausar
+  // manualmente cada anúncio.
+  const where: Prisma.ServiceWhereInput = {
+    status: 'ACTIVE',
+    provider: { isActive: true, suspendedAt: null },
+  }
   if (q.categoryId) where.categoryId = q.categoryId
   if (q.districtId) where.districtId = q.districtId
   if (q.municipalityId) where.municipalityId = q.municipalityId
@@ -907,6 +914,9 @@ export const mapServices = asyncHandler(async (req, res) => {
     status: 'ACTIVE',
     latitude: { not: null },
     longitude: { not: null },
+    // Mesmo filtro de provider que listServices: não publicar serviços
+    // cujo dono foi suspenso/desactivado.
+    provider: { isActive: true, suspendedAt: null },
   }
   if (q.categoryId) where.categoryId = q.categoryId
   if (q.districtId) where.districtId = q.districtId
@@ -958,9 +968,14 @@ export const mapServices = asyncHandler(async (req, res) => {
 export const getServiceById = asyncHandler(async (req, res) => {
   const param = req.params.serviceId
   // Aceita id numérico (legado) ou slug textual.
-  const where = isNumericId(param)
-    ? { id: parseId(param), status: 'ACTIVE' as const }
-    : { slug: param, status: 'ACTIVE' as const }
+  // Filtro adicional `provider.isActive && !suspendedAt` para esconder
+  // anúncios cujo dono foi suspenso/desactivado (mesmo critério que
+  // listServices/mapServices). Sem isto, links directos para o slug
+  // continuavam acessíveis após suspensão até pausa manual do anúncio.
+  const providerFilter = { isActive: true, suspendedAt: null }
+  const where: Prisma.ServiceWhereInput = isNumericId(param)
+    ? { id: parseId(param), status: 'ACTIVE', provider: providerFilter }
+    : { slug: param, status: 'ACTIVE', provider: providerFilter }
 
   const service = await prisma.service.findFirst({
     where,
