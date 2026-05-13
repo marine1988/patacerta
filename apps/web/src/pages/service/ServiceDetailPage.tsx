@@ -378,7 +378,13 @@ export function ServiceDetailPage() {
 
   const deleteReviewMutation = useMutation({
     mutationFn: (reviewId: number) => api.delete(`/service-reviews/${reviewId}`),
-    onSuccess: () => invalidateReviews(),
+    onSuccess: () => {
+      setReviewActionError(null)
+      invalidateReviews()
+    },
+    onError: (err) => {
+      setReviewActionError(extractApiError(err, 'Erro ao eliminar avaliação.'))
+    },
   })
 
   const flagReviewMutation = useMutation({

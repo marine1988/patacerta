@@ -244,7 +244,11 @@ export function BreederTab() {
   const deleteDocMutation = useMutation({
     mutationFn: (docId: number) => api.delete(`/verification/${docId}`),
     onSuccess: () => {
+      setUploadMsg(null)
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
+    },
+    onError: (err) => {
+      setUploadMsg({ type: 'error', text: extractApiError(err, 'Erro ao eliminar documento.') })
     },
   })
 

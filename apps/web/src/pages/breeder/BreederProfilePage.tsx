@@ -284,12 +284,16 @@ export function BreederProfilePage() {
   const deleteReviewMutation = useMutation({
     mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
     onSuccess: () => {
+      setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
       queryClient.invalidateQueries({
         queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
       })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+    onError: (err) => {
+      setActionError(extractApiError(err, 'Erro ao eliminar avaliação.'))
     },
   })
 

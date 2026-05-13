@@ -106,6 +106,9 @@ export function MessagesTab() {
   const [editError, setEditError] = useState<string | null>(null)
   const [reportTargetId, setReportTargetId] = useState<number | null>(null)
   const [reportError, setReportError] = useState<string | null>(null)
+  // Erro generico para accoes secundarias (archive, delete). Renderizado
+  // no topo do detalhe da conversa com role="alert".
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const breederIdParam = searchParams.get('breederId')
   const pendingBreederId = breederIdParam ? Number(breederIdParam) : null
@@ -232,6 +235,11 @@ export function MessagesTab() {
       queryClient.invalidateQueries({ queryKey: ['threads'] })
       queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
     },
+    onError: (err) => {
+      // markRead falha silenciosamente — nao afecta a UX (mensagens ja
+      // estao visiveis). Log apenas para observabilidade.
+      console.warn('[messages] markRead failed', err)
+    },
   })
 
   const replyMutation = useMutation({
@@ -313,12 +321,21 @@ export function MessagesTab() {
     mutationFn: ({ threadId, archive }: { threadId: number; archive: boolean }) =>
       api.patch(`/messages/threads/${threadId}/${archive ? 'archive' : 'unarchive'}`),
     onSuccess: (_res, variables) => {
+      setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['threads'] })
       queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
       // If the archived thread was open, close its detail view
       if (variables.archive && selectedThreadId === variables.threadId) {
         setSelectedThreadId(null)
       }
+    },
+    onError: (err, variables) => {
+      setActionError(
+        extractApiError(
+          err,
+          variables.archive ? 'Erro ao arquivar conversa.' : 'Erro ao desarquivar conversa.',
+        ),
+      )
     },
   })
 
@@ -340,9 +357,13 @@ export function MessagesTab() {
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: number) => api.delete(`/messages/messages/${messageId}`),
     onSuccess: () => {
+      setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['thread', selectedThreadId] })
       queryClient.invalidateQueries({ queryKey: ['threads'] })
       queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
+    },
+    onError: (err) => {
+      setActionError(extractApiError(err, 'Erro ao eliminar mensagem.'))
     },
   })
 
@@ -483,6 +504,16 @@ export function MessagesTab() {
               <p className="text-sm text-muted">Com: {otherParty.name}</p>
             </div>
           </div>
+
+          {actionError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+            >
+              {actionError}
+            </div>
+          )}
 
           <div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto">
             {canLoadOlder && (
