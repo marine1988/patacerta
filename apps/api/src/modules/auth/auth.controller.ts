@@ -2,7 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js'
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js'
 import { maskEmail } from '../../lib/redact.js'
-import { isHttps } from '../../lib/env.js'
+import { isHttps, getFrontendBaseUrl } from '../../lib/env.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { Prisma } from '@prisma/client'
@@ -92,8 +92,7 @@ function skipEmailVerification(): boolean {
 }
 
 function buildVerificationUrl(token: string): string {
-  const base = process.env.FRONTEND_URL || 'http://localhost:5173'
-  return `${base}/verificar-email?token=${token}`
+  return `${getFrontendBaseUrl()}/verificar-email?token=${token}`
 }
 
 function generateVerificationToken(): { token: string; tokenHash: string; expiresAt: Date } {
@@ -431,7 +430,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   })
 
   // Send via SMTP (no-op log fallback when SMTP not configured)
-  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/recuperar-palavra-passe?token=${token}`
+  const resetUrl = `${getFrontendBaseUrl()}/recuperar-palavra-passe?token=${token}`
   await sendPasswordResetEmail(user.email, resetUrl)
 
   res.json({ message: 'Se o email existir, receberá instruções para repor a palavra-passe.' })

@@ -27,6 +27,7 @@
 
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { getFrontendBaseUrl } from '../../lib/env.js'
 import { AppError } from '../../middleware/error-handler.js'
 import {
   getStripe,
@@ -158,9 +159,11 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
     },
   })
 
-  // Construir URLs de retorno. FRONTEND_URL é a base canónica do FE
-  // (ver index.ts). Em stage: https://stage.patacerta.pt.
-  const frontendUrl = process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173'
+  // Construir URLs de retorno. Helper centralizado em lib/env.ts —
+  // suporta CSV em FRONTEND_URL (pega na primeira entrada) e falha em
+  // prod/stage se a variavel nao estiver definida (evita silently
+  // redirecionar para localhost).
+  const frontendUrl = getFrontendBaseUrl()
   const successUrl = `${frontendUrl}/area-pessoal?tab=destaque&checkout=success&session_id={CHECKOUT_SESSION_ID}`
   const cancelUrl = `${frontendUrl}/area-pessoal?tab=destaque&checkout=cancelled`
 
