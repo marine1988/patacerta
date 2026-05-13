@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { extractApiError } from '../../lib/errors'
 import { Button, EmptyState, Spinner } from '../../components/ui'
 import { Pagination } from '../../components/ui/Pagination'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
@@ -26,6 +27,7 @@ type UnifiedReview = (BreederReview & { kind: 'breeder' }) | (ServiceReview & { 
 export function MyReviewsTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const limit = 20
 
   // Dois pedidos paralelos. Ambos usam a mesma `page` para simplificar; com
@@ -43,13 +45,21 @@ export function MyReviewsTab() {
   const deleteBreederReview = useMutation({
     mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
     onSuccess: () => {
+      setDeleteError(null)
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+    onError: (err) => {
+      setDeleteError(extractApiError(err, 'Erro ao eliminar avaliação.'))
     },
   })
   const deleteServiceReview = useMutation({
     mutationFn: (reviewId: number) => api.delete(`/service-reviews/${reviewId}`),
     onSuccess: () => {
+      setDeleteError(null)
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
+    },
+    onError: (err) => {
+      setDeleteError(extractApiError(err, 'Erro ao eliminar avaliação.'))
     },
   })
 
@@ -58,6 +68,15 @@ export function MyReviewsTab() {
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    )
+  }
+
+  if (breederQuery.isError && serviceQuery.isError) {
+    return (
+      <EmptyState
+        title="Erro ao carregar avaliações"
+        description="Tente novamente daqui a alguns instantes."
+      />
     )
   }
 
@@ -91,6 +110,14 @@ export function MyReviewsTab() {
 
   return (
     <div className="space-y-3">
+      {deleteError && (
+        <div
+          className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          role="alert"
+        >
+          {deleteError}
+        </div>
+      )}
       {reviews.map((r) => {
         const isService = r.kind === 'service'
         const targetName = isService ? r.service.title : r.breeder.businessName
@@ -111,7 +138,13 @@ export function MyReviewsTab() {
                 size="sm"
                 loading={isService ? deleteServiceReview.isPending : deleteBreederReview.isPending}
                 onClick={() => {
-                  if (!confirm('Eliminar esta avaliação?')) return
+                  if (
+                    !window.confirm(
+                      'Eliminar esta avaliação? Esta acção não pode ser desfeita.',
+                    )
+                  )
+                    return
+                  setDeleteError(null)
                   if (isService) deleteServiceReview.mutate(r.id)
                   else deleteBreederReview.mutate(r.id)
                 }}

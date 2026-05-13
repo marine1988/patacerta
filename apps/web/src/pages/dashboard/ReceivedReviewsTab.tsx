@@ -85,6 +85,20 @@ export function ReceivedReviewsTab({ includeBreeder, includeServices }: Received
     )
   }
 
+  // Erro só é bloqueante se ambas as fontes activas falharem.
+  const breederFailed = includeBreeder && breederQuery.isError
+  const serviceFailed = includeServices && serviceQuery.isError
+  const allFailed =
+    (includeBreeder ? breederFailed : true) && (includeServices ? serviceFailed : true)
+  if (allFailed && (includeBreeder || includeServices)) {
+    return (
+      <EmptyState
+        title="Erro ao carregar avaliações"
+        description="Tente novamente daqui a alguns instantes."
+      />
+    )
+  }
+
   const breederReviews: UnifiedReview[] = (
     includeBreeder ? (breederQuery.data?.data ?? []) : []
   ).map((r) => ({ ...r, kind: 'breeder' as const }))
