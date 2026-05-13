@@ -626,8 +626,8 @@ export function MessagesTab() {
                       title={formatDateTime(msg.createdAt)}
                     >
                       {formatDateTime(msg.createdAt)}
-                      {isEdited && ' Â· editada'}
-                      {isOwn && msg.readAt && ' Â· lida'}
+                      {isEdited && ' · editada'}
+                      {isOwn && msg.readAt && ' · lida'}
                     </p>
                   </div>
                 </div>
@@ -640,9 +640,20 @@ export function MessagesTab() {
             <div className="flex gap-3">
               <textarea
                 className="input min-h-[60px] flex-1"
-                placeholder="Escrever resposta..."
+                placeholder="Escrever resposta... (Enter para enviar, Shift+Enter para nova linha)"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    if (replyText.trim() && selectedThreadId && !replyMutation.isPending) {
+                      replyMutation.mutate({
+                        threadId: selectedThreadId,
+                        body: replyText.trim(),
+                      })
+                    }
+                  }
+                }}
                 maxLength={5000}
                 required
               />
@@ -859,4 +870,4 @@ export function MessagesTab() {
     </>
   )
 }
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SettingsTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── SettingsTab ────────────────────────────
