@@ -156,6 +156,17 @@ export const listAllUsers = asyncHandler(async (req, res) => {
     prisma.user.count({ where }),
   ])
 
+  // Trilho forense de acessos administrativos a listagens com PII (emails
+  // de todos os utilizadores). Em caso de leak interno, permite identificar
+  // qual admin viu a listagem em que momento e com que filtros.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'ADMIN_LIST_USERS',
+    entity: 'User',
+    details: `page=${page} limit=${limit}${role ? ` role=${role}` : ''}${q ? ` q="${q.slice(0, 50)}"` : ''}`,
+    ipAddress: req.ip,
+  })
+
   res.json(paginatedResponse(users, total, page, limit))
 })
 
@@ -428,6 +439,17 @@ export const getUserDetail = asyncHandler(async (req, res) => {
       reporter: { select: { id: true, firstName: true, lastName: true, email: true } },
       service: { select: { id: true, title: true, slug: true } },
     },
+  })
+
+  // Trilho forense de acesso a PII completa de um utilizador (email,
+  // telefone, audit history, denuncias). Action separada de
+  // ADMIN_LIST_USERS para distinguir browse vs deep-dive em forense.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'ADMIN_VIEW_USER',
+    entity: 'User',
+    entityId: id,
+    ipAddress: req.ip,
   })
 
   res.json({

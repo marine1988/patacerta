@@ -59,6 +59,18 @@ app.use(
   }),
 )
 
+// Permissions-Policy: API JSON nao precisa de capabilities do browser.
+// Helmet 7 ainda nao injecta este header por defeito, entao fazemo-lo
+// explicitamente para neutralizar permissoes default caso uma resposta
+// seja embedida em contextos inesperados (iframe, fetch from extensions).
+app.use((_req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(), camera=(), microphone=(), payment=(), usb=(), fullscreen=()',
+  )
+  next()
+})
+
 // CORS: aceita lista separada por virgulas em CORS_ORIGIN.
 // - Se CORS_ORIGIN nao estiver definido, recai sobre FRONTEND_URL — que
 //   ja existe para construir links de email. Evita ter de duplicar o
