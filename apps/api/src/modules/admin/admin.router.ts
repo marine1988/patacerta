@@ -11,6 +11,12 @@ import {
   createSponsoredSlotSchema,
   updateSponsoredSlotSchema,
   listSponsoredSlotsSchema,
+  listUsersQuerySchema,
+  listBreedersQuerySchema,
+  listAllServicesQuerySchema,
+  flaggedReviewsQuerySchema,
+  listReportsQuerySchema,
+  auditLogsQuerySchema,
 } from '@patacerta/shared'
 import * as ctrl from './admin.controller.js'
 import * as sponsoredCtrl from '../sponsored-slots/admin-sponsored-slots.controller.js'
@@ -28,7 +34,7 @@ adminRouter.get('/pending-counts', ctrl.getPendingCounts)
 adminRouter.get('/verifications/pending', ctrl.getPendingVerifications)
 
 // Users management
-adminRouter.get('/users', ctrl.listAllUsers)
+adminRouter.get('/users', validate(listUsersQuerySchema, 'query'), ctrl.listAllUsers)
 adminRouter.get('/users/:id', ctrl.getUserDetail)
 adminRouter.patch('/users/:id/suspend', validate(suspendUserSchema), ctrl.suspendUser)
 adminRouter.patch('/users/:id/unsuspend', ctrl.unsuspendUser)
@@ -36,7 +42,7 @@ adminRouter.patch('/users/:id/unsuspend', ctrl.unsuspendUser)
 // Breeders management — admin so pode suspender/reactivar.
 // A promocao para VERIFIED acontece exclusivamente via aprovacao do
 // documento DGAV (PATCH /verification/:docId/review).
-adminRouter.get('/breeders', ctrl.listAllBreeders)
+adminRouter.get('/breeders', validate(listBreedersQuerySchema, 'query'), ctrl.listAllBreeders)
 // Detalhe completo (perfil + docs + dono + racas) usado pela pagina
 // /admin/criadores/:id para o admin verificar o cartao DGAV antes de
 // aprovar a verificacao.
@@ -45,10 +51,18 @@ adminRouter.patch('/breeders/:id/suspend', validate(suspendBreederSchema), ctrl.
 adminRouter.patch('/breeders/:id/unsuspend', ctrl.unsuspendBreeder)
 
 // Reviews moderation
-adminRouter.get('/reviews/flagged', ctrl.getFlaggedReviews)
+adminRouter.get(
+  '/reviews/flagged',
+  validate(flaggedReviewsQuerySchema, 'query'),
+  ctrl.getFlaggedReviews,
+)
 
 // Message reports moderation
-adminRouter.get('/message-reports', ctrl.listMessageReports)
+adminRouter.get(
+  '/message-reports',
+  validate(listReportsQuerySchema, 'query'),
+  ctrl.listMessageReports,
+)
 adminRouter.get('/message-reports/:id', ctrl.getMessageReport)
 adminRouter.patch(
   '/message-reports/:id/resolve',
@@ -57,7 +71,11 @@ adminRouter.patch(
 )
 
 // Service reports moderation
-adminRouter.get('/service-reports', ctrl.listServiceReports)
+adminRouter.get(
+  '/service-reports',
+  validate(listReportsQuerySchema, 'query'),
+  ctrl.listServiceReports,
+)
 adminRouter.get('/service-reports/:id', ctrl.getServiceReport)
 adminRouter.patch(
   '/service-reports/:id/resolve',
@@ -71,12 +89,12 @@ adminRouter.patch(
 )
 
 // Service suspension (admin-initiated)
-adminRouter.get('/services', ctrl.listAllServices)
+adminRouter.get('/services', validate(listAllServicesQuerySchema, 'query'), ctrl.listAllServices)
 adminRouter.post('/services/:id/suspend', validate(suspendServiceSchema), ctrl.adminSuspendService)
 adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 
 // Audit logs
-adminRouter.get('/audit-logs', ctrl.getAuditLogs)
+adminRouter.get('/audit-logs', validate(auditLogsQuerySchema, 'query'), ctrl.getAuditLogs)
 
 // Featured / homepage destaques
 adminRouter.patch(

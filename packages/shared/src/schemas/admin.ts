@@ -7,6 +7,7 @@
 // admin endpoint accepts unvalidated payloads.
 
 import { z } from 'zod'
+import { paginationQuerySchema } from './common.js'
 
 // PATCH /api/users/:id/role — change a user's role.
 // Mirrors the UserRole enum exactly so we can never accidentally promote
@@ -54,3 +55,70 @@ export const featuredPayloadSchema = z
     message: 'Forneca { until } ou { days } (mutuamente exclusivos)',
   })
 export type FeaturedPayloadInput = z.infer<typeof featuredPayloadSchema>
+
+// ──────────────────────────────────────────────────────────────────────
+// Query schemas para endpoints de listagem admin
+// ──────────────────────────────────────────────────────────────────────
+//
+// Todos extendem paginationQuerySchema e usam `.coerce` quando necessário
+// (query params chegam como string). Validação centralizada aqui evita
+// duplicação inline nos controllers e garante respostas 400 consistentes
+// via o middleware `validate` + ZodError handler.
+
+// GET /api/admin/users — listagem com filtro opcional por role e
+// pesquisa livre (`q`) sobre nome/email/id.
+export const listUsersQuerySchema = paginationQuerySchema.extend({
+  role: z.enum(['OWNER', 'BREEDER', 'SERVICE_PROVIDER', 'ADMIN']).optional(),
+  q: z.string().trim().min(1).max(200).optional(),
+})
+export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>
+
+// GET /api/admin/breeders — filtro opcional por estado do criador.
+export const listBreedersQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'VERIFIED', 'SUSPENDED']).optional(),
+})
+export type ListBreedersQuery = z.infer<typeof listBreedersQuerySchema>
+
+// GET /api/admin/services — filtros de moderação (status + pesquisa).
+export const listAllServicesQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED']).optional(),
+  q: z.string().trim().min(1).max(200).optional(),
+})
+export type ListAllServicesQuery = z.infer<typeof listAllServicesQuerySchema>
+
+// GET /api/admin/reviews/flagged — tipo opcional (breeder/service/all),
+// default 'breeder' mantém compat com call sites legacy.
+export const flaggedReviewsQuerySchema = paginationQuerySchema.extend({
+  type: z.enum(['breeder', 'service', 'all']).default('breeder'),
+})
+export type FlaggedReviewsQuery = z.infer<typeof flaggedReviewsQuerySchema>
+
+// GET /api/admin/message-reports e /api/admin/service-reports — mesmo
+// shape (estado da denúncia + paginação). Default 'PENDING' alinha com
+// fluxo de moderação (primeiro o que está por tratar).
+export const listReportsQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(['PENDING', 'RESOLVED', 'DISMISSED']).default('PENDING'),
+})
+export type ListReportsQuery = z.infer<typeof listReportsQuerySchema>
+
+// GET /api/admin/audit-logs — filtros largos (action/entity são `contains`
+// case-insensitive no controller). Datas aceitam `YYYY-MM-DD` (input nativo
+// type="date") ou ISO 8601 completo; o controller já trata `dateTo` como
+// fim-do-dia.
+const auditDateSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/,
+    'Data inválida (use YYYY-MM-DD)',
+  )
+  .refine((s) => !Number.isNaN(new Date(s).getTime()), 'Data inválida')
+
+export const auditLogsQuerySchema = paginationQuerySchema.extend({
+  action: z.string().trim().min(1).max(100).optional(),
+  entity: z.string().trim().min(1).max(100).optional(),
+  userId: z.coerce.number().int().positive().optional(),
+  dateFrom: auditDateSchema.optional(),
+  dateTo: auditDateSchema.optional(),
+})
+export type AuditLogsQuery = z.infer<typeof auditLogsQuerySchema>

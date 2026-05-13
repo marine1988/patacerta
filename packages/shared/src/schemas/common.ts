@@ -61,3 +61,17 @@ export const optionalUrlSchema = z
       return false
     }
   }, 'URL inválido')
+
+// ─── Pagination ─────────────────────────────────────────────────────
+//
+// Query params chegam sempre como string em Express; `.coerce.number()`
+// faz parse + valida. Default page=1, limit=20 (alinhado com
+// parsePagination em apps/api/src/lib/helpers.ts). Limites máximos
+// configuráveis por endpoint via `.max(N)` no schema derivado.
+
+export const paginationQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+export type PaginationQuery = z.infer<typeof paginationQuerySchema>

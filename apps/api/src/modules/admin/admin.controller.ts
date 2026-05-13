@@ -109,9 +109,14 @@ export const getPendingVerifications = asyncHandler(async (req, res) => {
 })
 
 export const listAllUsers = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const role = req.query.role as string | undefined
-  const q = (req.query.q as string | undefined)?.trim()
+  // Query validada/coerced em admin.router via listUsersQuerySchema.
+  const { page, limit, role, q } = req.query as unknown as {
+    page: number
+    limit: number
+    role?: 'OWNER' | 'BREEDER' | 'SERVICE_PROVIDER' | 'ADMIN'
+    q?: string
+  }
+  const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {}
   if (role) where.role = role
@@ -428,8 +433,13 @@ export const getUserDetail = asyncHandler(async (req, res) => {
 })
 
 export const listAllBreeders = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const status = req.query.status as string | undefined
+  // Query validada/coerced em admin.router via listBreedersQuerySchema.
+  const { page, limit, status } = req.query as unknown as {
+    page: number
+    limit: number
+    status?: 'DRAFT' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'SUSPENDED'
+  }
+  const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {}
   if (status) where.status = status
@@ -621,11 +631,13 @@ export const unsuspendBreeder = asyncHandler(async (req, res) => {
 })
 
 export const getFlaggedReviews = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const type = (req.query.type as string | undefined) ?? 'breeder'
-  if (!['breeder', 'service', 'all'].includes(type)) {
-    throw new AppError(400, 'Tipo inválido', 'INVALID_TYPE')
+  // Query validada/coerced em admin.router via flaggedReviewsQuerySchema.
+  const { page, limit, type } = req.query as unknown as {
+    page: number
+    limit: number
+    type: 'breeder' | 'service' | 'all'
   }
+  const skip = (page - 1) * limit
   const where = { status: 'FLAGGED' as const }
 
   if (type === 'breeder') {
@@ -754,12 +766,17 @@ export const getFlaggedReviews = asyncHandler(async (req, res) => {
 })
 
 export const getAuditLogs = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const action = req.query.action as string | undefined
-  const entity = req.query.entity as string | undefined
-  const userId = req.query.userId ? Number(req.query.userId) : undefined
-  const dateFrom = req.query.dateFrom as string | undefined
-  const dateTo = req.query.dateTo as string | undefined
+  // Query validada/coerced em admin.router via auditLogsQuerySchema.
+  const { page, limit, action, entity, userId, dateFrom, dateTo } = req.query as unknown as {
+    page: number
+    limit: number
+    action?: string
+    entity?: string
+    userId?: number
+    dateFrom?: string
+    dateTo?: string
+  }
+  const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {}
   // Filtros usam `contains` case-insensitive para suportar agrupamentos
@@ -768,21 +785,18 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   // SERVICE.UPDATE vs service.create).
   if (action) where.action = { contains: action, mode: 'insensitive' }
   if (entity) where.entity = { equals: entity, mode: 'insensitive' }
-  if (userId && !isNaN(userId)) where.userId = userId
+  if (userId) where.userId = userId
 
   // Intervalo de datas inclusivo. dateTo cobre o dia inteiro (23:59:59.999).
-  // Datas invalidas sao silenciosamente ignoradas para nao bloquear a query.
+  // Schema garante que ambos parseiam para Date válida.
   const createdAt: Record<string, Date> = {}
   if (dateFrom) {
-    const d = new Date(dateFrom)
-    if (!isNaN(d.getTime())) createdAt.gte = d
+    createdAt.gte = new Date(dateFrom)
   }
   if (dateTo) {
     const d = new Date(dateTo)
-    if (!isNaN(d.getTime())) {
-      d.setHours(23, 59, 59, 999)
-      createdAt.lte = d
-    }
+    d.setHours(23, 59, 59, 999)
+    createdAt.lte = d
   }
   if (Object.keys(createdAt).length > 0) where.createdAt = createdAt
 
@@ -807,13 +821,15 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
 // ──────────────────────────────────────────────────────────────────────
 
 export const listMessageReports = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const status = (req.query.status as string | undefined) ?? 'PENDING'
-  if (!['PENDING', 'RESOLVED', 'DISMISSED'].includes(status)) {
-    throw new AppError(400, 'Estado inválido', 'INVALID_STATUS')
+  // Query validada/coerced em admin.router via listReportsQuerySchema.
+  const { page, limit, status } = req.query as unknown as {
+    page: number
+    limit: number
+    status: 'PENDING' | 'RESOLVED' | 'DISMISSED'
   }
+  const skip = (page - 1) * limit
 
-  const where = { status: status as 'PENDING' | 'RESOLVED' | 'DISMISSED' }
+  const where = { status }
 
   const [reports, total] = await Promise.all([
     prisma.messageReport.findMany({
@@ -947,13 +963,15 @@ export const resolveMessageReport = asyncHandler(async (req, res) => {
  * GET /api/admin/service-reports?status=PENDING
  */
 export const listServiceReports = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const status = (req.query.status as string | undefined) ?? 'PENDING'
-  if (!['PENDING', 'RESOLVED', 'DISMISSED'].includes(status)) {
-    throw new AppError(400, 'Estado inválido', 'INVALID_STATUS')
+  // Query validada/coerced em admin.router via listReportsQuerySchema.
+  const { page, limit, status } = req.query as unknown as {
+    page: number
+    limit: number
+    status: 'PENDING' | 'RESOLVED' | 'DISMISSED'
   }
+  const skip = (page - 1) * limit
 
-  const where = { status: status as 'PENDING' | 'RESOLVED' | 'DISMISSED' }
+  const where = { status }
 
   const [reports, total] = await Promise.all([
     prisma.serviceReport.findMany({
@@ -1138,13 +1156,17 @@ export const adminSuspendService = asyncHandler(async (req, res) => {
  * Includes provider, category and basic location for moderation context.
  */
 export const listAllServices = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
-  const status = req.query.status as string | undefined
-  const q = (req.query.q as string | undefined)?.trim()
+  // Query validada/coerced em admin.router via listAllServicesQuerySchema.
+  const { page, limit, status, q } = req.query as unknown as {
+    page: number
+    limit: number
+    status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED'
+    q?: string
+  }
+  const skip = (page - 1) * limit
 
-  const validStatuses = ['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED']
   const where: Record<string, unknown> = {}
-  if (status && validStatuses.includes(status)) where.status = status
+  if (status) where.status = status
   if (q && q.length > 0) {
     where.OR = [
       { title: { contains: q, mode: 'insensitive' } },
