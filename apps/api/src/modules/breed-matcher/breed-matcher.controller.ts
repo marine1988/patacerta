@@ -59,6 +59,23 @@ const BREED_MATCH_SELECT = {
 
 type CachedBreed = Awaited<ReturnType<typeof loadBreedsForMatching>>[number]
 
+/**
+ * Fisher-Yates shuffle (in-place). Substitui o idiom `sort(() =>
+ * Math.random() - 0.5)`, que produz distribuicoes enviesadas (a
+ * comparator nao-transitiva engana o algoritmo de sort do V8) e
+ * portanto nao garante rotacao justa entre slots patrocinados — algo
+ * que prometemos aos pagadores. Math.random nao e' cripto-seguro mas
+ * e' suficiente para rotacao de campanhas (nao protege segredos).
+ */
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 async function loadBreedsForMatching() {
   const rows = await prisma.breed.findMany({ select: BREED_MATCH_SELECT })
   // Decimal -> number para serializacao JSON estavel via cache.
@@ -121,7 +138,7 @@ async function fetchSponsoredByBreed(
 
     // Embaralha + corta + mapeia
     for (const [breedId, list] of grouped) {
-      const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, MAX_SPONSORED_PER_BREED)
+      const shuffled = shuffle(list).slice(0, MAX_SPONSORED_PER_BREED)
       const mini: SponsoredBreederMini[] = shuffled.map((s) => {
         // avgRating e reviewCount já estão desnormalizados em Breeder
         // (mantidos por triggers/jobs em review create/update). Evita

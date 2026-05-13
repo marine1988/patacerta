@@ -36,6 +36,7 @@ import {
   SPONSORED_SLOT_DURATION_DAYS,
   SPONSORED_SLOT_CURRENCY,
 } from '../../lib/stripe.js'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 
 const MAX_SLOTS_PER_BREED = 3
@@ -49,11 +50,15 @@ const createCheckoutSchema = z.object({
  *   - PAID/LEGACY com status ACTIVE e dentro da janela
  *   - PENDING (à espera de pagamento) ainda não-expirado pelo Stripe
  *
- * FAILED, REFUNDED e EXPIRED não contam.
+ * FAILED, REFUNDED e EXPIRED não contam. Aceita um cliente Prisma
+ * opcional (para correr dentro de transaccao).
  */
-async function countOccupyingSlots(breedId: number): Promise<number> {
+async function countOccupyingSlots(
+  breedId: number,
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<number> {
   const now = new Date()
-  return prisma.sponsoredBreedSlot.count({
+  return client.sponsoredBreedSlot.count({
     where: {
       breedId,
       OR: [
@@ -108,56 +113,84 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
     throw new AppError(404, 'Raça não encontrada', 'BREED_NOT_FOUND')
   }
 
-  // Limite de 3 slots por raça (incluindo PENDING activos).
-  const occupied = await countOccupyingSlots(breedId)
-  if (occupied >= MAX_SLOTS_PER_BREED) {
-    throw new AppError(
-      409,
-      `Já existem ${MAX_SLOTS_PER_BREED} destaques activos para esta raça. Tente noutra raça ou aguarde que um destaque expire.`,
-      'SLOT_LIMIT_REACHED',
-    )
-  }
-
-  // Já tem slot activo/pendente próprio nesta raça? Evitar duplicação.
-  const existingOwnSlot = await prisma.sponsoredBreedSlot.findFirst({
-    where: {
-      breederId: breeder.id,
-      breedId,
-      paymentStatus: { in: ['PAID', 'PENDING', 'LEGACY'] },
-      status: { in: ['ACTIVE', 'PAUSED'] },
-      endsAt: { gte: new Date() },
-    },
-  })
-  if (existingOwnSlot) {
-    throw new AppError(
-      409,
-      'Já tem um destaque activo ou pendente para esta raça',
-      'DUPLICATE_SLOT',
-    )
-  }
-
-  // Criar slot PENDING. As datas são placeholders — o webhook
-  // checkout.session.completed (ou async_payment_succeeded para
-  // Multibanco) vai re-escrever startsAt=now / endsAt=+30d no
-  // instante exacto do pagamento confirmado.
+  // Criar slot PENDING dentro de uma transaccao Serializable. Sem
+  // isolamento, duas requisicoes concorrentes podem ambas ler
+  // occupied=2 e ambas criar — resultando em 4+ slots para a mesma
+  // raca, violando o contrato dos 3-slots-max. Serializable forca o
+  // Postgres a detectar o conflito e abortar uma das transaccoes
+  // (P2034). O retry e' implicito: o utilizador recebe 409 e tenta
+  // de novo (raro em pratica — janela de race < 1s).
+  //
+  // As datas sao placeholders — o webhook checkout.session.completed
+  // (ou async_payment_succeeded para Multibanco) vai re-escrever
+  // startsAt=now / endsAt=+30d no instante exacto do pagamento
+  // confirmado.
   const placeholderStarts = new Date()
   const placeholderEnds = new Date(
     placeholderStarts.getTime() + SPONSORED_SLOT_DURATION_DAYS * 24 * 60 * 60 * 1000,
   )
 
-  const slot = await prisma.sponsoredBreedSlot.create({
-    data: {
-      breederId: breeder.id,
-      breedId: breed.id,
-      startsAt: placeholderStarts,
-      endsAt: placeholderEnds,
-      status: 'PAUSED',
-      paymentStatus: 'PENDING',
-      priceCents: SPONSORED_SLOT_PRICE_CENTS,
-      currency: SPONSORED_SLOT_CURRENCY.toUpperCase(),
-      paidByUserId: userId,
-    },
-  })
+  let slot: { id: number }
+  try {
+    slot = await prisma.$transaction(
+      async (tx) => {
+        const occupied = await countOccupyingSlots(breedId, tx)
+        if (occupied >= MAX_SLOTS_PER_BREED) {
+          throw new AppError(
+            409,
+            `Já existem ${MAX_SLOTS_PER_BREED} destaques activos para esta raça. Tente noutra raça ou aguarde que um destaque expire.`,
+            'SLOT_LIMIT_REACHED',
+          )
+        }
+
+        // Já tem slot activo/pendente próprio nesta raça? Evitar duplicação.
+        const existingOwnSlot = await tx.sponsoredBreedSlot.findFirst({
+          where: {
+            breederId: breeder.id,
+            breedId,
+            paymentStatus: { in: ['PAID', 'PENDING', 'LEGACY'] },
+            status: { in: ['ACTIVE', 'PAUSED'] },
+            endsAt: { gte: new Date() },
+          },
+        })
+        if (existingOwnSlot) {
+          throw new AppError(
+            409,
+            'Já tem um destaque activo ou pendente para esta raça',
+            'DUPLICATE_SLOT',
+          )
+        }
+
+        return tx.sponsoredBreedSlot.create({
+          data: {
+            breederId: breeder.id,
+            breedId: breed.id,
+            startsAt: placeholderStarts,
+            endsAt: placeholderEnds,
+            status: 'PAUSED',
+            paymentStatus: 'PENDING',
+            priceCents: SPONSORED_SLOT_PRICE_CENTS,
+            currency: SPONSORED_SLOT_CURRENCY.toUpperCase(),
+            paidByUserId: userId,
+          },
+          select: { id: true },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  } catch (err) {
+    // P2034: serialization failure — duas requisicoes concorrentes
+    // pediram a mesma vaga ao mesmo tempo. Convertemos em 409 para o
+    // cliente decidir se quer tentar de novo.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') {
+      throw new AppError(
+        409,
+        'Conflito momentâneo ao reservar o destaque. Tente novamente.',
+        'SLOT_RESERVATION_CONFLICT',
+      )
+    }
+    throw err
+  }
 
   // Construir URLs de retorno. Helper centralizado em lib/env.ts —
   // suporta CSV em FRONTEND_URL (pega na primeira entrada) e falha em

@@ -301,3 +301,28 @@ export const resendVerificationEmailRateLimit = rateLimit({
   keyGenerator: resendVerifyEmailKey,
   bucket: 'resend-verify-email',
 })
+
+// Click tracking em sponsored slots e' um vector de fraude obvio: um
+// script pode martelar POST /:slotId/click para inflacionar CTR de
+// uma campanha (ou deflacionar a de um concorrente cruzando com
+// referer falso). O `apiRateLimit` global (200/15min por IP) cobre o
+// IP mas nao distingue por slot — um atacante pode dividir o budget
+// por varios slots e na mesma alterar significativamente as metricas
+// de cada um. Aplicamos um limite extra dedicado: por (IP, slotId),
+// 5 cliques / 60s. Sufficient para utilizadores legitimos (cliques
+// repetidos sao raros) e impede scripts simples sem state.
+const sponsoredClickKey = (req: Request) => {
+  const slotId = req.params?.slotId ?? 'unknown'
+  return `${req.ip || 'unknown'}:${slotId}`
+}
+
+export const sponsoredSlotClickRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  // Mesmo a falhar, o tracking e' best-effort — devolvemos 204
+  // silenciosamente em vez de 429 para nao revelar a politica ao
+  // atacante. A logica de "silenciar 429" e' feita no controller.
+  message: 'Rate limit',
+  keyGenerator: sponsoredClickKey,
+  bucket: 'sponsored-click',
+})

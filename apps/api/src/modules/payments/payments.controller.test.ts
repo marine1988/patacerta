@@ -15,8 +15,8 @@ import type { Request, Response, NextFunction } from 'express'
 
 // ─── Mocks ───────────────────────────────────────────────────────────
 
-vi.mock('../../lib/prisma.js', () => ({
-  prisma: {
+vi.mock('../../lib/prisma.js', () => {
+  const prismaMock: Record<string, unknown> = {
     breeder: {
       findUnique: vi.fn(),
     },
@@ -30,8 +30,15 @@ vi.mock('../../lib/prisma.js', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
-  },
-}))
+  }
+  // $transaction(callback) invoca o callback com o proprio prisma mock
+  // como TransactionClient — os mesmos vi.fn() registam ambas as chamadas
+  // (dentro/fora de transaccao), o que e' o que os testes assumem.
+  prismaMock.$transaction = vi.fn(
+    async (cb: (tx: unknown) => Promise<unknown>, _opts?: unknown) => cb(prismaMock),
+  )
+  return { prisma: prismaMock }
+})
 
 const mockSessionsCreate = vi.fn()
 
@@ -357,19 +364,21 @@ describe('createSponsoredSlotCheckout — happy path', () => {
 
     await invoke(createSponsoredSlotCheckout, req, res, next)
 
-    expect(mockedPrisma.sponsoredBreedSlot.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        breederId: 5,
-        breedId: 1,
-        status: 'PAUSED',
-        paymentStatus: 'PENDING',
-        priceCents: 1000,
-        currency: 'EUR',
-        paidByUserId: 7,
-        startsAt: expect.any(Date),
-        endsAt: expect.any(Date),
+    expect(mockedPrisma.sponsoredBreedSlot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          breederId: 5,
+          breedId: 1,
+          status: 'PAUSED',
+          paymentStatus: 'PENDING',
+          priceCents: 1000,
+          currency: 'EUR',
+          paidByUserId: 7,
+          startsAt: expect.any(Date),
+          endsAt: expect.any(Date),
+        }),
       }),
-    })
+    )
   })
 
   it('chama Stripe Checkout com payment_method_types=[card,multibanco], locale=pt, expires_at=+23h', async () => {
