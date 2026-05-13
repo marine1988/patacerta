@@ -82,6 +82,26 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
 
   const { data: districtsList = [] } = useDistricts()
 
+  /**
+   * Converte texto em € para cêntimos inteiros, ou `undefined` se inválido.
+   * Evita enviar `priceMin=NaN` quando o utilizador escreve texto.
+   */
+  function priceParamToCents(raw: string): number | undefined {
+    if (!raw) return undefined
+    const n = Number(raw.replace(',', '.'))
+    if (!Number.isFinite(n) || n < 0) return undefined
+    return Math.round(n * 100)
+  }
+  const priceMinValid = priceMin === '' || priceParamToCents(priceMin) !== undefined
+  const priceMaxValid = priceMax === '' || priceParamToCents(priceMax) !== undefined
+  const priceRangeValid = (() => {
+    const mn = priceParamToCents(priceMin)
+    const mx = priceParamToCents(priceMax)
+    if (mn !== undefined && mx !== undefined && mn > mx) return false
+    return true
+  })()
+  const filtersValid = priceMinValid && priceMaxValid && priceRangeValid
+
   const { data, isLoading, isError, refetch } = useQuery<MapServicesResponse>({
     queryKey: [
       'services-map',
@@ -95,11 +115,12 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
             districtId: districtId || undefined,
             municipalityId: municipalityId || undefined,
             q: query || undefined,
-            priceMin: priceMin ? Math.round(Number(priceMin) * 100) : undefined,
-            priceMax: priceMax ? Math.round(Number(priceMax) * 100) : undefined,
+            priceMin: priceParamToCents(priceMin),
+            priceMax: priceParamToCents(priceMax),
           },
         })
         .then((r) => r.data),
+    enabled: filtersValid,
   })
 
   const markers: ServiceMapMarker[] = useMemo(() => {
@@ -264,6 +285,13 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
             </div>
           </div>
 
+          {!filtersValid && (
+            <p className="text-sm text-red-600">
+              {!priceMinValid || !priceMaxValid
+                ? 'Indique um preço válido (apenas números, sem texto).'
+                : 'O preço mínimo não pode ser superior ao máximo.'}
+            </p>
+          )}
           {geo.error && <p className="text-xs text-red-600">{geo.error}</p>}
         </form>
       </div>

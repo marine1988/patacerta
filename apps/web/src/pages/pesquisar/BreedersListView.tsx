@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
-import { BreederCard } from '../../components/shared/BreederCard'
+import { BreederCard, BreederCardSkeleton } from '../../components/shared/BreederCard'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { Spinner } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 
@@ -41,7 +41,7 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
   const query = searchParams.get('query') || undefined
   const page = parseInt(searchParams.get('page') || '1') || 1
 
-  const { data, isLoading, isError } = useQuery<BreedersPaginatedResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<BreedersPaginatedResponse>({
     queryKey: ['breeders', { speciesId, districtId, breedId, query, page }],
     queryFn: () =>
       api
@@ -53,6 +53,7 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
 
   const breeders = data?.data ?? []
   const meta = data?.meta
+  const hasFilters = Boolean(districtId || breedId || query)
 
   // ItemList JSON-LD ajuda Google e LLMs a compreender a estrutura da
   // listagem. Só emitimos na primeira página (paginas seguintes não trazem
@@ -96,8 +97,9 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
             onClick={() => setViewMode('grid')}
             className={`rounded-md p-1.5 ${viewMode === 'grid' ? 'bg-caramel-100 text-caramel-600' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Vista em grelha"
+            aria-pressed={viewMode === 'grid'}
           >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
               <path
                 fillRule="evenodd"
                 d="M4.25 2A2.25 2.25 0 002 4.25v2.5A2.25 2.25 0 004.25 9h2.5A2.25 2.25 0 009 6.75v-2.5A2.25 2.25 0 006.75 2h-2.5zm0 9A2.25 2.25 0 002 13.25v2.5A2.25 2.25 0 004.25 18h2.5A2.25 2.25 0 009 15.75v-2.5A2.25 2.25 0 006.75 11h-2.5zm9-9A2.25 2.25 0 0011 4.25v2.5A2.25 2.25 0 0013.25 9h2.5A2.25 2.25 0 0018 6.75v-2.5A2.25 2.25 0 0015.75 2h-2.5zm0 9A2.25 2.25 0 0011 13.25v2.5A2.25 2.25 0 0013.25 18h2.5A2.25 2.25 0 0018 15.75v-2.5A2.25 2.25 0 0015.75 11h-2.5z"
@@ -109,8 +111,9 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
             onClick={() => setViewMode('list')}
             className={`rounded-md p-1.5 ${viewMode === 'list' ? 'bg-caramel-100 text-caramel-600' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Vista em lista"
+            aria-pressed={viewMode === 'list'}
           >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
               <path
                 fillRule="evenodd"
                 d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"
@@ -122,19 +125,49 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <BreederCardSkeleton key={i} />
+          ))}
         </div>
       ) : isError ? (
         <EmptyState
           title="Erro ao carregar criadores"
-          description="Ocorreu um erro ao pesquisar. Tente novamente."
+          description="Ocorreu um erro ao pesquisar. Verifique a sua ligação e tente novamente."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Tentar de novo
+            </Button>
+          }
         />
       ) : breeders.length === 0 ? (
-        <EmptyState
-          title="Nenhum criador encontrado"
-          description="Tente alterar os filtros de pesquisa ou explorar todos os criadores."
-        />
+        hasFilters ? (
+          <EmptyState
+            title="Nenhum criador encontrado"
+            description="Tente alterar os filtros de pesquisa ou explorar todos os criadores."
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const next = new URLSearchParams()
+                  setSearchParams(next)
+                }}
+              >
+                Limpar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="Ainda não há criadores verificados"
+            description="Por agora não há criadores listados. Se é criador, registe-se e candidate-se a verificação."
+            action={
+              <Link to="/registar" className="btn-primary">
+                Sou criador
+              </Link>
+            }
+          />
+        )
       ) : (
         <>
           <div

@@ -99,6 +99,28 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
   const radiusActive = !!geo.coords && !!radiusKm && Number(radiusKm) > 0
   const effectiveSort: typeof sort = !radiusActive && sort === 'distance' ? 'recent' : sort
 
+  /**
+   * Converte um valor textual de preço (€) para cêntimos inteiros.
+   * Devolve `undefined` para vazios, NaN, negativos ou não-finitos —
+   * evita enviar `priceMin=NaN` que faz o backend 400.
+   */
+  function priceParamToCents(raw: string): number | undefined {
+    if (!raw) return undefined
+    const n = Number(raw.replace(',', '.'))
+    if (!Number.isFinite(n) || n < 0) return undefined
+    return Math.round(n * 100)
+  }
+
+  const priceMinValid = priceMin === '' || priceParamToCents(priceMin) !== undefined
+  const priceMaxValid = priceMax === '' || priceParamToCents(priceMax) !== undefined
+  const priceRangeValid = (() => {
+    const mn = priceParamToCents(priceMin)
+    const mx = priceParamToCents(priceMax)
+    if (mn !== undefined && mx !== undefined && mn > mx) return false
+    return true
+  })()
+  const filtersValid = priceMinValid && priceMaxValid && priceRangeValid
+
   const { data, isLoading, isFetching, isError, refetch } = useQuery<ServicesPaginatedResponse>({
     queryKey: ['services', filtersKey, limit],
     queryFn: () =>
@@ -109,8 +131,8 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
             districtId: districtId || undefined,
             municipalityId: municipalityId || undefined,
             q: query || undefined,
-            priceMin: priceMin ? Math.round(Number(priceMin) * 100) : undefined,
-            priceMax: priceMax ? Math.round(Number(priceMax) * 100) : undefined,
+            priceMin: priceParamToCents(priceMin),
+            priceMax: priceParamToCents(priceMax),
             lat: radiusActive ? geo.coords!.lat : undefined,
             lng: radiusActive ? geo.coords!.lng : undefined,
             radiusKm: radiusActive ? Number(radiusKm) : undefined,
@@ -120,6 +142,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
           },
         })
         .then((r) => r.data),
+    enabled: filtersValid,
   })
 
   const meta = data?.meta
@@ -303,6 +326,14 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
               )}
             </div>
           </div>
+
+          {!filtersValid && (
+            <p className="text-sm text-red-600">
+              {!priceMinValid || !priceMaxValid
+                ? 'Indique um preço válido (apenas números, sem texto).'
+                : 'O preço mínimo não pode ser superior ao máximo.'}
+            </p>
+          )}
 
           <div className="flex flex-col gap-3 border-t border-gray-100 pt-3 md:flex-row md:items-end">
             <div className="flex-1">
