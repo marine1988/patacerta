@@ -41,6 +41,7 @@ interface ServiceDetail extends ServiceBase {
   photos: ServicePhoto[]
   category: ServiceCategory
   provider: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
+  coverageAreas?: Array<{ municipality: { id: number; namePt: string } }>
 }
 
 interface ServiceReviewsResponse {
@@ -571,6 +572,14 @@ export function ServiceDetailPage() {
                     <> · Desloca-se até {service.serviceRadiusKm} km</>
                   )}
                 </p>
+                {service.coverageAreas && service.coverageAreas.length > 0 && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Também cobre:{' '}
+                    <span className="text-gray-700">
+                      {service.coverageAreas.map((c) => c.municipality.namePt).join(', ')}
+                    </span>
+                  </p>
+                )}
                 {service.avgRating != null && service.reviewCount > 0 && (
                   <div className="mt-2 flex items-center gap-2 text-sm">
                     <StarRating rating={Math.round(Number(service.avgRating))} size="sm" />

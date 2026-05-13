@@ -774,6 +774,11 @@ function publicServicePublicSelect() {
     category: { select: { id: true, nameSlug: true, namePt: true } },
     district: { select: { id: true, namePt: true } },
     municipality: { select: { id: true, namePt: true } },
+    coverageAreas: {
+      select: {
+        municipality: { select: { id: true, namePt: true } },
+      },
+    },
     provider: {
       select: { id: true, firstName: true, lastName: true, avatarUrl: true },
     },

@@ -99,7 +99,14 @@ interface ServiceFormState {
   serviceRadiusKm: string
   website: string
   phone: string
+  /**
+   * Concelhos adicionais cobertos pelo serviço, para além do concelho principal.
+   * Máx 10 (validado também no schema partilhado).
+   */
+  coverageMunicipalityIds: number[]
 }
+
+const COVERAGE_MAX = 10
 
 const emptyServiceForm: ServiceFormState = {
   categoryId: '',
@@ -113,6 +120,7 @@ const emptyServiceForm: ServiceFormState = {
   serviceRadiusKm: '',
   website: '',
   phone: '',
+  coverageMunicipalityIds: [],
 }
 
 // ── Componente ────────────────────────────────────────────────────────
@@ -243,6 +251,10 @@ export function ServicesTab() {
       api.delete(`/services/${serviceId}/photos/${photoId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
+      setPhotoMsg({ type: 'success', text: 'Foto eliminada.' })
+    },
+    onError: (err) => {
+      setPhotoMsg({ type: 'error', text: extractApiError(err, 'Erro ao eliminar foto.') })
     },
   })
 
@@ -303,6 +315,7 @@ export function ServicesTab() {
       serviceRadiusKm: editingService.serviceRadiusKm ? String(editingService.serviceRadiusKm) : '',
       website: editingService.website ?? '',
       phone: editingService.phone ?? '',
+      coverageMunicipalityIds: editingService.coverageAreas.map((c) => c.municipalityId),
     })
   }, [mode, editingService])
 
@@ -383,6 +396,8 @@ export function ServicesTab() {
       serviceRadiusKm: form.serviceRadiusKm ? Number(form.serviceRadiusKm) : undefined,
       website: form.website.trim() || undefined,
       phone: form.phone.trim() || undefined,
+      coverageMunicipalityIds:
+        form.coverageMunicipalityIds.length > 0 ? form.coverageMunicipalityIds : undefined,
     }
 
     // Validação completa via schema partilhado (consistente com backend).
@@ -401,6 +416,7 @@ export function ServicesTab() {
         municipalityId: 'location',
         addressLine: 'location',
         serviceRadiusKm: 'location',
+        coverageMunicipalityIds: 'location',
         phone: 'contact',
         website: 'contact',
       }
@@ -876,7 +892,12 @@ function ServiceEditView(props: ServiceEditViewProps) {
                     placeholder="Selecionar distrito"
                     value={form.districtId}
                     onChange={(e) =>
-                      setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
+                      setForm((p) => ({
+                        ...p,
+                        districtId: e.target.value,
+                        municipalityId: '',
+                        coverageMunicipalityIds: [],
+                      }))
                     }
                   />
                   <Select
@@ -884,7 +905,18 @@ function ServiceEditView(props: ServiceEditViewProps) {
                     options={municipalities.map((m) => ({ value: String(m.id), label: m.namePt }))}
                     placeholder="Selecionar concelho"
                     value={form.municipalityId}
-                    onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
+                    onChange={(e) => {
+                      const next = e.target.value
+                      const nextId = Number(next)
+                      setForm((p) => ({
+                        ...p,
+                        municipalityId: next,
+                        // Remove o concelho principal da lista de cobertura, se lá estiver.
+                        coverageMunicipalityIds: p.coverageMunicipalityIds.filter(
+                          (id) => id !== nextId,
+                        ),
+                      }))
+                    }}
                     disabled={!form.districtId}
                   />
                 </div>
@@ -906,6 +938,68 @@ function ServiceEditView(props: ServiceEditViewProps) {
                   max={100}
                   placeholder="Até onde se desloca"
                 />
+
+                {/* Concelhos adicionais cobertos pelo serviço (além do principal). */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Concelhos adicionais cobertos (opcional)
+                  </label>
+                  <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                    Selecione outros concelhos do mesmo distrito onde também presta este serviço.
+                    Máximo {COVERAGE_MAX}.
+                  </p>
+                  {!form.districtId ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Selecione primeiro o distrito.
+                    </p>
+                  ) : municipalities.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      A carregar concelhos…
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        {municipalities
+                          .filter((m) => String(m.id) !== form.municipalityId)
+                          .map((m) => {
+                            const selected = form.coverageMunicipalityIds.includes(m.id)
+                            const disabled =
+                              !selected &&
+                              form.coverageMunicipalityIds.length >= COVERAGE_MAX
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() =>
+                                  setForm((p) => ({
+                                    ...p,
+                                    coverageMunicipalityIds: selected
+                                      ? p.coverageMunicipalityIds.filter((id) => id !== m.id)
+                                      : [...p.coverageMunicipalityIds, m.id],
+                                  }))
+                                }
+                                className={
+                                  'rounded-full border px-3 py-1 text-sm transition ' +
+                                  (selected
+                                    ? 'border-brand bg-brand text-white'
+                                    : disabled
+                                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+                                      : 'border-gray-300 bg-white text-gray-700 hover:border-brand hover:text-brand dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300')
+                                }
+                                aria-pressed={selected}
+                              >
+                                {m.namePt}
+                              </button>
+                            )
+                          })}
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {form.coverageMunicipalityIds.length} de {COVERAGE_MAX} selecionados
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </AccordionSection>
 
