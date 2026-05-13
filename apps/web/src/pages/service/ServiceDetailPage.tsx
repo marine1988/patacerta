@@ -30,6 +30,7 @@ import { RatingHistogram } from '../../components/reviews/RatingHistogram'
 import { ReplyReviewModal } from '../../components/reviews/ReplyReviewModal'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import { Pagination } from '../../components/ui/Pagination'
+import { useConfirm } from '../../components/ui/ConfirmDialog'
 import { type ServiceBase, type ServiceCategory, type ServicePhoto } from '../../lib/services'
 import { AdContainer, AD_SLOTS } from '../../components/ads'
 
@@ -189,6 +190,7 @@ export function ServiceDetailPage() {
   const [flagTarget, setFlagTarget] = useState<ServiceReviewItem | null>(null)
   const [replyTarget, setReplyTarget] = useState<ServiceReviewItem | null>(null)
   const [reviewActionError, setReviewActionError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const {
     data: service,
@@ -451,8 +453,14 @@ export function ServiceDetailPage() {
     }
   }
 
-  function handleDeleteReview(reviewId: number) {
-    if (confirm('Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.')) {
+  async function handleDeleteReview(reviewId: number) {
+    const ok = await confirm({
+      title: 'Eliminar avaliação',
+      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    })
+    if (ok) {
       deleteReviewMutation.mutate(reviewId)
     }
   }
@@ -1013,6 +1021,7 @@ export function ServiceDetailPage() {
         isSubmitting={replyMutation.isPending}
         errorMessage={reviewActionError}
       />
+      {confirmDialog}
     </div>
   )
 }

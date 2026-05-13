@@ -6,7 +6,7 @@ import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDateTime, formatSmart } from '../../lib/dates'
-import { Card, Avatar, Badge, Button, EmptyState, Spinner } from '../../components/ui'
+import { Card, Avatar, Badge, Button, EmptyState, Spinner, useConfirm } from '../../components/ui'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
@@ -109,6 +109,7 @@ export function MessagesTab() {
   // Erro generico para accoes secundarias (archive, delete). Renderizado
   // no topo do detalhe da conversa com role="alert".
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const breederIdParam = searchParams.get('breederId')
   const pendingBreederId = breederIdParam ? Number(breederIdParam) : null
@@ -591,13 +592,17 @@ export function MessagesTab() {
                             setEditError(null)
                           }}
                           onDelete={() => {
-                            if (
-                              window.confirm(
-                                'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
-                              )
-                            ) {
-                              deleteMessageMutation.mutate(msg.id)
-                            }
+                            void (async () => {
+                              const ok = await confirm({
+                                title: 'Eliminar mensagem',
+                                message: 'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
+                                confirmLabel: 'Eliminar',
+                                variant: 'danger',
+                              })
+                              if (ok) {
+                                deleteMessageMutation.mutate(msg.id)
+                              }
+                            })()
                           }}
                           onReport={() => {
                             setReportTargetId(msg.id)
@@ -908,6 +913,7 @@ export function MessagesTab() {
         isSubmitting={createThreadMutation.isPending}
         errorMessage={newThreadError}
       />
+      {confirmDialog}
     </>
   )
 }

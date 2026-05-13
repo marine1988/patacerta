@@ -5,7 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
-import { Button, Spinner, EmptyState, Modal } from '../../../components/ui'
+import { Button, Spinner, EmptyState, Modal, useConfirm } from '../../../components/ui'
 import type { VerificationDoc } from '../_shared'
 
 export function VerificacoesTab() {
@@ -13,6 +13,7 @@ export function VerificacoesTab() {
   const [page, setPage] = useState(1)
   const [rejectingDocId, setRejectingDocId] = useState<number | null>(null)
   const [rejectNotes, setRejectNotes] = useState('')
+  const [confirm, confirmDialog] = useConfirm()
 
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
     queryKey: queryKeys.admin.verifications(page),
@@ -46,8 +47,13 @@ export function VerificacoesTab() {
     },
   })
 
-  function handleApprove(docId: number, businessName: string) {
-    if (!window.confirm(`Aprovar DGAV de "${businessName}"? O criador ficará verificado.`)) return
+  async function handleApprove(docId: number, businessName: string) {
+    const ok = await confirm({
+      title: 'Aprovar DGAV',
+      message: `Aprovar DGAV de "${businessName}"? O criador ficará verificado.`,
+      confirmLabel: 'Aprovar',
+    })
+    if (!ok) return
     approveMutation.mutate(docId)
   }
 
@@ -250,6 +256,7 @@ export function VerificacoesTab() {
           </div>
         </div>
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

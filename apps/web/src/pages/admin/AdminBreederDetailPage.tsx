@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
-import { Badge, Button, EmptyState, Modal, Spinner } from '../../components/ui'
+import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { statusBadgeVariant, statusLabel } from './_shared'
 
@@ -117,6 +117,7 @@ export function AdminBreederDetailPage() {
   // Modal de suspensao (motivo obrigatorio, min 15 chars).
   const [suspendOpen, setSuspendOpen] = useState(false)
   const [suspendReason, setSuspendReason] = useState('')
+  const [confirm, confirmDialog] = useConfirm()
 
   usePageMeta({
     title: 'Detalhe de criador',
@@ -248,13 +249,18 @@ export function AdminBreederDetailPage() {
     },
   })
 
-  function handleApprove(doc: BreederDetailVerificationDoc) {
+  async function handleApprove(doc: BreederDetailVerificationDoc) {
     // Texto adapta-se: aprovacao inicial vs reverter rejeicao previa.
     const isRevert = doc.status === 'REJECTED'
     const message = isRevert
       ? `Reverter a rejeição do documento "${doc.fileName}" e aprovar? O criador será promovido a Verificado.`
       : `Aprovar o documento "${doc.fileName}"? Se for o cartão DGAV, o criador será promovido automaticamente a Verificado.`
-    if (!window.confirm(message)) return
+    const ok = await confirm({
+      title: isRevert ? 'Reverter rejeição' : 'Aprovar documento',
+      message,
+      confirmLabel: isRevert ? 'Reverter e aprovar' : 'Aprovar',
+    })
+    if (!ok) return
     approveMutation.mutate(doc.id)
   }
 
@@ -346,12 +352,13 @@ export function AdminBreederDetailPage() {
           {breeder.status === 'SUSPENDED' ? (
             <Button
               size="sm"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Reactivar "${breeder.businessName}"? Volta ao estado anterior (Verificado se já tinha DGAV aprovado, caso contrário Rascunho).`,
-                  )
-                ) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Reactivar criador',
+                  message: `Reactivar "${breeder.businessName}"? Volta ao estado anterior (Verificado se já tinha DGAV aprovado, caso contrário Rascunho).`,
+                  confirmLabel: 'Reactivar',
+                })
+                if (ok) {
                   unsuspendMutation.mutate(breeder.id)
                 }
               }}
@@ -658,6 +665,7 @@ export function AdminBreederDetailPage() {
           </div>
         </div>
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

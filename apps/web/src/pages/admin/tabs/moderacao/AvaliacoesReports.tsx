@@ -5,7 +5,7 @@ import { queryKeys } from '../../../../lib/queryKeys'
 import { formatDateShort } from '../../../../lib/dates'
 import { Pagination } from '../../../../components/ui/Pagination'
 import type { Paginated } from '../../../../lib/pagination'
-import { Badge, Button, Spinner, EmptyState, Modal, Input } from '../../../../components/ui'
+import { Badge, Button, Spinner, EmptyState, Modal, Input, useConfirm } from '../../../../components/ui'
 import { type Review, statusBadgeVariant, statusLabel } from '../../_shared'
 
 /**
@@ -70,6 +70,7 @@ export function AvaliacoesReportsView() {
   const [moderationReason, setModerationReason] = useState('')
   const [flagsTarget, setFlagsTarget] = useState<Review | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const { data, isLoading, isError } = useQuery<Paginated<Review>>({
     queryKey: queryKeys.admin.flaggedReviews(page, typeFilter),
@@ -212,8 +213,13 @@ export function AvaliacoesReportsView() {
                 size="sm"
                 variant="secondary"
                 disabled={dismissFlagsMutation.isPending}
-                onClick={() => {
-                  if (confirm('Descartar todas as sinalizações desta avaliação?')) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Descartar sinalizações',
+                    message: 'Descartar todas as sinalizações desta avaliação?',
+                    confirmLabel: 'Descartar',
+                  })
+                  if (ok) {
                     dismissFlagsMutation.mutate(review)
                   }
                 }}
@@ -298,8 +304,13 @@ export function AvaliacoesReportsView() {
                       size="sm"
                       variant="secondary"
                       disabled={dismissFlagsMutation.isPending}
-                      onClick={() => {
-                        if (confirm('Descartar todas as sinalizações desta avaliação?')) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Descartar sinalizações',
+                          message: 'Descartar todas as sinalizações desta avaliação?',
+                          confirmLabel: 'Descartar',
+                        })
+                        if (ok) {
                           dismissFlagsMutation.mutate(review)
                         }
                       }}
@@ -438,6 +449,7 @@ export function AvaliacoesReportsView() {
           </div>
         )}
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

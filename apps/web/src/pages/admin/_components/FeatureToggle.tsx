@@ -7,6 +7,7 @@
  * Recebe o `featuredUntil` actual e callbacks para set/clear; mantém-se
  * "burro" — toda a logica de mutate/invalidate fica nos consumers.
  */
+import { useConfirm } from '../../../components/ui'
 
 const FEATURE_PRESETS: Array<{ days: number; label: string }> = [
   { days: 1, label: '1d' },
@@ -30,6 +31,7 @@ export function FeatureToggle({
 }) {
   const isPromoted = featuredUntil != null && new Date(featuredUntil) > new Date()
   const sizeClasses = size === 'sm' ? 'text-xs' : 'text-sm'
+  const [confirm, confirmDialog] = useConfirm()
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${sizeClasses}`}>
@@ -42,8 +44,14 @@ export function FeatureToggle({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => {
-              if (window.confirm('Remover destaque agora?')) onClear()
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Remover destaque',
+                message: 'Remover destaque agora?',
+                confirmLabel: 'Remover',
+                variant: 'danger',
+              })
+              if (ok) onClear()
             }}
             className="text-red-600 underline-offset-2 hover:underline disabled:opacity-50"
           >
@@ -66,6 +74,7 @@ export function FeatureToggle({
           ))}
         </>
       )}
+      {confirmDialog}
     </div>
   )
 }

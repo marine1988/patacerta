@@ -14,7 +14,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
 import { Pagination } from '../../components/ui/Pagination'
 import type { Paginated } from '../../lib/pagination'
-import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from '../../components/ui'
+import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner, useConfirm } from '../../components/ui'
 
 // ─── Tipos ───────────────────────────────────────────────────────────
 
@@ -116,6 +116,7 @@ export function PatrocinadosTab() {
   const [breedFilter, setBreedFilter] = useState<string>('')
   const [editing, setEditing] = useState<SponsoredSlot | null>(null)
   const [creating, setCreating] = useState(false)
+  const [confirm, confirmDialog] = useConfirm()
 
   // Listagem
   const { data, isLoading, isError } = useQuery<Paginated<SponsoredSlot>>({
@@ -155,13 +156,14 @@ export function PatrocinadosTab() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() }),
   })
 
-  function handleDelete(slot: SponsoredSlot) {
-    if (
-      !window.confirm(
-        `Eliminar slot patrocinado de "${slot.breeder.businessName}" para ${slot.breed.namePt}?`,
-      )
-    )
-      return
+  async function handleDelete(slot: SponsoredSlot) {
+    const ok = await confirm({
+      title: 'Eliminar slot patrocinado',
+      message: `Eliminar slot patrocinado de "${slot.breeder.businessName}" para ${slot.breed.namePt}?`,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    })
+    if (!ok) return
     deleteMutation.mutate(slot.id)
   }
 
@@ -370,6 +372,7 @@ export function PatrocinadosTab() {
           />
         )}
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

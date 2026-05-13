@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
-import { Button, EmptyState, Spinner } from '../../components/ui'
+import { Button, EmptyState, Spinner, useConfirm } from '../../components/ui'
 import { Pagination } from '../../components/ui/Pagination'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import type { PaginatedMeta } from '../../lib/pagination'
@@ -28,6 +28,7 @@ export function MyReviewsTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
   const limit = 20
 
   // Dois pedidos paralelos. Ambos usam a mesma `page` para simplificar; com
@@ -137,13 +138,14 @@ export function MyReviewsTab() {
                 variant="danger"
                 size="sm"
                 loading={isService ? deleteServiceReview.isPending : deleteBreederReview.isPending}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      'Eliminar esta avaliação? Esta acção não pode ser desfeita.',
-                    )
-                  )
-                    return
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Eliminar avaliação',
+                    message: 'Eliminar esta avaliação? Esta acção não pode ser desfeita.',
+                    confirmLabel: 'Eliminar',
+                    variant: 'danger',
+                  })
+                  if (!ok) return
                   setDeleteError(null)
                   if (isService) deleteServiceReview.mutate(r.id)
                   else deleteBreederReview.mutate(r.id)
@@ -157,6 +159,7 @@ export function MyReviewsTab() {
       })}
 
       {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onChange={setPage} />}
+      {confirmDialog}
     </div>
   )
 }

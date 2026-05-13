@@ -13,6 +13,7 @@ import {
   Select,
   Modal,
   Input,
+  useConfirm,
 } from '../../../components/ui'
 import { FeatureToggle } from '../_components/FeatureToggle'
 
@@ -67,6 +68,7 @@ export function ServicosTab() {
   const [debouncedQ, setDebouncedQ] = useState('')
   const [suspendingServiceId, setSuspendingServiceId] = useState<number | null>(null)
   const [suspendReason, setSuspendReason] = useState('')
+  const [confirm, confirmDialog] = useConfirm()
   const [actionError, setActionError] = useState<string | null>(null)
 
   // Debounce search
@@ -242,8 +244,13 @@ export function ServicosTab() {
                         loading={
                           reactivateMutation.isPending && reactivateMutation.variables === s.id
                         }
-                        onClick={() => {
-                          if (window.confirm('Reactivar este anúncio?')) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Reactivar anúncio',
+                            message: 'Reactivar este anúncio?',
+                            confirmLabel: 'Reactivar',
+                          })
+                          if (ok) {
                             reactivateMutation.mutate(s.id)
                           }
                         }}
@@ -314,6 +321,7 @@ export function ServicosTab() {
           </div>
         </div>
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

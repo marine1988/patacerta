@@ -27,6 +27,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Pagination } from '../../components/ui/Pagination'
+import { useConfirm } from '../../components/ui/ConfirmDialog'
 import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
 import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
 import { RatingHistogram } from '../../components/reviews/RatingHistogram'
@@ -109,6 +110,7 @@ export function BreederProfilePage() {
   const [editingReview, setEditingReview] = useState<ReviewItem | null>(null)
   const [flagTarget, setFlagTarget] = useState<ReviewItem | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
   const [threadModalOpen, setThreadModalOpen] = useState(false)
   const [threadError, setThreadError] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -351,8 +353,14 @@ export function BreederProfilePage() {
     }
   }
 
-  function handleDeleteReview(reviewId: number) {
-    if (confirm('Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.')) {
+  async function handleDeleteReview(reviewId: number) {
+    const ok = await confirm({
+      title: 'Eliminar avaliação',
+      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    })
+    if (ok) {
       deleteReviewMutation.mutate(reviewId)
     }
   }
@@ -907,6 +915,7 @@ export function BreederProfilePage() {
         isSubmitting={createThreadMutation.isPending}
         errorMessage={threadError}
       />
+      {confirmDialog}
     </div>
   )
 }
