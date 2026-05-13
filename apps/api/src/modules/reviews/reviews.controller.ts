@@ -177,15 +177,19 @@ export const createReview = asyncHandler(async (req, res) => {
 
   let review
   try {
-    review = await prisma.review.create({
-      data: {
-        breederId: data.breederId,
-        authorId,
-        rating: data.rating,
-        title: data.title,
-        body: data.body,
-      },
-      select: REVIEW_SELECT,
+    review = await prisma.$transaction(async (tx) => {
+      const created = await tx.review.create({
+        data: {
+          breederId: data.breederId,
+          authorId,
+          rating: data.rating,
+          title: data.title,
+          body: data.body,
+        },
+        select: REVIEW_SELECT,
+      })
+      await recomputeBreederRating(data.breederId, tx)
+      return created
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -202,8 +206,6 @@ export const createReview = asyncHandler(async (req, res) => {
     details: `Criador: ${breeder.businessName} | Estrelas: ${data.rating}`,
     ipAddress: req.ip,
   })
-
-  await recomputeBreederRating(data.breederId)
 
   res.status(201).json(review)
 })
@@ -223,10 +225,16 @@ export const updateReview = asyncHandler(async (req, res) => {
   if (body.title !== undefined) updateData.title = body.title
   if (body.body !== undefined) updateData.body = body.body
 
-  const updated = await prisma.review.update({
-    where: { id },
-    data: updateData,
-    select: REVIEW_SELECT,
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.review.update({
+      where: { id },
+      data: updateData,
+      select: REVIEW_SELECT,
+    })
+    if (body.rating !== undefined) {
+      await recomputeBreederRating(review.breederId, tx)
+    }
+    return u
   })
 
   await logAudit({
@@ -237,9 +245,6 @@ export const updateReview = asyncHandler(async (req, res) => {
     details: JSON.stringify(updateData),
     ipAddress: req.ip,
   })
-
-  // O rating pode ter mudado — recalcula agregados.
-  if (body.rating !== undefined) await recomputeBreederRating(review.breederId)
 
   res.json(updated)
 })
@@ -254,7 +259,10 @@ export const deleteReview = asyncHandler(async (req, res) => {
     throw new AppError(403, 'Sem permissão', 'FORBIDDEN')
   }
 
-  await prisma.review.delete({ where: { id } })
+  await prisma.$transaction(async (tx) => {
+    await tx.review.delete({ where: { id } })
+    await recomputeBreederRating(review.breederId, tx)
+  })
 
   await logAudit({
     userId: req.user!.userId,
@@ -267,8 +275,6 @@ export const deleteReview = asyncHandler(async (req, res) => {
     details: `Criador: ${review.breederId} | Autor: ${review.authorId}`,
     ipAddress: req.ip,
   })
-
-  await recomputeBreederRating(review.breederId)
 
   res.status(204).send()
 })
@@ -308,13 +314,19 @@ export const moderateReview = asyncHandler(async (req, res) => {
   const review = await prisma.review.findUnique({ where: { id } })
   if (!review) throw new AppError(404, 'Avaliação não encontrada', 'REVIEW_NOT_FOUND')
 
-  const updated = await prisma.review.update({
-    where: { id },
-    data: {
-      status: data.status,
-      moderationReason: data.reason ?? null,
-    },
-    select: REVIEW_SELECT,
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.review.update({
+      where: { id },
+      data: {
+        status: data.status,
+        moderationReason: data.reason ?? null,
+      },
+      select: REVIEW_SELECT,
+    })
+    if (review.status !== data.status) {
+      await recomputeBreederRating(review.breederId, tx)
+    }
+    return u
   })
 
   await logAudit({
@@ -325,9 +337,6 @@ export const moderateReview = asyncHandler(async (req, res) => {
     details: `${review.status} -> ${data.status}${data.reason ? ` | Motivo: ${data.reason}` : ''}`,
     ipAddress: req.ip,
   })
-
-  // Status pode entrar/sair de PUBLISHED — recalcula agregados.
-  if (review.status !== data.status) await recomputeBreederRating(review.breederId)
 
   res.json(updated)
 })
@@ -358,10 +367,14 @@ export const flagReview = asyncHandler(async (req, res) => {
   const flagCount = await prisma.reviewFlag.count({ where: { reviewId: id } })
   let updated
   if (flagCount >= FLAG_AUTO_HIDE_THRESHOLD && review.status === 'PUBLISHED') {
-    updated = await prisma.review.update({
-      where: { id },
-      data: { status: 'FLAGGED' },
-      select: REVIEW_SELECT,
+    updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.review.update({
+        where: { id },
+        data: { status: 'FLAGGED' },
+        select: REVIEW_SELECT,
+      })
+      await recomputeBreederRating(review.breederId, tx)
+      return u
     })
     await logAudit({
       action: 'REVIEW_AUTO_FLAGGED',
@@ -370,8 +383,6 @@ export const flagReview = asyncHandler(async (req, res) => {
       details: `Denúncias: ${flagCount}`,
       ipAddress: req.ip,
     })
-    // Saiu de PUBLISHED — recalcula agregados.
-    await recomputeBreederRating(review.breederId)
   } else {
     updated = await prisma.review.findUnique({ where: { id }, select: REVIEW_SELECT })
   }
@@ -501,17 +512,19 @@ export const dismissReviewFlags = asyncHandler(async (req, res) => {
   const review = await prisma.review.findUnique({ where: { id } })
   if (!review) throw new AppError(404, 'Avaliação não encontrada', 'REVIEW_NOT_FOUND')
 
-  const { count } = await prisma.reviewFlag.deleteMany({ where: { reviewId: id } })
-
-  // If the review was auto-FLAGGED and an admin dismisses the flags, restore to PUBLISHED
-  let restored = false
-  if (review.status === 'FLAGGED') {
-    await prisma.review.update({
-      where: { id },
-      data: { status: 'PUBLISHED', moderationReason: null },
-    })
-    restored = true
-  }
+  const { count, restored } = await prisma.$transaction(async (tx) => {
+    const del = await tx.reviewFlag.deleteMany({ where: { reviewId: id } })
+    let didRestore = false
+    if (review.status === 'FLAGGED') {
+      await tx.review.update({
+        where: { id },
+        data: { status: 'PUBLISHED', moderationReason: null },
+      })
+      didRestore = true
+      await recomputeBreederRating(review.breederId, tx)
+    }
+    return { count: del.count, restored: didRestore }
+  })
 
   await logAudit({
     userId: req.user!.userId,
@@ -522,8 +535,6 @@ export const dismissReviewFlags = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
-  // Voltou a PUBLISHED — recalcula agregados.
-  if (restored) await recomputeBreederRating(review.breederId)
-
+  void restored
   res.json({ dismissed: count })
 })
