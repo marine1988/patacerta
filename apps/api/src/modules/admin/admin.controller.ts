@@ -180,18 +180,24 @@ export const suspendUser = asyncHandler(async (req, res) => {
     )
   }
 
-  // Deactivate user account
-  await prisma.user.update({
-    where: { id },
-    data: { isActive: false, suspendedAt: new Date(), suspendedReason: reason },
-  })
-
-  if (user.role === 'BREEDER') {
-    await prisma.breeder.updateMany({
-      where: { userId: id },
-      data: { status: 'SUSPENDED', suspendedAt: new Date(), suspendedReason: reason },
+  // Transacao garante atomicidade entre user.update e breeder.updateMany:
+  // se a segunda falhar, a conta nao fica suspensa "sozinha" deixando o
+  // criador ainda publicamente visivel. Importante para fluxo de moderacao.
+  const now = new Date()
+  await prisma.$transaction(async (tx) => {
+    // Deactivate user account
+    await tx.user.update({
+      where: { id },
+      data: { isActive: false, suspendedAt: now, suspendedReason: reason },
     })
-  }
+
+    if (user.role === 'BREEDER') {
+      await tx.breeder.updateMany({
+        where: { userId: id },
+        data: { status: 'SUSPENDED', suspendedAt: now, suspendedReason: reason },
+      })
+    }
+  })
 
   await logAudit({
     userId: req.user!.userId,
@@ -229,31 +235,36 @@ export const unsuspendUser = asyncHandler(async (req, res) => {
   if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
   if (user.isActive) throw new AppError(400, 'Utilizador não está suspenso', 'NOT_SUSPENDED')
 
-  await prisma.user.update({
-    where: { id },
-    data: { isActive: true, suspendedAt: null, suspendedReason: null },
-  })
-
-  // Se o criador associado tambem ficou SUSPENDED em consequencia da
-  // suspensao da conta, reactiva-o aplicando a mesma regra usada em
-  // unsuspendBreeder. Se o admin suspendeu o criador isoladamente
-  // (sem suspender a conta), nao mexemos aqui — fica para o fluxo
-  // dedicado em /admin/breeders/:id/unsuspend.
-  if (user.breeder && user.breeder.status === 'SUSPENDED') {
-    const dgavApproved = user.breeder.verificationDocs.some(
-      (d) => d.docType === 'DGAV' && d.status === 'APPROVED',
-    )
-    const nextStatus = dgavApproved ? 'VERIFIED' : 'DRAFT'
-    await prisma.breeder.update({
-      where: { id: user.breeder.id },
-      data: {
-        status: nextStatus,
-        verifiedAt: dgavApproved ? (user.breeder.verifiedAt ?? new Date()) : null,
-        suspendedAt: null,
-        suspendedReason: null,
-      },
+  // Transacao garante atomicidade da reactivacao: ou a conta reactiva
+  // E o criador associado e' restaurado para o estado correcto (VERIFIED
+  // ou DRAFT consoante o DGAV), ou nenhum dos dois muda.
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id },
+      data: { isActive: true, suspendedAt: null, suspendedReason: null },
     })
-  }
+
+    // Se o criador associado tambem ficou SUSPENDED em consequencia da
+    // suspensao da conta, reactiva-o aplicando a mesma regra usada em
+    // unsuspendBreeder. Se o admin suspendeu o criador isoladamente
+    // (sem suspender a conta), nao mexemos aqui — fica para o fluxo
+    // dedicado em /admin/breeders/:id/unsuspend.
+    if (user.breeder && user.breeder.status === 'SUSPENDED') {
+      const dgavApproved = user.breeder.verificationDocs.some(
+        (d) => d.docType === 'DGAV' && d.status === 'APPROVED',
+      )
+      const nextStatus = dgavApproved ? 'VERIFIED' : 'DRAFT'
+      await tx.breeder.update({
+        where: { id: user.breeder.id },
+        data: {
+          status: nextStatus,
+          verifiedAt: dgavApproved ? (user.breeder.verifiedAt ?? new Date()) : null,
+          suspendedAt: null,
+          suspendedReason: null,
+        },
+      })
+    }
+  })
 
   await logAudit({
     userId: req.user!.userId,

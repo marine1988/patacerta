@@ -254,54 +254,62 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     return
   }
 
-  const updated = await prisma.verificationDoc.update({
-    where: { id: docId },
-    data: {
-      status,
-      notes: notes ?? null,
-      reviewedBy: req.user!.userId,
-      reviewedAt: new Date(),
-    },
-    select: {
-      id: true,
-      docType: true,
-      status: true,
-      notes: true,
-      reviewedAt: true,
-    },
-  })
-
-  // O DGAV e o UNICO documento que controla a verificacao do criador.
-  // Aprovar DGAV -> breeder VERIFIED. Rejeitar DGAV -> breeder DRAFT
-  // (criador re-submete depois). Outros docs ja nao sao usados, mas se
-  // existirem dados antigos sao revistos sem afectar status.
-  // SUSPENDED nao e' tocado: suspensao e' uma decisao administrativa
-  // separada que sobrepoe a verificacao.
+  // Transacao garante atomicidade entre verificationDoc.update e
+  // breeder.update: se a 2a escrita falhar, a 1a faz rollback. Caso
+  // contrario, o DGAV ficaria APPROVED mas o breeder continuaria DRAFT
+  // (ou vice-versa) -- estado inconsistente em fluxo critico.
   let breederStatusChange: 'VERIFIED' | 'DRAFT' | null = null
-  if (doc.docType === 'DGAV' && doc.breeder.status !== 'SUSPENDED') {
-    if (status === 'APPROVED' && doc.breeder.status !== 'VERIFIED') {
-      await prisma.breeder.update({
-        where: { id: doc.breederId },
-        data: { status: 'VERIFIED', verifiedAt: new Date() },
-      })
-      breederStatusChange = 'VERIFIED'
-    } else if (status === 'REJECTED' && doc.breeder.status === 'VERIFIED') {
-      // Despromover de VERIFIED para DRAFT quando o admin reverte uma
-      // aprovacao previa. Limpa verifiedAt.
-      await prisma.breeder.update({
-        where: { id: doc.breederId },
-        data: { status: 'DRAFT', verifiedAt: null },
-      })
-      breederStatusChange = 'DRAFT'
-    } else if (status === 'REJECTED' && doc.breeder.status !== 'DRAFT') {
-      // Rejeicao inicial (PENDING -> REJECTED): garantir DRAFT.
-      await prisma.breeder.update({
-        where: { id: doc.breederId },
-        data: { status: 'DRAFT', verifiedAt: null },
-      })
-      breederStatusChange = 'DRAFT'
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedDoc = await tx.verificationDoc.update({
+      where: { id: docId },
+      data: {
+        status,
+        notes: notes ?? null,
+        reviewedBy: req.user!.userId,
+        reviewedAt: new Date(),
+      },
+      select: {
+        id: true,
+        docType: true,
+        status: true,
+        notes: true,
+        reviewedAt: true,
+      },
+    })
+
+    // O DGAV e o UNICO documento que controla a verificacao do criador.
+    // Aprovar DGAV -> breeder VERIFIED. Rejeitar DGAV -> breeder DRAFT
+    // (criador re-submete depois). Outros docs ja nao sao usados, mas se
+    // existirem dados antigos sao revistos sem afectar status.
+    // SUSPENDED nao e' tocado: suspensao e' uma decisao administrativa
+    // separada que sobrepoe a verificacao.
+    if (doc.docType === 'DGAV' && doc.breeder.status !== 'SUSPENDED') {
+      if (status === 'APPROVED' && doc.breeder.status !== 'VERIFIED') {
+        await tx.breeder.update({
+          where: { id: doc.breederId },
+          data: { status: 'VERIFIED', verifiedAt: new Date() },
+        })
+        breederStatusChange = 'VERIFIED'
+      } else if (status === 'REJECTED' && doc.breeder.status === 'VERIFIED') {
+        // Despromover de VERIFIED para DRAFT quando o admin reverte uma
+        // aprovacao previa. Limpa verifiedAt.
+        await tx.breeder.update({
+          where: { id: doc.breederId },
+          data: { status: 'DRAFT', verifiedAt: null },
+        })
+        breederStatusChange = 'DRAFT'
+      } else if (status === 'REJECTED' && doc.breeder.status !== 'DRAFT') {
+        // Rejeicao inicial (PENDING -> REJECTED): garantir DRAFT.
+        await tx.breeder.update({
+          where: { id: doc.breederId },
+          data: { status: 'DRAFT', verifiedAt: null },
+        })
+        breederStatusChange = 'DRAFT'
+      }
     }
-  }
+
+    return updatedDoc
+  })
 
   // Audit log distingue revisao inicial vs mudanca de revisao previa.
   // O detail inclui sempre a transicao para facilitar troubleshooting.
