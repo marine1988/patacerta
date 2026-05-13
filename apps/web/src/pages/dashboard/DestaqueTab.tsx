@@ -15,7 +15,7 @@
 // — verificamos availability antes de mostrar o botão.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
@@ -435,14 +435,9 @@ function PurchaseModal({
         <div className="flex flex-col gap-3 pt-2">
           <p className="text-xs text-subtle">
             Ao avançar, aceita os{' '}
-            <a
-              href="/termos-pagamento"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link-inline"
-            >
+            <Link to="/termos-pagamento" className="link-inline">
               Termos de Pagamento
-            </a>
+            </Link>
             .
           </p>
           <div className="flex justify-end gap-3">

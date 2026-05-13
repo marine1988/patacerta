@@ -33,8 +33,15 @@ export function SettingsTab() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `dados-${user?.email ?? 'utilizador'}.json`
+      // Nao usar email no filename — escreve PII em disco/historico do browser.
+      // ID + data sao suficientes para o utilizador identificar o export.
+      const date = new Date().toISOString().slice(0, 10)
+      a.download = `dados-${user?.id ?? 'export'}-${date}.json`
+      // Firefox/Safari requerem o <a> anexado ao DOM para o click programatico
+      // funcionar.
+      document.body.appendChild(a)
       a.click()
+      a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
       setExportError(extractApiError(err, 'Erro ao exportar dados. Tente novamente.'))

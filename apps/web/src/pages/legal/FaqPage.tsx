@@ -1,4 +1,5 @@
 import { Card } from '../../components/ui'
+import { Link } from 'react-router-dom'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { faqPageJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
 import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
@@ -107,16 +108,16 @@ export function FaqPage() {
         <div className="mt-10 border-t border-line pt-6 text-sm text-subtle">
           <p>
             Não encontrou a resposta? Consulte os nossos{' '}
-            <a href="/termos" className="text-caramel-700 underline hover:no-underline">
+            <Link to="/termos" className="text-caramel-700 underline hover:no-underline">
               Termos e Condições
-            </a>{' '}
+            </Link>{' '}
             ou a{' '}
-            <a
-              href="/politica-privacidade"
+            <Link
+              to="/politica-privacidade"
               className="text-caramel-700 underline hover:no-underline"
             >
               Política de Privacidade
-            </a>
+            </Link>
             .
           </p>
         </div>

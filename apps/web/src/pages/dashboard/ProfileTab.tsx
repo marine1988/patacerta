@@ -40,8 +40,8 @@ export function ProfileTab() {
       setEditing(false)
       setProfileMsg({ type: 'success', text: 'Perfil atualizado com sucesso.' })
     },
-    onError: () => {
-      setProfileMsg({ type: 'error', text: 'Erro ao atualizar perfil.' })
+    onError: (err) => {
+      setProfileMsg({ type: 'error', text: extractApiError(err, 'Erro ao atualizar perfil.') })
     },
   })
 
@@ -54,10 +54,13 @@ export function ProfileTab() {
       setConfirmPassword('')
       setPwMsg({ type: 'success', text: 'Palavra-passe alterada com sucesso.' })
     },
-    onError: () => {
+    onError: (err) => {
       setPwMsg({
         type: 'error',
-        text: 'Erro ao alterar palavra-passe. Verifique a palavra-passe atual.',
+        text: extractApiError(
+          err,
+          'Erro ao alterar palavra-passe. Verifique a palavra-passe atual.',
+        ),
       })
     },
   })
@@ -222,9 +225,14 @@ export function ProfileTab() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
+              inputMode="tel"
+              pattern="^[+0-9 ()\\-]{7,20}$"
+              title="Apenas dígitos, espaços, parênteses, + ou -. Mínimo 7 caracteres."
             />
             {profileMsg && (
               <p
+                role={profileMsg.type === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
                 className={`text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
               >
                 {profileMsg.text}
@@ -243,6 +251,8 @@ export function ProfileTab() {
 
         {!editing && profileMsg && (
           <p
+            role={profileMsg.type === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
             className={`mt-4 text-sm ${profileMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
           >
             {profileMsg.text}
@@ -278,6 +288,8 @@ export function ProfileTab() {
           </div>
           {pwMsg && (
             <p
+              role={pwMsg.type === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
               className={`text-sm ${pwMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
             >
               {pwMsg.text}

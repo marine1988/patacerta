@@ -1,4 +1,5 @@
 import { Card } from '../../components/ui'
+import { Link } from 'react-router-dom'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { breadcrumbListJsonLd } from '../../lib/jsonld'
 import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
@@ -157,9 +158,9 @@ export function PaymentTermsPage() {
             O conteúdo exibido no Sponsored Slot é o do perfil público de criador (nome, badge,
             morada, telefone, raças). A PataCerta reserva-se o direito de remover ou suspender slots
             cujo perfil viole os{' '}
-            <a href="/termos" className="link-inline">
+            <Link to="/termos" className="link-inline">
               Termos e Condições gerais
-            </a>{' '}
+            </Link>{' '}
             (informação falsa, violação dos direitos animais, conteúdo ofensivo). Nestes casos não
             há reembolso do tempo restante.
           </p>

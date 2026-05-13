@@ -13,7 +13,7 @@ type BreederReview = DashboardReviewItem & {
 }
 
 type ServiceReview = DashboardServiceReviewItem & {
-  service: { id: number; title: string; providerId: number }
+  service: { id: number; slug: string; title: string; providerId: number }
 }
 
 // União anotada com kind, para o render saber a que tipo chamar.
@@ -122,7 +122,7 @@ export function MyReviewsTab() {
         const isService = r.kind === 'service'
         const targetName = isService ? r.service.title : r.breeder.businessName
         const contextLabel = isService ? `Serviço · ${targetName}` : `Criador · ${targetName}`
-        const contextTo = isService ? `/servicos/${r.service.id}` : undefined
+        const contextTo = isService ? `/servicos/${r.service.slug ?? r.service.id}` : undefined
         return (
           <ReviewCard
             key={`${r.kind}-${r.id}`}

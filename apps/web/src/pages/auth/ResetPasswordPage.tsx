@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { validatePassword } from '../../lib/validation'
 
 export function ResetPasswordPage() {
   usePageMeta({
@@ -99,7 +100,15 @@ function RequestResetForm() {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            {error && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+              >
+                {error}
+              </div>
+            )}
 
             <Input
               label="Email"
@@ -140,6 +149,14 @@ function SetNewPasswordForm({ token }: { token: string }) {
 
     if (password !== confirmPassword) {
       setError('As palavras-passe não coincidem')
+      return
+    }
+
+    // Politica de password unificada com o registo (lib/validation.ts).
+    // Sem isto, o reset aceitava passwords mais fracas do que o registo.
+    const pwErr = validatePassword(password)
+    if (pwErr) {
+      setError(pwErr)
       return
     }
 
@@ -205,7 +222,15 @@ function SetNewPasswordForm({ token }: { token: string }) {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            {error && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+              >
+                {error}
+              </div>
+            )}
 
             <Input
               label="Nova palavra-passe"

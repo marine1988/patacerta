@@ -13,7 +13,7 @@ type BreederReview = DashboardReviewItem & {
   breeder: { id: number; businessName: string }
 }
 type ServiceReview = DashboardServiceReviewItem & {
-  service: { id: number; title: string; providerId: number }
+  service: { id: number; slug: string; title: string; providerId: number }
 }
 type UnifiedReview = (BreederReview & { kind: 'breeder' }) | (ServiceReview & { kind: 'service' })
 
@@ -124,7 +124,7 @@ export function ReceivedReviewsTab({ includeBreeder, includeServices }: Received
         const isService = r.kind === 'service'
         const targetName = isService ? r.service.title : r.breeder.businessName
         const contextLabel = isService ? `Serviço · ${targetName}` : `Criador · ${targetName}`
-        const contextTo = isService ? `/servicos/${r.service.id}` : undefined
+        const contextTo = isService ? `/servicos/${r.service.slug ?? r.service.id}` : undefined
         return (
           <ReviewCard
             key={`${r.kind}-${r.id}`}

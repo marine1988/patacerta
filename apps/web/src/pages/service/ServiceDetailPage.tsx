@@ -706,6 +706,7 @@ export function ServiceDetailPage() {
                 <div className="w-48">
                   <Select
                     label=""
+                    aria-label="Ordenar avaliações"
                     options={[
                       { value: 'recent', label: 'Mais recentes' },
                       { value: 'oldest', label: 'Mais antigas' },

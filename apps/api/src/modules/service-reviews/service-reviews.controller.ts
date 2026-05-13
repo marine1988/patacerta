@@ -34,7 +34,7 @@ const SERVICE_REVIEW_SELECT = {
   createdAt: true,
   updatedAt: true,
   author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-  service: { select: { id: true, title: true, providerId: true } },
+  service: { select: { id: true, slug: true, title: true, providerId: true } },
   _count: { select: { flags: true } },
 } satisfies Prisma.ServiceReviewSelect
 

@@ -1082,7 +1082,7 @@ export function BreederTab() {
       {noProfile && (
         <Card hover={false}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-caramel-500">
-            <span>â—†</span>
+            <span>◆</span>
             <span className="italic">Tornar-me criador</span>
           </div>
           <h2 className="mt-1 font-serif text-2xl text-ink">Criar perfil de criador</h2>

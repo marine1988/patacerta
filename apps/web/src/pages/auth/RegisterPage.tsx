@@ -6,15 +6,12 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { validatePassword as validatePasswordShared } from '../../lib/validation'
 
 const PASSWORD_HINT = 'Mínimo 8 caracteres, com maiúscula, minúscula e número.'
 
 function validatePassword(pw: string): string | null {
-  if (pw.length < 8) return 'Mínimo 8 caracteres.'
-  if (!/[A-Z]/.test(pw)) return 'Deve conter pelo menos uma letra maiúscula.'
-  if (!/[a-z]/.test(pw)) return 'Deve conter pelo menos uma letra minúscula.'
-  if (!/[0-9]/.test(pw)) return 'Deve conter pelo menos um número.'
-  return null
+  return validatePasswordShared(pw)
 }
 
 /**
@@ -174,7 +171,15 @@ export function RegisterPage() {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            {error && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+              >
+                {error}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <Input

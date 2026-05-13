@@ -57,7 +57,7 @@ interface BreederDetail {
   userId: number
   district: { id: number; namePt: string; latitude: number | null; longitude: number | null }
   municipality: { id: number; namePt: string }
-  user: { id: number; firstName: string; lastName: string; email: string }
+  user: { id: number; firstName: string; lastName: string; avatarUrl: string | null }
   avgRating: number | null
   reviewCount: number
   createdAt: string
