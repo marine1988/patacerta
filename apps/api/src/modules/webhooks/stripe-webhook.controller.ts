@@ -23,6 +23,7 @@ import type Stripe from 'stripe'
 import { prisma } from '../../lib/prisma.js'
 import { getStripe, isStripeConfigured } from '../../lib/stripe.js'
 import { sendSponsoredSlotPaidEmail } from '../../lib/email.js'
+import { maskEmail } from '../../lib/redact.js'
 import { SPONSORED_SLOT_DURATION_DAYS } from '../../lib/stripe.js'
 
 /**
@@ -196,8 +197,13 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
   const now = new Date()
   const endsAt = new Date(now.getTime() + SPONSORED_SLOT_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
-  await prisma.sponsoredBreedSlot.update({
-    where: { id: slot.id },
+  // updateMany condicional para evitar TOCTOU entre dois webhooks
+  // concorrentes (`checkout.session.completed` + `async_payment_succeeded`):
+  // ambos podem passar o check `paymentStatus !== 'PAID'` acima e acabariam
+  // a activar o slot duas vezes (e a disparar dois emails). Aqui só a
+  // primeira escrita devolve count=1; a segunda devolve 0 e fazemos no-op.
+  const result = await prisma.sponsoredBreedSlot.updateMany({
+    where: { id: slot.id, paymentStatus: { not: 'PAID' } },
     data: {
       paymentStatus: 'PAID',
       status: 'ACTIVE',
@@ -209,11 +215,17 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
     },
   })
 
+  if (result.count === 0) {
+    console.log(`[Stripe Webhook] Slot ${slot.id} ja activado por outro evento, no-op.`)
+    return
+  }
+
   console.log(
     `[Stripe Webhook] Slot ${slot.id} activado (${slot.breeder.businessName} -> ${slot.breed.namePt}) até ${endsAt.toISOString()}`,
   )
 
-  // Email de confirmação (best-effort).
+  // Email de confirmação (best-effort). Email mascarado em logs para
+  // nao vazar PII em ficheiros de log persistidos.
   const recipientEmail = slot.paidBy?.email
   if (recipientEmail) {
     try {
@@ -228,7 +240,7 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
       })
     } catch (err) {
       console.error(
-        `[Stripe Webhook] Falha a enviar email confirmação para ${recipientEmail}:`,
+        `[Stripe Webhook] Falha a enviar email confirmação para ${maskEmail(recipientEmail)}:`,
         err,
       )
     }
@@ -238,20 +250,25 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
 async function markSlotFailed(sessionId: string, reason: string): Promise<void> {
   const slot = await prisma.sponsoredBreedSlot.findUnique({
     where: { stripeCheckoutSessionId: sessionId },
-    select: { id: true, paymentStatus: true },
+    select: { id: true },
   })
   if (!slot) return
-  // Não regredir um slot já PAID (event order race).
-  if (slot.paymentStatus === 'PAID') return
 
-  await prisma.sponsoredBreedSlot.update({
-    where: { id: slot.id },
+  // updateMany condicional: nao regredir um slot ja PAID (event order race
+  // entre `checkout.session.async_payment_failed` e
+  // `checkout.session.async_payment_succeeded`).
+  const result = await prisma.sponsoredBreedSlot.updateMany({
+    where: { id: slot.id, paymentStatus: { notIn: ['PAID', 'REFUNDED'] } },
     data: {
       paymentStatus: 'FAILED',
       status: 'EXPIRED',
       notes: `Pagamento falhou (${reason})`.slice(0, 500),
     },
   })
+  if (result.count === 0) {
+    console.log(`[Stripe Webhook] Slot ${slot.id} ja em estado terminal, no-op para FAILED.`)
+    return
+  }
   console.log(`[Stripe Webhook] Slot ${slot.id} marcado FAILED por ${reason}`)
 }
 
@@ -261,18 +278,22 @@ async function markSlotRefunded(charge: Stripe.Charge): Promise<void> {
 
   const slot = await prisma.sponsoredBreedSlot.findFirst({
     where: { stripePaymentIntentId: paymentIntentId },
-    select: { id: true, paymentStatus: true },
+    select: { id: true },
   })
   if (!slot) return
-  if (slot.paymentStatus === 'REFUNDED') return
 
-  await prisma.sponsoredBreedSlot.update({
-    where: { id: slot.id },
+  // updateMany condicional para idempotencia entre `charge.refunded` events.
+  const result = await prisma.sponsoredBreedSlot.updateMany({
+    where: { id: slot.id, paymentStatus: { not: 'REFUNDED' } },
     data: {
       paymentStatus: 'REFUNDED',
       status: 'EXPIRED',
       notes: 'Reembolsado via Stripe'.slice(0, 500),
     },
   })
+  if (result.count === 0) {
+    console.log(`[Stripe Webhook] Slot ${slot.id} ja REFUNDED, no-op.`)
+    return
+  }
   console.log(`[Stripe Webhook] Slot ${slot.id} marcado REFUNDED`)
 }

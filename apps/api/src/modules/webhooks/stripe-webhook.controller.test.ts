@@ -33,6 +33,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
   },
 }))
@@ -64,6 +65,7 @@ const mockedPrisma = prisma as unknown as {
     findUnique: ReturnType<typeof vi.fn>
     findFirst: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
+    updateMany: ReturnType<typeof vi.fn>
   }
 }
 const mockedIsStripeConfigured = isStripeConfigured as unknown as ReturnType<typeof vi.fn>
@@ -234,7 +236,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
       breeder: { id: 7, businessName: 'Canil Teste' },
       paidBy: { email: 'criador@example.com' },
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
     mockPaymentIntentsRetrieve.mockResolvedValue({
       id: 'pi_abc',
       latest_charge: { receipt_url: 'https://stripe.test/receipt/abc' },
@@ -246,9 +248,9 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
     await handleStripeWebhook(req, res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 42 },
+        where: expect.objectContaining({ id: 42 }),
         data: expect.objectContaining({
           paymentStatus: 'PAID',
           status: 'ACTIVE',
@@ -340,7 +342,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
       breeder: { id: 7, businessName: 'Canil Teste' },
       paidBy: null,
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
     mockPaymentIntentsRetrieve.mockRejectedValue(new Error('stripe API timeout'))
 
     const req = makeReq({ signature: 't=1,v1=ok' })
@@ -349,7 +351,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
     await handleStripeWebhook(req, res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           paymentStatus: 'PAID',
@@ -378,7 +380,7 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
       breeder: { id: 8, businessName: 'Canil Multibanco' },
       paidBy: { email: 'mb@example.com' },
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
     mockPaymentIntentsRetrieve.mockResolvedValue({
       id: 'pi_test_123',
       latest_charge: { receipt_url: 'https://stripe.test/r/mb' },
@@ -390,9 +392,9 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
     await handleStripeWebhook(req, res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 99 },
+        where: expect.objectContaining({ id: 99 }),
         data: expect.objectContaining({ paymentStatus: 'PAID', status: 'ACTIVE' }),
       }),
     )
@@ -407,7 +409,7 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
       id: 50,
       paymentStatus: 'PENDING',
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
 
     const req = makeReq({ signature: 't=1,v1=ok' })
     const res = makeRes()
@@ -415,9 +417,9 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
     await handleStripeWebhook(req, res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 50 },
+        where: expect.objectContaining({ id: 50 }),
         data: expect.objectContaining({
           paymentStatus: 'FAILED',
           status: 'EXPIRED',
@@ -454,14 +456,14 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
       id: 51,
       paymentStatus: 'PENDING',
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
 
     const req = makeReq({ signature: 't=1,v1=ok' })
     const res = makeRes()
 
     await handleStripeWebhook(req, res)
 
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ paymentStatus: 'FAILED' }),
       }),
@@ -481,7 +483,7 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
       id: 60,
       paymentStatus: 'PAID',
     })
-    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({})
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
 
     const req = makeReq({ signature: 't=1,v1=ok' })
     const res = makeRes()
@@ -489,9 +491,9 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
     await handleStripeWebhook(req, res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 60 },
+        where: expect.objectContaining({ id: 60 }),
         data: expect.objectContaining({
           paymentStatus: 'REFUNDED',
           status: 'EXPIRED',
