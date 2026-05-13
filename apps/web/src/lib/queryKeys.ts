@@ -87,12 +87,30 @@ export const queryKeys = {
     all: () => ['reviews'] as const,
     byBreeder: (breederId: number | string | null | undefined, sort?: string, page?: number) =>
       ['reviews', { breederId: breederId ?? null, sort, page }] as const,
+    myOnBreeder: (
+      breederId: number | string | null | undefined,
+      authorId: number | string | null | undefined,
+    ) =>
+      [
+        'reviews',
+        'mine-on-breeder',
+        { breederId: breederId ?? null, authorId: authorId ?? null },
+      ] as const,
     eligibility: (breederId: number | string | null | undefined) =>
       ['review-eligibility', { breederId: breederId ?? null }] as const,
     mine: () => ['my-reviews'] as const,
     serviceReviewsAll: () => ['service-reviews'] as const,
     byService: (serviceId: number | string | null | undefined, sort?: string, page?: number) =>
       ['service-reviews', { serviceId: serviceId ?? null, sort, page }] as const,
+    myOnService: (
+      serviceId: number | string | null | undefined,
+      authorId: number | string | null | undefined,
+    ) =>
+      [
+        'service-reviews',
+        'mine-on-service',
+        { serviceId: serviceId ?? null, authorId: authorId ?? null },
+      ] as const,
   },
 
   // ── Services ──────────────────────────────────────────────────────

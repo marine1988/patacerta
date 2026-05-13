@@ -56,7 +56,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
 /**
  * Require that the authenticated user has a Breeder profile.
  * Substitui o antigo requireRole('BREEDER'): com o novo modelo de registo
- * unificado, ser criador deriva de ter um perfil, n\u00e3o de um campo role.
+ * unificado, ser criador deriva de ter um perfil, não de um campo role.
  * Must be used AFTER requireAuth.
  */
 export async function requireBreederProfile(
@@ -65,7 +65,7 @@ export async function requireBreederProfile(
   next: NextFunction,
 ): Promise<void> {
   if (!req.user) {
-    throw new AppError(401, 'N\u00e3o autenticado', 'UNAUTHORIZED')
+    throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
   }
   const breeder = await prisma.breeder.findUnique({
     where: { userId: req.user.userId },
@@ -74,7 +74,7 @@ export async function requireBreederProfile(
   if (!breeder) {
     throw new AppError(
       403,
-      'Necessita de criar um perfil de criador para esta ac\u00e7\u00e3o',
+      'Necessita de criar um perfil de criador para esta acção',
       'BREEDER_PROFILE_REQUIRED',
     )
   }

@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import type { ReviewItem as ReviewItemBase } from '../../lib/reviews'
+import { queryKeys } from '../../lib/queryKeys'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { buildBreederMetaDescription } from '../../lib/seo'
 import { localBusinessJsonLd, breadcrumbListJsonLd } from '../../lib/jsonld'
@@ -177,7 +178,11 @@ export function BreederProfilePage() {
   })
 
   const isSelf = !!user && !!breeder && breeder.userId === user.id
-  const canWriteReview = !!user && user.role === 'OWNER' && !isSelf
+  // Alinhado com o backend (apps/api/src/modules/reviews/reviews.controller.ts):
+  // qualquer utilizador autenticado pode avaliar um criador, desde que não seja
+  // o próprio. A restrição anterior a `role === 'OWNER'` excluía indevidamente
+  // outros criadores/prestadores e era inconsistente com ServiceDetailPage.
+  const canWriteReview = !!user && !isSelf
 
   const eligibilityQuery = useQuery<{
     eligible: boolean
@@ -208,11 +213,32 @@ export function BreederProfilePage() {
     enabled: !!id,
   })
 
+  // Própria review do autor para este criador, independentemente do status
+  // (PENDING/HIDDEN/FLAGGED não aparecem no listing público). O backend
+  // permite ver TODOS os status quando authorId === requester.userId.
+  // Sem isto, o botão "Escrever avaliação" reapareceria após moderação
+  // ocultar a review do autor, levando a 409 REVIEW_EXISTS no POST.
+  const myReviewQuery = useQuery<ReviewsResponse>({
+    queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+    queryFn: () =>
+      api
+        .get('/reviews', {
+          params: { breederId: Number(id), authorId: user!.id, page: 1, limit: 1 },
+        })
+        .then((r) => r.data),
+    enabled: !!id && !!user && !isSelf,
+    staleTime: 30_000,
+  })
+
   const reviews = reviewsQuery.data?.data ?? []
   const reviewSummary = reviewsQuery.data?.summary
   const reviewMeta = reviewsQuery.data?.meta
 
-  const myReview = user ? reviews.find((r) => r.authorId === user.id) : undefined
+  // Preferir resultado da query dedicada (todos os status); cair no listing
+  // local apenas como fallback (autor que ainda não disparou myReviewQuery).
+  const myReview =
+    myReviewQuery.data?.data?.[0] ??
+    (user ? reviews.find((r) => r.authorId === user.id) : undefined)
 
   const createReviewMutation = useMutation({
     mutationFn: (values: ReviewFormValues) =>
@@ -222,6 +248,9 @@ export function BreederProfilePage() {
       setEditingReview(null)
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+      })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
     },
@@ -238,6 +267,9 @@ export function BreederProfilePage() {
       setEditingReview(null)
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+      })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
     },
@@ -250,6 +282,9 @@ export function BreederProfilePage() {
     mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+      })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
     },
@@ -636,6 +671,23 @@ export function BreederProfilePage() {
                   )
                 })()}
             </div>
+            {canWriteReview && myReview && myReview.status !== 'PUBLISHED' && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">
+                  {myReview.status === 'HIDDEN'
+                    ? 'A sua avaliação foi ocultada pela moderação.'
+                    : myReview.status === 'FLAGGED'
+                      ? 'A sua avaliação está sob revisão.'
+                      : 'A sua avaliação está pendente de moderação.'}
+                </p>
+                {myReview.moderationReason && (
+                  <p className="mt-1 text-xs">Motivo: {myReview.moderationReason}</p>
+                )}
+                <p className="mt-1 text-xs">
+                  Pode editar para corrigir e voltar a submeter para moderação.
+                </p>
+              </div>
+            )}
             {canWriteReview &&
               !myReview &&
               eligibilityQuery.data &&

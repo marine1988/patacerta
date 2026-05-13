@@ -19,6 +19,12 @@ export interface ReviewBase {
   title: string
   body: string | null
   status: string
+  /**
+   * Motivo de moderação. O backend devolve-o sempre (REVIEW_SELECT) mas só
+   * é populado quando um admin modera. Mantido opcional para retro-compat
+   * com componentes que não fazem cast.
+   */
+  moderationReason?: string | null
   reply: string | null
   repliedAt: string | null
   createdAt: string

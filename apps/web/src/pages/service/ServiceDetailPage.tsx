@@ -314,11 +314,30 @@ export function ServiceDetailPage() {
     enabled: !!id,
   })
 
+  // Própria review do autor (todos os status). O listing público filtra a
+  // PUBLISHED; sem esta query, uma review em PENDING/HIDDEN/FLAGGED ficaria
+  // invisível ao próprio autor e o botão "Escrever avaliação" reapareceria,
+  // levando a 409 REVIEW_EXISTS no POST. O backend devolve todos os status
+  // quando authorId === requester.userId.
+  const myReviewQuery = useQuery<ServiceReviewsResponse>({
+    queryKey: queryKeys.reviews.myOnService(id, user?.id),
+    queryFn: () =>
+      api
+        .get('/service-reviews', {
+          params: { serviceId: Number(id), authorId: user!.id, page: 1, limit: 1 },
+        })
+        .then((r) => r.data),
+    enabled: !!id && !!user && !isSelf,
+    staleTime: 30_000,
+  })
+
   const reviews = reviewsQuery.data?.data ?? []
   const reviewSummary = reviewsQuery.data?.summary
   const reviewMeta = reviewsQuery.data?.meta
   const totalReviewPages = reviewMeta?.totalPages ?? 1
-  const myReview = user ? reviews.find((r) => r.authorId === user.id) : undefined
+  const myReview =
+    myReviewQuery.data?.data?.[0] ??
+    (user ? reviews.find((r) => r.authorId === user.id) : undefined)
 
   function invalidateReviews() {
     queryClient.invalidateQueries({ queryKey: queryKeys.reviews.serviceReviewsAll() })
@@ -645,6 +664,23 @@ export function ServiceDetailPage() {
                   )
                 })()}
             </div>
+            {canWriteReview && myReview && myReview.status !== 'PUBLISHED' && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-medium">
+                  {myReview.status === 'HIDDEN'
+                    ? 'A sua avaliação foi ocultada pela moderação.'
+                    : myReview.status === 'FLAGGED'
+                      ? 'A sua avaliação está sob revisão.'
+                      : 'A sua avaliação está pendente de moderação.'}
+                </p>
+                {myReview.moderationReason && (
+                  <p className="mt-1 text-xs">Motivo: {myReview.moderationReason}</p>
+                )}
+                <p className="mt-1 text-xs">
+                  Pode editar para corrigir e voltar a submeter para moderação.
+                </p>
+              </div>
+            )}
             {canWriteReview &&
               !myReview &&
               eligibilityQuery.data &&

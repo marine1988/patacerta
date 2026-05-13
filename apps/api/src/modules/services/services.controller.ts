@@ -638,10 +638,10 @@ export const deletePhoto = asyncHandler(async (req, res) => {
 /**
  * PATCH /api/services/:serviceId/photos/reorder
  *
- * Aplica nova ordem (sortOrder=0..N) \u00e0s fotos do servi\u00e7o.
+ * Aplica nova ordem (sortOrder=0..N) às fotos do serviço.
  * O cliente envia a lista completa `photoIds` na ordem desejada;
- * o backend valida que e' exactamente o mesmo conjunto que existe em DB
- * (sem ids extras, sem duplicados, sem omiss\u00f5es) e aplica a transac\u00e7\u00e3o.
+ * o backend valida que é exactamente o mesmo conjunto que existe em DB
+ * (sem ids extras, sem duplicados, sem omissões) e aplica a transacção.
  */
 export const reorderPhotos = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
@@ -653,7 +653,7 @@ export const reorderPhotos = asyncHandler(async (req, res) => {
   // Detectar duplicados antes de tocar na DB.
   const uniqueIds = new Set(photoIds)
   if (uniqueIds.size !== photoIds.length) {
-    throw new AppError(400, 'A lista de fotos cont\u00e9m duplicados.', 'PHOTOS_REORDER_DUPLICATES')
+    throw new AppError(400, 'A lista de fotos contém duplicados.', 'PHOTOS_REORDER_DUPLICATES')
   }
 
   const existing = await prisma.servicePhoto.findMany({
@@ -665,7 +665,7 @@ export const reorderPhotos = asyncHandler(async (req, res) => {
   if (existing.length !== photoIds.length) {
     throw new AppError(
       400,
-      'A lista n\u00e3o corresponde \u00e0s fotos actuais. Recarregue a p\u00e1gina.',
+      'A lista não corresponde às fotos actuais. Recarregue a página.',
       'PHOTOS_REORDER_MISMATCH',
     )
   }
@@ -673,14 +673,14 @@ export const reorderPhotos = asyncHandler(async (req, res) => {
     if (!existingIds.has(id)) {
       throw new AppError(
         400,
-        'A lista cont\u00e9m fotos que n\u00e3o pertencem a este an\u00fancio.',
+        'A lista contém fotos que não pertencem a este anúncio.',
         'PHOTOS_REORDER_INVALID_ID',
       )
     }
   }
 
-  // Aplica em transac\u00e7\u00e3o; usa offset tempor\u00e1rio para evitar colis\u00f5es
-  // ao subir o sortOrder se houvesse unique-key (n\u00e3o h\u00e1, mas mantemos atomicidade).
+  // Aplica em transacção; usa offset temporário para evitar colisões
+  // ao subir o sortOrder se houvesse unique-key (não há, mas mantemos atomicidade).
   await prisma.$transaction(
     photoIds.map((id, idx) =>
       prisma.servicePhoto.update({

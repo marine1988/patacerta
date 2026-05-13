@@ -45,8 +45,17 @@ export const listReviews = asyncHandler(async (req, res) => {
 
   const where: Prisma.ReviewWhereInput = {}
 
-  // Non-admins can only see PUBLISHED reviews.
+  // Visibility:
+  // - ADMIN: pode filtrar livremente por status (ou ver todos).
+  // - Autor a pedir as suas próprias reviews (authorId === requester.userId):
+  //   recebe todos os status (necessário para detectar PENDING/HIDDEN/FLAGGED
+  //   na UI do criador/serviço e mostrar estado em vez de "Escrever avaliação").
+  // - Restantes utilizadores (anónimos ou outros autenticados): apenas PUBLISHED.
+  const isOwnAuthorQuery =
+    !!requester && authorId !== undefined && authorId === requester.userId
   if (requester?.role === 'ADMIN') {
+    if (status) where.status = status
+  } else if (isOwnAuthorQuery) {
     if (status) where.status = status
   } else {
     where.status = 'PUBLISHED'
