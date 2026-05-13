@@ -2,6 +2,44 @@ import nodemailer, { type Transporter } from 'nodemailer'
 import { maskEmail } from './redact.js'
 
 /**
+ * Escapa caracteres HTML especiais para impedir injecao em templates de
+ * email. Usado em qualquer valor que venha de input do utilizador antes
+ * de ser interpolado no corpo HTML (nome do criador, raca, etc).
+ *
+ * Defense-in-depth: hoje os campos passam por validacao Zod (no script
+ * tags), mas o escape garante que mesmo um valor como `</a><b>x</b>` e'
+ * renderizado como texto literal pelos clientes de email.
+ *
+ * Nao usa DOMPurify porque o input aqui e' texto plano, nao HTML — basta
+ * escapar os 5 chars perigosos (HTML5 spec).
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Escapa um URL para uso seguro em atributo href. Recusa schemes
+ * perigosos (javascript:, data:, vbscript:) devolvendo `#` — mantem o
+ * email visualmente intacto mas neutraliza payloads.
+ *
+ * URLs em emails sao sempre gerados pelo backend (verification/reset
+ * tokens, Stripe receipt URLs); este wrapper e' defense-in-depth caso
+ * alguma fonte futura (ex.: receiptUrl de webhook) traga algo inesperado.
+ */
+function escapeHtmlAttr(value: string): string {
+  const trimmed = value.trim()
+  // Blocklist de schemes perigosos para uso em href.
+  const dangerous = /^(javascript|data|vbscript|file):/i
+  if (dangerous.test(trimmed)) return '#'
+  return escapeHtml(trimmed)
+}
+
+/**
  * Email transport via nodemailer + generic SMTP.
  *
  * Configuration via env vars:
@@ -98,14 +136,15 @@ Para ativar a sua conta, abra o seguinte link (válido por 24 horas):
 ${verificationUrl}
 
 Se não criou esta conta, ignore este email.`
+  const safeUrl = escapeHtmlAttr(verificationUrl)
   const html = baseLayout(
     subject,
     `<p>Bem-vindo à <strong>Patacerta</strong>!</p>
      <p>Para ativar a sua conta, clique no botão abaixo. O link é válido por 24 horas.</p>
      <p style="margin:24px 0">
-       <a href="${verificationUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Confirmar email</a>
+       <a href="${safeUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Confirmar email</a>
      </p>
-     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${verificationUrl}</span></p>`,
+     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${safeUrl}</span></p>`,
   )
   await sendMail({ to, subject, html, text })
 }
@@ -118,14 +157,15 @@ Para definir uma nova palavra-passe, abra o seguinte link (válido por 1 hora):
 ${resetUrl}
 
 Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.`
+  const safeUrl = escapeHtmlAttr(resetUrl)
   const html = baseLayout(
     subject,
     `<p>Recebemos um pedido para repor a palavra-passe da sua conta.</p>
      <p>Para definir uma nova palavra-passe, clique no botão abaixo. O link é válido por 1 hora.</p>
      <p style="margin:24px 0">
-       <a href="${resetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Repor palavra-passe</a>
+       <a href="${safeUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Repor palavra-passe</a>
      </p>
-     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${resetUrl}</span></p>
+     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${safeUrl}</span></p>
      <p style="font-size:13px;color:#6b7280">Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.</p>`,
   )
   await sendMail({ to, subject, html, text })
@@ -159,35 +199,48 @@ export async function sendSponsoredSlotPaidEmail(
     month: 'long',
     year: 'numeric',
   })
-  const subject = `Destaque activado — ${breedName} | Patacerta`
+  // Defesa contra header injection: remove CR/LF do subject (breedName vem
+  // da BD mas e' input do utilizador, e nodemailer normaliza menos rigoroso).
+  const cleanBreedName = breedName.replace(/[\r\n]+/g, ' ').trim()
+  const cleanBreederName = breederName.replace(/[\r\n]+/g, ' ').trim()
+  const subject = `Destaque activado — ${cleanBreedName} | Patacerta`
   const text = `Olá,
 
 O seu destaque no simulador de raça foi activado.
 
-  Criador: ${breederName}
-  Raça: ${breedName}
+  Criador: ${cleanBreederName}
+  Raça: ${cleanBreedName}
   Activo até: ${endsAtFmt}
   Valor pago: ${formattedPrice}
 ${receiptUrl ? `\nRecibo: ${receiptUrl}\n` : ''}
-A sua ficha aparece agora como criador recomendado para "${breedName}" no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.
+A sua ficha aparece agora como criador recomendado para "${cleanBreedName}" no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.
 
 Obrigado pelo apoio!
 Equipa Patacerta`
+
+  // Escape para HTML: breederName / breedName vem da BD (input do utilizador)
+  // e receiptUrl vem da Stripe API (terceiro, validar scheme http(s)).
+  const safeBreederName = escapeHtml(cleanBreederName)
+  const safeBreedName = escapeHtml(cleanBreedName)
+  const safeEndsAt = escapeHtml(endsAtFmt)
+  const safePrice = escapeHtml(formattedPrice)
+  const safeReceiptUrl = receiptUrl ? escapeHtmlAttr(receiptUrl) : null
+
   const html = baseLayout(
     subject,
     `<p>O seu destaque no simulador de raça foi <strong>activado</strong>.</p>
      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Criador:</td><td style="padding:6px 0;font-weight:600">${breederName}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Raça:</td><td style="padding:6px 0;font-weight:600">${breedName}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Activo até:</td><td style="padding:6px 0;font-weight:600">${endsAtFmt}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Valor pago:</td><td style="padding:6px 0;font-weight:600">${formattedPrice}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Criador:</td><td style="padding:6px 0;font-weight:600">${safeBreederName}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Raça:</td><td style="padding:6px 0;font-weight:600">${safeBreedName}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Activo até:</td><td style="padding:6px 0;font-weight:600">${safeEndsAt}</td></tr>
+       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Valor pago:</td><td style="padding:6px 0;font-weight:600">${safePrice}</td></tr>
      </table>
      ${
-       receiptUrl
-         ? `<p style="margin:16px 0"><a href="${receiptUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Ver recibo</a></p>`
+       safeReceiptUrl
+         ? `<p style="margin:16px 0"><a href="${safeReceiptUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Ver recibo</a></p>`
          : ''
      }
-     <p>A sua ficha aparece agora como criador recomendado para <strong>${breedName}</strong> no simulador da Patacerta.</p>
+     <p>A sua ficha aparece agora como criador recomendado para <strong>${safeBreedName}</strong> no simulador da Patacerta.</p>
      <p>Pode acompanhar impressões e cliques na sua <em>área pessoal</em>.</p>
      <p>Obrigado pelo apoio!<br>Equipa Patacerta</p>`,
   )
