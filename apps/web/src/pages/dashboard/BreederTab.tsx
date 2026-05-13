@@ -668,7 +668,7 @@ export function BreederTab() {
       </div>
     ) : null
 
-  // â”€â”€ Form do criador (acordeao com seccoes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Form do criador (acordeao com seccoes) ─────────────────────────
   // Reutilizado tanto em modo "criar" (sem perfil ainda) como em "editar".
   const breederForm = (
     <form onSubmit={handleSave} className="space-y-4">
@@ -771,7 +771,7 @@ export function BreederTab() {
             )}
             {pendingPhotos.length > 0 && (
               <p className="mt-2 text-xs text-gray-500">
-                {pendingPhotos.length}/{MAX_BREEDER_PHOTOS} foto(s) seleccionada(s) Â·{' '}
+                {pendingPhotos.length}/{MAX_BREEDER_PHOTOS} foto(s) seleccionada(s) ·{' '}
                 {loadedThumbs.size === pendingPhotos.length
                   ? 'pré-visualizações prontas'
                   : `a processar ${pendingPhotos.length - loadedThumbs.size}…`}
@@ -1199,4 +1199,4 @@ export function BreederTab() {
   )
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MessagesTab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────── MessagesTab ────────────────────────────
