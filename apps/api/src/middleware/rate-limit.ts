@@ -284,3 +284,20 @@ export const forgotPasswordEmailRateLimit = rateLimit({
   keyGenerator: forgotPwEmailKey,
   bucket: 'forgot-pw-email',
 })
+
+// Mesma logica para resend-verification: alem do rate-limit por IP
+// (passwordResetRateLimit), aplicamos um limite por email-alvo para
+// impedir email-bombing distribuido (atacante em multiplos IPs a
+// dispara verifications para a inbox de uma vitima).
+const resendVerifyEmailKey = (req: Request) => {
+  const email = (req.body as { email?: string } | undefined)?.email?.toLowerCase().trim()
+  return email ? `email:${email}` : `ip:${req.ip || 'unknown'}`
+}
+
+export const resendVerificationEmailRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: 'Demasiados pedidos de reenvio para este email. Tente novamente em 1 hora.',
+  keyGenerator: resendVerifyEmailKey,
+  bucket: 'resend-verify-email',
+})

@@ -6,6 +6,7 @@ import {
   registerRateLimit,
   refreshRateLimit,
   passwordResetRateLimit,
+  resendVerificationEmailRateLimit,
 } from '../../middleware/rate-limit.js'
 import {
   loginSchema,
@@ -47,6 +48,7 @@ authRouter.post('/verify-email', passwordResetRateLimit, validate(verifyEmailSch
 authRouter.post(
   '/resend-verification',
   passwordResetRateLimit,
+  resendVerificationEmailRateLimit,
   validate(resendVerificationSchema),
   resendVerification,
 )
