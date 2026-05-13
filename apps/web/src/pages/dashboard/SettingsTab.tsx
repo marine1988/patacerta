@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -9,28 +9,10 @@ export function SettingsTab() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const [notifyMessages, setNotifyMessages] = useState(
-    () => localStorage.getItem('notify_messages') !== 'false',
-  )
-  const [notifyVerification, setNotifyVerification] = useState(
-    () => localStorage.getItem('notify_verification') !== 'false',
-  )
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
-
-  function toggleNotifyMessages(e: ChangeEvent<HTMLInputElement>) {
-    const val = e.target.checked
-    setNotifyMessages(val)
-    localStorage.setItem('notify_messages', String(val))
-  }
-
-  function toggleNotifyVerification(e: ChangeEvent<HTMLInputElement>) {
-    const val = e.target.checked
-    setNotifyVerification(val)
-    localStorage.setItem('notify_verification', String(val))
-  }
 
   const deleteMutation = useMutation({
     mutationFn: () => api.delete('/users/me'),
@@ -65,36 +47,10 @@ export function SettingsTab() {
     <div className="space-y-6">
       <Card hover={false}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Notificações</h3>
-        <div className="space-y-4">
-          <label className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Novas mensagens</p>
-              <p className="text-xs text-gray-500">
-                Receber notificação quando receber uma nova mensagem.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={notifyMessages}
-              onChange={toggleNotifyMessages}
-              className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-            />
-          </label>
-          <label className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Atualizações de verificação</p>
-              <p className="text-xs text-gray-500">
-                Receber notificação sobre o estado da verificação.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={notifyVerification}
-              onChange={toggleNotifyVerification}
-              className="h-4 w-4 rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
-            />
-          </label>
-        </div>
+        <p className="text-sm text-gray-600">
+          As preferências de notificações ainda não estão disponíveis. Por agora, as notificações
+          importantes da plataforma são enviadas para o email registado na sua conta.
+        </p>
       </Card>
 
       <Card hover={false}>
