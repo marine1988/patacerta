@@ -74,14 +74,22 @@ export function DestaqueTab() {
   // Mesmo que a tab só seja exposta a criadores verificados, fazemos
   // a verificação localmente para evitar render do botão se algo
   // mudar entretanto.
-  const { data: breeder } = useQuery<BreederProfileProbe>({
+  const {
+    data: breeder,
+    isLoading: breederLoading,
+    isError: breederError,
+  } = useQuery<BreederProfileProbe>({
     queryKey: queryKeys.breeder.profile(),
     queryFn: () => api.get('/breeders/me/profile').then((r) => r.data),
   })
   const isVerified = breeder?.status === 'VERIFIED'
 
   // ── Histórico/estado actual dos slots do criador ─────────────────
-  const { data: slotsResp, isLoading: slotsLoading } = useQuery<{ data: MySponsoredSlot[] }>({
+  const {
+    data: slotsResp,
+    isLoading: slotsLoading,
+    isError: slotsError,
+  } = useQuery<{ data: MySponsoredSlot[] }>({
     queryKey: queryKeys.payments.mySlots(),
     queryFn: () => api.get('/payments/sponsored-slot/mine').then((r) => r.data),
   })
@@ -131,6 +139,28 @@ export function DestaqueTab() {
 
     if (dirty) setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams, queryClient])
+
+  if (breederLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (breederError) {
+    return (
+      <Card>
+        <div className="text-center">
+          <p className="eyebrow-muted mb-2">— Erro</p>
+          <h3 className="font-serif text-xl text-ink">Não foi possível carregar o seu perfil</h3>
+          <p className="mt-2 text-sm text-muted">
+            Tente recarregar a página daqui a alguns instantes.
+          </p>
+        </div>
+      </Card>
+    )
+  }
 
   if (!isVerified) {
     return (
@@ -192,6 +222,12 @@ export function DestaqueTab() {
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
+        ) : slotsError ? (
+          <Card>
+            <p className="text-sm text-red-700">
+              Erro ao carregar destaques. Tente recarregar a página.
+            </p>
+          </Card>
         ) : activeSlots.length === 0 ? (
           <Card>
             <p className="text-sm text-muted">
