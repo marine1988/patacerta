@@ -51,7 +51,21 @@ const SIDEBAR_COLLAPSED_KEY = 'pc-admin-sidebar-collapsed'
 export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const [activeTab, setActiveTab] = useState<string>(tabParam ?? 'resumo')
+  // Lista de ids validos — se o URL traz um id desconhecido (link partilhado
+  // antigo, typo, etc), cair para 'resumo' em vez de mostrar sidebar quebrada.
+  const VALID_TAB_IDS = [
+    'resumo',
+    'utilizadores',
+    'criadores',
+    'verificacoes',
+    'servicos',
+    'patrocinados',
+    'denuncias',
+    'auditoria',
+  ] as const
+  const initialTab =
+    tabParam && (VALID_TAB_IDS as readonly string[]).includes(tabParam) ? tabParam : 'resumo'
+  const [activeTab, setActiveTab] = useState<string>(initialTab)
 
   // Estado collapsed da sidebar — persistido em localStorage para se
   // lembrar entre sessoes. Lazy initializer para evitar ler localStorage
@@ -111,8 +125,11 @@ export function AdminPage() {
     (pending?.flaggedReviews ?? 0)
 
   // Sincroniza tab activa <-> ?tab=. Permite deep-linking e back/forward.
+  // Ignora valores invalidos do URL (mantem 'resumo').
   useEffect(() => {
-    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam)
+    if (tabParam && (VALID_TAB_IDS as readonly string[]).includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam])
 

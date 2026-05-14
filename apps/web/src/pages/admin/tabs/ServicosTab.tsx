@@ -126,6 +126,12 @@ export function ServicosTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-services'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.home.featured() })
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao alterar destaque.')
     },
   })
 

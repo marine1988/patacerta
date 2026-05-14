@@ -70,6 +70,13 @@ export function AvaliacoesReportsView() {
   const [moderationReason, setModerationReason] = useState('')
   const [flagsTarget, setFlagsTarget] = useState<Review | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  function setErrFromUnknown(err: unknown, fallback: string) {
+    const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+      ?.response?.data
+    setActionError(maybeMsg?.error ?? maybeMsg?.message ?? fallback)
+  }
   const [confirm, confirmDialog] = useConfirm()
 
   const { data, isLoading, isError } = useQuery<Paginated<Review>>({
@@ -102,12 +109,18 @@ export function AvaliacoesReportsView() {
       invalidateAll()
       setModerationTarget(null)
       setModerationReason('')
+      setActionError(null)
     },
+    onError: (err) => setErrFromUnknown(err, 'Erro ao moderar avaliação.'),
   })
 
   const dismissFlagsMutation = useMutation({
     mutationFn: (review: Review) => api.delete(`${endpointFor(review)}/flags`),
-    onSuccess: () => invalidateAll(),
+    onSuccess: () => {
+      invalidateAll()
+      setActionError(null)
+    },
+    onError: (err) => setErrFromUnknown(err, 'Erro ao limpar sinalizações.'),
   })
 
   const deleteMutation = useMutation({
@@ -115,7 +128,9 @@ export function AvaliacoesReportsView() {
     onSuccess: () => {
       invalidateAll()
       setDeleteTarget(null)
+      setActionError(null)
     },
+    onError: (err) => setErrFromUnknown(err, 'Erro ao eliminar avaliação.'),
   })
 
   const flagsQuery = useQuery<{ data: ReviewFlag[] }>({
@@ -153,6 +168,15 @@ export function AvaliacoesReportsView() {
   return (
     <div>
       <TypeFilterTabs typeFilter={typeFilter} setTypeFilter={setTypeFilter} setPage={setPage} />
+
+      {actionError && (
+        <div
+          role="alert"
+          className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Mobile: lista de cards */}
       <ul className="space-y-3 md:hidden">
@@ -356,18 +380,21 @@ export function AvaliacoesReportsView() {
                 placeholder="ex.: Conteúdo impróprio, resolvido após análise…"
               />
             </div>
+            {actionError && <p className="text-sm text-red-600">{actionError}</p>}
             <div className="flex justify-end gap-2">
               <Button
                 variant="secondary"
                 onClick={() => {
                   setModerationTarget(null)
                   setModerationReason('')
+                  setActionError(null)
                 }}
               >
                 Cancelar
               </Button>
               <Button
                 variant={moderationTarget.nextStatus === 'HIDDEN' ? 'danger' : 'primary'}
+                loading={moderateMutation.isPending}
                 disabled={moderateMutation.isPending}
                 onClick={() =>
                   moderateMutation.mutate({
@@ -434,12 +461,14 @@ export function AvaliacoesReportsView() {
               <div className="font-medium text-ink">{deleteTarget.title}</div>
               <div className="text-muted">{deleteTarget.body}</div>
             </div>
+            {actionError && <p className="text-sm text-red-600">{actionError}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setDeleteTarget(null)}>
                 Cancelar
               </Button>
               <Button
                 variant="danger"
+                loading={deleteMutation.isPending}
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(deleteTarget)}
               >

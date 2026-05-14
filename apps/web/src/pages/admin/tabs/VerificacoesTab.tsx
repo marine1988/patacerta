@@ -13,6 +13,7 @@ export function VerificacoesTab() {
   const [page, setPage] = useState(1)
   const [rejectingDocId, setRejectingDocId] = useState<number | null>(null)
   const [rejectNotes, setRejectNotes] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
 
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
@@ -30,6 +31,12 @@ export function VerificacoesTab() {
       queryClient.invalidateQueries({ queryKey: ['admin-verifications'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() })
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao aprovar certificado.')
     },
   })
 
@@ -44,6 +51,12 @@ export function VerificacoesTab() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
       setRejectingDocId(null)
       setRejectNotes('')
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao rejeitar certificado.')
     },
   })
 
@@ -54,20 +67,23 @@ export function VerificacoesTab() {
       confirmLabel: 'Aprovar',
     })
     if (!ok) return
+    setActionError(null)
     approveMutation.mutate(docId)
   }
 
   function openReject(docId: number) {
     setRejectingDocId(docId)
     setRejectNotes('')
+    setActionError(null)
   }
 
   function confirmReject() {
     if (rejectingDocId == null) return
     if (rejectNotes.trim().length < 5) {
-      window.alert('Indique um motivo para a rejeição (pelo menos 5 caracteres).')
+      setActionError('Indique um motivo para a rejeição (pelo menos 5 caracteres).')
       return
     }
+    setActionError(null)
     rejectMutation.mutate({ docId: rejectingDocId, notes: rejectNotes.trim() })
   }
 
@@ -84,11 +100,14 @@ export function VerificacoesTab() {
       // Se o popup foi bloqueado, libertar a memoria imediatamente.
       if (!win) {
         URL.revokeObjectURL(blobUrl)
+        setActionError('O navegador bloqueou a janela. Permita pop-ups para este site.')
       }
       // Senao, deixar o browser libertar quando a tab fechar — nao temos
       // hook fiavel para detectar isso de outra origem.
-    } catch {
-      // silently fail
+    } catch (err) {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao abrir o certificado.')
     }
   }
 
@@ -117,6 +136,14 @@ export function VerificacoesTab() {
 
   return (
     <div>
+      {actionError && (
+        <div
+          role="alert"
+          className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {actionError}
+        </div>
+      )}
       {/* Mobile: lista de cards */}
       <ul className="space-y-3 md:hidden">
         {data.data.map((doc) => (
@@ -124,7 +151,7 @@ export function VerificacoesTab() {
             <div className="mb-2">
               <p className="truncate font-medium text-ink">{doc.breeder.businessName}</p>
               <p className="truncate text-sm text-muted">
-                {doc.breeder.user.firstName} {doc.breeder.user.lastName} {String.fromCharCode(8212)}{' '}
+                {doc.breeder.user.firstName} {doc.breeder.user.lastName} {'\u2014'}{' '}
                 {doc.breeder.user.email}
               </p>
             </div>
@@ -149,7 +176,8 @@ export function VerificacoesTab() {
               <Button
                 size="sm"
                 onClick={() => handleApprove(doc.id, doc.breeder.businessName)}
-                disabled={approveMutation.isPending}
+                loading={approveMutation.isPending}
+                disabled={approveMutation.isPending || rejectMutation.isPending}
               >
                 Aprovar
               </Button>
@@ -157,7 +185,7 @@ export function VerificacoesTab() {
                 size="sm"
                 variant="danger"
                 onClick={() => openReject(doc.id)}
-                disabled={rejectMutation.isPending}
+                disabled={approveMutation.isPending || rejectMutation.isPending}
               >
                 Rejeitar
               </Button>
@@ -189,7 +217,7 @@ export function VerificacoesTab() {
                   <div className="font-medium text-ink">{doc.breeder.businessName}</div>
                   <div className="text-xs text-muted">
                     {doc.breeder.user.firstName} {doc.breeder.user.lastName}{' '}
-                    {String.fromCharCode(8212)} {doc.breeder.user.email}
+                    {'\u2014'} {doc.breeder.user.email}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-ink">{doc.breeder.nif}</td>
@@ -208,7 +236,8 @@ export function VerificacoesTab() {
                     <Button
                       size="sm"
                       onClick={() => handleApprove(doc.id, doc.breeder.businessName)}
-                      disabled={approveMutation.isPending}
+                      loading={approveMutation.isPending}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
                     >
                       Aprovar
                     </Button>
@@ -216,7 +245,7 @@ export function VerificacoesTab() {
                       size="sm"
                       variant="danger"
                       onClick={() => openReject(doc.id)}
-                      disabled={rejectMutation.isPending}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
                     >
                       Rejeitar
                     </Button>
@@ -245,7 +274,9 @@ export function VerificacoesTab() {
             placeholder="Ex.: certificado ilegível, fora do prazo, NIF não corresponde, etc."
             className="w-full min-h-[100px] border border-line bg-surface p-3 text-sm text-ink"
             style={{ borderRadius: 2 }}
+            aria-label="Motivo da rejeição"
           />
+          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setRejectingDocId(null)}>
               Cancelar

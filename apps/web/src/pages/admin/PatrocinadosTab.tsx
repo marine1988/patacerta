@@ -116,6 +116,7 @@ export function PatrocinadosTab() {
   const [breedFilter, setBreedFilter] = useState<string>('')
   const [editing, setEditing] = useState<SponsoredSlot | null>(null)
   const [creating, setCreating] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
 
   // Listagem
@@ -152,8 +153,15 @@ export function PatrocinadosTab() {
   // Mutations
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/sponsored-slots/${id}`),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.sponsoredSlotsAll() })
+      setDeleteError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setDeleteError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao eliminar slot patrocinado.')
+    },
   })
 
   async function handleDelete(slot: SponsoredSlot) {
@@ -181,6 +189,14 @@ export function PatrocinadosTab() {
 
   return (
     <div>
+      {deleteError && (
+        <div
+          role="alert"
+          className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {deleteError}
+        </div>
+      )}
       {/* Filtros + acção criar */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap gap-3">

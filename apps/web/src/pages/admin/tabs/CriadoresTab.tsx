@@ -15,6 +15,7 @@ export function CriadoresTab() {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const breederStatusOptions = [
     { value: 'DRAFT', label: 'Rascunho' },
@@ -50,6 +51,12 @@ export function CriadoresTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-breeders'] })
       queryClient.invalidateQueries({ queryKey: queryKeys.home.featured() })
+      setActionError(null)
+    },
+    onError: (err: unknown) => {
+      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data
+      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao alterar destaque.')
     },
   })
 
@@ -82,6 +89,15 @@ export function CriadoresTab() {
         />
       </div>
 
+      {actionError && (
+        <div
+          role="alert"
+          className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
+          {actionError}
+        </div>
+      )}
+
       {!data || data.data.length === 0 ? (
         <EmptyState title="Sem criadores" description="Nenhum criador encontrado." />
       ) : (
@@ -93,7 +109,16 @@ export function CriadoresTab() {
                 <li
                   key={breeder.id}
                   onClick={() => navigate(`/admin/criadores/${breeder.id}`)}
-                  className="cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-caramel-300 hover:bg-caramel-50/30"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/admin/criadores/${breeder.id}`)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Ver detalhes de ${breeder.businessName}`}
+                  className="cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-sm transition-colors hover:border-caramel-300 hover:bg-caramel-50/30 focus:outline-none focus:ring-2 focus:ring-caramel-500"
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -207,7 +232,16 @@ export function CriadoresTab() {
                     <tr
                       key={breeder.id}
                       onClick={() => navigate(`/admin/criadores/${breeder.id}`)}
-                      className={`cursor-pointer border-b border-line/60 transition-colors hover:bg-caramel-50/40 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          navigate(`/admin/criadores/${breeder.id}`)
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Ver detalhes de ${breeder.businessName}`}
+                      className={`cursor-pointer border-b border-line/60 transition-colors hover:bg-caramel-50/40 focus:outline-none focus:bg-caramel-50/60 ${i % 2 === 1 ? 'bg-surface-alt/40' : ''}`}
                     >
                       <td className="px-3 py-2">
                         {/* min-w-0 + truncate dentro da celula:

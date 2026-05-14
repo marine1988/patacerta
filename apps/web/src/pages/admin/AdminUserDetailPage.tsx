@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
-import { Badge, Button, EmptyState, Modal, Spinner } from '../../components/ui'
+import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import {
   statusBadgeVariant,
@@ -165,6 +165,18 @@ export function AdminUserDetailPage() {
   const [suspendOpen, setSuspendOpen] = useState(false)
   const [suspendReason, setSuspendReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
+
+  async function handleReactivate() {
+    const ok = await confirm({
+      title: 'Reactivar conta',
+      message: 'Tem a certeza que pretende reactivar esta conta?',
+      confirmLabel: 'Reactivar',
+    })
+    if (!ok) return
+    setActionError(null)
+    unsuspendMutation.mutate()
+  }
 
   usePageMeta({
     title: `Utilizador #${userId} — Administração`,
@@ -309,7 +321,7 @@ export function AdminUserDetailPage() {
             <Button
               variant="primary"
               loading={unsuspendMutation.isPending}
-              onClick={() => unsuspendMutation.mutate()}
+              onClick={handleReactivate}
             >
               Reactivar conta
             </Button>
@@ -491,7 +503,7 @@ export function AdminUserDetailPage() {
                         <a
                           href={`/servicos/${s.id}`}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                           className="text-xs text-caramel-700 underline-offset-2 hover:underline"
                         >
                           Ver ↗
@@ -662,6 +674,7 @@ export function AdminUserDetailPage() {
           </div>
         </div>
       </Modal>
+      {confirmDialog}
     </div>
   )
 }
