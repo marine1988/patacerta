@@ -379,7 +379,6 @@ function PurchaseModal({
   prefillBreedId,
   onError,
 }: PurchaseModalProps) {
-  const queryClient = useQueryClient()
   const { data: breeds } = useBreeds()
   const [breedId, setBreedId] = useState<number | null>(null)
 
@@ -406,7 +405,21 @@ function PurchaseModal({
       // Stripe Checkout é hosted — redirect full-page. Não usamos
       // loadStripe() / redirectToCheckout porque a API já devolve a
       // URL canónica da sessão (mais simples e reduz JS no FE).
-      window.location.href = data.url
+      // Allowlist defensivo: aceita apenas hosts oficiais Stripe Checkout
+      // para evitar redirect aberto caso a resposta seja comprometida.
+      let target: URL
+      try {
+        target = new URL(data.url)
+      } catch {
+        onError('Resposta de pagamento inválida.')
+        return
+      }
+      const allowedHosts = ['checkout.stripe.com', 'js.stripe.com']
+      if (target.protocol !== 'https:' || !allowedHosts.includes(target.hostname)) {
+        onError('URL de pagamento não autorizada.')
+        return
+      }
+      window.location.href = target.toString()
     },
     onError: (err) => {
       onError(extractApiError(err, 'Não foi possível iniciar o pagamento.'))
@@ -416,9 +429,6 @@ function PurchaseModal({
   function handleSubmit() {
     if (!breedId) return
     checkoutMutation.mutate({ breedId })
-    // Invalidate-on-return: caso o utilizador volte com sucesso, a
-    // lista de slots é re-fetched no useEffect do tab.
-    queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() })
   }
 
   const alreadyOwned = breedId != null && existingBreedIds.includes(breedId)

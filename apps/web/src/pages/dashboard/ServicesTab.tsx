@@ -450,9 +450,21 @@ export function ServicesTab() {
       e.target.value = ''
       return
     }
+    // Limite espelha o backend (services.controller.ts L60).
+    const MAX_PHOTO_BYTES = 2 * 1024 * 1024
+    const arr = Array.from(files)
+    const tooLarge = arr.find((f) => f.size > MAX_PHOTO_BYTES)
+    if (tooLarge) {
+      setPhotoMsg({
+        type: 'error',
+        text: `"${tooLarge.name}" excede o limite de 2 MB por foto.`,
+      })
+      e.target.value = ''
+      return
+    }
     const fd = new FormData()
-    for (let i = 0; i < files.length; i++) {
-      fd.append('photos', files[i])
+    for (let i = 0; i < arr.length; i++) {
+      fd.append('photos', arr[i])
     }
     uploadPhotosMutation.mutate({ id: editingId, formData: fd })
   }
@@ -644,7 +656,8 @@ export function ServicesTab() {
                           <Button
                             size="sm"
                             variant="secondary"
-                            loading={pauseMutation.isPending}
+                            loading={pauseMutation.isPending && pauseMutation.variables === s.id}
+                            disabled={pauseMutation.isPending || publishMutation.isPending}
                             onClick={() => pauseMutation.mutate(s.id)}
                           >
                             Pausar
@@ -653,7 +666,8 @@ export function ServicesTab() {
                         {s.status === 'PAUSED' && (
                           <Button
                             size="sm"
-                            loading={publishMutation.isPending}
+                            loading={publishMutation.isPending && publishMutation.variables === s.id}
+                            disabled={pauseMutation.isPending || publishMutation.isPending}
                             onClick={() => publishMutation.mutate(s.id)}
                           >
                             Retomar
@@ -662,7 +676,8 @@ export function ServicesTab() {
                         {s.status === 'DRAFT' && s.photos.length > 0 && (
                           <Button
                             size="sm"
-                            loading={publishMutation.isPending}
+                            loading={publishMutation.isPending && publishMutation.variables === s.id}
+                            disabled={pauseMutation.isPending || publishMutation.isPending}
                             onClick={() => publishMutation.mutate(s.id)}
                           >
                             Publicar

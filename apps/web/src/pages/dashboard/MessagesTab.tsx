@@ -496,12 +496,21 @@ export function MessagesTab() {
             variant="secondary"
             size="sm"
             loading={archiveMutation.isPending}
-            onClick={() =>
+            onClick={async () => {
+              if (!isArchivedForMe) {
+                const ok = await confirm({
+                  title: 'Arquivar conversa',
+                  message:
+                    'Arquivar esta conversa? Deixa de aparecer na lista activa mas pode reabri-la a partir do filtro "Arquivadas".',
+                  confirmLabel: 'Arquivar',
+                })
+                if (!ok) return
+              }
               archiveMutation.mutate({
                 threadId: threadDetail.id,
                 archive: !isArchivedForMe,
               })
-            }
+            }}
           >
             {isArchivedForMe ? 'Desarquivar' : 'Arquivar'}
           </Button>

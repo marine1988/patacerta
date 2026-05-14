@@ -15,6 +15,7 @@ import {
   Modal,
   Accordion,
   AccordionSection,
+  useConfirm,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { PhotoGalleryManager } from '../../components/shared/PhotoGalleryManager'
@@ -135,6 +136,11 @@ export function BreederTab() {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const MAX_BREEDER_PHOTOS = 10
+  // Limites espelham o backend (breeders.controller.ts L421, verification.controller.ts L38).
+  // Validar no cliente evita upload longo que so falha no servidor.
+  const MAX_PHOTO_BYTES = 2 * 1024 * 1024 // 2 MB
+  const MAX_DGAV_BYTES = 5 * 1024 * 1024 // 5 MB
+  const [confirm, confirmDialog] = useConfirm()
 
   // Modo "criar perfil" — fotos e DGAV são submetidos no mesmo fluxo
   // do formulário (single submit). Capturamos os ficheiros aqui para
@@ -360,8 +366,19 @@ export function BreederTab() {
       })
       return
     }
+    const arr = Array.from(files)
+    const tooLarge = arr.find((f) => f.size > MAX_PHOTO_BYTES)
+    if (tooLarge) {
+      setPhotoMsg({
+        type: 'error',
+        text: `"${tooLarge.name}" excede o limite de 2 MB por foto.`,
+      })
+      // Limpa o input para permitir reescolher o mesmo ficheiro depois de reduzir.
+      if (e.target) e.target.value = ''
+      return
+    }
     const fd = new FormData()
-    Array.from(files).forEach((f) => fd.append('photos', f))
+    arr.forEach((f) => fd.append('photos', f))
     uploadPhotosMutation.mutate(fd)
   }
 
@@ -500,6 +517,13 @@ export function BreederTab() {
       setUploadMsg({ type: 'error', text: 'Selecione um ficheiro.' })
       return
     }
+    if (file.size > MAX_DGAV_BYTES) {
+      setUploadMsg({
+        type: 'error',
+        text: `"${file.name}" excede o limite de 5 MB para certificados DGAV.`,
+      })
+      return
+    }
     const fd = new FormData()
     fd.append('file', file)
     fd.append('docType', uploadDocType)
@@ -553,7 +577,15 @@ export function BreederTab() {
       uploadInputRef={photoInputRef}
       isUploading={uploadPhotosMutation.isPending}
       uploadMsg={photoMsg}
-      onDelete={(photoId: number) => deletePhotoMutation.mutate(photoId)}
+      onDelete={async (photoId: number) => {
+        const ok = await confirm({
+          title: 'Eliminar foto',
+          message: 'Eliminar esta foto da galeria? A acção não pode ser revertida.',
+          confirmLabel: 'Eliminar',
+          variant: 'danger',
+        })
+        if (ok) deletePhotoMutation.mutate(photoId)
+      }}
       onReorder={(photoIds: number[]) => reorderPhotosMutation.mutate(photoIds)}
       wrapInCard={false}
       showHeader={false}
@@ -593,7 +625,15 @@ export function BreederTab() {
                       variant="danger"
                       size="sm"
                       loading={deleteDocMutation.isPending}
-                      onClick={() => deleteDocMutation.mutate(doc.id)}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Eliminar certificado DGAV',
+                          message: `Eliminar o certificado "${doc.fileName}"? Terá de submeter um novo certificado para voltar a ser verificado.`,
+                          confirmLabel: 'Eliminar',
+                          variant: 'danger',
+                        })
+                        if (ok) deleteDocMutation.mutate(doc.id)
+                      }}
                     >
                       Eliminar
                     </Button>
@@ -710,7 +750,23 @@ export function BreederTab() {
               multiple
               onChange={(e) => {
                 const files = e.target.files ? Array.from(e.target.files) : []
-                setPendingPhotos(files.slice(0, MAX_BREEDER_PHOTOS))
+                const accepted: File[] = []
+                let rejectedTooLarge: string | null = null
+                for (const f of files) {
+                  if (f.size > MAX_PHOTO_BYTES) {
+                    rejectedTooLarge = rejectedTooLarge ?? f.name
+                    continue
+                  }
+                  accepted.push(f)
+                  if (accepted.length >= MAX_BREEDER_PHOTOS) break
+                }
+                setPendingPhotos(accepted)
+                if (rejectedTooLarge) {
+                  setMsg({
+                    type: 'error',
+                    text: `"${rejectedTooLarge}" excede o limite de 2 MB e foi ignorada.`,
+                  })
+                }
               }}
               className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
             />
@@ -796,6 +852,15 @@ export function BreederTab() {
               accept="application/pdf,image/jpeg,image/png"
               onChange={(e) => {
                 const file = e.target.files?.[0] ?? null
+                if (file && file.size > MAX_DGAV_BYTES) {
+                  setMsg({
+                    type: 'error',
+                    text: `"${file.name}" excede o limite de 5 MB para certificados DGAV.`,
+                  })
+                  setPendingDgavFile(null)
+                  if (e.target) e.target.value = ''
+                  return
+                }
                 setPendingDgavFile(file)
               }}
               className="block text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-caramel-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-caramel-700 hover:file:bg-caramel-100"
@@ -1199,6 +1264,7 @@ export function BreederTab() {
           </div>
         </div>
       </Modal>
+      {confirmDialog}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'r
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
-import { Card, Avatar, Badge, Button, Input } from '../../components/ui'
+import { Card, Avatar, Badge, Button, Input, useConfirm } from '../../components/ui'
 import { extractApiError } from '../../lib/errors'
 export function ProfileTab() {
   const { user, updateUser } = useAuth()
@@ -23,6 +23,19 @@ export function ProfileTab() {
   const [avatarMsg, setAvatarMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   )
+  const [confirm, confirmDialog] = useConfirm()
+
+  async function handleRemoveAvatar() {
+    const ok = await confirm({
+      title: 'Remover avatar',
+      message: 'Remover o seu avatar? Voltará a ver as iniciais do seu nome.',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    })
+    if (!ok) return
+    setAvatarMsg(null)
+    avatarDeleteMutation.mutate()
+  }
 
   useEffect(() => {
     if (user) {
@@ -169,10 +182,7 @@ export function ProfileTab() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => {
-                    setAvatarMsg(null)
-                    avatarDeleteMutation.mutate()
-                  }}
+                  onClick={handleRemoveAvatar}
                   loading={avatarDeleteMutation.isPending}
                 >
                   Remover
@@ -226,7 +236,7 @@ export function ProfileTab() {
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
               inputMode="tel"
-              pattern="^[+0-9 ()\\-]{7,20}$"
+              pattern="^[+0-9 ()\-]{7,20}$"
               title="Apenas dígitos, espaços, parênteses, + ou -. Mínimo 7 caracteres."
             />
             {profileMsg && (
@@ -300,6 +310,7 @@ export function ProfileTab() {
           </Button>
         </form>
       </Card>
+      {confirmDialog}
     </div>
   )
 }
