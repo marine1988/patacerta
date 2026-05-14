@@ -77,6 +77,14 @@ export const listThreads = asyncHandler(async (req, res) => {
           },
         },
         messages: {
+          // O preview da thread (ultima mensagem na lista) deve mostrar
+          // a ultima mensagem *visivel* — se a mais recente foi apagada
+          // (soft-delete), o utilizador via "(mensagem eliminada)" como
+          // preview mesmo existindo conversa anterior. Filtramos
+          // deletedAt aqui para mostrar a ultima nao-apagada; o
+          // ordenamento por createdAt desc continua a dar o preview
+          // mais recente entre as visiveis.
+          where: { deletedAt: null },
           select: {
             id: true,
             body: true,
@@ -115,12 +123,9 @@ export const listThreads = asyncHandler(async (req, res) => {
 
   const unreadMap = new Map(unreadCounts.map((u) => [u.threadId, u._count.id]))
   const data = threads.map((t) => {
-    // Mask preview body if last message is soft-deleted
-    const lastMsg = t.messages[0]
-    const maskedMessages = lastMsg?.deletedAt
-      ? [{ ...lastMsg, body: '(mensagem eliminada)' }]
-      : t.messages
-    return { ...t, messages: maskedMessages, unreadCount: unreadMap.get(t.id) ?? 0 }
+    // `messages` ja' so' contem nao-apagadas (filtro deletedAt: null
+    // no include acima). Nao e' preciso re-mascarar aqui.
+    return { ...t, unreadCount: unreadMap.get(t.id) ?? 0 }
   })
 
   res.json(paginatedResponse(data, total, page, limit))
