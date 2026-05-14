@@ -86,18 +86,18 @@ model User {
   updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   breeder                Breeder?
-  sentMessages           Message[]           @relation("sender")
-  threadsAsOwner         Thread[]            @relation("thread_owner")
-  reviewedDocs           VerificationDoc[]   @relation("reviewer")
-  reviews                Review[]            @relation("review_author")
-  reviewFlags            ReviewFlag[]        @relation("review_flag_reporter")
-  serviceReviews         ServiceReview[]     @relation("service_review_author")
-  serviceReviewFlags     ServiceReviewFlag[] @relation("service_review_flag_reporter")
-  messageReportsFiled    MessageReport[]     @relation("message_report_reporter")
-  messageReportsReviewed MessageReport[]     @relation("message_report_reviewer")
-  services               Service[]           @relation("service_provider")
-  serviceReportsFiled    ServiceReport[]     @relation("service_report_reporter")
-  serviceReportsReviewed ServiceReport[]     @relation("service_report_reviewer")
+  sentMessages           Message[]            @relation("sender")
+  threadsAsOwner         Thread[]             @relation("thread_owner")
+  reviewedDocs           VerificationDoc[]    @relation("reviewer")
+  reviews                Review[]             @relation("review_author")
+  reviewFlags            ReviewFlag[]         @relation("review_flag_reporter")
+  serviceReviews         ServiceReview[]      @relation("service_review_author")
+  serviceReviewFlags     ServiceReviewFlag[]  @relation("service_review_flag_reporter")
+  messageReportsFiled    MessageReport[]      @relation("message_report_reporter")
+  messageReportsReviewed MessageReport[]      @relation("message_report_reviewer")
+  services               Service[]            @relation("service_provider")
+  serviceReportsFiled    ServiceReport[]      @relation("service_report_reporter")
+  serviceReportsReviewed ServiceReport[]      @relation("service_report_reviewer")
   auditLogs              AuditLog[]
   consentLogs            ConsentLog[]
   cookieConsentLogs      CookieConsentLog[]
@@ -316,14 +316,14 @@ model SponsoredBreedSlot {
   // paymentStatus=LEGACY e paidAt=null. Slots auto-comprados pelos
   // criadores via Stripe Checkout começam com PENDING e progridem
   // para PAID/FAILED via webhook. Stripe é a fonte de verdade.
-  paymentStatus            SponsoredSlotPaymentStatus @default(LEGACY) @map("payment_status")
-  priceCents               Int?                       @map("price_cents")
-  currency                 String?                    @default("EUR") @db.VarChar(3)
-  stripeCheckoutSessionId  String?                    @unique @map("stripe_checkout_session_id") @db.VarChar(255)
-  stripePaymentIntentId    String?                    @map("stripe_payment_intent_id") @db.VarChar(255)
-  stripeReceiptUrl         String?                    @map("stripe_receipt_url") @db.VarChar(512)
-  paidAt                   DateTime?                  @map("paid_at")
-  paidByUserId             Int?                       @map("paid_by_user_id")
+  paymentStatus           SponsoredSlotPaymentStatus @default(LEGACY) @map("payment_status")
+  priceCents              Int?                       @map("price_cents")
+  currency                String?                    @default("EUR") @db.VarChar(3)
+  stripeCheckoutSessionId String?                    @unique @map("stripe_checkout_session_id") @db.VarChar(255)
+  stripePaymentIntentId   String?                    @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeReceiptUrl        String?                    @map("stripe_receipt_url") @db.VarChar(512)
+  paidAt                  DateTime?                  @map("paid_at")
+  paidByUserId            Int?                       @map("paid_by_user_id")
 
   breeder Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
   breed   Breed   @relation(fields: [breedId], references: [id], onDelete: Cascade)
@@ -424,7 +424,7 @@ model VerificationDoc {
   createdAt  DateTime           @default(now()) @map("created_at")
 
   breeder  Breeder @relation(fields: [breederId], references: [id], onDelete: Cascade)
-  reviewer User?   @relation("reviewer", fields: [reviewedBy], references: [id])
+  reviewer User?   @relation("reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   @@index([breederId])
   @@index([status])
@@ -494,7 +494,7 @@ model MessageReport {
 
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   reporter User    @relation("message_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reviewer User?   @relation("message_report_reviewer", fields: [reviewedBy], references: [id])
+  reviewer User?   @relation("message_report_reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   @@unique([messageId, reporterId, status], name: "message_report_dedupe")
   @@index([messageId])
@@ -638,7 +638,7 @@ model CookieConsentLog {
   id        Int      @id @default(autoincrement())
   anonId    String   @map("anon_id") @db.Uuid
   userId    Int?     @map("user_id")
-  decision  Json     // { necessary: true, analytics: bool, marketing: bool }
+  decision  Json // { necessary: true, analytics: bool, marketing: bool }
   version   String   @db.VarChar(20)
   ipAddress String?  @map("ip_address") @db.VarChar(45)
   userAgent String?  @map("user_agent") @db.VarChar(500)
@@ -811,7 +811,7 @@ model ServiceReport {
 
   service  Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   reporter User    @relation("service_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reviewer User?   @relation("service_report_reviewer", fields: [reviewedBy], references: [id])
+  reviewer User?   @relation("service_report_reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   // Garante dedupe de denuncias PENDING do mesmo autor contra o mesmo
   // servico ao nivel da DB (elimina a race condition em reportService).
