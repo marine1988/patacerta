@@ -269,37 +269,43 @@ export function AuditoriaTab() {
             ]}
           />
         </div>
-        <div className="w-44">
-          <label className="label" htmlFor="audit-date-from">
-            De
-          </label>
-          <input
-            id="audit-date-from"
-            type="date"
-            className="input"
-            value={dateFrom}
-            max={dateTo || undefined}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              setPage(1)
-            }}
-          />
-        </div>
-        <div className="w-44">
-          <label className="label" htmlFor="audit-date-to">
-            Até
-          </label>
-          <input
-            id="audit-date-to"
-            type="date"
-            className="input"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(e) => {
-              setDateTo(e.target.value)
-              setPage(1)
-            }}
-          />
+        {/* Wrappamos os dois date inputs juntos para que partilhem a
+            mesma linha (ou quebrem em bloco como par), em vez de cada
+            um quebrar isoladamente em viewports estreitos — o que
+            partia o par ``De / Ate`` visualmente. */}
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="w-44">
+            <label className="label" htmlFor="audit-date-from">
+              De
+            </label>
+            <input
+              id="audit-date-from"
+              type="date"
+              className="input"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setPage(1)
+              }}
+            />
+          </div>
+          <div className="w-44">
+            <label className="label" htmlFor="audit-date-to">
+              Até
+            </label>
+            <input
+              id="audit-date-to"
+              type="date"
+              className="input"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setPage(1)
+              }}
+            />
+          </div>
         </div>
         {(actionFilter || entityFilter || dateFrom || dateTo) && (
           <div className="flex items-end">

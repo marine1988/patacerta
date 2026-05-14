@@ -477,18 +477,34 @@ export function SimuladorRacaPage() {
 
       <Card>
         <div>
-          <h2 className="font-serif text-2xl text-ink">{currentStep.title}</h2>
+          <h2 id={`quiz-q-${stepIndex}`} className="font-serif text-2xl text-ink">
+            {currentStep.title}
+          </h2>
           {currentStep.subtitle && (
             <p className="mt-2 text-sm text-muted">{currentStep.subtitle}</p>
           )}
 
-          <div className="mt-6 flex flex-col gap-3">
-            {currentStep.options.map((opt) => {
+          {/* role="radiogroup" + role="radio" + aria-checked daoa a
+              leitores de ecra a relacao entre as opcoes e a pergunta.
+              Como avancamos automaticamente ao clicar, nao usamos
+              <input type="radio"> nativo (que precisaria de submit
+              separado). aria-labelledby aponta para o titulo da
+              pergunta. Navegacao por setas e' feita pelo browser
+              quando os elementos tem tabindex correcto. */}
+          <div
+            role="radiogroup"
+            aria-labelledby={`quiz-q-${stepIndex}`}
+            className="mt-6 flex flex-col gap-3"
+          >
+            {currentStep.options.map((opt, idx) => {
               const selected = answers[currentStep.field] === opt.value
               return (
                 <button
                   key={opt.value}
                   type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  tabIndex={selected || (!answers[currentStep.field] && idx === 0) ? 0 : -1}
                   onClick={() => handleSelect(opt.value)}
                   className={`flex flex-col items-start gap-1 border px-4 py-3 text-left transition-colors ${
                     selected
