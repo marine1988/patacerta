@@ -495,6 +495,28 @@ export function SimuladorRacaPage() {
             role="radiogroup"
             aria-labelledby={`quiz-q-${stepIndex}`}
             className="mt-6 flex flex-col gap-3"
+            onKeyDown={(e) => {
+              // ARIA radiogroup keyboard pattern: setas movem foco entre
+              // opcoes (sem alterar a seleccao actual ate Enter/Space).
+              // Sem isto, o tabIndex={-1} das opcoes nao seleccionadas
+              // tornava-as inalcancaveis por teclado, contrariando a
+              // expectativa de utilizadores de teclado/AT.
+              if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+              e.preventDefault()
+              const buttons = Array.from(
+                e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]'),
+              )
+              const active = document.activeElement as HTMLButtonElement | null
+              const currentIdx = active ? buttons.indexOf(active) : -1
+              const total = buttons.length
+              if (total === 0) return
+              const delta = e.key === 'ArrowDown' ? 1 : -1
+              const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + total) % total
+              const target = buttons[nextIdx]
+              // Garantir que o foco e' alcancavel mesmo se tabIndex=-1.
+              target.tabIndex = 0
+              target.focus()
+            }}
           >
             {currentStep.options.map((opt, idx) => {
               const selected = answers[currentStep.field] === opt.value

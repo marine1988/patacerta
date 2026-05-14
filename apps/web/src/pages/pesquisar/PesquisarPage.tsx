@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui/Spinner'
 import { usePageMeta } from '../../hooks/usePageMeta'
@@ -36,6 +36,18 @@ type PesquisarVista = 'lista' | 'mapa'
 
 export function PesquisarPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // react-router-dom v6 nao memoriza a referencia de `setSearchParams`
+  // entre renders deste componente. Como passamos esta funcao como prop
+  // para as views lazy (BreedersListView, ServicesListView, ...), cada
+  // re-render aqui invalida memos e dispara useEffects nas filhas que
+  // dependem de `setSearchParams` nas deps. Memoizamos uma vez para
+  // que a identidade permaneca estavel mesmo quando o componente
+  // re-renderiza por mudancas de query.
+  const stableSetSearchParams = useCallback(
+    (params: URLSearchParams) => setSearchParams(params),
+    [setSearchParams],
+  )
 
   const tipo: PesquisarTipo = searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores'
   const vista: PesquisarVista = searchParams.get('vista') === 'mapa' ? 'mapa' : 'lista'
@@ -190,16 +202,16 @@ export function PesquisarPage() {
 
       <Suspense fallback={<ViewFallback />}>
         {tipo === 'criadores' && vista === 'lista' && (
-          <BreedersListView searchParams={searchParams} setSearchParams={setSearchParams} />
+          <BreedersListView searchParams={searchParams} setSearchParams={stableSetSearchParams} />
         )}
         {tipo === 'criadores' && vista === 'mapa' && (
-          <BreedersMapView searchParams={searchParams} setSearchParams={setSearchParams} />
+          <BreedersMapView searchParams={searchParams} setSearchParams={stableSetSearchParams} />
         )}
         {tipo === 'servicos' && vista === 'lista' && (
-          <ServicesListView searchParams={searchParams} setSearchParams={setSearchParams} />
+          <ServicesListView searchParams={searchParams} setSearchParams={stableSetSearchParams} />
         )}
         {tipo === 'servicos' && vista === 'mapa' && (
-          <ServicesMapView searchParams={searchParams} setSearchParams={setSearchParams} />
+          <ServicesMapView searchParams={searchParams} setSearchParams={stableSetSearchParams} />
         )}
       </Suspense>
 
