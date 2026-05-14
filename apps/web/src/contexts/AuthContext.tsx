@@ -32,6 +32,13 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
+    // exp e' uma claim opcional no RFC 7519. Se vier ausente ou com
+    // tipo errado tratamos como expirado em vez de NaN < Date.now()
+    // (NaN em comparacoes devolve false, o que daria um token "valido
+    // para sempre" ao cliente e levaria a 401 silenciosos em loop).
+    if (typeof payload?.exp !== 'number' || !Number.isFinite(payload.exp)) {
+      return true
+    }
     // exp is in seconds, Date.now() is in milliseconds
     // Add 30s buffer so we don't use a token that's about to expire
     return payload.exp * 1000 < Date.now() + 30_000

@@ -101,9 +101,15 @@ api.interceptors.response.use(
           window.location.pathname.startsWith('/recuperar') ||
           window.location.pathname.startsWith('/verificar')
         // Whitelist de prefixos seguros: paths relativos comecando com '/'
-        // mas nao '//' (evita open-redirect via path-relative-scheme).
+        // mas nao '//' (evita open-redirect via path-relative-scheme) e
+        // sem backslash (alguns browsers normalizam '\\evil.com' como
+        // host externo).
         const safeNext =
-          currentPath.startsWith('/') && !currentPath.startsWith('//') ? currentPath : '/'
+          currentPath.startsWith('/') &&
+          !currentPath.startsWith('//') &&
+          !currentPath.includes('\\')
+            ? currentPath
+            : '/'
         const target = onAuthPage ? '/entrar' : `/entrar?next=${encodeURIComponent(safeNext)}`
         window.location.href = target
         return Promise.reject(refreshErr)

@@ -85,7 +85,7 @@ export function FeaturedCarousel({
             aria-label="Anterior"
             onClick={() => scrollBy(-1)}
             disabled={!canLeft}
-            className="flex h-9 w-9 items-center justify-center border border-line bg-surface text-ink transition-colors hover:border-caramel-500 hover:text-caramel-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line disabled:hover:text-ink"
+            className="flex h-9 w-9 items-center justify-center border border-line bg-surface text-ink transition-colors hover:border-caramel-500 hover:text-caramel-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line disabled:hover:text-ink"
           >
             <svg
               className="h-4 w-4"
@@ -93,6 +93,8 @@ export function FeaturedCarousel({
               viewBox="0 0 24 24"
               strokeWidth="2"
               stroke="currentColor"
+              aria-hidden="true"
+              focusable="false"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -102,7 +104,7 @@ export function FeaturedCarousel({
             aria-label="Seguinte"
             onClick={() => scrollBy(1)}
             disabled={!canRight}
-            className="flex h-9 w-9 items-center justify-center border border-line bg-surface text-ink transition-colors hover:border-caramel-500 hover:text-caramel-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line disabled:hover:text-ink"
+            className="flex h-9 w-9 items-center justify-center border border-line bg-surface text-ink transition-colors hover:border-caramel-500 hover:text-caramel-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line disabled:hover:text-ink"
           >
             <svg
               className="h-4 w-4"
@@ -110,6 +112,8 @@ export function FeaturedCarousel({
               viewBox="0 0 24 24"
               strokeWidth="2"
               stroke="currentColor"
+              aria-hidden="true"
+              focusable="false"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
