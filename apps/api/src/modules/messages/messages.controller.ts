@@ -592,19 +592,34 @@ export const reportMessage = asyncHandler(async (req, res) => {
   void isOwner
   void isBreeder
 
-  // One pending report per (message, reporter) — dedup silently.
-  const existing = await prisma.messageReport.findFirst({
-    where: { messageId, reporterId: userId, status: 'PENDING' },
-  })
-  if (existing) {
-    res.status(200).json({ id: existing.id, duplicate: true })
-    return
+  // Dedupe atomico via unique constraint (message_id, reporter_id, status).
+  // O findFirst + create anterior era racy: dois pedidos concorrentes do
+  // mesmo utilizador para a mesma mensagem podiam ambos passar o findFirst
+  // e ambos chamar create, gerando dois reports PENDING. Agora deixamos a
+  // BD garantir unicidade e tratamos P2002 como "duplicate silent" para
+  // preservar o contrato anterior (200 com {duplicate:true}).
+  let report
+  try {
+    report = await prisma.messageReport.create({
+      data: { messageId, reporterId: userId, reason },
+      select: { id: true, createdAt: true, status: true },
+    })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const existing = await prisma.messageReport.findFirst({
+        where: { messageId, reporterId: userId, status: 'PENDING' },
+        select: { id: true },
+      })
+      if (existing) {
+        res.status(200).json({ id: existing.id, duplicate: true })
+        return
+      }
+      // Fall-through unlikely: P2002 sem PENDING significa que ja existe um
+      // report RESOLVED/DISMISSED para o mesmo par. Trata-se como conflito.
+      throw new AppError(409, 'Já denunciou esta mensagem', 'ALREADY_REPORTED')
+    }
+    throw err
   }
-
-  const report = await prisma.messageReport.create({
-    data: { messageId, reporterId: userId, reason },
-    select: { id: true, createdAt: true, status: true },
-  })
 
   await logAudit({
     userId,

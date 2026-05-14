@@ -338,3 +338,17 @@ export const sponsoredSlotClickRateLimit = rateLimit({
   keyGenerator: sponsoredClickKey,
   bucket: 'sponsored-click',
 })
+
+// Search/list endpoints expensivos (full-text-ish ILIKE, joins, aggregates)
+// sao alvo de scraping e DoS por volume — scripts que paginam toda a base
+// de dados ou disparam queries pesadas em loop tight. O `apiRateLimit`
+// global (200/15min) e' demasiado folgado para estes endpoints especificos.
+// Usamos chave per-user (autenticado) ou per-IP (anonimo) para nao
+// penalizar utilizadores legitimos partilhando NAT.
+export const searchRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Demasiadas pesquisas. Aguarde um momento.',
+  keyGenerator: userKey,
+  bucket: 'search',
+})

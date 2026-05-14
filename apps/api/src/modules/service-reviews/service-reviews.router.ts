@@ -8,6 +8,7 @@ import {
   listServiceReviewsSchema,
   moderateServiceReviewSchema,
   flagServiceReviewSchema,
+  myServiceReviewsPaginationSchema,
 } from '@patacerta/shared'
 import { reviewCreateRateLimit, reviewFlagRateLimit } from '../../middleware/rate-limit.js'
 import * as ctrl from './service-reviews.controller.js'
@@ -15,8 +16,18 @@ import * as ctrl from './service-reviews.controller.js'
 export const serviceReviewsRouter = Router()
 
 // Authenticated user scoped listings (must come before /:id)
-serviceReviewsRouter.get('/mine', requireAuth, ctrl.listMyServiceReviews)
-serviceReviewsRouter.get('/about-me', requireAuth, ctrl.listServiceReviewsAboutMe)
+serviceReviewsRouter.get(
+  '/mine',
+  requireAuth,
+  validate(myServiceReviewsPaginationSchema, 'query'),
+  ctrl.listMyServiceReviews,
+)
+serviceReviewsRouter.get(
+  '/about-me',
+  requireAuth,
+  validate(myServiceReviewsPaginationSchema, 'query'),
+  ctrl.listServiceReviewsAboutMe,
+)
 serviceReviewsRouter.get('/eligibility', requireAuth, ctrl.getServiceReviewEligibility)
 
 // Public listing (admins get extra visibility via optionalAuth)

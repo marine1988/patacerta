@@ -489,6 +489,7 @@ model MessageReport {
   reporter User    @relation("message_report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
   reviewer User?   @relation("message_report_reviewer", fields: [reviewedBy], references: [id])
 
+  @@unique([messageId, reporterId, status], name: "message_report_dedupe")
   @@index([messageId])
   @@index([reporterId])
   @@index([status])

@@ -10,7 +10,7 @@ import {
   listThreadMessagesSchema,
   searchMessagesSchema,
 } from '@patacerta/shared'
-import { messageSendRateLimit, threadCreateRateLimit } from '../../middleware/rate-limit.js'
+import { messageSendRateLimit, threadCreateRateLimit, searchRateLimit } from '../../middleware/rate-limit.js'
 import * as ctrl from './messages.controller.js'
 
 export const messagesRouter = Router()
@@ -54,7 +54,12 @@ messagesRouter.post(
 )
 
 // Search across own threads
-messagesRouter.get('/search', validate(searchMessagesSchema, 'query'), ctrl.searchMessages)
+messagesRouter.get(
+  '/search',
+  searchRateLimit,
+  validate(searchMessagesSchema, 'query'),
+  ctrl.searchMessages,
+)
 
 // Unread count
 messagesRouter.get('/unread-count', ctrl.getUnreadCount)

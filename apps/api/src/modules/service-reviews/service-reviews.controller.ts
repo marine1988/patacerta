@@ -355,11 +355,44 @@ export const flagServiceReview = asyncHandler(async (req, res) => {
   if (review.status !== 'PUBLISHED')
     throw new AppError(400, 'Só pode denunciar avaliações publicadas', 'REVIEW_NOT_PUBLISHED')
 
-  // Record the flag (idempotent per (review, reporter) due to unique constraint)
+  // Insercao da flag + count + auto-hide tem de correr atomicamente.
+  // Sem transaccao, denuncias concorrentes podem (a) disparar
+  // `recomputeServiceRating` em duplicado e (b) ambos verem
+  // flagCount >= 3 sob a mesma transicao PUBLISHED, gerando dois
+  // eventos SERVICE_REVIEW_AUTO_FLAGGED. Usamos `updateMany`
+  // condicional ao status PUBLISHED — se uma transaccao concorrente
+  // ja transitou para FLAGGED, count=0 e o auto-flag e' skipped,
+  // mantendo idempotencia natural. (Port directo do padrao em
+  // reviews.controller.ts:367.)
+  let flagCount = 0
+  let autoFlagged = false
+  let updated
   try {
-    await prisma.serviceReviewFlag.create({
-      data: { reviewId: id, reporterId: userId, reason },
+    const txResult = await prisma.$transaction(async (tx) => {
+      await tx.serviceReviewFlag.create({
+        data: { reviewId: id, reporterId: userId, reason },
+      })
+      const count = await tx.serviceReviewFlag.count({ where: { reviewId: id } })
+      let didAutoFlag = false
+      if (count >= FLAG_AUTO_HIDE_THRESHOLD) {
+        const transition = await tx.serviceReview.updateMany({
+          where: { id, status: 'PUBLISHED' },
+          data: { status: 'FLAGGED' },
+        })
+        if (transition.count > 0) {
+          await recomputeServiceRating(review.serviceId, tx)
+          didAutoFlag = true
+        }
+      }
+      const u = await tx.serviceReview.findUnique({
+        where: { id },
+        select: SERVICE_REVIEW_SELECT,
+      })
+      return { count, didAutoFlag, u }
     })
+    flagCount = txResult.count
+    autoFlagged = txResult.didAutoFlag
+    updated = txResult.u
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       throw new AppError(409, 'Já denunciou esta avaliação', 'ALREADY_FLAGGED')
@@ -367,30 +400,15 @@ export const flagServiceReview = asyncHandler(async (req, res) => {
     throw err
   }
 
-  // Count flags and auto-hide if threshold reached
-  const flagCount = await prisma.serviceReviewFlag.count({ where: { reviewId: id } })
-  let updated
-  if (flagCount >= FLAG_AUTO_HIDE_THRESHOLD && review.status === 'PUBLISHED') {
-    updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.serviceReview.update({
-        where: { id },
-        data: { status: 'FLAGGED' },
-        select: SERVICE_REVIEW_SELECT,
-      })
-      await recomputeServiceRating(review.serviceId, tx)
-      return u
-    })
+  if (autoFlagged) {
     await logAudit({
+      // Auto-flag e' uma accao do sistema, nao do utilizador denunciante.
+      userId: null,
       action: 'SERVICE_REVIEW_AUTO_FLAGGED',
       entity: 'service_review',
       entityId: id,
       details: `Denúncias: ${flagCount}`,
       ipAddress: req.ip,
-    })
-  } else {
-    updated = await prisma.serviceReview.findUnique({
-      where: { id },
-      select: SERVICE_REVIEW_SELECT,
     })
   }
 

@@ -57,9 +57,20 @@ export const flagServiceReviewSchema = z.object({
     .max(500, 'Motivo demasiado longo (máximo 500 caracteres)'),
 })
 
+/**
+ * Schema partilhado para GET /service-reviews/mine e /about-me.
+ * Espelha `myReviewsPaginationSchema` (breeder reviews). Coerce
+ * numerico + max 50 evita DoS via limit gigante.
+ */
+export const myServiceReviewsPaginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+})
+
 export type CreateServiceReviewInput = z.infer<typeof createServiceReviewSchema>
 export type UpdateServiceReviewInput = z.infer<typeof updateServiceReviewSchema>
 export type ReplyToServiceReviewInput = z.infer<typeof replyToServiceReviewSchema>
 export type ListServiceReviewsInput = z.infer<typeof listServiceReviewsSchema>
 export type ModerateServiceReviewInput = z.infer<typeof moderateServiceReviewSchema>
 export type FlagServiceReviewInput = z.infer<typeof flagServiceReviewSchema>
+export type MyServiceReviewsPaginationInput = z.infer<typeof myServiceReviewsPaginationSchema>

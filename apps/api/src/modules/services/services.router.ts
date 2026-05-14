@@ -19,6 +19,7 @@ import {
   serviceReportRateLimit,
   threadCreateRateLimit,
   uploadRateLimit,
+  searchRateLimit,
 } from '../../middleware/rate-limit.js'
 import {
   createServiceSchema,
@@ -56,8 +57,8 @@ export const servicesRouter = Router()
 // Specific paths are registered before the dynamic ":serviceId" ones so
 // Express doesn't match "mine" / "map" / "categories" as an id.
 servicesRouter.get('/categories', listActiveCategories)
-servicesRouter.get('/map', validate(mapServicesQuerySchema, 'query'), mapServices)
-servicesRouter.get('/', validate(listServicesQuerySchema, 'query'), listServices)
+servicesRouter.get('/map', searchRateLimit, validate(mapServicesQuerySchema, 'query'), mapServices)
+servicesRouter.get('/', searchRateLimit, validate(listServicesQuerySchema, 'query'), listServices)
 
 // ── Owner views (auth required) ──────────────────────────────────────
 servicesRouter.get('/mine', requireAuth, getMyServices)
