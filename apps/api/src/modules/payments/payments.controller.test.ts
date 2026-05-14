@@ -78,7 +78,7 @@ const mockedIsStripeConfigured = isStripeConfigured as unknown as ReturnType<typ
 
 interface ReqOpts {
   body?: unknown
-  query?: Record<string, string>
+  query?: Record<string, unknown>
   userId?: number
   email?: string
 }
@@ -489,45 +489,14 @@ describe('createSponsoredSlotCheckout — happy path', () => {
 
 // ─── getSponsoredSlotAvailability ────────────────────────────────────
 
+// Nota: a validação de breedId é feita pelo middleware `validate(...)` na router
+// (ver sponsoredSlotAvailabilityQuerySchema). O controller assume que req.query
+// já vem parsed/coerced — testar erros de validação é responsabilidade da suite
+// de middleware/schema, não deste controller.
 describe('getSponsoredSlotAvailability', () => {
-  it('400 quando breedId está em falta', async () => {
-    const req = makeReq({ query: {} })
-    const res = makeRes()
-    const next = makeNext()
-
-    await invoke(getSponsoredSlotAvailability, req, res, next)
-
-    const err = getNextError(next)
-    expect(err.statusCode).toBe(400)
-    expect(err.code).toBe('INVALID_BREED_ID')
-  })
-
-  it('400 quando breedId não é numérico', async () => {
-    const req = makeReq({ query: { breedId: 'abc' } })
-    const res = makeRes()
-    const next = makeNext()
-
-    await invoke(getSponsoredSlotAvailability, req, res, next)
-
-    const err = getNextError(next)
-    expect(err.code).toBe('INVALID_BREED_ID')
-  })
-
-  it('400 quando breedId é zero ou negativo', async () => {
-    for (const v of ['0', '-3']) {
-      const req = makeReq({ query: { breedId: v } })
-      const res = makeRes()
-      const next = makeNext()
-
-      await invoke(getSponsoredSlotAvailability, req, res, next)
-
-      expect(getNextError(next).code).toBe('INVALID_BREED_ID')
-    }
-  })
-
   it('devolve disponibilidade com 3 slots livres quando occupied=0', async () => {
     mockedPrisma.sponsoredBreedSlot.count.mockResolvedValue(0)
-    const req = makeReq({ query: { breedId: '5' } })
+    const req = makeReq({ query: { breedId: 5 } })
     const res = makeRes()
     const next = makeNext()
 
@@ -547,7 +516,7 @@ describe('getSponsoredSlotAvailability', () => {
 
   it('devolve available=0 (nunca negativo) quando occupied>maxSlots', async () => {
     mockedPrisma.sponsoredBreedSlot.count.mockResolvedValue(7)
-    const req = makeReq({ query: { breedId: '5' } })
+    const req = makeReq({ query: { breedId: 5 } })
     const res = makeRes()
     const next = makeNext()
 
@@ -562,7 +531,7 @@ describe('getSponsoredSlotAvailability', () => {
 describe('listMySponsoredSlots', () => {
   it('404 BREEDER_NOT_FOUND quando o utilizador não tem perfil de criador', async () => {
     mockedPrisma.breeder.findUnique.mockResolvedValue(null)
-    const req = makeReq()
+    const req = makeReq({ query: { page: 1, limit: 20 } })
     const res = makeRes()
     const next = makeNext()
 
@@ -573,15 +542,16 @@ describe('listMySponsoredSlots', () => {
     expect(err.code).toBe('BREEDER_NOT_FOUND')
   })
 
-  it('devolve { data: slots } ordenados por createdAt desc', async () => {
+  it('devolve { data, pagination } ordenados por createdAt desc', async () => {
     mockedPrisma.breeder.findUnique.mockResolvedValue({ id: 5 })
     const slots = [
       { id: 2, breedId: 1, paymentStatus: 'PAID', status: 'ACTIVE' },
       { id: 1, breedId: 2, paymentStatus: 'LEGACY', status: 'ACTIVE' },
     ]
     mockedPrisma.sponsoredBreedSlot.findMany.mockResolvedValue(slots)
+    mockedPrisma.sponsoredBreedSlot.count.mockResolvedValue(2)
 
-    const req = makeReq()
+    const req = makeReq({ query: { page: 1, limit: 20 } })
     const res = makeRes()
     const next = makeNext()
 
@@ -592,16 +562,22 @@ describe('listMySponsoredSlots', () => {
       expect.objectContaining({
         where: { breederId: 5 },
         orderBy: [{ createdAt: 'desc' }],
+        skip: 0,
+        take: 20,
       }),
     )
-    expect(res.json).toHaveBeenCalledWith({ data: slots })
+    expect(res.json).toHaveBeenCalledWith({
+      data: slots,
+      pagination: { page: 1, limit: 20, total: 2, totalPages: 1 },
+    })
   })
 
   it('apenas devolve slots do criador autenticado (filtro breederId)', async () => {
     mockedPrisma.breeder.findUnique.mockResolvedValue({ id: 5 })
     mockedPrisma.sponsoredBreedSlot.findMany.mockResolvedValue([])
+    mockedPrisma.sponsoredBreedSlot.count.mockResolvedValue(0)
 
-    const req = makeReq({ userId: 7 })
+    const req = makeReq({ userId: 7, query: { page: 1, limit: 20 } })
     const res = makeRes()
     const next = makeNext()
 

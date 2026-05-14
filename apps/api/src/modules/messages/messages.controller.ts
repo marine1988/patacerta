@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import { logger } from '../../lib/logger.js'
 import type {
   CreateThreadInput,
   EditMessageInput,
@@ -321,15 +322,18 @@ export const getThread = asyncHandler(async (req, res) => {
 
   // Auto-mark incoming messages as read when the thread is fetched.
   // Idempotent: only updates rows where readAt IS NULL and sender != userId.
-  // Fire-and-forget — failure to mark read should never block the GET response.
-  prisma.message
-    .updateMany({
+  // Aguardamos a conclusao para que o cliente receba consistentemente
+  // ``readAt`` actualizado na proxima fetch e para que o contador de
+  // nao-lidas (em GET /threads) reflicta o estado real. Falhas sao
+  // logadas mas nao bloqueiam a resposta (best-effort downstream).
+  try {
+    await prisma.message.updateMany({
       where: { threadId, senderId: { not: userId }, readAt: null },
       data: { readAt: new Date() },
     })
-    .catch(() => {
-      // Swallow: mark-read is a side-effect; don't surface to caller.
-    })
+  } catch (err) {
+    logger.warn({ err, threadId, userId }, 'mark-as-read falhou em getThread')
+  }
 
   // Mask body of soft-deleted messages so the client never receives the original text.
   const maskedMessages = messages

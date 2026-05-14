@@ -54,6 +54,29 @@ export const listSponsoredSlotsSchema = z.object({
 
 export type ListSponsoredSlotsInput = z.infer<typeof listSponsoredSlotsSchema>
 
+// ─── Público: query de availability ──────────────────────────────────
+//
+// GET /api/payments/sponsored-slot/availability?breedId=N
+// Endpoint sem auth — validamos rigorosamente o input para evitar
+// scraping com IDs invalidos ou enumeracao via `breedId=0`.
+export const sponsoredSlotAvailabilityQuerySchema = z.object({
+  breedId: z.coerce.number().int().positive(),
+})
+export type SponsoredSlotAvailabilityQuery = z.infer<
+  typeof sponsoredSlotAvailabilityQuerySchema
+>
+
+// ─── Owner: listagem do proprio criador (paginada) ───────────────────
+//
+// GET /api/payments/sponsored-slot/mine?page=1&limit=20
+// Sem paginacao, um criador antigo com muitos slots historicos
+// poderia provocar response grande e lento (DoS via eager-include).
+export const listMySponsoredSlotsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+})
+export type ListMySponsoredSlotsQuery = z.infer<typeof listMySponsoredSlotsQuerySchema>
+
 // ─── Tracking público (impressão / clique) ───────────────────────────
 //
 // Não há body — só `:slotId` no path. Rate-limited via apiRateLimit.

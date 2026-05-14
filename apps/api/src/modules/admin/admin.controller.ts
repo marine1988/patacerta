@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
+import { maskEmail } from '../../lib/redact.js'
 import type {
   ResolveReportInput,
   ResolveServiceReportInput,
@@ -159,11 +160,20 @@ export const listAllUsers = asyncHandler(async (req, res) => {
   // Trilho forense de acessos administrativos a listagens com PII (emails
   // de todos os utilizadores). Em caso de leak interno, permite identificar
   // qual admin viu a listagem em que momento e com que filtros.
+  //
+  // Se `q` parecer um email, mascaramos antes de gravar no audit log
+  // — caso contrario o email completo de qualquer utilizador pesquisado
+  // ficaria persistido em texto claro em ``audit_logs``.
+  const qForAudit = q
+    ? q.includes('@')
+      ? maskEmail(q.slice(0, 100))
+      : q.slice(0, 50)
+    : ''
   await logAudit({
     userId: req.user!.userId,
     action: 'ADMIN_LIST_USERS',
     entity: 'User',
-    details: `page=${page} limit=${limit}${role ? ` role=${role}` : ''}${q ? ` q="${q.slice(0, 50)}"` : ''}`,
+    details: `page=${page} limit=${limit}${role ? ` role=${role}` : ''}${qForAudit ? ` q="${qForAudit}"` : ''}`,
     ipAddress: req.ip,
   })
 
@@ -215,7 +225,7 @@ export const suspendUser = asyncHandler(async (req, res) => {
     action: 'SUSPEND_USER',
     entity: 'User',
     entityId: id,
-    details: `Suspended user ${user.email}: ${reason}`,
+    details: `Suspended user ${maskEmail(user.email)}: ${reason}`,
     ipAddress: req.ip,
   })
 
@@ -282,7 +292,7 @@ export const unsuspendUser = asyncHandler(async (req, res) => {
     action: 'UNSUSPEND_USER',
     entity: 'User',
     entityId: id,
-    details: `Reactivated user ${user.email}`,
+    details: `Reactivated user ${maskEmail(user.email)}`,
     ipAddress: req.ip,
   })
 
@@ -890,6 +900,17 @@ export const listMessageReports = asyncHandler(async (req, res) => {
     prisma.messageReport.count({ where }),
   ])
 
+  // Trilho forense: cada listagem de denuncias revela bodies de
+  // mensagens privadas (linha 876 inclui ``body``). Logamos o acesso
+  // tal como em getMessageReport para detectar abuso por admins.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'MESSAGE_REPORTS_LISTED',
+    entity: 'MessageReport',
+    details: `page=${page} limit=${limit} status=${status} count=${reports.length}`,
+    ipAddress: req.ip,
+  })
+
   res.json(paginatedResponse(reports, total, page, limit))
 })
 
@@ -1312,8 +1333,22 @@ export const setServiceFeatured = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
   const featuredUntil = parseFeaturedUntil(req.body)
 
-  const service = await prisma.service.findUnique({ where: { id }, select: { id: true } })
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: { id: true, status: true },
+  })
   if (!service) throw new AppError(404, 'Servico nao encontrado', 'SERVICE_NOT_FOUND')
+  // Promover servicos nao-ACTIVE faria com que conteudo pausado/suspenso
+  // aparecesse em homepage/listagens de destaque. Bloqueamos a promocao;
+  // a remocao (featuredUntil=null) e' sempre permitida para limpar
+  // promocoes de servicos que entretanto foram suspensos.
+  if (featuredUntil !== null && service.status !== 'ACTIVE') {
+    throw new AppError(
+      400,
+      'So pode destacar servicos em estado ACTIVE',
+      'SERVICE_NOT_ACTIVE_FOR_FEATURED',
+    )
+  }
 
   const updated = await prisma.service.update({
     where: { id },
@@ -1337,8 +1372,18 @@ export const setBreederFeatured = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
   const featuredUntil = parseFeaturedUntil(req.body)
 
-  const breeder = await prisma.breeder.findUnique({ where: { id }, select: { id: true } })
+  const breeder = await prisma.breeder.findUnique({
+    where: { id },
+    select: { id: true, status: true },
+  })
   if (!breeder) throw new AppError(404, 'Criador nao encontrado', 'BREEDER_NOT_FOUND')
+  if (featuredUntil !== null && breeder.status !== 'VERIFIED') {
+    throw new AppError(
+      400,
+      'So pode destacar criadores em estado VERIFIED',
+      'BREEDER_NOT_VERIFIED_FOR_FEATURED',
+    )
+  }
 
   const updated = await prisma.breeder.update({
     where: { id },

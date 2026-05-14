@@ -5,6 +5,8 @@ import { maskEmail } from '../../lib/redact.js'
 import { isHttps, getFrontendBaseUrl } from '../../lib/env.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { logAudit } from '../../lib/audit.js'
+import { logger } from '../../lib/logger.js'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
@@ -90,6 +92,16 @@ function skipEmailVerification(): boolean {
   const v = process.env.AUTH_SKIP_EMAIL_VERIFICATION
   return v === '1' || v === 'true' || v === 'TRUE'
 }
+
+/**
+ * Hash bcrypt fixo (cost 12) usado como dummy quando o email nao existe
+ * em /login. Garante que o tempo de resposta para email-inexistente fica
+ * proximo do tempo de bcrypt.compare contra um hash real, eliminando o
+ * canal de timing que permitiria enumerar emails registados. O conteudo
+ * NUNCA bate com nenhuma password real porque foi gerado a partir de
+ * bytes aleatorios.
+ */
+const DUMMY_BCRYPT_HASH = '$2a$12$CwTycUXWue0Thq9StjUM0uJ8eR8b5J9V5N3z5o6m6t8YyZb9rL3vS'
 
 function buildVerificationUrl(token: string): string {
   return `${getFrontendBaseUrl()}/verificar-email?token=${token}`
@@ -227,6 +239,14 @@ export const register = asyncHandler(async (req, res) => {
     console.log(
       `[EmailVerification] SKIPPED for ${maskEmail(user.email)} (AUTH_SKIP_EMAIL_VERIFICATION enabled)`,
     )
+    await logAudit({
+      userId: user.id,
+      action: 'USER_REGISTERED',
+      entity: 'User',
+      entityId: user.id,
+      details: `email=${maskEmail(user.email)} verified=skipped`,
+      ipAddress: req.ip,
+    })
     res.status(201).json({
       message: 'Conta criada. Pode iniciar sessão.',
       email: user.email,
@@ -236,6 +256,15 @@ export const register = asyncHandler(async (req, res) => {
 
   const verificationUrl = buildVerificationUrl(verificationToken)
   await sendVerificationEmail(user.email, verificationUrl)
+
+  await logAudit({
+    userId: user.id,
+    action: 'USER_REGISTERED',
+    entity: 'User',
+    entityId: user.id,
+    details: `email=${maskEmail(user.email)} verified=pending`,
+    ipAddress: req.ip,
+  })
 
   res.status(201).json({
     message: 'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
@@ -248,14 +277,58 @@ export const login = asyncHandler(async (req, res) => {
   const email = data.email.toLowerCase().trim()
 
   const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
-  if (!user.isActive)
+
+  // Constant-time path para evitar enumeracao de emails via timing:
+  // se o utilizador nao existe, comparamos a password contra um hash
+  // dummy fixo para que o tempo gasto em bcrypt.compare seja
+  // indistinguivel do caso em que existe. Sem isto, um atacante podia
+  // medir a diferenca (~200ms) entre "email nao existe" e "email
+  // existe + password errada" e enumerar a base de utilizadores.
+  if (!user) {
+    await bcrypt.compare(data.password, DUMMY_BCRYPT_HASH)
+    await logAudit({
+      userId: null,
+      action: 'LOGIN_FAILED',
+      entity: 'User',
+      details: `reason=unknown_email email=${maskEmail(email)}`,
+      ipAddress: req.ip,
+    })
+    throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
+  }
+  if (!user.isActive) {
+    await logAudit({
+      userId: user.id,
+      action: 'LOGIN_FAILED',
+      entity: 'User',
+      entityId: user.id,
+      details: `reason=suspended email=${maskEmail(email)}`,
+      ipAddress: req.ip,
+    })
     throw new AppError(403, 'Conta suspensa — contacte o suporte', 'ACCOUNT_SUSPENDED')
+  }
 
   const valid = await bcrypt.compare(data.password, user.passwordHash)
-  if (!valid) throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
+  if (!valid) {
+    await logAudit({
+      userId: user.id,
+      action: 'LOGIN_FAILED',
+      entity: 'User',
+      entityId: user.id,
+      details: `reason=bad_password email=${maskEmail(email)}`,
+      ipAddress: req.ip,
+    })
+    throw new AppError(401, 'Email ou palavra-passe incorretos', 'INVALID_CREDENTIALS')
+  }
 
   if (!user.emailVerified && !skipEmailVerification()) {
+    await logAudit({
+      userId: user.id,
+      action: 'LOGIN_FAILED',
+      entity: 'User',
+      entityId: user.id,
+      details: `reason=email_not_verified email=${maskEmail(email)}`,
+      ipAddress: req.ip,
+    })
     throw new AppError(403, 'Verifique o seu email antes de iniciar sessão.', 'EMAIL_NOT_VERIFIED')
   }
 
@@ -263,6 +336,15 @@ export const login = asyncHandler(async (req, res) => {
   const accessToken = signAccessToken(payload)
   const refreshToken = await issueRefreshToken(payload, req)
   setRefreshCookie(res, refreshToken)
+
+  await logAudit({
+    userId: user.id,
+    action: 'LOGIN_SUCCESS',
+    entity: 'User',
+    entityId: user.id,
+    details: `email=${maskEmail(email)}`,
+    ipAddress: req.ip,
+  })
 
   res.json({
     user: {
@@ -306,6 +388,14 @@ export const refresh = asyncHandler(async (req, res) => {
     // both parties have to re-authenticate.
     await revokeRefreshChain(stored.id)
     clearRefreshCookie(res)
+    await logAudit({
+      userId: stored.userId,
+      action: 'REFRESH_TOKEN_REUSED',
+      entity: 'RefreshToken',
+      entityId: stored.id,
+      details: 'Reuse detected — full chain revoked',
+      ipAddress: req.ip,
+    })
     throw new AppError(401, 'Refresh token reutilizado — sessão revogada', 'REFRESH_TOKEN_REUSED')
   }
 
@@ -321,14 +411,57 @@ export const refresh = asyncHandler(async (req, res) => {
 
   const payload = { userId: user.id, email: user.email, role: user.role }
 
-  // Rotate: revoke this token, issue a fresh one, link them so reuse of the
-  // old token is detectable.
-  await prisma.refreshToken.update({
-    where: { id: stored.id },
-    data: { revokedAt: new Date() },
-  })
-  const newRefresh = await issueRefreshToken(payload, req, stored.id)
-  setRefreshCookie(res, newRefresh)
+  // Rotação atómica: dois clientes que apresentem o MESMO refresh token
+  // simultaneamente (browser com varios tabs, race do FE) poderiam, sem
+  // transacao, passar ambos no check `revokedAt === null` e emitir dois
+  // tokens filhos validos — partindo a cadeia de revogacao. Fazemos um
+  // ``updateMany`` condicional ao ``revokedAt: null`` dentro da
+  // transacao: o segundo update bate em 0 linhas e a transacao aborta,
+  // forcando o cliente perdedor a reautenticar (e o vencedor recebe um
+  // unico filho ligado correctamente).
+  const newPlaintext = signRefreshToken(payload)
+  const newHash = hashToken(newPlaintext)
+  let createdId: number
+  try {
+    createdId = await prisma.$transaction(async (tx) => {
+      const revoked = await tx.refreshToken.updateMany({
+        where: { id: stored.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+      if (revoked.count === 0) {
+        // Outro pedido concorrente rodou este token primeiro. Abortar.
+        throw new AppError(
+          401,
+          'Refresh token já foi rodado — repita o pedido',
+          'REFRESH_TOKEN_RACE',
+        )
+      }
+      const created = await tx.refreshToken.create({
+        data: {
+          userId: payload.userId,
+          tokenHash: newHash,
+          expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent']?.slice(0, 500) ?? null,
+        },
+        select: { id: true },
+      })
+      await tx.refreshToken.update({
+        where: { id: stored.id },
+        data: { replacedById: created.id },
+      })
+      return created.id
+    })
+  } catch (err) {
+    if (err instanceof AppError) {
+      clearRefreshCookie(res)
+      throw err
+    }
+    throw err
+  }
+
+  void createdId
+  setRefreshCookie(res, newPlaintext)
 
   res.json({ accessToken: signAccessToken(payload) })
 })
@@ -336,19 +469,40 @@ export const refresh = asyncHandler(async (req, res) => {
 export const logout = asyncHandler(async (req, res) => {
   const refreshToken = readRefreshToken(req)
   // We accept logout without a token as a no-op so the client can always
-  // call this endpoint without worrying about state. With a token, we
-  // revoke the whole chain so any leaked sibling is invalidated too.
+  // call this endpoint without worrying about state. Com um token, so
+  // revogamos a cadeia se a verificacao JWT passar — assim, tokens
+  // tampered/expired nao podem ser usados para tentar correlacionar
+  // hashes na BD nem para forcar revogacoes especulativas.
   if (refreshToken) {
+    let verified = false
+    let userId: number | null = null
     try {
-      verifyRefreshToken(refreshToken)
+      const decoded = verifyRefreshToken(refreshToken)
+      verified = true
+      userId = decoded.userId
     } catch {
-      // Tampered or expired tokens are not worth blocking logout on.
+      // Tampered or expired — apenas limpa cookie, sem tocar na BD.
     }
-    const stored = await prisma.refreshToken.findUnique({
-      where: { tokenHash: hashToken(refreshToken) },
-      select: { id: true },
-    })
-    if (stored) await revokeRefreshChain(stored.id)
+    if (verified) {
+      const stored = await prisma.refreshToken.findUnique({
+        where: { tokenHash: hashToken(refreshToken) },
+        select: { id: true, userId: true },
+      })
+      if (stored) {
+        await revokeRefreshChain(stored.id)
+        await logAudit({
+          userId: stored.userId,
+          action: 'USER_LOGOUT',
+          entity: 'RefreshToken',
+          entityId: stored.id,
+          ipAddress: req.ip,
+        })
+      } else if (userId) {
+        // JWT valida mas sem registo na BD — provavel uso de token revogado
+        // ja' purgado. Logamos para ter trilho sem revogar nada.
+        logger.info({ userId, ip: req.ip }, 'logout com token verificado mas sem registo na BD')
+      }
+    }
   }
   clearRefreshCookie(res)
   res.status(204).send()
@@ -379,6 +533,15 @@ export const verifyEmail = asyncHandler(async (req, res) => {
       emailVerificationToken: null,
       emailVerificationExpiresAt: null,
     },
+  })
+
+  await logAudit({
+    userId: user.id,
+    action: 'EMAIL_VERIFIED',
+    entity: 'User',
+    entityId: user.id,
+    details: `email=${maskEmail(user.email)}`,
+    ipAddress: req.ip,
   })
 
   res.json({ message: 'Email verificado com sucesso. Pode agora iniciar sessão.' })
@@ -450,9 +613,29 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 12)
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
+  // Atomicidade: actualizar password + revogar TODAS as sessoes activas
+  // numa unica transacao. Sem isto, um atacante que tenha um refresh
+  // token roubado mantem-no valido apos o owner repor a password —
+  // anulando o efeito do reset. updateMany condicional a ``revokedAt: null``
+  // garante idempotencia e evita escrever em rows ja revogadas.
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
+    })
+    await tx.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+  })
+
+  await logAudit({
+    userId: user.id,
+    action: 'PASSWORD_RESET',
+    entity: 'User',
+    entityId: user.id,
+    details: `email=${maskEmail(user.email)} sessions=revoked`,
+    ipAddress: req.ip,
   })
 
   res.json({ message: 'Palavra-passe atualizada com sucesso. Pode agora iniciar sessão.' })

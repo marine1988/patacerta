@@ -28,6 +28,7 @@ vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     stripeEvent: {
       create: vi.fn(),
+      delete: vi.fn(),
     },
     sponsoredBreedSlot: {
       findUnique: vi.fn(),
@@ -60,7 +61,7 @@ import { isStripeConfigured } from '../../lib/stripe.js'
 import { sendSponsoredSlotPaidEmail } from '../../lib/email.js'
 
 const mockedPrisma = prisma as unknown as {
-  stripeEvent: { create: ReturnType<typeof vi.fn> }
+  stripeEvent: { create: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }
   sponsoredBreedSlot: {
     findUnique: ReturnType<typeof vi.fn>
     findFirst: ReturnType<typeof vi.fn>
@@ -558,21 +559,22 @@ describe('handleStripeWebhook — robustez', () => {
     expect(mockedPrisma.sponsoredBreedSlot.update).not.toHaveBeenCalled()
   })
 
-  it('falha de DB no dispatch é absorvida — devolve 200 (best-effort)', async () => {
+  it('falha de DB no dispatch devolve 500 e faz rollback do StripeEvent (Stripe retenta)', async () => {
     const session = makeSession({ payment_status: 'paid' })
     const event = makeEvent('checkout.session.completed', session)
     mockConstructEvent.mockReturnValue(event)
     mockedPrisma.stripeEvent.create.mockResolvedValue({ id: event.id })
     mockedPrisma.sponsoredBreedSlot.findUnique.mockRejectedValue(new Error('DB down'))
+    mockedPrisma.stripeEvent.delete.mockResolvedValue({ id: event.id })
 
     const req = makeReq({ signature: 't=1,v1=ok' })
     const res = makeRes()
 
     await handleStripeWebhook(req, res)
 
-    // 200 mesmo com erro: evento já registado, retry não ajuda.
-    // Admin reprocessa via StripeEvent.payload guardado.
-    expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith({ received: true })
+    // 500 forca Stripe a retentar. Rollback do StripeEvent garante
+    // que o retry passa o idempotency check e tenta processar de novo.
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(mockedPrisma.stripeEvent.delete).toHaveBeenCalledWith({ where: { id: event.id } })
   })
 })

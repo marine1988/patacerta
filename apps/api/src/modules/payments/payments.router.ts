@@ -1,6 +1,11 @@
 import { Router } from 'express'
 import { requireAuth, requireBreederProfile } from '../../middleware/auth.js'
-import { rateLimit } from '../../middleware/rate-limit.js'
+import { rateLimit, apiRateLimit } from '../../middleware/rate-limit.js'
+import { validate } from '../../middleware/validate.js'
+import {
+  sponsoredSlotAvailabilityQuerySchema,
+  listMySponsoredSlotsQuerySchema,
+} from '@patacerta/shared'
 import * as ctrl from './payments.controller.js'
 
 export const paymentsRouter = Router()
@@ -22,8 +27,14 @@ const checkoutRateLimit = rateLimit({
 
 // GET /api/payments/sponsored-slot/availability?breedId=N
 // Público (necessário para FE saber se botão "Comprar destaque" deve
-// aparecer mesmo antes de login). Sem auth.
-paymentsRouter.get('/sponsored-slot/availability', ctrl.getSponsoredSlotAvailability)
+// aparecer mesmo antes de login). Sem auth — aplicamos apiRateLimit
+// para impedir scraping massivo de disponibilidade por raça.
+paymentsRouter.get(
+  '/sponsored-slot/availability',
+  apiRateLimit,
+  validate(sponsoredSlotAvailabilityQuerySchema, 'query'),
+  ctrl.getSponsoredSlotAvailability,
+)
 
 // POST /api/payments/sponsored-slot/checkout
 // Requer auth + perfil de criador VERIFIED (validação extra no controller).
@@ -36,10 +47,11 @@ paymentsRouter.post(
 )
 
 // GET /api/payments/sponsored-slot/mine
-// Histórico de slots do criador autenticado.
+// Histórico de slots do criador autenticado (paginado).
 paymentsRouter.get(
   '/sponsored-slot/mine',
   requireAuth,
   requireBreederProfile,
+  validate(listMySponsoredSlotsQuerySchema, 'query'),
   ctrl.listMySponsoredSlots,
 )

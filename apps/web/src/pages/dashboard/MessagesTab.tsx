@@ -682,9 +682,14 @@ export function MessagesTab() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleReply} className="mt-6 space-y-2">
+          <form onSubmit={handleReply} className="mt-6 space-y-2" aria-label="Enviar resposta">
+            <label htmlFor="reply-body" className="sr-only">
+              Resposta
+            </label>
             <div className="flex gap-3">
               <textarea
+                id="reply-body"
+                aria-label="Texto da resposta"
                 className="input min-h-[60px] flex-1"
                 placeholder="Escrever resposta... (Enter para enviar, Shift+Enter para nova linha)"
                 value={replyText}
@@ -739,9 +744,16 @@ export function MessagesTab() {
           setSearchSubmitted(searchQuery.trim())
         }}
         className="mb-4 flex gap-2"
+        role="search"
+        aria-label="Pesquisa de conversas"
       >
+        <label htmlFor="threads-search" className="sr-only">
+          Pesquisar nas suas conversas
+        </label>
         <input
+          id="threads-search"
           type="search"
+          aria-label="Pesquisar nas suas conversas"
           className="input flex-1"
           placeholder="Pesquisar nas suas conversas..."
           value={searchQuery}
@@ -767,9 +779,15 @@ export function MessagesTab() {
 
       {/* Active/Archived tabs */}
       {!hasSearch && (
-        <div className="mb-4 flex gap-1 border-b border-gray-200">
+        <div
+          className="mb-4 flex gap-1 border-b border-gray-200"
+          role="tablist"
+          aria-label="Filtrar conversas por estado"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={!showArchived}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               !showArchived
                 ? 'border-caramel-600 text-caramel-600'
@@ -781,6 +799,8 @@ export function MessagesTab() {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={showArchived}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               showArchived
                 ? 'border-caramel-600 text-caramel-600'

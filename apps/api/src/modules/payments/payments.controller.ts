@@ -272,12 +272,12 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
  * GET /api/payments/sponsored-slot/availability?breedId=N
  * Permite ao FE saber se ainda há vaga numa raça antes de mostrar o
  * botão de comprar. Público (não revela informação sensível).
+ *
+ * Validação via middleware ``validate(sponsoredSlotAvailabilityQuerySchema, 'query')``
+ * — req.query e' substituido in-place com o objecto parsed/coerced.
  */
 export const getSponsoredSlotAvailability = asyncHandler(async (req, res) => {
-  const breedId = parseInt(String(req.query.breedId || ''), 10)
-  if (isNaN(breedId) || breedId <= 0) {
-    throw new AppError(400, 'breedId inválido', 'INVALID_BREED_ID')
-  }
+  const { breedId } = req.query as unknown as { breedId: number }
   const occupied = await countOccupyingSlots(breedId)
   res.json({
     breedId,
@@ -291,11 +291,13 @@ export const getSponsoredSlotAvailability = asyncHandler(async (req, res) => {
 })
 
 /**
- * GET /api/payments/sponsored-slot/mine
+ * GET /api/payments/sponsored-slot/mine?page=1&limit=20
  * Lista slots do criador autenticado (todos os estados de pagamento)
- * para a dashboard mostrar histórico e estado actual.
+ * para a dashboard mostrar histórico e estado actual. Paginado para
+ * evitar response grande em criadores com muito historico.
  */
 export const listMySponsoredSlots = asyncHandler(async (req, res) => {
+  const { page, limit } = req.query as unknown as { page: number; limit: number }
   const breeder = await prisma.breeder.findUnique({
     where: { userId: req.user!.userId },
     select: { id: true },
@@ -304,26 +306,40 @@ export const listMySponsoredSlots = asyncHandler(async (req, res) => {
     throw new AppError(404, 'Perfil de criador não encontrado', 'BREEDER_NOT_FOUND')
   }
 
-  const slots = await prisma.sponsoredBreedSlot.findMany({
-    where: { breederId: breeder.id },
-    orderBy: [{ createdAt: 'desc' }],
-    select: {
-      id: true,
-      breedId: true,
-      startsAt: true,
-      endsAt: true,
-      status: true,
-      paymentStatus: true,
-      priceCents: true,
-      currency: true,
-      paidAt: true,
-      stripeReceiptUrl: true,
-      impressionCount: true,
-      clickCount: true,
-      createdAt: true,
-      breed: { select: { id: true, namePt: true, nameSlug: true } },
+  const where = { breederId: breeder.id }
+  const [slots, total] = await Promise.all([
+    prisma.sponsoredBreedSlot.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }],
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        breedId: true,
+        startsAt: true,
+        endsAt: true,
+        status: true,
+        paymentStatus: true,
+        priceCents: true,
+        currency: true,
+        paidAt: true,
+        stripeReceiptUrl: true,
+        impressionCount: true,
+        clickCount: true,
+        createdAt: true,
+        breed: { select: { id: true, namePt: true, nameSlug: true } },
+      },
+    }),
+    prisma.sponsoredBreedSlot.count({ where }),
+  ])
+
+  res.json({
+    data: slots,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
     },
   })
-
-  res.json({ data: slots })
 })

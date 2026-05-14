@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
+import { apiRateLimit } from '../../middleware/rate-limit.js'
 import {
   resolveReportSchema,
   resolveServiceReportSchema,
@@ -94,7 +95,12 @@ adminRouter.post('/services/:id/suspend', validate(suspendServiceSchema), ctrl.a
 adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 
 // Audit logs
-adminRouter.get('/audit-logs', validate(auditLogsQuerySchema, 'query'), ctrl.getAuditLogs)
+adminRouter.get(
+  '/audit-logs',
+  apiRateLimit,
+  validate(auditLogsQuerySchema, 'query'),
+  ctrl.getAuditLogs,
+)
 
 // Featured / homepage destaques
 adminRouter.patch(

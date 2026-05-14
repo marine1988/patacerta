@@ -101,15 +101,31 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
     return
   }
 
-  // Processamento de domínio. Erros aqui são logados mas devolvemos
-  // 200 — o evento está registado e re-tentar não muda nada (a falha
-  // tipicamente é de DB transiente; admin pode reprocessar manualmente
-  // a partir do StripeEvent.payload guardado).
+  // Processamento de domínio. Em caso de falha, fazemos rollback do
+  // registo de idempotencia (delete do stripeEvent) e devolvemos 500
+  // para que o Stripe retente. Sem este rollback, falhas transientes
+  // de DB no dispatch deixariam o evento marcado como "processado"
+  // mas com efeito de dominio incompleto (e.g. slot pago mas
+  // permanentemente em PENDING). Email/Stripe-retrieve sao mantidos
+  // FORA da transacao para nao prender ligacoes durante I/O de rede.
   if (HANDLED_EVENT_TYPES.has(event.type)) {
     try {
       await dispatchEvent(event)
     } catch (err) {
       console.error(`[Stripe Webhook] Falha ao processar ${event.type} ${event.id}:`, err)
+      // Best-effort rollback do registo de idempotencia. Se isto
+      // tambem falhar, logamos mas devolvemos 500 — o admin pode
+      // sempre limpar manualmente a row e reprocessar.
+      try {
+        await prisma.stripeEvent.delete({ where: { id: event.id } })
+      } catch (delErr) {
+        console.error(
+          `[Stripe Webhook] CRÍTICO: falha a fazer rollback do StripeEvent ${event.id} apos dispatch falhado. Necessaria limpeza manual:`,
+          delErr,
+        )
+      }
+      res.status(500).json({ error: 'Falha a processar evento', code: 'WEBHOOK_DISPATCH_FAILED' })
+      return
     }
   } else {
     console.log(`[Stripe Webhook] Evento ${event.type} recebido mas não tratado.`)
