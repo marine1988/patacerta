@@ -10,7 +10,6 @@ import { usePageMeta } from '../../hooks/usePageMeta'
 
 interface PublicStats {
   breederCount: number
-  speciesCount?: number
   breedCount: number
   districtCount: number
   reviewCount: number
@@ -64,6 +63,7 @@ export function HomePage() {
 
   const {
     data: stats,
+    isLoading: statsLoading,
     isError: statsError,
     refetch: refetchStats,
   } = useQuery<PublicStats>({
@@ -127,13 +127,13 @@ export function HomePage() {
           </div>
 
           {/* Stats editoriais */}
-          <div className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat value={stats?.breederCount} label="Criadores" />
-            <Stat value={stats?.serviceCount} label="Serviços" />
-            <Stat value={stats?.breedCount} label="Raças" />
-            <Stat value={stats?.districtCount} label="Distritos" />
-            <Stat value={stats?.reviewCount} label="Avaliações" />
-          </div>
+          <dl className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
+            <Stat value={stats?.breederCount} label="Criadores" loading={statsLoading} />
+            <Stat value={stats?.serviceCount} label="Serviços" loading={statsLoading} />
+            <Stat value={stats?.breedCount} label="Raças" loading={statsLoading} />
+            <Stat value={stats?.districtCount} label="Distritos" loading={statsLoading} />
+            <Stat value={stats?.reviewCount} label="Avaliações" loading={statsLoading} />
+          </dl>
           {statsError && (
             <div
               role="alert"
@@ -382,13 +382,30 @@ export function HomePage() {
   )
 }
 
-function Stat({ value, label }: { value: number | undefined; label: string }) {
+function Stat({
+  value,
+  label,
+  loading,
+}: {
+  value: number | undefined
+  label: string
+  loading?: boolean
+}) {
+  // <dt> antes de <dd> conforme spec; mantemos ordem visual (value primeiro,
+  // label depois) com flex-col-reverse para nao quebrar leitura visual.
   return (
-    <div>
-      <p className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
-        {value ?? '—'}
-      </p>
-      <p className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</p>
+    <div className="flex flex-col-reverse">
+      <dt className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</dt>
+      {loading && value == null ? (
+        <dd
+          aria-label={`${label}: a carregar`}
+          className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12"
+        />
+      ) : (
+        <dd className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
+          {value ?? '—'}
+        </dd>
+      )}
     </div>
   )
 }
@@ -507,12 +524,25 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
           {s.municipality.namePt}, {s.district.namePt}
         </p>
         {rating && s.reviewCount > 0 && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs">
-            <span className="font-semibold text-yellow-600">{rating}</span>
-            <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+          <div
+            className="mt-2 flex items-center gap-1.5 text-xs"
+            aria-label={`Avaliação ${rating} de 5, ${s.reviewCount} ${s.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
+          >
+            <span aria-hidden="true" className="font-semibold text-yellow-600">
+              {rating}
+            </span>
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              className="h-3.5 w-3.5 text-yellow-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
-            <span className="text-muted">({s.reviewCount})</span>
+            <span aria-hidden="true" className="text-muted">
+              ({s.reviewCount})
+            </span>
           </div>
         )}
       </div>
@@ -546,12 +576,25 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
           {b.municipality.namePt}, {b.district.namePt}
         </p>
         {rating && b.reviewCount > 0 && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs">
-            <span className="font-semibold text-yellow-600">{rating}</span>
-            <svg className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+          <div
+            className="mt-2 flex items-center gap-1.5 text-xs"
+            aria-label={`Avaliação ${rating} de 5, ${b.reviewCount} ${b.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
+          >
+            <span aria-hidden="true" className="font-semibold text-yellow-600">
+              {rating}
+            </span>
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              className="h-3.5 w-3.5 text-yellow-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
-            <span className="text-muted">({b.reviewCount})</span>
+            <span aria-hidden="true" className="text-muted">
+              ({b.reviewCount})
+            </span>
           </div>
         )}
         {b.description && (
