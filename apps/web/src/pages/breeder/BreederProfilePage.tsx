@@ -445,27 +445,43 @@ export function BreederProfilePage() {
               </button>
               {breeder.photos.length > 1 && (
                 <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
-                  {breeder.photos.slice(1, 7).map((photo, idx) => (
-                    <button
-                      key={photo.id}
-                      type="button"
-                      onClick={() => setLightboxIndex(idx + 1)}
-                      className="relative aspect-square overflow-hidden rounded-md bg-gray-100"
-                      aria-label={`Abrir foto ${idx + 2}`}
-                    >
-                      <img
-                        src={photo.url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                      {idx === 5 && breeder.photos!.length > 7 && (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-semibold text-white">
-                          +{breeder.photos!.length - 7}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  {breeder.photos.slice(1, 7).map((photo, idx) => {
+                    // A ultima miniatura mostra um overlay "+N" quando ha
+                    // mais fotos do que cabem na grelha. Para AT, o numero
+                    // tem de fazer parte do aria-label — caso contrario
+                    // anuncia apenas "Abrir foto 7" e perde-se a indicacao
+                    // de que ha mais fotos.
+                    const isLast = idx === 5
+                    const hasMore = isLast && breeder.photos!.length > 7
+                    const extraCount = hasMore ? breeder.photos!.length - 7 : 0
+                    const label = hasMore
+                      ? `Abrir galeria, mais ${extraCount} foto${extraCount === 1 ? '' : 's'}`
+                      : `Abrir foto ${idx + 2}`
+                    return (
+                      <button
+                        key={photo.id}
+                        type="button"
+                        onClick={() => setLightboxIndex(idx + 1)}
+                        className="relative aspect-square overflow-hidden rounded-md bg-gray-100"
+                        aria-label={label}
+                      >
+                        <img
+                          src={photo.url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                        {hasMore && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-semibold text-white"
+                          >
+                            +{extraCount}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </Card>

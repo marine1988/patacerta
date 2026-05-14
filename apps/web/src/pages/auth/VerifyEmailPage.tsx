@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
@@ -27,8 +27,19 @@ export function VerifyEmailPage() {
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState('')
 
+  // Guard contra invocacao dupla em React StrictMode (dev) ou re-renders
+  // rapidos. O `cancelled` so' protegia o setState pos-resposta, nao o
+  // pedido POST — que era enviado duas vezes em dev e podia ser duas
+  // vezes em prod se o componente remontasse. O token de verificacao e'
+  // single-use no backend, pelo que o segundo pedido devolveria erro e
+  // o utilizador via "Verificação falhou" apesar de ter sido bem
+  // sucedida da primeira vez.
+  const verifyStartedRef = useRef(false)
+
   useEffect(() => {
     if (!token) return
+    if (verifyStartedRef.current) return
+    verifyStartedRef.current = true
     let cancelled = false
     ;(async () => {
       try {
@@ -36,12 +47,17 @@ export function VerifyEmailPage() {
         if (!cancelled) {
           setStatus('success')
           setMessage(res.data.message || 'Email verificado com sucesso.')
+          // Apaga o token do URL para nao ficar em history/referrer.
+          window.history.replaceState({}, '', '/verificar-email')
         }
       } catch (err: unknown) {
         if (!cancelled) {
           const axiosErr = err as { response?: { data?: { error?: string } } }
           setStatus('error')
           setMessage(axiosErr.response?.data?.error || 'Não foi possível verificar o email.')
+          // Mesmo em caso de erro, remove o token (ja' foi consumido ou
+          // e' invalido) para evitar retries automaticos em refresh.
+          window.history.replaceState({}, '', '/verificar-email')
         }
       }
     })()

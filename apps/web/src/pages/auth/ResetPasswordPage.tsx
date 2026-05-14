@@ -169,6 +169,11 @@ function SetNewPasswordForm({ token }: { token: string }) {
     setLoading(true)
     try {
       await api.post('/auth/reset-password', result.data)
+      // Limpa o token do URL para evitar:
+      //  - permanecer no historico do browser e em referrer
+      //  - re-submissao do formulario num refresh (mesmo que o backend
+      //    rejeite tokens consumidos, melhor nao expor)
+      window.history.replaceState({}, '', '/recuperar-palavra-passe')
       setSuccess(true)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }

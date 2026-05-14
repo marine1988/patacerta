@@ -1,11 +1,27 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { loginSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
+
+/**
+ * Valida um destino de redirect pos-login para evitar open-redirect.
+ * Apenas paths relativos (comecam com `/`) e que NAO sejam protocol-relative
+ * (`//evil.com`) sao aceites. Qualquer URL absoluta, protocol-relative ou
+ * vazia cai no default `/`.
+ */
+function safeRedirect(target: string | null | undefined): string {
+  if (!target) return '/'
+  if (typeof target !== 'string') return '/'
+  if (!target.startsWith('/')) return '/'
+  if (target.startsWith('//')) return '/'
+  // Evita backslash-tricks que alguns parsers tratam como esquema.
+  if (target.includes('\\')) return '/'
+  return target
+}
 
 export function LoginPage() {
   usePageMeta({
@@ -23,7 +39,16 @@ export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || null
+  const [searchParams] = useSearchParams()
+  // Suporta dois mecanismos de redirect:
+  //   1) ?next=/caminho   — usado pelo interceptor de auth (api.ts) e por
+  //      links que enviam o utilizador a' pagina de login.
+  //   2) location.state.from — usado por ProtectedRoute quando intercepta
+  //      uma navegacao directa via React Router.
+  // Ambos sao validados via safeRedirect() para evitar open-redirect.
+  const nextParam = searchParams.get('next')
+  const fromState = (location.state as { from?: { pathname?: string } })?.from?.pathname
+  const redirectTo = safeRedirect(nextParam ?? fromState ?? null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -39,10 +64,10 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(result.data)
-      // Pos-login vai sempre para `from` (rota original) ou /. O painel
-      // adapta-se ao que o utilizador tem (perfil de criador, servicos)
-      // sem depender do role.
-      navigate(from || '/', { replace: true })
+      // Pos-login vai sempre para `redirectTo` (validado via safeRedirect)
+      // ou `/`. O painel adapta-se ao que o utilizador tem (perfil de
+      // criador, servicos) sem depender do role.
+      navigate(redirectTo, { replace: true })
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; code?: string } } }
       const code = axiosErr.response?.data?.code
@@ -92,7 +117,8 @@ export function LoginPage() {
               label="Email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.trimStart())}
+              onBlur={(e) => setEmail(e.target.value.trim())}
               placeholder="seu@email.pt"
               required
               autoComplete="email"

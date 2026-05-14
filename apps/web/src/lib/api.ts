@@ -88,7 +88,24 @@ api.interceptors.response.use(
         processQueue(refreshErr, null)
         localStorage.removeItem('access_token')
         localStorage.removeItem('user')
-        window.location.href = '/entrar'
+        // Preserva o destino actual em `?next=` para que o LoginPage
+        // possa redirigir o utilizador de volta apos auth bem sucedida.
+        // Evita perda total de contexto (e.g. utilizador a meio de um
+        // formulario cujo token expirou). So' aplicamos quando o
+        // utilizador nao esta ja' numa rota de auth, para nao criar
+        // loops de redirect.
+        const currentPath = window.location.pathname + window.location.search
+        const onAuthPage =
+          window.location.pathname.startsWith('/entrar') ||
+          window.location.pathname.startsWith('/registar') ||
+          window.location.pathname.startsWith('/recuperar') ||
+          window.location.pathname.startsWith('/verificar')
+        // Whitelist de prefixos seguros: paths relativos comecando com '/'
+        // mas nao '//' (evita open-redirect via path-relative-scheme).
+        const safeNext =
+          currentPath.startsWith('/') && !currentPath.startsWith('//') ? currentPath : '/'
+        const target = onAuthPage ? '/entrar' : `/entrar?next=${encodeURIComponent(safeNext)}`
+        window.location.href = target
         return Promise.reject(refreshErr)
       } finally {
         isRefreshing = false

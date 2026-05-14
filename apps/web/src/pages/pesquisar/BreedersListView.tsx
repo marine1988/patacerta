@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -39,7 +39,12 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
   const districtId = searchParams.get('districtId') || undefined
   const breedId = searchParams.get('breedId') || undefined
   const query = searchParams.get('query') || undefined
-  const page = parseInt(searchParams.get('page') || '1') || 1
+  // Clamp inferior a 1: `parseInt('abc')` -> NaN -> `|| 1`, mas
+  // `parseInt('-5')` -> -5 (truthy negativo passa o `||`). Tambem aceita
+  // page=0 que devolveria pagina vazia. Math.max(1, ...) cobre ambos.
+  // O clamp superior (page > totalPages) e' feito apos data carregar,
+  // via useEffect mais abaixo.
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
 
   const { data, isLoading, isError, refetch } = useQuery<BreedersPaginatedResponse>({
     queryKey: ['breeders', { speciesId, districtId, breedId, query, page }],
@@ -54,6 +59,20 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
   const breeders = data?.data ?? []
   const meta = data?.meta
   const hasFilters = Boolean(districtId || breedId || query)
+
+  // Se o utilizador entrar com ?page=99999 a API devolve uma pagina vazia
+  // sem indicacao visivel — o componente renderizaria EmptyState mesmo
+  // existindo resultados nas primeiras paginas. Apos saber `totalPages`,
+  // se a page actual for superior, redirige para a ultima pagina valida.
+  useEffect(() => {
+    if (!meta) return
+    if (meta.totalPages === 0) return // sem resultados, EmptyState dedicado
+    if (page > meta.totalPages) {
+      const params = new URLSearchParams(searchParams)
+      params.set('page', String(meta.totalPages))
+      setSearchParams(params)
+    }
+  }, [meta, page, searchParams, setSearchParams])
 
   // ItemList JSON-LD ajuda Google e LLMs a compreender a estrutura da
   // listagem. Só emitimos na primeira página (paginas seguintes não trazem

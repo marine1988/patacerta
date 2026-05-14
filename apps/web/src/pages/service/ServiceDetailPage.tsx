@@ -514,8 +514,13 @@ export function ServiceDetailPage() {
   const hasPhotos = photos.length > 0
   const activeUrl = hasPhotos ? photos[activePhoto]?.url : null
   const providerName = `${service.provider.firstName} ${service.provider.lastName}`.trim()
+  // Construir o shareUrl a partir do origin + pathname evita propagar
+  // query params (e.g. ?utm_source, ?ref) e fragmentos que pertencem
+  // a sessao de quem partilha mas nao deveriam viajar com o link.
   const shareUrl =
-    typeof window !== 'undefined' ? window.location.href : `https://patacerta.pt/servicos/${id}`
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : `https://patacerta.pt/servicos/${id}`
 
   const hasContactDetails = !!service.phone || !!service.website
 
@@ -582,12 +587,23 @@ export function ServiceDetailPage() {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setActivePhoto(idx)}
+                    onClick={() => {
+                      // Primeiro clique: muda a foto activa. Clique numa
+                      // miniatura ja' activa: abre o lightbox. Da acesso
+                      // ao lightbox por teclado (Enter) sem precisar de
+                      // dblclick (que nao tem equivalente kbd).
+                      if (idx === activePhoto) openLightbox(idx)
+                      else setActivePhoto(idx)
+                    }}
                     onDoubleClick={() => openLightbox(idx)}
                     className={`aspect-square overflow-hidden rounded-md border-2 ${
                       idx === activePhoto ? 'border-caramel-600' : 'border-transparent'
                     }`}
-                    aria-label={`Foto ${idx + 1}`}
+                    aria-label={
+                      idx === activePhoto
+                        ? `Foto ${idx + 1} (activa, premir para ampliar)`
+                        : `Foto ${idx + 1}`
+                    }
                   >
                     <img src={p.url} alt="" className="h-full w-full object-cover" loading="lazy" />
                   </button>
