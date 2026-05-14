@@ -1,6 +1,6 @@
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
-import { cacheGetOrSet } from '../../lib/cache.js'
+import { cacheGetOrSet, cacheDel } from '../../lib/cache.js'
 
 /**
  * GET /api/home/featured
@@ -24,7 +24,18 @@ import { cacheGetOrSet } from '../../lib/cache.js'
  */
 const SLOT_COUNT = 12
 const FEATURED_TTL_MS = 60_000
-const FEATURED_CACHE_KEY = 'home:featured:v2'
+export const FEATURED_CACHE_KEY = 'home:featured:v2'
+
+/**
+ * Invalida o cache do payload da homepage. Chamar sempre que uma
+ * mutacao afecte o conjunto visivel: featured toggle (admin), status
+ * change (admin/owner), suspensao de utilizador (admin), eliminacao de
+ * service/breeder. Caso contrario o carrossel pode mostrar items
+ * inactivos ate 60s.
+ */
+export async function invalidateFeaturedCache(): Promise<void> {
+  await cacheDel(FEATURED_CACHE_KEY)
+}
 
 interface FeaturedCachePayload {
   featuredServices: unknown[]
@@ -35,10 +46,19 @@ interface FeaturedCachePayload {
 
 async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
   const now = new Date()
+  // Filtros de actividade: services com provider activo, breeders com user
+  // activo. Mantemos o paralelismo com os filtros das listagens publicas
+  // em search.controller.ts — caso contrario um criador suspenso continua
+  // a aparecer no carrossel da homepage ate o admin baixar manualmente
+  // breeder.status, o que e' inconsistente com a regra "isActive=false
+  // significa invisivel em toda a parte publica".
+  const providerActiveFilter = { provider: { isActive: true, suspendedAt: null } } as const
+  const breederUserActiveFilter = { user: { isActive: true, suspendedAt: null } } as const
+
   const [featuredServices, fallbackServices, featuredBreeders, fallbackBreeders] =
     await Promise.all([
       prisma.service.findMany({
-        where: { status: 'ACTIVE', featuredUntil: { gt: now } },
+        where: { status: 'ACTIVE', featuredUntil: { gt: now }, ...providerActiveFilter },
         select: featuredServiceSelect(),
         // Pegamos ate 50 candidatos e baralhamos em JS — evita ORDER BY RANDOM
         // que e' caro em postgres.
@@ -49,13 +69,14 @@ async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
         where: {
           status: 'ACTIVE',
           OR: [{ featuredUntil: null }, { featuredUntil: { lte: now } }],
+          ...providerActiveFilter,
         },
         select: featuredServiceSelect(),
         take: 50,
         orderBy: { publishedAt: 'desc' },
       }),
       prisma.breeder.findMany({
-        where: { status: 'VERIFIED', featuredUntil: { gt: now } },
+        where: { status: 'VERIFIED', featuredUntil: { gt: now }, ...breederUserActiveFilter },
         select: featuredBreederSelect(),
         take: 50,
         orderBy: { featuredUntil: 'desc' },
@@ -64,6 +85,7 @@ async function loadFeaturedPayload(): Promise<FeaturedCachePayload> {
         where: {
           status: 'VERIFIED',
           OR: [{ featuredUntil: null }, { featuredUntil: { lte: now } }],
+          ...breederUserActiveFilter,
         },
         select: featuredBreederSelect(),
         take: 50,

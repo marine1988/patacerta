@@ -7,7 +7,7 @@ import { uploadFile, deleteFile } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import bcrypt from 'bcryptjs'
 import multer from 'multer'
-import sharp from 'sharp'
+import { createSafeSharp } from '../../lib/sharp-safe.js'
 import { randomUUID } from 'crypto'
 import type { ChangeUserRoleInput } from '@patacerta/shared'
 
@@ -42,6 +42,8 @@ export const updateMe = asyncHandler(async (req, res) => {
   if (lastName) updateData.lastName = lastName
   if (phone !== undefined) updateData.phone = phone || null
 
+  let passwordChanged = false
+
   if (newPassword) {
     if (!currentPassword)
       throw new AppError(400, 'Palavra-passe atual é obrigatória', 'MISSING_CURRENT_PASSWORD')
@@ -53,13 +55,38 @@ export const updateMe = asyncHandler(async (req, res) => {
     if (!valid) throw new AppError(400, 'Palavra-passe atual incorreta', 'INVALID_CURRENT_PASSWORD')
 
     updateData.passwordHash = await bcrypt.hash(newPassword, 12)
+    passwordChanged = true
   }
 
-  const updated = await prisma.user.update({
-    where: { id: req.user!.userId },
-    data: updateData,
-    select: USER_SELECT,
+  // Quando muda a password, revogamos todos os refresh tokens em
+  // simultaneo (mesma transaccao) para forcar re-login de quaisquer
+  // sessoes que ja estivessem activas — mitigacao classica para o cenario
+  // "utilizador muda a password porque suspeita de compromisso".
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.update({
+      where: { id: req.user!.userId },
+      data: updateData,
+      select: USER_SELECT,
+    })
+    if (passwordChanged) {
+      await tx.refreshToken.updateMany({
+        where: { userId: req.user!.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+    }
+    return u
   })
+
+  if (passwordChanged) {
+    await logAudit({
+      userId: req.user!.userId,
+      action: 'USER_PASSWORD_CHANGED',
+      entity: 'User',
+      entityId: req.user!.userId,
+      details: 'Password rotated via /me; refresh tokens revoked',
+      ipAddress: req.ip,
+    })
+  }
 
   res.json(updated)
 })
@@ -179,9 +206,21 @@ export const changeUserRole = asyncHandler(async (req, res) => {
   // possiveis checks adicionais (e.g., despromocao de outro admin).
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true, role: true, isActive: true, suspendedAt: true },
   })
   if (!target) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+
+  // Bloquear alteracoes de papel sobre utilizadores suspensos/inactivos.
+  // Caso contrario um admin podia silenciosamente promover um utilizador
+  // suspenso a ADMIN e este, ao ser reactivado, acordaria com permissoes
+  // elevadas. Forcamos reactivacao explicita antes da alteracao de papel.
+  if (!target.isActive || target.suspendedAt) {
+    throw new AppError(
+      400,
+      'Utilizador suspenso ou inactivo — reactive antes de alterar o papel',
+      'USER_NOT_ACTIVE',
+    )
+  }
 
   // Guard: impedir despromover o último ADMIN activo. Sem este check,
   // um admin podia retirar o papel ao único colega ADMIN restante e
@@ -293,7 +332,7 @@ export const uploadMyAvatar = asyncHandler(async (req, res) => {
 
   const userId = req.user!.userId
 
-  const buffer = await sharp(req.file.buffer)
+  const buffer = await (await createSafeSharp(req.file.buffer))
     .rotate()
     .resize({
       width: AVATAR_MAX_DIMENSION,

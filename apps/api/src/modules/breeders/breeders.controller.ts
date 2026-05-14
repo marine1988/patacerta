@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import multer from 'multer'
-import sharp from 'sharp'
+import { createSafeSharp } from '../../lib/sharp-safe.js'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
@@ -122,12 +122,19 @@ const OPTIONAL_BREEDER_FIELDS = [
 // Admin e SERVICE_PROVIDER mantem o role actual (caso seja SP que tambem
 // quer ter perfil de criador, fica como SP — permissoes derivam de
 // ter-perfil/ter-servico, nao do role).
-async function promoteToBreederIfNeeded(userId: number): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
-  if (!user) return
-  if (user.role === 'OWNER') {
-    await prisma.user.update({ where: { id: userId }, data: { role: 'BREEDER' } })
-  }
+//
+// Implementacao inline em createBreederProfile (dentro da mesma TX que
+// cria o Breeder) para garantir atomicidade. Esta funcao foi removida
+// para evitar duplicacao.
+
+/**
+ * Normaliza um numero DGAV antes de persistir/comparar. Sem isto,
+ * "PT-12345" e "pt12345" passam pelo `findFirst` como valores
+ * distintos e dois criadores conseguem registar a mesma licenca
+ * efectiva. Removemos hifens/barras e normalizamos para maiusculas.
+ */
+function normalizeDgavNumber(raw: string): string {
+  return raw.toUpperCase().replace(/[-/\s]/g, '')
 }
 
 /**
@@ -182,10 +189,14 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
   const existing = await prisma.breeder.findUnique({ where: { userId } })
   if (existing) throw new AppError(409, 'Já possui um perfil de criador', 'BREEDER_EXISTS')
 
+  // Normaliza DGAV antes de qualquer comparacao para impedir duplicados
+  // semanticamente identicos com casing/pontuacao diferentes.
+  const normalizedDgav = normalizeDgavNumber(data.dgavNumber)
+
   const nifExists = await prisma.breeder.findFirst({ where: { nif: data.nif } })
   if (nifExists) throw new AppError(409, 'Este NIF já está registado', 'NIF_EXISTS')
 
-  const dgavExists = await prisma.breeder.findFirst({ where: { dgavNumber: data.dgavNumber } })
+  const dgavExists = await prisma.breeder.findFirst({ where: { dgavNumber: normalizedDgav } })
   if (dgavExists) throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
 
   const district = await prisma.district.findUnique({ where: { id: data.districtId } })
@@ -212,6 +223,9 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     }
   }
 
+  // Cria o perfil e promove o role atomicamente. Sem a transaccao, uma
+  // falha entre os dois deixava o user com perfil de criador mas role
+  // OWNER, bloqueando middleware de role-gate posterior.
   let breeder
   try {
     // SEO: gera slug url-friendly a partir do businessName, único na
@@ -219,24 +233,33 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     // criado aqui é estável para o resto da vida do registo.
     const slug = await generateBreederSlug(data.businessName)
 
-    breeder = await prisma.breeder.create({
-      data: {
-        userId,
-        businessName: data.businessName,
-        slug,
-        nif: data.nif,
-        dgavNumber: data.dgavNumber,
-        description: data.description,
-        website: data.website,
-        phone: data.phone,
-        districtId: data.districtId,
-        municipalityId: data.municipalityId,
-        otherBreedsNote: data.otherBreedsNote,
-        species: { create: [{ speciesId: dogSpeciesId }] },
-        breeds:
-          breedIds.length > 0 ? { create: breedIds.map((breedId) => ({ breedId })) } : undefined,
-      },
-      include: BREEDER_INCLUDE,
+    breeder = await prisma.$transaction(async (tx) => {
+      const created = await tx.breeder.create({
+        data: {
+          userId,
+          businessName: data.businessName,
+          slug,
+          nif: data.nif,
+          dgavNumber: normalizedDgav,
+          description: data.description,
+          website: data.website,
+          phone: data.phone,
+          districtId: data.districtId,
+          municipalityId: data.municipalityId,
+          otherBreedsNote: data.otherBreedsNote,
+          species: { create: [{ speciesId: dogSpeciesId }] },
+          breeds:
+            breedIds.length > 0 ? { create: breedIds.map((breedId) => ({ breedId })) } : undefined,
+        },
+        include: BREEDER_INCLUDE,
+      })
+      // Promocao de role dentro da mesma TX. Re-le o role para nao
+      // sobrepor SERVICE_PROVIDER / ADMIN.
+      const u = await tx.user.findUnique({ where: { id: userId }, select: { role: true } })
+      if (u?.role === 'OWNER') {
+        await tx.user.update({ where: { id: userId }, data: { role: 'BREEDER' } })
+      }
+      return created
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -247,8 +270,6 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     }
     throw err
   }
-
-  await promoteToBreederIfNeeded(userId)
 
   res.status(201).json(breeder)
 })
@@ -270,7 +291,15 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
   }
 
   const updateData: Record<string, unknown> = {}
-  if (data.businessName !== undefined) updateData.businessName = data.businessName
+  if (data.businessName !== undefined) {
+    updateData.businessName = data.businessName
+    // Slug squatting prevention: enquanto o perfil nao esta VERIFIED, o
+    // criador pode alterar businessName livremente. Sem regenerar o slug,
+    // o URL publico ficaria preso ao nome inicial — permitindo registar
+    // "Doggo Heaven" (slug doggo-heaven), depois mudar para "Acme Kennels"
+    // mantendo o slug atraente.
+    updateData.slug = await generateBreederSlug(data.businessName)
+  }
   if (data.nif !== undefined) {
     const nifExists = await prisma.breeder.findFirst({
       where: { nif: data.nif, id: { not: breeder.id } },
@@ -279,11 +308,13 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     updateData.nif = data.nif
   }
   if (data.dgavNumber !== undefined) {
+    // Normalizar antes de comparar/persistir — ver normalizeDgavNumber.
+    const normalizedDgav = normalizeDgavNumber(data.dgavNumber)
     const dgavExists = await prisma.breeder.findFirst({
-      where: { dgavNumber: data.dgavNumber, id: { not: breeder.id } },
+      where: { dgavNumber: normalizedDgav, id: { not: breeder.id } },
     })
     if (dgavExists) throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
-    updateData.dgavNumber = data.dgavNumber
+    updateData.dgavNumber = normalizedDgav
   }
   for (const field of OPTIONAL_BREEDER_FIELDS) {
     if (data[field] !== undefined) updateData[field] = data[field]
@@ -344,21 +375,39 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     )
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (breedIdsToSet !== undefined) {
-      await tx.breederBreed.deleteMany({ where: { breederId: breeder.id } })
-      if (breedIdsToSet.length > 0) {
-        await tx.breederBreed.createMany({
-          data: breedIdsToSet.map((breedId) => ({ breederId: breeder.id, breedId })),
-        })
+  let updated
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      if (breedIdsToSet !== undefined) {
+        await tx.breederBreed.deleteMany({ where: { breederId: breeder.id } })
+        if (breedIdsToSet.length > 0) {
+          await tx.breederBreed.createMany({
+            data: breedIdsToSet.map((breedId) => ({ breederId: breeder.id, breedId })),
+          })
+        }
       }
-    }
-    return tx.breeder.update({
-      where: { id: breeder.id },
-      data: updateData,
-      include: BREEDER_INCLUDE,
+      return tx.breeder.update({
+        where: { id: breeder.id },
+        data: updateData,
+        include: BREEDER_INCLUDE,
+      })
     })
-  })
+  } catch (err) {
+    // P2002 pode escapar do pre-check (NIF/DGAV) em concorrencia: duas
+    // requests racing veem ambas "no conflict", uma escreve, a outra
+    // explode com P2002. Retornamos 409 com codigo especifico em vez de
+    // deixar o errorHandler devolver 500 generico.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const target = (err.meta?.target as string[] | undefined) ?? []
+      if (target.includes('dgav_number'))
+        throw new AppError(409, 'Este número DGAV já está registado', 'DGAV_EXISTS')
+      if (target.includes('nif'))
+        throw new AppError(409, 'Este NIF já está registado', 'NIF_EXISTS')
+      if (target.includes('slug'))
+        throw new AppError(409, 'Este nome já está em uso', 'SLUG_EXISTS')
+    }
+    throw err
+  }
   res.json(updated)
 })
 
@@ -505,7 +554,7 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
   // (já validámos N≤10 fotos no schema do controller).
   const created = await Promise.all(
     files.map(async (file, i) => {
-      const buffer = await sharp(file.buffer)
+      const buffer = await (await createSafeSharp(file.buffer))
         .rotate()
         .resize({
           width: PHOTO_MAX_DIMENSION,
@@ -663,6 +712,15 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
       'CANNOT_DELETE_VERIFIED',
     )
   }
+  // Tambem bloqueamos eliminacao durante moderacao activa — admin
+  // precisa do contexto para fechar o ticket de verificacao.
+  if (breeder.status === 'PENDING_VERIFICATION') {
+    throw new AppError(
+      400,
+      'Perfil em verificação não pode ser eliminado. Contacte o suporte.',
+      'CANNOT_DELETE_PENDING',
+    )
+  }
 
   // Buscar os ficheiros para cleanup do storage antes do delete.
   const [photos, docs] = await Promise.all([
@@ -688,22 +746,25 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
     }),
   ])
 
-  // Cascade trata das relações (ver schema.prisma).
-  await prisma.breeder.delete({ where: { id: breeder.id } })
+  // Cascade trata das relações (ver schema.prisma). Delete + demotion
+  // numa unica TX — sem isto, uma POST /services concorrente podia
+  // criar um servico entre o `delete` e o `findUnique`, levando a um
+  // estado inconsistente onde o user ficava OWNER com 1 servico activo.
+  await prisma.$transaction(async (tx) => {
+    await tx.breeder.delete({ where: { id: breeder.id } })
 
-  // Reverter o role para OWNER se já não tem outros perfis activos.
-  // Não tocar em ADMIN.
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, services: { select: { id: true }, take: 1 } },
-  })
-  if (user && user.role === 'BREEDER') {
-    const hasService = user.services.length > 0
-    await prisma.user.update({
+    const user = await tx.user.findUnique({
       where: { id: userId },
-      data: { role: hasService ? 'SERVICE_PROVIDER' : 'OWNER' },
+      select: { role: true, services: { select: { id: true }, take: 1 } },
     })
-  }
+    if (user && user.role === 'BREEDER') {
+      const hasService = user.services.length > 0
+      await tx.user.update({
+        where: { id: userId },
+        data: { role: hasService ? 'SERVICE_PROVIDER' : 'OWNER' },
+      })
+    }
+  })
 
   await logAudit({
     userId,

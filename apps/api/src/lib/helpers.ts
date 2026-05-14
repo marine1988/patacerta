@@ -19,7 +19,12 @@ export const asyncHandler =
 
 export function parseId(raw: string): number {
   const id = parseInt(raw, 10)
-  if (isNaN(id) || id <= 0) throw new AppError(400, 'ID inválido', 'INVALID_ID')
+  // `parseInt('999999999999999999999', 10)` devolve `Infinity`, que
+  // passa o `isNaN` e o `> 0`. Sem o `Number.isSafeInteger` (ou pelo
+  // menos `Number.isFinite`), o Prisma e' chamado com Infinity e rebenta
+  // com 500 em vez do 400 esperado.
+  if (!Number.isSafeInteger(id) || id <= 0)
+    throw new AppError(400, 'ID inválido', 'INVALID_ID')
   return id
 }
 

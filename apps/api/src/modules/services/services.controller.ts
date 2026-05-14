@@ -21,7 +21,7 @@
 
 import type { Request, Response } from 'express'
 import multer from 'multer'
-import sharp from 'sharp'
+import { createSafeSharp } from '../../lib/sharp-safe.js'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
@@ -334,8 +334,20 @@ export const updateService = asyncHandler(async (req, res) => {
   if (input.phone !== undefined) data.phone = input.phone || null
 
   if (locationChanged) {
+    // Disambiguar: `input.addressLine === undefined` significa "nao
+    // tocar" (usar valor anterior); `input.addressLine === ""` ou null
+    // significa "limpar" e re-geocodar so' com distrito/concelho. O
+    // codigo anterior fazia `data.addressLine ?? existing.addressLine`,
+    // que apos a normalizacao `"" => null` perdia o sinal de "limpar"
+    // e voltava a usar a morada antiga.
+    const addressForGeocode: string | null =
+      input.addressLine !== undefined
+        ? input.addressLine
+          ? input.addressLine
+          : null
+        : existing.addressLine
     const geo = await geocodeService({
-      addressLine: (data.addressLine as string | null | undefined) ?? existing.addressLine,
+      addressLine: addressForGeocode,
       districtId: nextDistrictId,
       municipalityId: nextMunicipalityId,
     })
@@ -568,7 +580,7 @@ export const uploadPhotos = asyncHandler(async (req, res) => {
   // breeders.controller para racional. Schema do controller já valida N≤10.
   const created = await Promise.all(
     files.map(async (file, i) => {
-      const buffer = await sharp(file.buffer)
+      const buffer = await (await createSafeSharp(file.buffer))
         .rotate() // honour EXIF orientation
         .resize({
           width: PHOTO_MAX_DIMENSION,
@@ -1122,6 +1134,17 @@ export const reportService = asyncHandler(async (req, res) => {
         select: { id: true },
       })
       if (existing) {
+        // Loggar tambem a tentativa duplicada — util forenseamente para
+        // detectar campanhas de assedio (mesmo reporter a tentar
+        // varias vezes contra o mesmo servico).
+        await logAudit({
+          userId,
+          action: 'service.report.duplicate',
+          entity: 'service_report',
+          entityId: existing.id,
+          details: `Duplicate attempt on service ${serviceId}`,
+          ipAddress: req.ip,
+        })
         res.status(200).json({ id: existing.id, duplicate: true })
         return
       }

@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
 import { maskEmail } from '../../lib/redact.js'
+import { invalidateFeaturedCache } from '../home/home.controller.js'
 import type {
   ResolveReportInput,
   ResolveServiceReportInput,
@@ -1365,6 +1366,11 @@ export const setServiceFeatured = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // Invalida cache da homepage para o toggle ser visivel imediatamente
+  // em vez de esperar TTL (60s). Best-effort: a falha do cacheDel nao
+  // bloqueia a mutacao, no pior caso espera o TTL.
+  await invalidateFeaturedCache().catch(() => undefined)
+
   res.json(updated)
 })
 
@@ -1399,6 +1405,8 @@ export const setBreederFeatured = asyncHandler(async (req, res) => {
     details: featuredUntil ? `Promoted until ${featuredUntil.toISOString()}` : 'Promotion removed',
     ipAddress: req.ip,
   })
+
+  await invalidateFeaturedCache().catch(() => undefined)
 
   res.json(updated)
 })
