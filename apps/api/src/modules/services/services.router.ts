@@ -126,4 +126,9 @@ servicesRouter.patch(
   validate(reorderServicePhotosSchema),
   reorderPhotos,
 )
-servicesRouter.delete('/:serviceId/photos/:photoId', requireAuth, deletePhoto)
+servicesRouter.delete(
+  '/:serviceId/photos/:photoId',
+  requireAuth,
+  serviceMutationRateLimit,
+  deletePhoto,
+)

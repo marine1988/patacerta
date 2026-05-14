@@ -1040,23 +1040,28 @@ export const contactService = asyncHandler(async (req, res) => {
   if (service.providerId === userId) {
     throw new AppError(400, 'Não pode contactar o seu próprio anúncio', 'SELF_CONTACT')
   }
-  if (!service.provider.isActive || service.provider.suspendedAt) {
+  if (!service.provider || !service.provider.isActive || service.provider.suspendedAt) {
     throw new AppError(400, 'Este prestador não está a receber mensagens', 'PROVIDER_UNAVAILABLE')
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Determinar se a thread ja existia ANTES do upsert. Comparar
+    // createdAt/updatedAt pos-upsert nao e' fiavel: o Postgres pode atribuir
+    // timestamps com microssegundos distintos mesmo no INSERT, e o `update`
+    // branch nao garante igualdade. Pre-check com findUnique e' deterministico.
+    const existing = await tx.thread.findUnique({
+      where: { ownerId_serviceId: { ownerId: userId, serviceId } },
+      select: { id: true },
+    })
     const thread = await tx.thread.upsert({
       where: { ownerId_serviceId: { ownerId: userId, serviceId } },
       create: { ownerId: userId, serviceId, subject },
       update: { updatedAt: new Date() },
     })
-    const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
+    const created = !existing
     const message = await tx.message.create({
       data: { threadId: thread.id, senderId: userId, body },
     })
-    if (!created) {
-      await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
-    }
     return { thread, message, created }
   })
 

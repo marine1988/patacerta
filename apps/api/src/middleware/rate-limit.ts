@@ -247,6 +247,18 @@ export const serviceCreateRateLimit = rateLimit({
   bucket: 'service-create',
 })
 
+// Criar um perfil de breeder envolve auto-promoção de role e e' irreversivel
+// na pratica (delete e' soft + cooldown). Limitamos a 3/dia por utilizador
+// para impedir scripts que tentem criar perfis em massa (e.g. para
+// abusar de slots de destaque ou inflacionar listagens).
+export const breederCreateRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 3,
+  message: 'Limite diário de criação de perfis atingido. Tente novamente amanhã.',
+  keyGenerator: userKey,
+  bucket: 'breeder-create',
+})
+
 export const serviceReportRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,

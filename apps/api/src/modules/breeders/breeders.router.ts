@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole, requireBreederProfile } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
-import { uploadRateLimit } from '../../middleware/rate-limit.js'
+import { uploadRateLimit, breederCreateRateLimit } from '../../middleware/rate-limit.js'
 import {
   breederProfileSchema,
   reorderBreederPhotosSchema,
@@ -54,7 +54,13 @@ breedersRouter.delete(
 
 // Create profile — any authenticated user can create their first breeder profile.
 // Auto-promotes role to BREEDER inside the controller (analogous to services).
-breedersRouter.post('/', requireAuth, validate(breederProfileSchema), ctrl.createBreederProfile)
+breedersRouter.post(
+  '/',
+  requireAuth,
+  breederCreateRateLimit,
+  validate(breederProfileSchema),
+  ctrl.createBreederProfile,
+)
 
 // Public — view breeder profile (must be last)
 breedersRouter.get('/:id', ctrl.getBreederById)

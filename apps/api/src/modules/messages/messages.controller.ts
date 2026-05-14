@@ -147,18 +147,26 @@ export const createThread = asyncHandler(async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      // Determinacao robusta de "created": comparar createdAt/updatedAt
+      // pos-upsert e' fragil — o Postgres pode atribuir microssegundos
+      // ligeiramente diferentes entre as duas colunas, e o caminho de
+      // update so re-define updatedAt apos o create do message, o que
+      // tambem afecta a comparacao. Em vez disso, vemos primeiro se a
+      // thread ja existe; o upsert continua a funcionar como guard
+      // contra race conditions (unique constraint em ownerId_breederId).
+      const existing = await tx.thread.findUnique({
+        where: { ownerId_breederId: { ownerId: userId, breederId: breeder.id } },
+        select: { id: true },
+      })
       const thread = await tx.thread.upsert({
         where: { ownerId_breederId: { ownerId: userId, breederId: breeder.id } },
         create: { ownerId: userId, breederId: breeder.id, subject: data.subject },
         update: { updatedAt: new Date() },
       })
-      const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
+      const created = !existing
       const message = await tx.message.create({
         data: { threadId: thread.id, senderId: userId, body: data.body },
       })
-      if (!created) {
-        await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
-      }
       return { thread, message, created }
     })
 
@@ -197,18 +205,21 @@ export const createThread = asyncHandler(async (req, res) => {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Ver comentario em createThread branch A — determinacao de
+    // "created" via findUnique e' robusta; upsert mantem race-safety.
+    const existing = await tx.thread.findUnique({
+      where: { ownerId_serviceId: { ownerId: userId, serviceId: service.id } },
+      select: { id: true },
+    })
     const thread = await tx.thread.upsert({
       where: { ownerId_serviceId: { ownerId: userId, serviceId: service.id } },
       create: { ownerId: userId, serviceId: service.id, subject: data.subject },
       update: { updatedAt: new Date() },
     })
-    const created = thread.createdAt.getTime() === thread.updatedAt.getTime()
+    const created = !existing
     const message = await tx.message.create({
       data: { threadId: thread.id, senderId: userId, body: data.body },
     })
-    if (!created) {
-      await tx.thread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } })
-    }
     return { thread, message, created }
   })
 

@@ -57,6 +57,18 @@ export const flagReviewSchema = z.object({
     .max(500, 'Motivo demasiado longo (máximo 500 caracteres)'),
 })
 
+// Endpoints scoped ao utilizador autenticado (/mine, /about-me) ou
+// /eligibility. A paginacao espelha `listReviewsSchema` e e' usada
+// para evitar DoS via limit gigante.
+export const myReviewsPaginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+})
+
+export const reviewEligibilitySchema = z.object({
+  breederId: z.coerce.number().int().positive(),
+})
+
 export type CreateReviewInput = z.infer<typeof createReviewSchema>
 export type UpdateReviewInput = z.infer<typeof updateReviewSchema>
 export type ReplyToReviewInput = z.infer<typeof replyToReviewSchema>

@@ -353,9 +353,39 @@ export const flagReview = asyncHandler(async (req, res) => {
   if (review.status !== 'PUBLISHED')
     throw new AppError(400, 'Só pode denunciar avaliações publicadas', 'REVIEW_NOT_PUBLISHED')
 
-  // Record the flag (idempotent per (review, reporter) due to unique constraint)
+  // Insercao da flag + count + auto-hide tem de correr atomicamente,
+  // ou denuncias concorrentes podem (a) disparar `recomputeBreederRating`
+  // em duplicado e (b) ambos verem flagCount >= 3 sob a mesma transicao
+  // PUBLISHED, gerando dois eventos REVIEW_AUTO_FLAGGED. Usamos
+  // `updateMany` condicional ao status PUBLISHED — se uma transaccao
+  // concorrente ja transitou para FLAGGED, count=0 e o auto-flag e'
+  // skipped, mantendo idempotencia natural.
+  let flagCount = 0
+  let autoFlagged = false
+  let updated
   try {
-    await prisma.reviewFlag.create({ data: { reviewId: id, reporterId: userId, reason } })
+    const txResult = await prisma.$transaction(async (tx) => {
+      await tx.reviewFlag.create({ data: { reviewId: id, reporterId: userId, reason } })
+      const count = await tx.reviewFlag.count({ where: { reviewId: id } })
+      let didAutoFlag = false
+      if (count >= FLAG_AUTO_HIDE_THRESHOLD) {
+        // Condicional ao status PUBLISHED — protecao contra transicoes
+        // concorrentes (ex.: admin que entretanto moderou manualmente).
+        const transition = await tx.review.updateMany({
+          where: { id, status: 'PUBLISHED' },
+          data: { status: 'FLAGGED' },
+        })
+        if (transition.count > 0) {
+          await recomputeBreederRating(review.breederId, tx)
+          didAutoFlag = true
+        }
+      }
+      const u = await tx.review.findUnique({ where: { id }, select: REVIEW_SELECT })
+      return { count, didAutoFlag, u }
+    })
+    flagCount = txResult.count
+    autoFlagged = txResult.didAutoFlag
+    updated = txResult.u
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       throw new AppError(409, 'Já denunciou esta avaliação', 'ALREADY_FLAGGED')
@@ -363,28 +393,19 @@ export const flagReview = asyncHandler(async (req, res) => {
     throw err
   }
 
-  // Count flags and auto-hide if threshold reached
-  const flagCount = await prisma.reviewFlag.count({ where: { reviewId: id } })
-  let updated
-  if (flagCount >= FLAG_AUTO_HIDE_THRESHOLD && review.status === 'PUBLISHED') {
-    updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.review.update({
-        where: { id },
-        data: { status: 'FLAGGED' },
-        select: REVIEW_SELECT,
-      })
-      await recomputeBreederRating(review.breederId, tx)
-      return u
-    })
+  if (autoFlagged) {
     await logAudit({
+      // Auto-flag e' uma accao do sistema, nao do utilizador denunciante.
+      // Passamos `userId: null` explicitamente para deixar claro que nao
+      // tem actor humano directo (o utilizador que disparou o threshold
+      // fica registado no `REVIEW_FLAGGED` separado abaixo).
+      userId: null,
       action: 'REVIEW_AUTO_FLAGGED',
       entity: 'review',
       entityId: id,
       details: `Denúncias: ${flagCount}`,
       ipAddress: req.ip,
     })
-  } else {
-    updated = await prisma.review.findUnique({ where: { id }, select: REVIEW_SELECT })
   }
 
   await logAudit({

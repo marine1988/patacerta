@@ -13,6 +13,8 @@ import {
   listReviewsSchema,
   moderateReviewSchema,
   flagReviewSchema,
+  myReviewsPaginationSchema,
+  reviewEligibilitySchema,
 } from '@patacerta/shared'
 import { reviewCreateRateLimit, reviewFlagRateLimit } from '../../middleware/rate-limit.js'
 import * as ctrl from './reviews.controller.js'
@@ -20,9 +22,25 @@ import * as ctrl from './reviews.controller.js'
 export const reviewsRouter = Router()
 
 // Authenticated user scoped listings (must come before /:id)
-reviewsRouter.get('/mine', requireAuth, ctrl.listMyReviews)
-reviewsRouter.get('/about-me', requireAuth, requireBreederProfile, ctrl.listReviewsAboutMe)
-reviewsRouter.get('/eligibility', requireAuth, ctrl.getReviewEligibility)
+reviewsRouter.get(
+  '/mine',
+  requireAuth,
+  validate(myReviewsPaginationSchema, 'query'),
+  ctrl.listMyReviews,
+)
+reviewsRouter.get(
+  '/about-me',
+  requireAuth,
+  requireBreederProfile,
+  validate(myReviewsPaginationSchema, 'query'),
+  ctrl.listReviewsAboutMe,
+)
+reviewsRouter.get(
+  '/eligibility',
+  requireAuth,
+  validate(reviewEligibilitySchema, 'query'),
+  ctrl.getReviewEligibility,
+)
 
 // Public listing (admins get extra visibility via optionalAuth)
 reviewsRouter.get('/', optionalAuth, validate(listReviewsSchema, 'query'), ctrl.listReviews)
