@@ -14,7 +14,7 @@
 // O backend impõe um máximo de 3 slots ocupados (PAID+PENDING) por raça
 // — verificamos availability antes de mostrar o botão.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -85,6 +85,12 @@ export function DestaqueTab() {
   const isVerified = breeder?.status === 'VERIFIED'
 
   // ── Histórico/estado actual dos slots do criador ─────────────────
+  // Polling: enquanto houver pelo menos um slot PENDING, refetch a
+  // cada 30s para detectar a transicao PENDING → PAID (tipico em
+  // pagamentos Multibanco, que sao assincronos — referencia gerada
+  // agora pode ser paga dias depois). Quando deixar de haver PENDING,
+  // o refetch para automaticamente. Limite implicito: o useQuery
+  // continua activo enquanto o componente estiver montado.
   const {
     data: slotsResp,
     isLoading: slotsLoading,
@@ -92,6 +98,12 @@ export function DestaqueTab() {
   } = useQuery<{ data: MySponsoredSlot[] }>({
     queryKey: queryKeys.payments.mySlots(),
     queryFn: () => api.get('/payments/sponsored-slot/mine').then((r) => r.data),
+    refetchInterval: (query) => {
+      const data = query.state.data as { data: MySponsoredSlot[] } | undefined
+      const hasPending = data?.data.some((s) => s.paymentStatus === 'PENDING') ?? false
+      return hasPending ? 30_000 : false
+    },
+    refetchIntervalInBackground: false,
   })
   const slots = slotsResp?.data ?? []
   const activeSlots = slots.filter(
@@ -101,6 +113,32 @@ export function DestaqueTab() {
       (s.paymentStatus === 'LEGACY' && s.status === 'ACTIVE'),
   )
   const pastSlots = slots.filter((s) => !activeSlots.includes(s))
+
+  // ── Detecta transicao PENDING → PAID e notifica ─────────────────
+  // Guardamos o snapshot anterior dos IDs PENDING para comparar entre
+  // refetches. Quando um ID some da lista PENDING e aparece como PAID,
+  // mostramos um toast de sucesso. Usamos useRef para nao re-renderizar
+  // a cada update — so reagimos quando ha diff relevante.
+  const prevPendingIdsRef = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    const currentPending = new Set(
+      slots.filter((s) => s.paymentStatus === 'PENDING').map((s) => s.id),
+    )
+    const justPaid = [...prevPendingIdsRef.current].filter((id) => {
+      const slot = slots.find((s) => s.id === id)
+      return slot && slot.paymentStatus === 'PAID'
+    })
+    if (justPaid.length > 0) {
+      const slot = slots.find((s) => s.id === justPaid[0])
+      if (slot) {
+        setMsg({
+          type: 'success',
+          text: `Pagamento confirmado! O seu destaque para ${slot.breed.namePt} está agora activo.`,
+        })
+      }
+    }
+    prevPendingIdsRef.current = currentPending
+  }, [slots])
 
   // ── Reagir aos query params de retorno do Stripe ─────────────────
   useEffect(() => {

@@ -502,6 +502,15 @@ export function SimuladorRacaPage() {
               )
             })}
           </div>
+
+          {/* Affordance: ao escolher uma opcao avancamos automaticamente.
+              O utilizador pode pensar que ficou bloqueado se quiser
+              mudar — clarificamos aqui (so a partir da pergunta 2). */}
+          {stepIndex > 0 && (
+            <p className="mt-4 text-xs text-subtle">
+              Pode voltar atrás a qualquer momento para alterar uma resposta.
+            </p>
+          )}
         </div>
       </Card>
 
@@ -510,7 +519,12 @@ export function SimuladorRacaPage() {
           type="button"
           onClick={handleBack}
           disabled={stepIndex === 0}
-          className="text-[11px] font-medium uppercase tracking-caps text-muted hover:text-ink disabled:opacity-40"
+          className={`inline-flex items-center gap-1 border px-3 py-2 text-xs font-medium uppercase tracking-caps transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+            stepIndex === 0
+              ? 'border-line text-muted'
+              : 'border-line text-ink hover:border-caramel-500 hover:text-caramel-500'
+          }`}
+          aria-label="Voltar à pergunta anterior"
         >
           ← Voltar
         </button>

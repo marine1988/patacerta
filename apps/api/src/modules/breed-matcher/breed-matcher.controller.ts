@@ -227,8 +227,32 @@ export const matchBreeds = asyncHandler(async (req, res) => {
   const sponsoredByBreed = await fetchSponsoredByBreed(top.map((s) => s.breed.id))
 
   const results: BreedMatchResult[] = top.map((s) => {
-    // Mostra até 3 highlights — prefere positivos, completa com negativos
-    const highlights = [...s.positives.slice(0, 2), ...s.negatives.slice(0, 1)].slice(0, 3)
+    // Mostra até 3 highlights — prefere positivos, completa com negativos.
+    // Se ambos os arrays estiverem vazios (raca neutra em relacao as
+    // respostas), fabricamos uma descricao geral a partir dos atributos
+    // da raca — evita um card sem qualquer justificacao visivel ao lado
+    // do score, que confunde o utilizador.
+    let highlights = [...s.positives.slice(0, 2), ...s.negatives.slice(0, 1)].slice(0, 3)
+    if (highlights.length === 0) {
+      const fb: string[] = []
+      const energyTxt =
+        s.breed.energyLevel >= 4
+          ? 'muito enérgica'
+          : s.breed.energyLevel <= 2
+            ? 'tranquila'
+            : 'de energia equilibrada'
+      const sizeTxt =
+        s.breed.size === 'small'
+          ? 'pequena'
+          : s.breed.size === 'large' || s.breed.size === 'giant'
+            ? 'de grande porte'
+            : 'de porte médio'
+      fb.push(`Raça ${sizeTxt} e ${energyTxt}.`)
+      if (s.breed.apartmentFriendly) fb.push('Adapta-se bem a viver em apartamento.')
+      if (s.breed.noviceFriendly) fb.push('Boa opção para quem nunca teve cão.')
+      if (s.breed.hypoallergenic) fb.push('Considerada hipoalergénica.')
+      highlights = fb.slice(0, 3)
+    }
     return {
       breed: {
         id: s.breed.id,
