@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../../lib/api'
 import { queryKeys } from '../../../../lib/queryKeys'
 import { formatDateShort } from '../../../../lib/dates'
+import { extractApiError } from '../../../../lib/errors'
 import { Pagination } from '../../../../components/ui/Pagination'
 import type { Paginated } from '../../../../lib/pagination'
 import { Card, Badge, Button, Spinner, EmptyState, Select, Modal } from '../../../../components/ui'
@@ -96,11 +97,7 @@ export function ServicosReportsView() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
-      const maybeMsg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
-          : null
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao resolver denúncia.')
+      setActionError(extractApiError(err, 'Erro ao resolver denúncia.'))
     },
   })
 
@@ -116,11 +113,7 @@ export function ServicosReportsView() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
-      const maybeMsg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
-          : null
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender anúncio.')
+      setActionError(extractApiError(err, 'Erro ao suspender anúncio.'))
     },
   })
 

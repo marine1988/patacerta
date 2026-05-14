@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
+import { extractApiError } from '../../lib/errors'
 import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import {
@@ -207,14 +208,7 @@ export function AdminUserDetailPage() {
       invalidateAfterMutation()
     },
     onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string; message?: string } }; message?: string })
-          ?.response?.data?.error ||
-        (err as { response?: { data?: { error?: string; message?: string } }; message?: string })
-          ?.response?.data?.message ||
-        (err as Error)?.message ||
-        'Falha ao suspender utilizador'
-      setActionError(msg)
+      setActionError(extractApiError(err, 'Falha ao suspender utilizador'))
     },
   })
 
@@ -225,14 +219,7 @@ export function AdminUserDetailPage() {
       invalidateAfterMutation()
     },
     onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string; message?: string } }; message?: string })
-          ?.response?.data?.error ||
-        (err as { response?: { data?: { error?: string; message?: string } }; message?: string })
-          ?.response?.data?.message ||
-        (err as Error)?.message ||
-        'Falha ao reactivar utilizador'
-      setActionError(msg)
+      setActionError(extractApiError(err, 'Falha ao reactivar utilizador'))
     },
   })
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
+import { extractApiError } from '../../../lib/errors'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
 import {
@@ -98,11 +99,7 @@ export function ServicosTab() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
-      const maybeMsg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
-          : null
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender anúncio.')
+      setActionError(extractApiError(err, 'Erro ao suspender anúncio.'))
     },
   })
 
@@ -112,11 +109,7 @@ export function ServicosTab() {
       queryClient.invalidateQueries({ queryKey: ['admin-services'] })
     },
     onError: (err: unknown) => {
-      const maybeMsg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
-          : null
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao reactivar anúncio.')
+      setActionError(extractApiError(err, 'Erro ao reactivar anúncio.'))
     },
   })
 
@@ -129,9 +122,7 @@ export function ServicosTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao alterar destaque.')
+      setActionError(extractApiError(err, 'Erro ao alterar destaque.'))
     },
   })
 

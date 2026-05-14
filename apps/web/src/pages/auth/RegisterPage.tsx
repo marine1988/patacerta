@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { validatePassword as validatePasswordShared } from '../../lib/validation'
+import { extractApiError } from '../../lib/errors'
 
 const PASSWORD_HINT = 'Mínimo 8 caracteres, com maiúscula, minúscula e número.'
 
@@ -107,8 +108,7 @@ export function RegisterPage() {
       const result = await register(parsed.data)
       setSuccessEmail(result.email)
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      setError(axiosErr.response?.data?.error || 'Erro ao criar conta')
+      setError(extractApiError(err, 'Erro ao criar conta'))
     } finally {
       setLoading(false)
     }

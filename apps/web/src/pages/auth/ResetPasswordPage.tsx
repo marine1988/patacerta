@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { validatePassword } from '../../lib/validation'
+import { extractApiError } from '../../lib/errors'
 
 export function ResetPasswordPage() {
   usePageMeta({
@@ -45,8 +46,7 @@ function RequestResetForm() {
       await api.post('/auth/forgot-password', result.data)
       setSuccess(true)
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      setError(axiosErr.response?.data?.error || 'Erro ao processar o pedido')
+      setError(extractApiError(err, 'Erro ao processar o pedido'))
     } finally {
       setLoading(false)
     }
@@ -176,8 +176,7 @@ function SetNewPasswordForm({ token }: { token: string }) {
       window.history.replaceState({}, '', '/recuperar-palavra-passe')
       setSuccess(true)
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      setError(axiosErr.response?.data?.error || 'Erro ao repor a palavra-passe')
+      setError(extractApiError(err, 'Erro ao repor a palavra-passe'))
     } finally {
       setLoading(false)
     }

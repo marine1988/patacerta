@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
+import { extractApiError } from '../../../lib/errors'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
 import { Badge, Button, SearchInput, Spinner, EmptyState, Select, Modal } from '../../../components/ui'
@@ -50,9 +51,7 @@ export function UtilizadoresTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender utilizador.')
+      setActionError(extractApiError(err, 'Erro ao suspender utilizador.'))
     },
   })
 

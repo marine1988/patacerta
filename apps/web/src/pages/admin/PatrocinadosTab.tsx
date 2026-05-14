@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
+import { extractApiError } from '../../lib/errors'
 import { Pagination } from '../../components/ui/Pagination'
 import type { Paginated } from '../../lib/pagination'
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner, useConfirm } from '../../components/ui'
@@ -158,9 +159,7 @@ export function PatrocinadosTab() {
       setDeleteError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setDeleteError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao eliminar slot patrocinado.')
+      setDeleteError(extractApiError(err, 'Erro ao eliminar slot patrocinado.'))
     },
   })
 
@@ -449,7 +448,7 @@ function SlotForm(props: SlotFormProps) {
       api.post('/admin/sponsored-slots', body).then((r) => r.data),
     onSuccess: () => props.onSuccess(),
     onError: (err: unknown) => {
-      setError(extractError(err) ?? 'Erro ao criar slot')
+      setError(extractApiError(err, 'Erro ao criar slot'))
     },
   })
 
@@ -458,7 +457,7 @@ function SlotForm(props: SlotFormProps) {
       api.patch(`/admin/sponsored-slots/${initialSlot!.id}`, body).then((r) => r.data),
     onSuccess: () => props.onSuccess(),
     onError: (err: unknown) => {
-      setError(extractError(err) ?? 'Erro ao actualizar slot')
+      setError(extractApiError(err, 'Erro ao actualizar slot'))
     },
   })
 
@@ -612,12 +611,4 @@ function SlotForm(props: SlotFormProps) {
       </div>
     </form>
   )
-}
-
-function extractError(err: unknown): string | null {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { error?: string; message?: string } } }).response
-    return resp?.data?.error ?? resp?.data?.message ?? null
-  }
-  return null
 }

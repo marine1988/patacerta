@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
 import { formatDateShort } from '../../../lib/dates'
+import { extractApiError } from '../../../lib/errors'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
 import { Button, Spinner, EmptyState, Modal, useConfirm } from '../../../components/ui'
@@ -34,9 +35,7 @@ export function VerificacoesTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao aprovar certificado.')
+      setActionError(extractApiError(err, 'Erro ao aprovar certificado.'))
     },
   })
 
@@ -54,9 +53,7 @@ export function VerificacoesTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao rejeitar certificado.')
+      setActionError(extractApiError(err, 'Erro ao rejeitar certificado.'))
     },
   })
 
@@ -105,9 +102,7 @@ export function VerificacoesTab() {
       // Senao, deixar o browser libertar quando a tab fechar — nao temos
       // hook fiavel para detectar isso de outra origem.
     } catch (err) {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao abrir o certificado.')
+      setActionError(extractApiError(err, 'Erro ao abrir o certificado.'))
     }
   }
 

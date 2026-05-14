@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { extractApiError } from '../../lib/errors'
 
 type Status = 'idle' | 'verifying' | 'success' | 'error'
 
@@ -52,9 +53,8 @@ export function VerifyEmailPage() {
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          const axiosErr = err as { response?: { data?: { error?: string } } }
           setStatus('error')
-          setMessage(axiosErr.response?.data?.error || 'Não foi possível verificar o email.')
+          setMessage(extractApiError(err, 'Não foi possível verificar o email.'))
           // Mesmo em caso de erro, remove o token (ja' foi consumido ou
           // e' invalido) para evitar retries automaticos em refresh.
           window.history.replaceState({}, '', '/verificar-email')
@@ -74,8 +74,7 @@ export function VerifyEmailPage() {
       const res = await api.post('/auth/resend-verification', { email: resendEmail })
       setResendMessage(res.data.message || 'Email de verificação reenviado.')
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      setResendMessage(axiosErr.response?.data?.error || 'Erro ao reenviar email.')
+      setResendMessage(extractApiError(err, 'Erro ao reenviar email.'))
     } finally {
       setResendLoading(false)
     }

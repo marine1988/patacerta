@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { extractApiErrorInfo } from '../../lib/errors'
 
 /**
  * Valida um destino de redirect pos-login para evitar open-redirect.
@@ -69,10 +70,9 @@ export function LoginPage() {
       // criador, servicos) sem depender do role.
       navigate(redirectTo, { replace: true })
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string; code?: string } } }
-      const code = axiosErr.response?.data?.code
-      setError(axiosErr.response?.data?.error || 'Erro ao iniciar sessão')
-      if (code === 'EMAIL_NOT_VERIFIED') setNeedsVerification(true)
+      const info = extractApiErrorInfo(err, 'Erro ao iniciar sessão')
+      setError(info.message)
+      if (info.code === 'EMAIL_NOT_VERIFIED') setNeedsVerification(true)
     } finally {
       setLoading(false)
     }

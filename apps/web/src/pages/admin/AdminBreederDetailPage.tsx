@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
+import { extractApiError } from '../../lib/errors'
 import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { statusBadgeVariant, statusLabel } from './_shared'
@@ -187,9 +188,7 @@ export function AdminBreederDetailPage() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao aprovar documento.')
+      setActionError(extractApiError(err, 'Erro ao aprovar documento.'))
     },
   })
 
@@ -207,9 +206,7 @@ export function AdminBreederDetailPage() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao rejeitar documento.')
+      setActionError(extractApiError(err, 'Erro ao rejeitar documento.'))
     },
   })
 
@@ -228,9 +225,7 @@ export function AdminBreederDetailPage() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao suspender criador.')
+      setActionError(extractApiError(err, 'Erro ao suspender criador.'))
     },
   })
 
@@ -243,9 +238,7 @@ export function AdminBreederDetailPage() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      const maybeMsg = (err as { response?: { data?: { error?: string; message?: string } } })
-        ?.response?.data
-      setActionError(maybeMsg?.error ?? maybeMsg?.message ?? 'Erro ao reactivar criador.')
+      setActionError(extractApiError(err, 'Erro ao reactivar criador.'))
     },
   })
 
