@@ -189,6 +189,13 @@ model Breeder {
   @@index([status, districtId])
   @@index([status, municipalityId])
   @@index([status, featuredUntil])
+  // search.controller.ts:39-61 faz `where: { status: 'VERIFIED', ... },
+  // orderBy: { createdAt: 'desc' }`. Sem indice composto, o planner faz
+  // sort apos filter — caro a' medida que a tabela cresce.
+  @@index([status, createdAt(sort: Desc)])
+  // Home/featured (avgRating desc) e listings com sort por rating —
+  // espelha Service.@@index([status, avgRating Desc]).
+  @@index([status, avgRating(sort: Desc)])
   @@map("breeders")
 }
 
@@ -602,6 +609,9 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@index([action, createdAt(sort: Desc)])
+  // Admin "user activity": filtrar por userId e ordenar por createdAt desc.
+  // Sem composto, o planner sorta apos o filter (caro com volume).
+  @@index([userId, createdAt(sort: Desc)])
   @@map("audit_logs")
 }
 
@@ -639,6 +649,9 @@ model CookieConsentLog {
   @@index([anonId])
   @@index([userId])
   @@index([createdAt(sort: Desc)])
+  // Query tipica: "ultima decisao para este anonId".
+  // anonId+createdAt desc evita sort apos filter.
+  @@index([anonId, createdAt(sort: Desc)])
   @@map("cookie_consent_logs")
 }
 
@@ -740,6 +753,9 @@ model Service {
   @@index([status, latitude, longitude])
   @@index([providerId, updatedAt(sort: Desc)])
   @@index([featuredUntil])
+  // Home featured services: status='ACTIVE' AND featuredUntil > now().
+  // Espelha Breeder.@@index([status, featuredUntil]).
+  @@index([status, featuredUntil])
   @@map("services")
 }
 
