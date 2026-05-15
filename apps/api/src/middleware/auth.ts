@@ -1,7 +1,20 @@
-import type { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction, RequestHandler } from 'express'
 import { verifyAccessToken, type TokenPayload } from '../lib/jwt.js'
 import { AppError } from './error-handler.js'
 import { prisma } from '../lib/prisma.js'
+
+/**
+ * Wraps an async middleware so promise rejections are forwarded to next().
+ * Sem isto, throws/rejects num async middleware tornam-se unhandled
+ * rejections em Express 4 — o processo crasha e o nginx devolve 502.
+ */
+function asyncMiddleware(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+): RequestHandler {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next)
+  }
+}
 
 declare global {
   namespace Express {
@@ -59,11 +72,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
  * unificado, ser criador deriva de ter um perfil, não de um campo role.
  * Must be used AFTER requireAuth.
  */
-export async function requireBreederProfile(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> {
+export const requireBreederProfile = asyncMiddleware(async (req, _res, next) => {
   if (!req.user) {
     throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
   }
@@ -79,4 +88,4 @@ export async function requireBreederProfile(
     )
   }
   next()
-}
+})

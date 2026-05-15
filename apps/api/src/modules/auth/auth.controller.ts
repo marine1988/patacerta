@@ -250,6 +250,7 @@ export const register = asyncHandler(async (req, res) => {
     res.status(201).json({
       message: 'Conta criada. Pode iniciar sessão.',
       email: user.email,
+      verificationSent: false,
     })
     return
   }
@@ -269,6 +270,7 @@ export const register = asyncHandler(async (req, res) => {
   res.status(201).json({
     message: 'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
     email: user.email,
+    verificationSent: true,
   })
 })
 

@@ -41,6 +41,7 @@ export function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successEmail, setSuccessEmail] = useState<string | null>(null)
+  const [successVerificationSent, setSuccessVerificationSent] = useState(true)
   const { register } = useAuth()
   const navigate = useNavigate()
 
@@ -107,6 +108,7 @@ export function RegisterPage() {
     try {
       const result = await register(parsed.data)
       setSuccessEmail(result.email)
+      setSuccessVerificationSent(result.verificationSent)
     } catch (err: unknown) {
       setError(extractApiError(err, 'Erro ao criar conta'))
     } finally {
@@ -136,14 +138,23 @@ export function RegisterPage() {
                 </svg>
               </div>
               <h1 className="text-xl font-bold text-gray-900">Conta criada com sucesso</h1>
-              <p className="mt-3 text-sm text-gray-600">
-                Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no
-                link no email para ativar a sua conta antes de iniciar sessão.
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página de
-                login.
-              </p>
+              {successVerificationSent ? (
+                <>
+                  <p className="mt-3 text-sm text-gray-600">
+                    Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no
+                    link no email para ativar a sua conta antes de iniciar sessão.
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página
+                    de login.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-gray-600">
+                  A sua conta <strong>{successEmail}</strong> está ativa. Pode iniciar sessão de
+                  imediato.
+                </p>
+              )}
               <div className="mt-6">
                 <Button onClick={() => navigate('/entrar')} className="w-full">
                   Ir para login

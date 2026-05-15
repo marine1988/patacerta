@@ -19,7 +19,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   isLoading: boolean
   login: (data: LoginInput) => Promise<User>
-  register: (data: RegisterInput) => Promise<{ message: string; email: string }>
+  register: (data: RegisterInput) => Promise<{ message: string; email: string; verificationSent: boolean }>
   logout: () => void
   updateUser: (user: User) => void
 }
@@ -103,9 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(
-    async (data: RegisterInput): Promise<{ message: string; email: string }> => {
+    async (
+      data: RegisterInput,
+    ): Promise<{ message: string; email: string; verificationSent: boolean }> => {
       const res = await api.post('/auth/register', data)
-      return res.data as { message: string; email: string }
+      const body = res.data as { message: string; email: string; verificationSent?: boolean }
+      // Servidor antigo pode não devolver `verificationSent`; assumir o
+      // comportamento default (envia) por segurança — a UI mostra então a
+      // mensagem mais informativa "verifique o email".
+      return { ...body, verificationSent: body.verificationSent ?? true }
     },
     [],
   )
