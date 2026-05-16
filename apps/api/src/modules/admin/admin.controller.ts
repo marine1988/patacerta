@@ -216,7 +216,17 @@ export const suspendUser = asyncHandler(async (req, res) => {
     if (user.role === 'BREEDER') {
       await tx.breeder.updateMany({
         where: { userId: id },
-        data: { status: 'SUSPENDED', suspendedAt: now, suspendedReason: reason },
+        // featuredUntil: null — se a conta era um criador destacado,
+        // ao suspender a conta o destaque deixa de fazer sentido. Sem
+        // este reset, o criador continuava na homepage ate' a featured
+        // window expirar naturalmente (ou ate' o cache cair). Ver
+        // tambem suspendBreeder, que tem o mesmo cuidado.
+        data: {
+          status: 'SUSPENDED',
+          suspendedAt: now,
+          suspendedReason: reason,
+          featuredUntil: null,
+        },
       })
     }
   })
@@ -229,6 +239,13 @@ export const suspendUser = asyncHandler(async (req, res) => {
     details: `Suspended user ${maskEmail(user.email)}: ${reason}`,
     ipAddress: req.ip,
   })
+
+  // Invalida cache de destaques caso o criador suspenso estivesse la'.
+  // Best-effort: se falhar, o TTL do cache (~5 min) acabara' por
+  // reconciliar; nao bloqueamos a suspensao por causa disto.
+  if (user.role === 'BREEDER') {
+    await invalidateFeaturedCache().catch(() => undefined)
+  }
 
   res.status(204).send()
 })
@@ -577,6 +594,20 @@ export const getBreederDetail = asyncHandler(async (req, res) => {
     throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
   }
 
+  // Audit deep-view: este endpoint expoe PII sensivel — email + telefone
+  // do dono, NIF, numero DGAV, todos os docs de verificacao com info do
+  // reviewer. Equivalente ao ADMIN_VIEW_USER em getUserDetail, que
+  // existe pelo mesmo motivo. Listagens (getPendingVerifications,
+  // listAllBreeders) nao precisam porque expoem so identificadores +
+  // status — o detalhe individual e' que e' o vector de extraccao.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'ADMIN_VIEW_BREEDER',
+    entity: 'Breeder',
+    entityId: id,
+    ipAddress: req.ip,
+  })
+
   res.json(breeder)
 })
 
@@ -615,7 +646,16 @@ export const suspendBreeder = asyncHandler(async (req, res) => {
 
   const updated = await prisma.breeder.update({
     where: { id },
-    data: { status: 'SUSPENDED', suspendedAt: new Date(), suspendedReason: reason },
+    // featuredUntil: null — coerencia com a regra em setBreederFeatured,
+    // que so permite promover criadores VERIFIED. Sem isto, um criador
+    // suspenso continuava na homepage ate' a featured window expirar ou
+    // o cache (5 min TTL) cair. Mesmo padrao em suspendUser.
+    data: {
+      status: 'SUSPENDED',
+      suspendedAt: new Date(),
+      suspendedReason: reason,
+      featuredUntil: null,
+    },
     select: { id: true, businessName: true, status: true },
   })
 
@@ -627,6 +667,10 @@ export const suspendBreeder = asyncHandler(async (req, res) => {
     details: `Breeder suspended by admin: ${reason}`,
     ipAddress: req.ip,
   })
+
+  // Best-effort invalidacao do cache de destaques: se falhar, o TTL
+  // acabara' por reconciliar. Nao bloqueamos a suspensao.
+  await invalidateFeaturedCache().catch(() => undefined)
 
   res.json(updated)
 })
@@ -1055,6 +1099,17 @@ export const listServiceReports = asyncHandler(async (req, res) => {
     prisma.serviceReport.count({ where }),
   ])
 
+  // Trilho forense: a listagem expoe emails de reporter e provider e
+  // razoes de denuncia. Coerencia com listMessageReports, que ja regista
+  // o acesso pelos mesmos motivos.
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'SERVICE_REPORTS_LISTED',
+    entity: 'ServiceReport',
+    details: `page=${page} limit=${limit} status=${status} count=${reports.length}`,
+    ipAddress: req.ip,
+  })
+
   res.json(paginatedResponse(reports, total, page, limit))
 })
 
@@ -1185,10 +1240,15 @@ export const adminSuspendService = asyncHandler(async (req, res) => {
 
   const updated = await prisma.service.update({
     where: { id },
+    // featuredUntil: null — setServiceFeatured impede promover servicos
+    // nao-ACTIVE, mas sem reset aqui um servico actualmente destacado
+    // continuaria na homepage de destaques ate' a window expirar ou o
+    // cache (~5 min) cair. Mesmo padrao em suspendBreeder / suspendUser.
     data: {
       status: 'SUSPENDED',
       removedAt: new Date(),
       removedReason: reason,
+      featuredUntil: null,
     },
     select: { id: true, title: true, status: true, removedAt: true, removedReason: true },
   })
@@ -1201,6 +1261,9 @@ export const adminSuspendService = asyncHandler(async (req, res) => {
     details: `Reason: ${reason.slice(0, 120)}`,
     ipAddress: req.ip,
   })
+
+  // Best-effort invalidacao do cache. Se falhar, o TTL reconcilia.
+  await invalidateFeaturedCache().catch(() => undefined)
 
   res.json(updated)
 })
