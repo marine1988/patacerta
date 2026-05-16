@@ -1,5 +1,6 @@
 import { Router, raw } from 'express'
 import { handleStripeWebhook } from './stripe-webhook.controller.js'
+import { asyncHandler } from '../../lib/helpers.js'
 
 export const webhooksRouter = Router()
 
@@ -11,4 +12,14 @@ export const webhooksRouter = Router()
 //
 // O endpoint não tem auth nem rate-limit — Stripe pode re-tentar muitas
 // vezes em casos de falha, e a sua origem é validada pela assinatura.
-webhooksRouter.post('/stripe', raw({ type: 'application/json', limit: '1mb' }), handleStripeWebhook)
+//
+// asyncHandler é OBRIGATÓRIO: handleStripeWebhook é async; sem o wrapper
+// uma promise rejeitada (e.g. timeout de DB) vira unhandled rejection
+// e crasha o processo (Node 20 default).
+webhooksRouter.post(
+  '/stripe',
+  raw({ type: 'application/json', limit: '1mb' }),
+  asyncHandler(async (req, res) => {
+    await handleStripeWebhook(req, res)
+  }),
+)

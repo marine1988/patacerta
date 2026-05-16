@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../../lib/prisma.js'
+import { asyncHandler } from '../../lib/helpers.js'
 
 export const sitemapRouter = Router()
 
@@ -19,29 +20,47 @@ const SITE_URL = (process.env.PUBLIC_URL || 'https://patacerta.pt').replace(/\/$
  * Cache: 5 min (redireccionamentos podem mudar se o businessName mudar
  * antes da verificação, embora seja raro).
  */
-sitemapRouter.get('/__redirect/breeder/:id', async (req, res) => {
-  const id = Number(req.params.id)
-  if (!Number.isFinite(id) || id <= 0) return res.status(404).end()
-  const breeder = await prisma.breeder.findUnique({
-    where: { id },
-    select: { slug: true, status: true },
-  })
-  if (!breeder || !breeder.slug) return res.status(404).end()
-  res.setHeader('Cache-Control', 'public, max-age=300')
-  return res.redirect(301, `/criador/${breeder.slug}`)
-})
+sitemapRouter.get(
+  '/__redirect/breeder/:id',
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(404).end()
+      return
+    }
+    const breeder = await prisma.breeder.findUnique({
+      where: { id },
+      select: { slug: true, status: true },
+    })
+    if (!breeder || !breeder.slug) {
+      res.status(404).end()
+      return
+    }
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.redirect(301, `/criador/${breeder.slug}`)
+  }),
+)
 
-sitemapRouter.get('/__redirect/service/:id', async (req, res) => {
-  const id = Number(req.params.id)
-  if (!Number.isFinite(id) || id <= 0) return res.status(404).end()
-  const service = await prisma.service.findUnique({
-    where: { id },
-    select: { slug: true },
-  })
-  if (!service || !service.slug) return res.status(404).end()
-  res.setHeader('Cache-Control', 'public, max-age=300')
-  return res.redirect(301, `/servicos/${service.slug}`)
-})
+sitemapRouter.get(
+  '/__redirect/service/:id',
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(404).end()
+      return
+    }
+    const service = await prisma.service.findUnique({
+      where: { id },
+      select: { slug: true },
+    })
+    if (!service || !service.slug) {
+      res.status(404).end()
+      return
+    }
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.redirect(301, `/servicos/${service.slug}`)
+  }),
+)
 
 interface SitemapEntry {
   loc: string
@@ -72,74 +91,77 @@ function renderSitemap(entries: SitemapEntry[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
 }
 
-sitemapRouter.get('/sitemap.xml', async (_req, res) => {
-  try {
-    const now = new Date().toISOString()
+sitemapRouter.get(
+  '/sitemap.xml',
+  asyncHandler(async (_req, res) => {
+    try {
+      const now = new Date().toISOString()
 
-    const staticEntries: SitemapEntry[] = [
-      { loc: `${SITE_URL}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
-      { loc: `${SITE_URL}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
-      {
-        loc: `${SITE_URL}/pesquisar?tipo=servicos`,
-        changefreq: 'daily',
-        priority: 0.9,
-        lastmod: now,
-      },
-      { loc: `${SITE_URL}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
-      {
-        loc: `${SITE_URL}/perguntas-frequentes`,
-        changefreq: 'monthly',
+      const staticEntries: SitemapEntry[] = [
+        { loc: `${SITE_URL}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
+        { loc: `${SITE_URL}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
+        {
+          loc: `${SITE_URL}/pesquisar?tipo=servicos`,
+          changefreq: 'daily',
+          priority: 0.9,
+          lastmod: now,
+        },
+        { loc: `${SITE_URL}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
+        {
+          loc: `${SITE_URL}/perguntas-frequentes`,
+          changefreq: 'monthly',
+          priority: 0.7,
+          lastmod: now,
+        },
+        { loc: `${SITE_URL}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
+        {
+          loc: `${SITE_URL}/politica-privacidade`,
+          changefreq: 'yearly',
+          priority: 0.3,
+          lastmod: now,
+        },
+      ]
+
+      const [breeders, services] = await Promise.all([
+        prisma.breeder.findMany({
+          where: { status: 'VERIFIED' },
+          select: { id: true, slug: true, updatedAt: true },
+          orderBy: { updatedAt: 'desc' },
+          take: 10000,
+        }),
+        prisma.service.findMany({
+          where: { status: 'ACTIVE' },
+          select: { id: true, slug: true, updatedAt: true },
+          orderBy: { updatedAt: 'desc' },
+          take: 10000,
+        }),
+      ])
+
+      // Preferimos slug quando existe; fallback para id durante o
+      // período de backfill. Quando o backfill estiver completo, todos
+      // têm slug e o fallback nunca é exercido.
+      const breederEntries: SitemapEntry[] = breeders.map((b) => ({
+        loc: `${SITE_URL}/criador/${b.slug ?? b.id}`,
+        lastmod: b.updatedAt.toISOString(),
+        changefreq: 'weekly',
+        priority: 0.8,
+      }))
+
+      const serviceEntries: SitemapEntry[] = services.map((s) => ({
+        loc: `${SITE_URL}/servicos/${s.slug ?? s.id}`,
+        lastmod: s.updatedAt.toISOString(),
+        changefreq: 'weekly',
         priority: 0.7,
-        lastmod: now,
-      },
-      { loc: `${SITE_URL}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
-      {
-        loc: `${SITE_URL}/politica-privacidade`,
-        changefreq: 'yearly',
-        priority: 0.3,
-        lastmod: now,
-      },
-    ]
+      }))
 
-    const [breeders, services] = await Promise.all([
-      prisma.breeder.findMany({
-        where: { status: 'VERIFIED' },
-        select: { id: true, slug: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 10000,
-      }),
-      prisma.service.findMany({
-        where: { status: 'ACTIVE' },
-        select: { id: true, slug: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 10000,
-      }),
-    ])
+      const xml = renderSitemap([...staticEntries, ...breederEntries, ...serviceEntries])
 
-    // Preferimos slug quando existe; fallback para id durante o
-    // período de backfill. Quando o backfill estiver completo, todos
-    // têm slug e o fallback nunca é exercido.
-    const breederEntries: SitemapEntry[] = breeders.map((b) => ({
-      loc: `${SITE_URL}/criador/${b.slug ?? b.id}`,
-      lastmod: b.updatedAt.toISOString(),
-      changefreq: 'weekly',
-      priority: 0.8,
-    }))
-
-    const serviceEntries: SitemapEntry[] = services.map((s) => ({
-      loc: `${SITE_URL}/servicos/${s.slug ?? s.id}`,
-      lastmod: s.updatedAt.toISOString(),
-      changefreq: 'weekly',
-      priority: 0.7,
-    }))
-
-    const xml = renderSitemap([...staticEntries, ...breederEntries, ...serviceEntries])
-
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8')
-    res.setHeader('Cache-Control', 'public, max-age=3600')
-    res.send(xml)
-  } catch (err) {
-    console.error('[sitemap] erro a gerar sitemap:', err)
-    res.status(500).type('text/plain').send('Erro a gerar sitemap')
-  }
-})
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8')
+      res.setHeader('Cache-Control', 'public, max-age=3600')
+      res.send(xml)
+    } catch (err) {
+      console.error('[sitemap] erro a gerar sitemap:', err)
+      res.status(500).type('text/plain').send('Erro a gerar sitemap')
+    }
+  }),
+)
