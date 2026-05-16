@@ -247,6 +247,27 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
           districtId: data.districtId,
           municipalityId: data.municipalityId,
           otherBreedsNote: data.otherBreedsNote,
+          // Campos opcionais — antes eram silenciosamente ignorados na
+          // criacao (o schema aceitava mas o controller nao persistia),
+          // o que confundia o utilizador: a UI mostrava checkbox marcado
+          // mas o valor nao chegava a DB e desaparecia ao recarregar.
+          // Agora ficam tal como o utilizador os submeteu, com fallback
+          // ao default do Prisma (false / null) quando undefined.
+          youtubeVideoId: data.youtubeVideoId,
+          cpcMember: data.cpcMember,
+          fciAffiliated: data.fciAffiliated,
+          vetCheckup: data.vetCheckup,
+          microchip: data.microchip,
+          vaccinations: data.vaccinations,
+          lopRegistry: data.lopRegistry,
+          kennelName: data.kennelName,
+          salesInvoice: data.salesInvoice,
+          food: data.food,
+          initialTraining: data.initialTraining,
+          pickupInPerson: data.pickupInPerson,
+          deliveryByCar: data.deliveryByCar,
+          deliveryByPlane: data.deliveryByPlane,
+          pickupNotes: data.pickupNotes,
           species: { create: [{ speciesId: dogSpeciesId }] },
           breeds:
             breedIds.length > 0 ? { create: breedIds.map((breedId) => ({ breedId })) } : undefined,
