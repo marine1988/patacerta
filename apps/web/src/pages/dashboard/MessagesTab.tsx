@@ -242,14 +242,79 @@ export function MessagesTab() {
 
   const markReadMutation = useMutation({
     mutationFn: (threadId: number) => api.patch(`/messages/threads/${threadId}/read`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['threads'] })
-      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
+    // Update optimista: o servidor pode demorar 200-800ms a responder
+    // (sobretudo em mobile) e a UI deixava o badge unread visivel ate' la',
+    // o que parecia bug — o utilizador ja' tinha clicado, esperava feedback
+    // imediato. Aqui ajustamos as caches relevantes (lista de threads +
+    // contador global no Navbar) na hora do clique, e revertemos se a
+    // request falhar. Caso o servidor diga outro numero, o invalidate em
+    // onSettled re-sincroniza a verdade.
+    onMutate: async (threadId) => {
+      const threadsKey = ['threads']
+      const unreadKey: readonly unknown[] = ['messages', 'unread-count']
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: threadsKey }),
+        queryClient.cancelQueries({ queryKey: unreadKey }),
+      ])
+
+      // Snapshot de TODAS as queries que comecem por ['threads'] (active /
+      // archived sao chaves distintas) para suportar rollback.
+      const previousThreads = queryClient.getQueriesData<{
+        data: ThreadSummary[]
+        meta: PaginatedMeta
+      }>({ queryKey: threadsKey })
+      const previousUnread = queryClient.getQueryData<{ unreadCount: number }>(unreadKey)
+
+      // Calcular quanto a' frente ja estamos: o decremento do badge global
+      // tem de ser igual ao unreadCount que o thread tinha antes do clique
+      // (o servidor zera-os todos numa unica chamada). Procuramos em
+      // qualquer variant da chave threads.
+      let unreadDelta = 0
+      for (const [, data] of previousThreads) {
+        const hit = data?.data.find((t) => t.id === threadId)
+        if (hit) {
+          unreadDelta = hit.unreadCount
+          break
+        }
+      }
+
+      // Patch cada variant da lista de threads
+      for (const [key, data] of previousThreads) {
+        if (!data) continue
+        queryClient.setQueryData(key, {
+          ...data,
+          data: data.data.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)),
+        })
+      }
+
+      // Patch o contador global
+      if (previousUnread && unreadDelta > 0) {
+        queryClient.setQueryData(unreadKey, {
+          unreadCount: Math.max(0, previousUnread.unreadCount - unreadDelta),
+        })
+      }
+
+      return { previousThreads, previousUnread }
     },
-    onError: (err) => {
+    onError: (err, _threadId, context) => {
+      // Rollback completo se falhar.
+      if (context?.previousThreads) {
+        for (const [key, data] of context.previousThreads) {
+          queryClient.setQueryData(key, data)
+        }
+      }
+      if (context?.previousUnread !== undefined) {
+        queryClient.setQueryData(['messages', 'unread-count'], context.previousUnread)
+      }
       // markRead falha silenciosamente — nao afecta a UX (mensagens ja
       // estao visiveis). Log apenas para observabilidade.
       console.warn('[messages] markRead failed', err)
+    },
+    onSettled: () => {
+      // Independentemente do resultado, re-sincronizar com servidor (o
+      // refetchInterval da lista podia demorar ate' 30s a apanhar).
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['messages', 'unread-count'] })
     },
   })
 
