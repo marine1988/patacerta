@@ -314,7 +314,7 @@ export function PatrocinadosTab() {
                           <a
                             href={slot.stripeReceiptUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="text-xs text-caramel-600 hover:underline"
                           >
                             Recibo ↗

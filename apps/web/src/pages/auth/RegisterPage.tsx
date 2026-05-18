@@ -284,6 +284,7 @@ export function RegisterPage() {
                 <Link
                   to="/termos"
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="font-medium text-caramel-600 hover:text-caramel-500"
                 >
                   Termos de Utilização
@@ -292,6 +293,7 @@ export function RegisterPage() {
                 <Link
                   to="/politica-privacidade"
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="font-medium text-caramel-600 hover:text-caramel-500"
                 >
                   Política de Privacidade
