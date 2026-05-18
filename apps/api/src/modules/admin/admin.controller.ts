@@ -213,6 +213,18 @@ export const suspendUser = asyncHandler(async (req, res) => {
       data: { isActive: false, suspendedAt: now, suspendedReason: reason },
     })
 
+    // Revogar TODAS as sessoes activas. Sem isto, o refresh token do
+    // utilizador suspenso continuava valido (ate 7d) e podia ser usado
+    // para emitir novos access tokens que passavam `requireAuth` (que
+    // so verifica assinatura). O `requireActiveUser` apanha mutations
+    // mas /auth/refresh nao o usa — pelo que a janela de utilizacao
+    // efectiva da sessao suspensa podia ser dias. Revogacao explicita
+    // fecha esta janela e e' coerente com o que `resetPassword` ja faz.
+    await tx.refreshToken.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: now },
+    })
+
     if (user.role === 'BREEDER') {
       await tx.breeder.updateMany({
         where: { userId: id },

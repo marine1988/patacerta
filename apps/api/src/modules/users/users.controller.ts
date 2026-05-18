@@ -133,7 +133,18 @@ export const deleteMe = asyncHandler(async (req, res) => {
       data: { status: 'SUSPENDED' },
     })
 
-    // 3. Audit trail
+    // 3. Revogar todas as sessoes activas. Sem isto, o utilizador
+    // "eliminado" pseudonimizado podia continuar a obter access tokens
+    // via refresh (cookie httpOnly ja' enviado pelo browser) ate' 7d.
+    // O proximo refresh agora bate em `!user.isActive` e devolve 403,
+    // mas eliminar os tokens evita o leak transient e mantem o trilho
+    // coerente com `resetPassword` e `suspendUser`.
+    await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+
+    // 4. Audit trail
     await tx.auditLog.create({
       data: {
         userId,
