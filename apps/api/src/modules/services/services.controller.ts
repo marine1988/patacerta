@@ -33,6 +33,7 @@ import { isNumericId } from '../../lib/slugify.js'
 import { logAudit } from '../../lib/audit.js'
 import { geocodeService } from '../../lib/geocoding.js'
 import { cacheGetOrSet } from '../../lib/cache.js'
+import { invalidateFeaturedCache } from '../home/home.controller.js'
 import {
   SERVICE_STATUS_TRANSITIONS,
   ServiceStatus,
@@ -371,6 +372,21 @@ export const updateService = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // Invalidar cache de destaques quando a edicao afecta o que o publico
+  // ve' no carrossel da homepage. Se o servico nao estava ACTIVE, nao
+  // aparecia la' e nao ha nada a invalidar. Se nada de visivel mudou
+  // (so coverage / radius), o cache continua valido.
+  const visibleFieldChanged =
+    input.title !== undefined ||
+    input.description !== undefined ||
+    input.priceCents !== undefined ||
+    input.priceUnit !== undefined ||
+    input.categoryId !== undefined ||
+    locationChanged
+  if (existing.status === 'ACTIVE' && visibleFieldChanged) {
+    await invalidateFeaturedCache().catch(() => undefined)
+  }
+
   const full = await prisma.service.findUnique({
     where: { id: serviceId },
     select: publicServiceSelect(),
@@ -417,6 +433,10 @@ export const publishService = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // Servico passa a aparecer no listing publico — invalidar cache de
+  // destaques (na homepage) para reflectir o novo elenco potencial.
+  await invalidateFeaturedCache().catch(() => undefined)
+
   res.json({ ok: true, status: 'ACTIVE' })
 })
 
@@ -439,7 +459,12 @@ export const pauseService = asyncHandler(async (req, res) => {
 
   await prisma.service.update({
     where: { id: serviceId },
-    data: { status: 'PAUSED' },
+    // featuredUntil: null — se o servico estava destacado, ao pausar
+    // deixa de fazer sentido continuar na homepage. Sem este reset, o
+    // link no carrossel apontava para um servico cuja query publica
+    // (status='ACTIVE') ja' nao devolvia. Mesmo padrao em
+    // adminSuspendService no admin controller.
+    data: { status: 'PAUSED', featuredUntil: null },
   })
 
   await logAudit({
@@ -449,6 +474,11 @@ export const pauseService = asyncHandler(async (req, res) => {
     entityId: serviceId,
     ipAddress: req.ip,
   })
+
+  // Invalida o cache de destaques best-effort. Tambem invalida porque
+  // o servico deixa de aparecer no listing publico — a homepage e' o
+  // consumidor mais sensivel.
+  await invalidateFeaturedCache().catch(() => undefined)
 
   res.json({ ok: true, status: 'PAUSED' })
 })
@@ -469,10 +499,14 @@ export const deleteService = asyncHandler(async (req, res) => {
 
   await prisma.service.update({
     where: { id: serviceId },
+    // featuredUntil: null — mesmo padrao que pauseService e que
+    // adminSuspendService (admin path). Sem isto, um servico destacado
+    // que o owner removia ficava na homepage ate' a window expirar.
     data: {
       status: 'SUSPENDED',
       removedAt: new Date(),
       removedReason: 'Removido pelo anunciante',
+      featuredUntil: null,
     },
   })
 
@@ -483,6 +517,10 @@ export const deleteService = asyncHandler(async (req, res) => {
     entityId: serviceId,
     ipAddress: req.ip,
   })
+
+  // Best-effort: o TTL do cache (~5min) acabaria por reconciliar mas
+  // entretanto o link na homepage levaria a 404 publico.
+  await invalidateFeaturedCache().catch(() => undefined)
 
   res.status(204).send()
 })
