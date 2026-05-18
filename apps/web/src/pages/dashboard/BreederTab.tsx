@@ -477,6 +477,7 @@ export function BreederTab() {
       initialTraining: form.initialTraining,
       pickupInPerson: form.pickupInPerson,
       deliveryByCar: form.deliveryByCar,
+      deliveryByPlane: form.deliveryByPlane,
       pickupNotes: form.pickupNotes.trim() || undefined,
       breedIds: form.breedIds,
       otherBreedsNote: otherBreedsNote ?? undefined,
@@ -1148,6 +1149,15 @@ export function BreederTab() {
                 className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
               />
               Entrega ao domicílio
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.deliveryByPlane}
+                onChange={(e) => setForm((p) => ({ ...p, deliveryByPlane: e.target.checked }))}
+                className="rounded border-gray-300 text-caramel-600 focus:ring-caramel-500"
+              />
+              Envio aéreo (companhias autorizadas)
             </label>
           </div>
           <div className="mt-3">

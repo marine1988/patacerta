@@ -630,6 +630,7 @@ export function BreederProfilePage() {
             const opts = [
               { key: 'pickupInPerson', label: 'Recolha presencial no canil', icon: '🏠' },
               { key: 'deliveryByCar', label: 'Entrega ao domicílio', icon: '🚗' },
+              { key: 'deliveryByPlane', label: 'Envio aéreo (companhias autorizadas)', icon: '✈️' },
             ] as const
             const active = opts.filter((o) => breeder[o.key])
             if (active.length === 0 && !breeder.pickupNotes) return null
