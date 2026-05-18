@@ -11,7 +11,7 @@ import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
-import { MESSAGE_EDIT_WINDOW_MINUTES } from '@patacerta/shared'
+import { MESSAGE_EDIT_WINDOW_MINUTES, MESSAGE_EDIT_WINDOW_CLIENT_SAFETY_SECONDS } from '@patacerta/shared'
 interface ThreadUser {
   id: number
   firstName: string
@@ -74,6 +74,8 @@ interface ThreadDetail {
     status: string
     provider: ThreadUser
   } | null
+  archivedByOwnerAt: string | null
+  archivedByBreederAt: string | null
   messages: ThreadMessage[]
   pagination: { page: number; limit: number; total: number; totalPages: number }
 }
@@ -110,6 +112,16 @@ export function MessagesTab() {
   // no topo do detalhe da conversa com role="alert".
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
+
+  // Tick periodico para forcar re-render e esconder accoes "Editar"/"Eliminar"
+  // quando a janela de 15min expira sem o utilizador interagir. Sem isto, o
+  // botao "Editar" permanece visivel ate' a' proxima invalidacao de query, e
+  // o utilizador clicava ja' depois do servidor recusar.
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   const breederIdParam = searchParams.get('breederId')
   const pendingBreederId = breederIdParam ? Number(breederIdParam) : null
@@ -543,13 +555,15 @@ export function MessagesTab() {
 
     const canLoadOlder = !!hasNextPage
 
-    // Thread archive state from the current user's perspective
-    const currentThreadSummary = threads.find((t) => t.id === threadDetail.id)
-    const isArchivedForMe = currentThreadSummary
-      ? user && threadDetail.owner.id === user.id
-        ? !!currentThreadSummary.archivedByOwnerAt
-        : !!currentThreadSummary.archivedByBreederAt
-      : false
+    // Thread archive state from the current user's perspective.
+    // Preferimos os campos do proprio threadDetail (sempre presentes na
+    // resposta GET /threads/:id) em vez de procurar na lista, porque a lista
+    // pode nao incluir esta thread quando esta' arquivada e o utilizador
+    // abriu directamente por URL (?threadId=...) com showArchived=false.
+    const isArchivedForMe =
+      user && threadDetail.owner.id === user.id
+        ? !!threadDetail.archivedByOwnerAt
+        : !!threadDetail.archivedByBreederAt
 
     return (
       <div className="space-y-4">
@@ -620,8 +634,13 @@ export function MessagesTab() {
               const isPending = msg.id < 0
               const isDeleted = !!msg.deletedAt
               const isEdited = !!msg.editedAt && !isDeleted
-              const ageMs = Date.now() - new Date(msg.createdAt).getTime()
-              const withinEditWindow = ageMs < MESSAGE_EDIT_WINDOW_MINUTES * 60_000
+              const ageMs = nowTick - new Date(msg.createdAt).getTime()
+              // Subtraimos uma margem de seguranca (clock skew + latencia HTTP)
+              // para evitar mostrar "Editar" e o servidor recusar 1s depois.
+              const editWindowMs =
+                MESSAGE_EDIT_WINDOW_MINUTES * 60_000 -
+                MESSAGE_EDIT_WINDOW_CLIENT_SAFETY_SECONDS * 1_000
+              const withinEditWindow = ageMs < editWindowMs
               const canEdit = isOwn && !isDeleted && !isPending && withinEditWindow
               const canDelete = canEdit
               const canReport = !isOwn && !isDeleted && !isPending

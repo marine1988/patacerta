@@ -7,9 +7,12 @@
  * We intentionally keep the regex conservative to avoid false positives.
  * Trailing punctuation (. , ; : ! ? )) is stripped from the matched URL and
  * appended back as plain text.
+ *
+ * Regex e' instanciada localmente em cada render porque flag `g` mantem
+ * `lastIndex` no objecto regex — partilhar entre renders concorrentes
+ * (React Concurrent Mode) podia produzir matches inconsistentes.
  */
 
-const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi
 const TRAILING_PUNCT_RE = /[.,;:!?)\]]+$/
 
 function splitUrl(match: string): { url: string; trailing: string } {
@@ -32,11 +35,11 @@ export function LinkifiedText({ text, className, linkClassName }: Props) {
   let lastIndex = 0
   let key = 0
 
-  // Reset regex state
-  URL_RE.lastIndex = 0
+  // Instancia local — evita estado partilhado entre renders.
+  const urlRe = /\bhttps?:\/\/[^\s<>"']+/gi
 
   let match: RegExpExecArray | null
-  while ((match = URL_RE.exec(text)) !== null) {
+  while ((match = urlRe.exec(text)) !== null) {
     const start = match.index
     const raw = match[0]
     if (start > lastIndex) nodes.push(text.slice(lastIndex, start))

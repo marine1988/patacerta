@@ -56,6 +56,14 @@ export const searchMessagesSchema = z.object({
 /** Edit/delete allowed within this window (minutes) after sending. Shared between client + server. */
 export const MESSAGE_EDIT_WINDOW_MINUTES = 15
 
+/**
+ * Margem de segurança em segundos que o cliente deve subtrair à janela acima
+ * para evitar que o utilizador veja "Editar" disponível e clique já depois do
+ * servidor ter expirado a janela (clock skew + latência). NÃO aplicar no
+ * servidor — o servidor mantém a janela exacta de 15 min como fonte de verdade.
+ */
+export const MESSAGE_EDIT_WINDOW_CLIENT_SAFETY_SECONDS = 30
+
 export type CreateThreadInput = z.infer<typeof createThreadSchema>
 export type SendMessageInput = z.infer<typeof sendMessageSchema>
 export type EditMessageInput = z.infer<typeof editMessageSchema>
