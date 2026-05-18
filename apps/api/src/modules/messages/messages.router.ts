@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middleware/auth.js'
+import { requireAuth, requireActiveUser } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import {
   createThreadSchema,
@@ -21,6 +21,7 @@ messagesRouter.use(requireAuth)
 messagesRouter.get('/threads', validate(listThreadsSchema, 'query'), ctrl.listThreads)
 messagesRouter.post(
   '/threads',
+  requireActiveUser,
   threadCreateRateLimit,
   validate(createThreadSchema),
   ctrl.createThread,
@@ -31,13 +32,16 @@ messagesRouter.get(
   ctrl.getThread,
 )
 
-// Archive / unarchive (per-side)
+// Archive / unarchive (per-side) — permitido a utilizadores suspensos
+// porque e' uma accao defensiva (limpar a propria inbox), nao tem
+// efeito sobre a contraparte.
 messagesRouter.patch('/threads/:threadId/archive', ctrl.archiveThread)
 messagesRouter.patch('/threads/:threadId/unarchive', ctrl.unarchiveThread)
 
 // Messages within a thread
 messagesRouter.post(
   '/threads/:threadId/messages',
+  requireActiveUser,
   messageSendRateLimit,
   validate(sendMessageSchema),
   ctrl.sendMessage,
@@ -45,10 +49,16 @@ messagesRouter.post(
 messagesRouter.patch('/threads/:threadId/read', ctrl.markThreadAsRead)
 
 // Edit / delete / report a single message
-messagesRouter.patch('/messages/:messageId', validate(editMessageSchema), ctrl.editMessage)
-messagesRouter.delete('/messages/:messageId', ctrl.deleteMessage)
+messagesRouter.patch(
+  '/messages/:messageId',
+  requireActiveUser,
+  validate(editMessageSchema),
+  ctrl.editMessage,
+)
+messagesRouter.delete('/messages/:messageId', requireActiveUser, ctrl.deleteMessage)
 messagesRouter.post(
   '/messages/:messageId/report',
+  requireActiveUser,
   validate(reportMessageSchema),
   ctrl.reportMessage,
 )

@@ -96,7 +96,7 @@ export const listThreads = asyncHandler(async (req, res) => {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
-        _count: { select: { messages: true } },
+        _count: { select: { messages: { where: { deletedAt: null } } } },
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -362,7 +362,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
   const { body } = req.body as SendMessageInput
 
-  const { thread } = await authorizeThreadAccess(threadId, userId)
+  const { thread, isOwner, isBreeder } = await authorizeThreadAccess(threadId, userId)
 
   // Block suspended breeders from sending via thread too
   if (req.user!.role === 'BREEDER') {
@@ -382,6 +382,28 @@ export const sendMessage = asyncHandler(async (req, res) => {
     }
   }
 
+  // Bloquear envio para thread arquivada pela CONTRAPARTE. Auto-unarchive
+  // do PROPRIO lado e' aceitavel — o utilizador esta a explicitar que
+  // quer reabrir a conversa. Mas arquivar do lado oposto e' um sinal
+  // claro de "nao quero ser contactado", e o envio acabava por re-emergir
+  // a thread no topo do meu inbox sem aviso, deixando-a marcada como
+  // arquivada (estado inconsistente).
+  const counterpartyArchived = isOwner ? thread.archivedByBreederAt : thread.archivedByOwnerAt
+  if (counterpartyArchived) {
+    throw new AppError(
+      403,
+      'Esta conversa foi arquivada pela contraparte. Não pode enviar mensagens.',
+      'THREAD_ARCHIVED_BY_COUNTERPARTY',
+    )
+  }
+  void isBreeder
+
+  // Reabrir do lado proprio se necessario, na mesma transaccao do
+  // create+touch (atomico — se o create falhar, o unarchive nao
+  // persiste).
+  const myArchivedField = isOwner ? 'archivedByOwnerAt' : 'archivedByBreederAt'
+  const myArchivedValue = isOwner ? thread.archivedByOwnerAt : thread.archivedByBreederAt
+
   const [message] = await prisma.$transaction([
     prisma.message.create({
       data: { threadId, senderId: userId, body },
@@ -394,7 +416,13 @@ export const sendMessage = asyncHandler(async (req, res) => {
         sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
       },
     }),
-    prisma.thread.update({ where: { id: threadId }, data: { updatedAt: new Date() } }),
+    prisma.thread.update({
+      where: { id: threadId },
+      data: {
+        updatedAt: new Date(),
+        ...(myArchivedValue ? { [myArchivedField]: null } : {}),
+      },
+    }),
   ])
 
   await logAudit({
@@ -466,6 +494,20 @@ export const archiveThread = asyncHandler(async (req, res) => {
   if (isBreeder) data.archivedByBreederAt = new Date()
 
   await prisma.thread.update({ where: { id: threadId }, data })
+
+  // Audit: archive afecta a entrega percebida pela contraparte (em
+  // particular bloqueia novos envios — ver guard em sendMessage) e pode
+  // ser relevante em disputas/suporte. Coerente com THREAD_CREATED e
+  // MESSAGE_SENT estarem auditados.
+  await logAudit({
+    userId,
+    action: 'THREAD_ARCHIVED',
+    entity: 'thread',
+    entityId: threadId,
+    details: `Side: ${isOwner ? 'owner' : 'counterparty'}`,
+    ipAddress: req.ip,
+  })
+
   res.status(204).send()
 })
 
@@ -479,6 +521,16 @@ export const unarchiveThread = asyncHandler(async (req, res) => {
   if (isBreeder) data.archivedByBreederAt = null
 
   await prisma.thread.update({ where: { id: threadId }, data })
+
+  await logAudit({
+    userId,
+    action: 'THREAD_UNARCHIVED',
+    entity: 'thread',
+    entityId: threadId,
+    details: `Side: ${isOwner ? 'owner' : 'counterparty'}`,
+    ipAddress: req.ip,
+  })
+
   res.status(204).send()
 })
 
@@ -589,6 +641,13 @@ export const reportMessage = asyncHandler(async (req, res) => {
     include: { thread: true },
   })
   if (!message) throw new AppError(404, 'Mensagem não encontrada', 'MESSAGE_NOT_FOUND')
+  // Mensagens ja eliminadas pelo autor nao podem ser denunciadas — o
+  // body esta mascarado no cliente como "(mensagem eliminada)" e o
+  // moderador nao tem visibilidade util sobre o conteudo (so' via
+  // restore manual em DB). Evita ruido na fila de moderacao.
+  if (message.deletedAt) {
+    throw new AppError(400, 'Mensagem já eliminada', 'MESSAGE_DELETED')
+  }
 
   // Only thread participants may report. The reporter may not be the author.
   const { isOwner, isBreeder } = await authorizeThreadAccess(message.threadId, userId)
@@ -631,7 +690,13 @@ export const reportMessage = asyncHandler(async (req, res) => {
     action: 'MESSAGE_REPORTED',
     entity: 'message_report',
     entityId: report.id,
-    details: `Message: ${messageId} | Thread: ${message.threadId} | Reason: ${reason.slice(0, 80)}`,
+    // NAO incluir o `reason` aqui — pode conter PII (nomes, contactos,
+    // descricoes de assedio) e o conteudo ja' fica persistido de forma
+    // estruturada em MessageReport.reason, sujeito a politicas de
+    // retencao/RTBF proprias. Duplicar no audit log alarga a superficie
+    // de exposicao desnecessariamente. A referencia ao report (entityId)
+    // chega para investigacao.
+    details: `Message: ${messageId} | Thread: ${message.threadId}`,
     ipAddress: req.ip,
   })
 

@@ -77,3 +77,41 @@ export const requireBreederProfile = asyncHandler(async (req, _res, next) => {
   }
   next()
 })
+
+/**
+ * Require que o utilizador autenticado nao esteja suspenso/inactivo.
+ *
+ * O JWT vive ate' 15 minutos; durante essa janela um admin pode ter
+ * suspendido a conta mas o token continua valido. Sem este guard, o
+ * utilizador suspenso podia ainda fazer mutations (enviar mensagens,
+ * criar threads, editar perfis) durante o resto da TTL do token.
+ *
+ * Usar SO em mutations (POST/PATCH/DELETE) onde a accao tem efeito
+ * externo. GETs read-only podem ser permitidos para que o utilizador
+ * suspenso ainda possa exportar/ver os seus dados (RGPD). Cada uso
+ * adiciona um findUnique (~1-3ms); se isto se tornar gargalo, pode-se
+ * cachear `isActive` no proprio JWT na altura do login.
+ *
+ * Must be used AFTER requireAuth.
+ */
+export const requireActiveUser = asyncHandler(async (req, _res, next) => {
+  if (!req.user) {
+    throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { isActive: true, suspendedAt: true },
+  })
+  if (!user) {
+    // Conta apagada entretanto — token e' valido mas utilizador foi-se.
+    throw new AppError(401, 'Conta não encontrada', 'USER_NOT_FOUND')
+  }
+  if (!user.isActive || user.suspendedAt) {
+    throw new AppError(
+      403,
+      'A sua conta encontra-se suspensa. Contacte o suporte.',
+      'ACCOUNT_SUSPENDED',
+    )
+  }
+  next()
+})
