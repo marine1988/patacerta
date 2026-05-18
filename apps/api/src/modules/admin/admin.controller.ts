@@ -1237,8 +1237,9 @@ export const dismissServiceReport = asyncHandler(async (req, res) => {
 /**
  * POST /api/admin/services/:id/suspend
  * Body: { reason }. Moves a service to SUSPENDED and records the reason.
- * This is the admin-side analogue of the owner soft-delete; it is final
- * (no transition back, per SERVICE_STATUS_TRANSITIONS).
+ * Admin pode reverter mais tarde via adminReactivateService — fora das
+ * regras de transicao do owner-facing flow (SERVICE_STATUS_TRANSITIONS),
+ * que nao permitem SUSPENDED->ACTIVE pelo proprio dono.
  */
 export const adminSuspendService = asyncHandler(async (req, res) => {
   const id = parseId(req.params.id)
@@ -1391,6 +1392,18 @@ function parseFeaturedUntil(body: unknown): Date | null {
     const d = new Date(b.until)
     if (isNaN(d.getTime())) {
       throw new AppError(400, 'Data invalida', 'INVALID_DATE')
+    }
+    // Rejeitar datas no passado: equivaleria a um null mas confunde o
+    // historial de auditoria ("Promoted until 2020-01-01") e contorna
+    // implicitamente o status-check abaixo (status precisa de ser
+    // ACTIVE/VERIFIED se until !== null). Para remover promocao, usar
+    // explicitamente { until: null }.
+    if (d.getTime() <= Date.now()) {
+      throw new AppError(
+        400,
+        'Data de destaque tem de ser no futuro. Use { until: null } para remover.',
+        'INVALID_DATE_PAST',
+      )
     }
     return d
   }

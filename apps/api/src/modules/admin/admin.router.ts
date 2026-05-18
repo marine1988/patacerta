@@ -1,7 +1,6 @@
 import { Router } from 'express'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
+import { requireAuth, requireRole, requireActiveUser } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
-import { apiRateLimit } from '../../middleware/rate-limit.js'
 import {
   resolveReportSchema,
   resolveServiceReportSchema,
@@ -24,8 +23,22 @@ import * as sponsoredCtrl from '../sponsored-slots/admin-sponsored-slots.control
 
 export const adminRouter = Router()
 
-// All admin routes require ADMIN role
-adminRouter.use(requireAuth, requireRole('ADMIN'))
+// All admin routes require:
+//  - JWT valido (requireAuth)
+//  - papel ADMIN (requireRole)
+//  - conta activa (requireActiveUser): fecha a janela em que um admin
+//    suspenso por um par mantinha acesso ate' o access token expirar
+//    (15 min). Embora suspendUser ja' revogue os refresh tokens, o
+//    access token JWT permanece criptograficamente valido ate' ao seu
+//    `exp` — sem este guard, o admin suspenso continuava a executar
+//    accoes administrativas sensiveis (suspensoes, moderacao, viewing
+//    de PII) durante esse intervalo. Cada request adiciona 1 findUnique
+//    (~1-3ms) que e' aceitavel para endpoints admin (baixo volume).
+//
+// Nota: `apiRateLimit` ja' esta aplicado globalmente em index.ts (200/15min
+// por IP), pelo que cobre todos os endpoints abaixo sem necessidade de
+// repeticao por-router.
+adminRouter.use(requireAuth, requireRole('ADMIN'), requireActiveUser)
 
 // Dashboard stats
 adminRouter.get('/stats', ctrl.getDashboardStats)
@@ -95,12 +108,7 @@ adminRouter.post('/services/:id/suspend', validate(suspendServiceSchema), ctrl.a
 adminRouter.post('/services/:id/reactivate', ctrl.adminReactivateService)
 
 // Audit logs
-adminRouter.get(
-  '/audit-logs',
-  apiRateLimit,
-  validate(auditLogsQuerySchema, 'query'),
-  ctrl.getAuditLogs,
-)
+adminRouter.get('/audit-logs', validate(auditLogsQuerySchema, 'query'), ctrl.getAuditLogs)
 
 // Featured / homepage destaques
 adminRouter.patch(
