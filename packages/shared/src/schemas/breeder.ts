@@ -26,6 +26,7 @@ export function isValidNif(nif: string): boolean {
 
 export const nifSchema = z
   .string()
+  .trim()
   .length(9, 'NIF deve ter 9 dígitos')
   .regex(/^\d{9}$/, 'NIF deve conter apenas dígitos')
   .refine(isValidNif, 'NIF inválido')

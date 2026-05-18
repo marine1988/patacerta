@@ -117,6 +117,42 @@ export function BreederTab() {
   })
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Snapshot do form no momento em que entrou em edicao — usado para
+  // detectar unsaved changes ao Cancelar e avisar o utilizador antes
+  // de perder o trabalho. Comparamos via JSON.stringify (todos os
+  // campos sao primitivos ou arrays de numeros, por isso a serializacao
+  // e determinista o suficiente para igualdade estrutural).
+  const editBaselineRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (editing) {
+      editBaselineRef.current = JSON.stringify(form)
+    } else {
+      editBaselineRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
+
+  function isFormDirty(): boolean {
+    if (editBaselineRef.current === null) return false
+    return JSON.stringify(form) !== editBaselineRef.current
+  }
+
+  // beforeunload: avisa o utilizador se tentar fechar a aba/refrescar
+  // com alteracoes nao guardadas. O texto custom e' ignorado pelos
+  // browsers modernos — mostram a sua propria string genérica.
+  useEffect(() => {
+    if (!editing) return
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isFormDirty()) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, form])
+
   // Sem perfil ainda? Abre directamente em modo "criar" (form aberto).
   // Ja tem perfil? Mostra a vista de status; o utilizador clica "Editar"
   // para entrar no formulario.
@@ -217,7 +253,7 @@ export function BreederTab() {
       setMsg({
         type: 'success',
         text: breeder
-          ? 'Perfil de criador atualizado com sucesso.'
+          ? 'Perfil de criador actualizado com sucesso.'
           : 'Perfil de criador criado com sucesso. Adicione documentos para verificacao.',
       })
     },
@@ -226,7 +262,7 @@ export function BreederTab() {
         type: 'error',
         text: extractApiError(
           err,
-          breeder ? 'Erro ao atualizar perfil de criador.' : 'Erro ao criar perfil de criador.',
+          breeder ? 'Erro ao actualizar perfil de criador.' : 'Erro ao criar perfil de criador.',
         ),
       })
     },
@@ -451,7 +487,13 @@ export function BreederTab() {
     const schema = breeder ? updateBreederProfileSchema : breederProfileSchema
     const parsed = schema.safeParse(payload)
     if (!parsed.success) {
-      setMsg({ type: 'error', text: parsed.error.errors[0].message })
+      // Mostra todos os erros (até 5) em vez de só o primeiro — caso
+      // contrário o utilizador corrige um campo, faz Submit, vê outro
+      // erro, corrige, etc. Frustrante. Truncamos a 5 para a mensagem
+      // não explodir visualmente.
+      const messages = parsed.error.errors.slice(0, 5).map((e) => e.message)
+      const more = parsed.error.errors.length > 5 ? ` (+${parsed.error.errors.length - 5})` : ''
+      setMsg({ type: 'error', text: messages.join(' • ') + more })
       return
     }
 
@@ -1142,7 +1184,19 @@ export function BreederTab() {
           {noProfile ? 'Criar perfil' : 'Guardar'}
         </Button>
         {!noProfile && (
-          <Button variant="secondary" type="button" onClick={() => setEditing(false)}>
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => {
+              if (isFormDirty()) {
+                const ok = window.confirm(
+                  'Tem alterações por guardar. Sair sem guardar?',
+                )
+                if (!ok) return
+              }
+              setEditing(false)
+            }}
+          >
             Cancelar
           </Button>
         )}

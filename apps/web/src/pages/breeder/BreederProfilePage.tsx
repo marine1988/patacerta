@@ -440,6 +440,14 @@ export function BreederProfilePage() {
                     alt={`${breeder.businessName} — foto principal`}
                     className="h-full w-full object-cover"
                     loading="lazy"
+                    onError={(e) => {
+                      // Fotos orfas no MinIO (e.g. limpeza falhada num
+                      // delete anterior) renderizam o icon de imagem
+                      // partida do browser, que parece bug. Escondemos
+                      // o <img> e deixamos o bg-gray-100 visivel — UX
+                      // mais limpa enquanto a equipa investiga.
+                      ;(e.currentTarget as HTMLImageElement).style.visibility = 'hidden'
+                    }}
                   />
                 </div>
               </button>
@@ -470,6 +478,9 @@ export function BreederProfilePage() {
                           alt=""
                           className="h-full w-full object-cover"
                           loading="lazy"
+                          onError={(e) => {
+                            ;(e.currentTarget as HTMLImageElement).style.visibility = 'hidden'
+                          }}
                         />
                         {hasMore && (
                           <span
