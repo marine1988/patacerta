@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { queryKeys } from '../../../lib/queryKeys'
@@ -16,6 +16,16 @@ export function VerificacoesTab() {
   const [rejectNotes, setRejectNotes] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
+
+  // Blob URLs criados via handleViewDoc — guardadas para revogar no
+  // unmount (evita leak quando o admin abre vários docs e sai da tab).
+  const openedBlobUrlsRef = useRef<string[]>([])
+  useEffect(() => {
+    return () => {
+      openedBlobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
+      openedBlobUrlsRef.current = []
+    }
+  }, [])
 
   const { data, isLoading, isError } = useQuery<Paginated<VerificationDoc>>({
     queryKey: queryKeys.admin.verifications(page),
@@ -98,9 +108,12 @@ export function VerificacoesTab() {
       if (!win) {
         URL.revokeObjectURL(blobUrl)
         setActionError('O navegador bloqueou a janela. Permita pop-ups para este site.')
+        return
       }
-      // Senao, deixar o browser libertar quando a tab fechar — nao temos
-      // hook fiavel para detectar isso de outra origem.
+      // Caso contrário, guardamos a URL para revogar no unmount. Não
+      // podemos detectar fiavelmente o close da tab cross-origin, mas
+      // pelo menos não acumulamos URLs vivas para sempre.
+      openedBlobUrlsRef.current.push(blobUrl)
     } catch (err) {
       setActionError(extractApiError(err, 'Erro ao abrir o certificado.'))
     }
@@ -258,29 +271,54 @@ export function VerificacoesTab() {
         onClose={() => setRejectingDocId(null)}
         title="Rejeitar certificado DGAV"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-ink">
-            Indique o motivo da rejeição. O criador volta ao estado <strong>Rascunho</strong> para
-            poder enviar um novo certificado.
-          </p>
-          <textarea
-            value={rejectNotes}
-            onChange={(e) => setRejectNotes(e.target.value)}
-            placeholder="Ex.: certificado ilegível, fora do prazo, NIF não corresponde, etc."
-            className="w-full min-h-[100px] border border-line bg-surface p-3 text-sm text-ink"
-            style={{ borderRadius: 2 }}
-            aria-label="Motivo da rejeição"
-          />
-          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setRejectingDocId(null)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={confirmReject} loading={rejectMutation.isPending}>
-              Rejeitar
-            </Button>
-          </div>
-        </div>
+        {(() => {
+          const rejectingDoc =
+            rejectingDocId !== null ? data.data.find((d) => d.id === rejectingDocId) : null
+          return (
+            <div className="space-y-4">
+              {rejectingDoc && (
+                <div className="rounded border border-line bg-surface-alt/40 p-3 text-sm">
+                  <p className="font-medium text-ink">{rejectingDoc.breeder.businessName}</p>
+                  <p className="truncate text-xs text-muted">
+                    Ficheiro: {rejectingDoc.fileName}
+                  </p>
+                  <p className="text-xs text-muted">
+                    NIF: {rejectingDoc.breeder.nif} {'\u2022'} {rejectingDoc.docType}
+                  </p>
+                </div>
+              )}
+              <p className="text-sm text-ink">
+                Indique o motivo da rejeição. O criador volta ao estado <strong>Rascunho</strong>{' '}
+                para poder enviar um novo certificado.
+              </p>
+              <textarea
+                value={rejectNotes}
+                onChange={(e) => setRejectNotes(e.target.value)}
+                placeholder="Ex.: certificado ilegível, fora do prazo, NIF não corresponde, etc."
+                className="w-full min-h-[100px] border border-line bg-surface p-3 text-sm text-ink"
+                style={{ borderRadius: 2 }}
+                aria-label="Motivo da rejeição"
+                minLength={5}
+                maxLength={2000}
+              />
+              <p className="text-xs text-subtle">{rejectNotes.length}/2000 (mín. 5)</p>
+              {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setRejectingDocId(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={confirmReject}
+                  loading={rejectMutation.isPending}
+                  disabled={rejectNotes.trim().length < 5}
+                >
+                  Rejeitar
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
       {confirmDialog}
     </div>

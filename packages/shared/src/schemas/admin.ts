@@ -18,11 +18,21 @@ export const changeUserRoleSchema = z.object({
 export type ChangeUserRoleInput = z.infer<typeof changeUserRoleSchema>
 
 // PATCH /api/verification/:docId/review — admin reviews a verification doc.
-// notes is optional free-form context shown back to the breeder.
-export const reviewVerificationDocSchema = z.object({
-  status: z.enum(['APPROVED', 'REJECTED']),
-  notes: z.string().trim().max(2000).optional(),
-})
+// notes is optional free-form context shown back to the breeder, mas para
+// REJECTED é obrigatório com pelo menos 5 caracteres (o criador precisa
+// de saber o que corrigir; rejeições silenciosas degradam a UX).
+export const reviewVerificationDocSchema = z
+  .object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+    notes: z.string().trim().max(2000).optional(),
+  })
+  .refine(
+    (v) => v.status !== 'REJECTED' || (typeof v.notes === 'string' && v.notes.trim().length >= 5),
+    {
+      message: 'Para rejeitar, indique uma nota com pelo menos 5 caracteres.',
+      path: ['notes'],
+    },
+  )
 export type ReviewVerificationDocInput = z.infer<typeof reviewVerificationDocSchema>
 
 // Admin suspensions — both for users and breeders. Reason is mandatory and

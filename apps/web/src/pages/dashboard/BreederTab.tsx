@@ -242,8 +242,8 @@ export function BreederTab() {
       setUploadMsg({ type: 'success', text: 'Documento enviado com sucesso.' })
       if (fileInputRef.current) fileInputRef.current.value = ''
     },
-    onError: () => {
-      setUploadMsg({ type: 'error', text: 'Erro ao enviar documento.' })
+    onError: (err) => {
+      setUploadMsg({ type: 'error', text: extractApiError(err, 'Erro ao enviar documento.') })
     },
   })
 
@@ -264,8 +264,8 @@ export function BreederTab() {
       queryClient.invalidateQueries({ queryKey: ['breeder-profile'] })
       setMsg({ type: 'success', text: 'Submetido para verificação com sucesso.' })
     },
-    onError: () => {
-      setMsg({ type: 'error', text: 'Erro ao submeter para verificação.' })
+    onError: (err) => {
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao submeter para verificação.') })
     },
   })
 
