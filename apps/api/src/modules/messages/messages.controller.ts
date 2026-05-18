@@ -382,6 +382,51 @@ export const sendMessage = asyncHandler(async (req, res) => {
     }
   }
 
+  // Espelho do guard que createThread aplica no momento da criacao: se eu
+  // sou o `owner` e quero enviar mensagem ao criador-destinatario, verifico
+  // que ele continua VERIFIED + activo. Sem esta verificacao, um criador
+  // suspenso entretanto continuava a receber mensagens "para o vazio"
+  // (a UI dele esta bloqueada e nao ve' os updates). Aplicamos apenas
+  // quando isOwner=true porque o caminho inverso (criador a responder
+  // ao owner) ja' cobre o caso de owner suspenso via requireActiveUser
+  // — o owner suspenso seria bloqueado mais cedo, e este sendMessage
+  // nao seria atingido pela contraparte (que tem o thread visivel mas
+  // o owner pode bloquear/silenciar via outros caminhos no futuro).
+  if (isOwner && thread.breederId != null) {
+    const b = await prisma.breeder.findUnique({
+      where: { id: thread.breederId },
+      select: {
+        status: true,
+        user: { select: { isActive: true, suspendedAt: true } },
+      },
+    })
+    if (!b || b.status !== 'VERIFIED' || !b.user.isActive || b.user.suspendedAt) {
+      throw new AppError(
+        403,
+        'O destinatário não está disponível para receber mensagens.',
+        'RECIPIENT_UNAVAILABLE',
+      )
+    }
+  }
+  if (isOwner && thread.serviceId != null) {
+    const s = await prisma.service.findUnique({
+      where: { id: thread.serviceId },
+      select: {
+        status: true,
+        provider: { select: { isActive: true, suspendedAt: true } },
+      },
+    })
+    // status SUSPENDED ja' apanhado acima; aqui validamos provider activo
+    // (admin pode suspender a conta sem suspender o servico explicitamente).
+    if (!s || !s.provider.isActive || s.provider.suspendedAt) {
+      throw new AppError(
+        403,
+        'O destinatário não está disponível para receber mensagens.',
+        'RECIPIENT_UNAVAILABLE',
+      )
+    }
+  }
+
   // Bloquear envio para thread arquivada pela CONTRAPARTE. Auto-unarchive
   // do PROPRIO lado e' aceitavel — o utilizador esta a explicitar que
   // quer reabrir a conversa. Mas arquivar do lado oposto e' um sinal
@@ -640,7 +685,39 @@ export const reportMessage = asyncHandler(async (req, res) => {
     where: { id: messageId },
     include: { thread: true },
   })
+  // Tratamos "mensagem inexistente" e "mensagem fora das minhas threads"
+  // com o mesmo 404 para nao permitir enumeracao de messageIds validos
+  // por sondagem (404 vs 403). Sem esta uniformidade, um utilizador
+  // autenticado podia descobrir quais ids de mensagens existem no
+  // sistema (mesmo nao podendo ler o conteudo) — info leak menor mas
+  // que facilita harvesting de targets para outros vectores.
   if (!message) throw new AppError(404, 'Mensagem não encontrada', 'MESSAGE_NOT_FOUND')
+
+  // Verifica participacao na thread ANTES de continuar (404 disfarcado
+  // para nao-participantes em vez do 403 anterior).
+  const thread = await prisma.thread.findUnique({
+    where: { id: message.threadId },
+    select: {
+      ownerId: true,
+      breederId: true,
+      serviceId: true,
+    },
+  })
+  if (!thread) throw new AppError(404, 'Mensagem não encontrada', 'MESSAGE_NOT_FOUND')
+  let isParticipant = thread.ownerId === userId
+  if (!isParticipant && thread.breederId != null) {
+    const b = await prisma.breeder.findUnique({ where: { userId }, select: { id: true } })
+    isParticipant = !!b && b.id === thread.breederId
+  }
+  if (!isParticipant && thread.serviceId != null) {
+    const s = await prisma.service.findUnique({
+      where: { id: thread.serviceId },
+      select: { providerId: true },
+    })
+    isParticipant = !!s && s.providerId === userId
+  }
+  if (!isParticipant) throw new AppError(404, 'Mensagem não encontrada', 'MESSAGE_NOT_FOUND')
+
   // Mensagens ja eliminadas pelo autor nao podem ser denunciadas — o
   // body esta mascarado no cliente como "(mensagem eliminada)" e o
   // moderador nao tem visibilidade util sobre o conteudo (so' via
@@ -649,12 +726,8 @@ export const reportMessage = asyncHandler(async (req, res) => {
     throw new AppError(400, 'Mensagem já eliminada', 'MESSAGE_DELETED')
   }
 
-  // Only thread participants may report. The reporter may not be the author.
-  const { isOwner, isBreeder } = await authorizeThreadAccess(message.threadId, userId)
   if (message.senderId === userId)
     throw new AppError(400, 'Não pode denunciar a própria mensagem', 'SELF_REPORT')
-  void isOwner
-  void isBreeder
 
   // Dedupe atomico via unique constraint (message_id, reporter_id, status).
   // O findFirst + create anterior era racy: dois pedidos concorrentes do
