@@ -103,7 +103,11 @@ export function VerificacoesTab() {
         responseType: 'blob',
       })
       const blobUrl = URL.createObjectURL(res.data as Blob)
-      const win = window.open(blobUrl, '_blank')
+      // 'noopener' impede que um PDF/imagem malicioso (upload de
+      // utilizador) aceda a window.opener e consiga redireccionar a
+      // sessao admin. 'noreferrer' por consistencia (o referrer e' uma
+      // blob: URL, mas alguns browsers historicamente vazavam o origin).
+      const win = window.open(blobUrl, '_blank', 'noopener,noreferrer')
       // Se o popup foi bloqueado, libertar a memoria imediatamente.
       if (!win) {
         URL.revokeObjectURL(blobUrl)
