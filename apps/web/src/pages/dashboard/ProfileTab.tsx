@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
 import { Card, Avatar, Badge, Button, Input, useConfirm } from '../../components/ui'
 import { extractApiError } from '../../lib/errors'
+import { validatePassword } from '../../lib/validation'
 export function ProfileTab() {
   const { user, updateUser } = useAuth()
   const [editing, setEditing] = useState(false)
@@ -59,7 +60,7 @@ export function ProfileTab() {
   })
 
   const passwordMutation = useMutation({
-    mutationFn: (data: { currentPassword: string; password: string }) =>
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
       api.patch('/users/me', data),
     onSuccess: () => {
       setCurrentPassword('')
@@ -138,11 +139,16 @@ export function ProfileTab() {
       setPwMsg({ type: 'error', text: 'As palavras-passe não coincidem.' })
       return
     }
-    if (newPassword.length < 8) {
-      setPwMsg({ type: 'error', text: 'A nova palavra-passe deve ter pelo menos 8 caracteres.' })
+    // Politica unificada com registo/reset (lib/validation.ts).
+    // Sem isto, o change-password client-side aceitava passwords mais fracas
+    // do que o registo (apenas length >= 8) — o backend ainda enforces via
+    // passwordSchema, mas a UX era ma' (mensagem generica pos-submit).
+    const pwErr = validatePassword(newPassword)
+    if (pwErr) {
+      setPwMsg({ type: 'error', text: pwErr })
       return
     }
-    passwordMutation.mutate({ currentPassword, password: newPassword })
+    passwordMutation.mutate({ currentPassword, newPassword })
   }
 
   if (!user) return null
