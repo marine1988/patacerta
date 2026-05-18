@@ -364,3 +364,19 @@ export const searchRateLimit = rateLimit({
   keyGenerator: userKey,
   bucket: 'search',
 })
+
+// RGPD data export (GET /users/me/export). E' uma query pesada com 12+
+// nested includes (breeder, services, threads, messages, reviews,
+// reports, consent logs, audit log). Sem limite dedicado, um cliente
+// comprometido podia disparar exports em loop e degradar a BD para
+// outros utilizadores. RGPD Art. 12(5): pedidos manifestamente infundados
+// ou excessivos podem ser limitados. 3 exports/dia/utilizador e' folgado
+// para uso legitimo (raramente um humano exporta mais do que uma vez por
+// semana) e suficiente para impedir DoS por export.
+export const dataExportRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 3,
+  message: 'Limite diário de exportações atingido. Tente novamente amanhã.',
+  keyGenerator: userKey,
+  bucket: 'data-export',
+})

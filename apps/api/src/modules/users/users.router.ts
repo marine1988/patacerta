@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import { updateUserSchema, changeUserRoleSchema, paginationQuerySchema } from '@patacerta/shared'
-import { uploadRateLimit } from '../../middleware/rate-limit.js'
+import { uploadRateLimit, dataExportRateLimit } from '../../middleware/rate-limit.js'
 import * as ctrl from './users.controller.js'
 
 export const usersRouter = Router()
@@ -24,7 +24,7 @@ usersRouter.delete('/me', requireAuth, ctrl.deleteMe)
 // RGPD Art. 15/20 — export completo de dados pessoais. Diferente de GET /me
 // (que so' devolve o user basico): aqui inclui breeder, services, threads,
 // mensagens, reviews, reports, consents, audit logs.
-usersRouter.get('/me/export', requireAuth, ctrl.exportMe)
+usersRouter.get('/me/export', requireAuth, dataExportRateLimit, ctrl.exportMe)
 
 // Avatar (current user). Multer e' chamado dentro do controller para
 // poder devolver AppError consistente em vez de erros opacos de multer.
