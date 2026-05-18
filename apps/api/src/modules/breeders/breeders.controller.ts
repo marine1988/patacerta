@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
-import { uploadFile, deleteFile } from '../../lib/minio.js'
+import { uploadFile, deleteFile, deletePrivateFile } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
 import { Prisma } from '@prisma/client'
@@ -756,12 +756,22 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
   ])
 
   // Best-effort: falhas de storage não bloqueiam o delete da BD.
+  // Importante: os documentos DGAV recentes ficam no bucket *privado*
+  // com o prefixo `private:{bucket}/...` em fileUrl. Sem distincao, o
+  // strip generico assumia bucket publico e produzia um objectName
+  // invalido, deixando o ficheiro privado orfao (RGPD: PII oficial fica
+  // no MinIO sem pointer na BD). Resolver por prefixo.
   await Promise.all([
     ...photos.map((p) => {
       const objectName = p.url.replace(/^\/[^/]+\//, '')
       return deleteFile(objectName).catch(() => {})
     }),
     ...docs.map((d) => {
+      if (d.fileUrl.startsWith('private:')) {
+        const rest = d.fileUrl.slice('private:'.length)
+        const objectName = rest.replace(/^[^/]+\//, '')
+        return deletePrivateFile(objectName).catch(() => {})
+      }
       const objectName = d.fileUrl.replace(/^\/[^/]+\//, '')
       return deleteFile(objectName).catch(() => {})
     }),

@@ -12,6 +12,7 @@ import {
 } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
+import { Prisma } from '@prisma/client'
 
 /**
  * Documentos antigos foram guardados no bucket publico no formato
@@ -31,6 +32,40 @@ function resolveDocStorage(fileUrl: string): { isPrivate: boolean; objectName: s
 import multer from 'multer'
 import path from 'path'
 import type { ReviewVerificationDocInput } from '@patacerta/shared'
+
+// MIME types seguros para servir inline no browser. Qualquer outro
+// Content-Type (legacy uploads, ficheiros corrompidos, MinIO metadata
+// nao-fiavel) e' servido como application/octet-stream com Content-
+// Disposition attachment para evitar XSS via ficheiros antigos cujo
+// MIME armazenado seja text/html ou similar.
+const SAFE_INLINE_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+])
+
+/**
+ * Garante que a string e' segura para uso em headers HTTP. Remove
+ * caracteres de controlo e aspas, e cai num placeholder se o resultado
+ * ficar vazio. Defesa-em-profundidade contra header-injection caso o
+ * fileName venha de um pipeline futuro que aceite originalname.
+ */
+function safeHeaderFileName(name: string): string {
+  const stripped = name.replace(/[^\x20-\x7E]/g, '').replace(/["\\]/g, '')
+  return stripped.length > 0 ? stripped : 'documento.bin'
+}
+
+/**
+ * Trunca notes para audit log. As notas completas ficam em
+ * verificationDoc.notes (consultaveis via /:docId/file ou admin UI),
+ * pelo que duplicar 2000 chars no audit log (PII potencial, retencao
+ * RGPD) e' desnecessario.
+ */
+function truncateForAudit(text: string | null | undefined, max = 200): string {
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
 
 // Multer config: max 5MB, images + PDF
 const multerUpload = multer({
@@ -97,6 +132,12 @@ export const uploadDocument = asyncHandler(async (req, res) => {
   // DGAV e o documento mais critico: so pode existir UM por criador, e
   // assim que o perfil estiver verificado fica trancado (evita reutilizar
   // o mesmo certificado em multiplos perfis ou remover apos aprovacao).
+  //
+  // Permitimos substituir um DGAV REJECTED (o admin rejeitou, criador
+  // tem de re-submeter um novo). Sem esta excepcao, o criador ficava
+  // wedged: nao podia eliminar (REJECTED) nem fazer upload (existe).
+  // A linha do REJECTED e' descartada (audit log preserva o historico
+  // do erro original) e substituida pela nova versao.
   if (docType === 'DGAV') {
     if (breeder.status === 'VERIFIED') {
       throw new AppError(
@@ -106,8 +147,12 @@ export const uploadDocument = asyncHandler(async (req, res) => {
       )
     }
     const existingDgav = await prisma.verificationDoc.findFirst({
-      where: { breederId: breeder.id, docType: 'DGAV' },
-      select: { id: true },
+      where: {
+        breederId: breeder.id,
+        docType: 'DGAV',
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+      select: { id: true, status: true },
     })
     if (existingDgav) {
       throw new AppError(
@@ -115,6 +160,20 @@ export const uploadDocument = asyncHandler(async (req, res) => {
         'Ja existe um certificado DGAV submetido. Elimine o atual antes de enviar outro.',
         'DGAV_ALREADY_EXISTS',
       )
+    }
+    // Limpar DGAVs REJECTED previos (best-effort no storage). O audit
+    // log permanece — o registo da rejeicao fica retido para forense.
+    const previouslyRejected = await prisma.verificationDoc.findMany({
+      where: { breederId: breeder.id, docType: 'DGAV', status: 'REJECTED' },
+      select: { id: true, fileUrl: true },
+    })
+    for (const old of previouslyRejected) {
+      const { isPrivate, objectName } = resolveDocStorage(old.fileUrl)
+      await (isPrivate
+        ? deletePrivateFile(objectName)
+        : deletePublicFile(objectName)
+      ).catch(() => undefined)
+      await prisma.verificationDoc.delete({ where: { id: old.id } }).catch(() => undefined)
     }
   }
 
@@ -129,21 +188,42 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
   const fileUrl = await uploadPrivateFile(objectName, req.file.buffer, detectedMime)
 
-  const doc = await prisma.verificationDoc.create({
-    data: {
-      breederId: breeder.id,
-      docType,
-      fileUrl,
-      fileName: safeFileName, // Store sanitized name, not raw originalname
-    },
-    select: {
-      id: true,
-      docType: true,
-      fileName: true,
-      status: true,
-      createdAt: true,
-    },
-  })
+  // TOCTOU: dois uploads concorrentes (double-click, dois tabs) podem
+  // ambos passar o existingDgav check e ambos chegar aqui. Sem indice
+  // unico a nivel DB, os dois inserts succeed. Catch defensivo: se
+  // outro request criou o registo entretanto, devolvemos o erro 409
+  // standard (uniqueness pode ser garantido por @@unique futuro em
+  // schema.prisma; entretanto basta este guard).
+  let doc
+  try {
+    doc = await prisma.verificationDoc.create({
+      data: {
+        breederId: breeder.id,
+        docType,
+        fileUrl,
+        fileName: safeFileName,
+      },
+      select: {
+        id: true,
+        docType: true,
+        fileName: true,
+        status: true,
+        createdAt: true,
+      },
+    })
+  } catch (err) {
+    // Cleanup do ficheiro que ja foi para o MinIO: o registo na BD nao
+    // existe, pelo que o ficheiro fica orfao.
+    await deletePrivateFile(objectName).catch(() => undefined)
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new AppError(
+        409,
+        'Ja existe um certificado DGAV submetido. Elimine o atual antes de enviar outro.',
+        'DGAV_ALREADY_EXISTS',
+      )
+    }
+    throw err
+  }
 
   await logAudit({
     userId: req.user!.userId,
@@ -185,8 +265,17 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     include: { breeder: { select: { status: true } } },
   })
   if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
-  if (doc.status !== 'PENDING')
-    throw new AppError(400, 'Só pode eliminar documentos pendentes', 'DOC_NOT_PENDING')
+  // Permitir DELETE de docs PENDING ou REJECTED. APPROVED nao pode
+  // ser apagado (DGAV trancado apos verificacao). Sem o REJECTED no
+  // allowlist, o criador ficava wedged: nao podia eliminar o DGAV
+  // rejeitado nem fazer upload de outro (uniqueness aplicava-se).
+  if (doc.status !== 'PENDING' && doc.status !== 'REJECTED') {
+    throw new AppError(
+      400,
+      'Só pode eliminar documentos pendentes ou rejeitados',
+      'DOC_NOT_DELETABLE',
+    )
+  }
 
   // Defesa em profundidade: mesmo que o doc esteja PENDING, se o perfil
   // ja esta verificado o DGAV nao pode ser removido — protege contra
@@ -239,7 +328,12 @@ export const reviewDocument = asyncHandler(async (req, res) => {
   if (!doc) throw new AppError(404, 'Documento não encontrado', 'DOC_NOT_FOUND')
 
   const previousStatus = doc.status
-  const isStatusChange = previousStatus !== 'PENDING' && previousStatus !== status
+  // isReReview: a revisao actual sobre-escreve uma anterior (nao
+  // PENDING). Cobre tanto mudanca de veredicto (REJECTED->APPROVED)
+  // como edicao de notas sobre um veredicto preexistente
+  // (REJECTED->REJECTED com notas diferentes). Para esses casos o
+  // audit log fica com sufixo _CHANGED.
+  const isReReview = previousStatus !== 'PENDING'
 
   // No-op idempotente: se o admin clica Rejeitar num doc ja rejeitado
   // sem alterar notas, nao escrevemos nada (evita audit-log spam).
@@ -264,7 +358,12 @@ export const reviewDocument = asyncHandler(async (req, res) => {
       where: { id: docId },
       data: {
         status,
-        notes: notes ?? null,
+        // Preservar notes existentes quando o body nao as fornece. Sem
+        // isto, uma aprovacao posterior (sem notes) apagava as notas
+        // detalhadas da rejeicao anterior — historico perdido na linha
+        // do proprio doc (audit log mantem-no, mas a UI mostra `notes`
+        // do registo principal).
+        notes: notes !== undefined ? notes : doc.notes,
         reviewedBy: req.user!.userId,
         reviewedAt: new Date(),
       },
@@ -311,17 +410,21 @@ export const reviewDocument = asyncHandler(async (req, res) => {
     return updatedDoc
   })
 
-  // Audit log distingue revisao inicial vs mudanca de revisao previa.
-  // O detail inclui sempre a transicao para facilitar troubleshooting.
+  // Audit log distingue revisao inicial vs re-revisao (mudanca de
+  // veredicto OU edicao de notas sobre veredicto preexistente). O
+  // detail inclui sempre a transicao para facilitar troubleshooting.
+  // Notas truncadas a 200 chars para evitar duplicar texto longo no
+  // audit log (a versao completa fica em verificationDoc.notes).
   const baseAction = status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED'
+  const notesSummary = truncateForAudit(notes)
   await logAudit({
     userId: req.user!.userId,
-    action: isStatusChange ? `${baseAction}_CHANGED` : baseAction,
+    action: isReReview ? `${baseAction}_CHANGED` : baseAction,
     entity: 'VerificationDoc',
     entityId: docId,
     details: `${doc.docType} ${previousStatus}->${status} for breeder ${doc.breederId}${
       breederStatusChange ? ` -> breeder.status=${breederStatusChange}` : ''
-    }${notes ? `: ${notes}` : ''}`,
+    }${notesSummary ? `: ${notesSummary}` : ''}`,
     ipAddress: req.ip,
   })
 
@@ -352,6 +455,20 @@ export const viewDocument = asyncHandler(async (req, res) => {
     ? await getPrivatePresignedUrl(objectName, 900)
     : await getPublicPresignedUrl(objectName, 900)
 
+  // Audit acesso por admin — defesa contra exfiltracao em caso de
+  // sessao admin comprometida (iterar docIds 1..N). Owner views nao
+  // sao auditadas (nivel de ruido demasiado alto).
+  if (isAdmin) {
+    await logAudit({
+      userId: req.user!.userId,
+      action: 'ADMIN_VIEW_VERIFICATION_DOC',
+      entity: 'VerificationDoc',
+      entityId: docId,
+      details: `via /view (presigned) docType=${doc.docType}`,
+      ipAddress: req.ip,
+    })
+  }
+
   res.json({ url, fileName: doc.fileName, docType: doc.docType })
 })
 
@@ -360,9 +477,10 @@ export const viewDocument = asyncHandler(async (req, res) => {
 // para `minio:9000` interno e falham no browser). Aqui o API faz proxy
 // dos bytes, mantendo a auth via JWT bearer (que ja vem no axios).
 //
-// Resposta: bytes brutos com Content-Type correcto + Content-Disposition
-// inline. O frontend faz `fetch -> blob -> URL.createObjectURL` e usa
-// como src do <img>/PDF viewer.
+// Resposta: bytes brutos com Content-Type validado contra whitelist +
+// Content-Disposition inline (ou attachment para tipos nao-seguros).
+// O frontend faz `fetch -> blob -> URL.createObjectURL` e usa como src
+// do <img>/PDF viewer.
 export const streamDocument = asyncHandler(async (req, res) => {
   const docId = parseId(req.params.docId)
   const isAdmin = req.user!.role === 'ADMIN'
@@ -383,13 +501,39 @@ export const streamDocument = asyncHandler(async (req, res) => {
     objectName,
   )
 
-  // Cabecalhos: forcar inline (nao download), Content-Type detectado no
-  // upload, Cache-Control privado curto (browser pode reusar entre
-  // re-renders mas nao caches partilhadas — o doc e' privado).
-  res.setHeader('Content-Type', contentType)
+  // Audit acesso por admin (ver viewDocument). Acontece antes do pipe
+  // para garantir log mesmo se o stream falhar a meio.
+  if (isAdmin) {
+    await logAudit({
+      userId: req.user!.userId,
+      action: 'ADMIN_VIEW_VERIFICATION_DOC',
+      entity: 'VerificationDoc',
+      entityId: docId,
+      details: `via /file (stream) docType=${doc.docType}`,
+      ipAddress: req.ip,
+    })
+  }
+
+  // Whitelist de MIMEs servidos inline. Docs legacy (bucket publico,
+  // upload anterior a magic-byte validation) podem ter contentType
+  // arbitrario armazenado no MinIO — incluindo text/html (potencial
+  // stored XSS via inline render). Para qualquer MIME fora da
+  // whitelist forcamos attachment + octet-stream.
+  const safeMime = SAFE_INLINE_MIMES.has(contentType.toLowerCase())
+    ? contentType
+    : 'application/octet-stream'
+  const disposition = safeMime === 'application/octet-stream' ? 'attachment' : 'inline'
+  const safeName = safeHeaderFileName(doc.fileName)
+
+  res.setHeader('Content-Type', safeMime)
   res.setHeader('Content-Length', contentLength)
-  res.setHeader('Content-Disposition', `inline; filename="${doc.fileName}"`)
-  res.setHeader('Cache-Control', 'private, max-age=300')
+  res.setHeader('Content-Disposition', `${disposition}; filename="${safeName}"`)
+  // Defesa adicional: nosniff impede o browser de re-interpretar o
+  // body como text/html mesmo que conseguissemos enganar o
+  // Content-Type. no-store: documento sensivel (PII oficial),
+  // browser nao deve cachear (compartilhamento de PC, OS users).
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('Cache-Control', 'no-store')
 
   stream.pipe(res)
   stream.on('error', (err) => {
