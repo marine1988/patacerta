@@ -218,12 +218,17 @@ interface PaginationProps {
 
 function Pagination({ page, totalPages, onGoToPage }: PaginationProps) {
   return (
-    <div className="mt-8 flex items-center justify-center gap-2">
+    <nav
+      className="mt-8 flex items-center justify-center gap-2"
+      role="navigation"
+      aria-label="Paginação dos resultados"
+    >
       <Button
         variant="secondary"
         size="sm"
         disabled={page <= 1}
         onClick={() => onGoToPage(page - 1)}
+        aria-label="Página anterior"
       >
         Anterior
       </Button>
@@ -240,12 +245,16 @@ function Pagination({ page, totalPages, onGoToPage }: PaginationProps) {
           } else {
             pageNum = page - 3 + i
           }
+          const isCurrent = pageNum === page
           return (
             <button
               key={pageNum}
+              type="button"
               onClick={() => onGoToPage(pageNum)}
+              aria-label={`Página ${pageNum}`}
+              aria-current={isCurrent ? 'page' : undefined}
               className={`h-8 w-8 rounded-md text-sm font-medium ${
-                pageNum === page ? 'bg-caramel-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                isCurrent ? 'bg-caramel-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               {pageNum}
@@ -259,9 +268,10 @@ function Pagination({ page, totalPages, onGoToPage }: PaginationProps) {
         size="sm"
         disabled={page >= totalPages}
         onClick={() => onGoToPage(page + 1)}
+        aria-label="Página seguinte"
       >
         Seguinte
       </Button>
-    </div>
+    </nav>
   )
 }

@@ -794,6 +794,27 @@ function latLngBoxFor(lat: number, lng: number, radiusKm: number) {
   }
 }
 
+/**
+ * Arredonda coordenadas para ~3 casas decimais (precisao ~110m) antes
+ * de devolver ao publico. O `latitude`/`longitude` do servico foi
+ * geocoded da `addressLine` (que pode ser a morada residencial do
+ * prestador particular). Sem este round, qualquer endpoint publico
+ * revelaria a casa exacta — risco RGPD + seguranca pessoal.
+ * 3 casas mantem o marcador no quarteirao correcto para utilidade do
+ * mapa/lista. Calculos internos (ex: distanceKm para ordenacao por
+ * raio) continuam a usar a precisao plena vinda do DB ANTES desta
+ * chamada.
+ */
+function maskServiceCoords<T extends { latitude: number | null; longitude: number | null }>(
+  row: T,
+): T {
+  return {
+    ...row,
+    latitude: row.latitude !== null ? Math.round(row.latitude * 1000) / 1000 : null,
+    longitude: row.longitude !== null ? Math.round(row.longitude * 1000) / 1000 : null,
+  }
+}
+
 function publicServicePublicSelect() {
   return {
     id: true,
@@ -949,7 +970,11 @@ export const listServices = asyncHandler(async (req, res) => {
     rows = annotated.slice(start, start + q.limit)
   }
 
-  res.json(paginatedResponse(rows, total, q.page, q.limit))
+  // Privacy mask (ver maskServiceCoords). Aplicado APOS o calculo de
+  // distanceKm/ordenacao por raio para nao degradar a precisao interna.
+  const masked = rows.map((r) => ({ ...maskServiceCoords(r), distanceKm: r.distanceKm }))
+
+  res.json(paginatedResponse(masked, total, q.page, q.limit))
 })
 
 /**
@@ -1007,7 +1032,12 @@ export const mapServices = asyncHandler(async (req, res) => {
     },
   })
 
-  res.json({ data: rows, total: rows.length })
+  // Privacy: arredondar coordenadas a ~110m (ver maskServiceCoords) antes
+  // de devolver ao publico. Detail page e listagem aplicam o mesmo
+  // mascaramento.
+  const data = rows.map(maskServiceCoords)
+
+  res.json({ data, total: data.length })
 })
 
 /**
@@ -1032,7 +1062,7 @@ export const getServiceById = asyncHandler(async (req, res) => {
   })
   if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
 
-  res.json(service)
+  res.json(maskServiceCoords(service))
 })
 
 /**
