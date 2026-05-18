@@ -366,8 +366,27 @@ export const refresh = asyncHandler(async (req, res) => {
     throw new AppError(401, 'Refresh token em falta', 'MISSING_REFRESH_TOKEN')
   }
   // First, verify the JWT signature/expiry. A forged or tampered token never
-  // even reaches the DB lookup.
-  const decoded = verifyRefreshToken(refreshToken)
+  // even reaches the DB lookup. `verifyRefreshToken` lanca JsonWebTokenError /
+  // TokenExpiredError em caso de assinatura invalida ou expiry — apanhamos
+  // explicitamente para devolver 401 com codigo limpo em vez de cair no
+  // error handler global como 500 (que confundia o FE sobre se podia
+  // retentar ou se devia obrigar reauth).
+  let decoded
+  try {
+    decoded = verifyRefreshToken(refreshToken)
+  } catch (err) {
+    clearRefreshCookie(res)
+    // TokenExpiredError tem o name proprio; tudo o resto agrupa-se em
+    // INVALID_REFRESH_TOKEN. Nao logamos detalhes para nao dar info a
+    // quem tenta sondar tokens.
+    const isExpired =
+      err instanceof Error && err.name === 'TokenExpiredError'
+    throw new AppError(
+      401,
+      isExpired ? 'Refresh token expirado' : 'Refresh token inválido',
+      isExpired ? 'EXPIRED_REFRESH_TOKEN' : 'INVALID_REFRESH_TOKEN',
+    )
+  }
 
   // Then look up the matching DB record so we can enforce rotation: a
   // legitimate refresh token must exist, must not be revoked, and must not

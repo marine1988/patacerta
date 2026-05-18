@@ -114,7 +114,8 @@ function RequestResetForm() {
               label="Email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.trimStart())}
+              onBlur={(e) => setEmail(e.target.value.trim())}
               placeholder="seu@email.pt"
               required
               autoComplete="email"

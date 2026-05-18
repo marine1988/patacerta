@@ -54,6 +54,20 @@ export function RegisterPage() {
         return next
       })
     }
+    // Mudar a password apos confirmar invalida o match — re-avaliar
+    // o erro em vez de o deixar 'stale' (e.g. confirmar correcto,
+    // depois trocar a password e o aviso so' reaparece no submit).
+    if (field === 'password') {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        if (form.confirmPassword && form.confirmPassword !== value) {
+          next.confirmPassword = 'As palavras-passe não coincidem.'
+        } else {
+          delete next.confirmPassword
+        }
+        return next
+      })
+    }
   }
 
   function handlePasswordBlur() {
@@ -213,7 +227,8 @@ export function RegisterPage() {
               label="Email"
               type="email"
               value={form.email}
-              onChange={(e) => update('email', e.target.value)}
+              onChange={(e) => update('email', e.target.value.trimStart())}
+              onBlur={(e) => update('email', e.target.value.trim())}
               placeholder="seu@email.pt"
               required
               autoComplete="email"

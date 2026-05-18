@@ -19,12 +19,16 @@ export function VerifyEmailPage() {
 
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  // LoginPage envia o utilizador com `?email=...` quando o login falha
+  // por EMAIL_NOT_VERIFIED. Sem prefill, obrigamos o user a re-digitar
+  // o email que acabou de submeter.
+  const prefilledEmail = searchParams.get('email') ?? ''
 
   const [status, setStatus] = useState<Status>(token ? 'verifying' : 'idle')
   const [message, setMessage] = useState('')
 
   // Resend form
-  const [resendEmail, setResendEmail] = useState('')
+  const [resendEmail, setResendEmail] = useState(prefilledEmail)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState('')
 
