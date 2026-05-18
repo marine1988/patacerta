@@ -24,7 +24,12 @@ import { prisma } from '../../lib/prisma.js'
 import { getStripe, isStripeConfigured } from '../../lib/stripe.js'
 import { sendSponsoredSlotPaidEmail } from '../../lib/email.js'
 import { maskEmail } from '../../lib/redact.js'
-import { SPONSORED_SLOT_DURATION_DAYS } from '../../lib/stripe.js'
+import { logAudit } from '../../lib/audit.js'
+import {
+  SPONSORED_SLOT_DURATION_DAYS,
+  SPONSORED_SLOT_PRICE_CENTS,
+  SPONSORED_SLOT_CURRENCY,
+} from '../../lib/stripe.js'
 
 /**
  * Eventos Stripe que tratamos:
@@ -176,20 +181,142 @@ async function dispatchEvent(event: Stripe.Event): Promise<void> {
  * Idempotente: se já está PAID, no-op.
  */
 async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
-  const slot = await prisma.sponsoredBreedSlot.findUnique({
+  // Lookup com fallback por metadata.slotId. O webhook pode chegar antes
+  // do controller persistir stripeCheckoutSessionId no slot (race entre
+  // sessions.create devolver e o UPDATE imediatamente a seguir — Stripe
+  // dispara `checkout.session.completed` para cartoes em segundos). Sem
+  // fallback, a query por sessionId devolve null e o slot fica
+  // permanentemente PENDING. Com fallback por metadata patcheamos o
+  // sessionId em falta e activamos.
+  let slot = await prisma.sponsoredBreedSlot.findUnique({
     where: { stripeCheckoutSessionId: session.id },
     include: {
       breed: { select: { id: true, namePt: true, nameSlug: true } },
-      breeder: { select: { id: true, businessName: true } },
+      breeder: { select: { id: true, businessName: true, status: true } },
       paidBy: { select: { email: true } },
     },
   })
+
   if (!slot) {
-    console.warn(`[Stripe Webhook] Slot não encontrado para session ${session.id}`)
-    return
+    const slotIdMeta = session.metadata?.slotId
+    const slotIdParsed = slotIdMeta ? Number.parseInt(slotIdMeta, 10) : NaN
+    if (Number.isFinite(slotIdParsed) && slotIdParsed > 0) {
+      slot = await prisma.sponsoredBreedSlot.findUnique({
+        where: { id: slotIdParsed },
+        include: {
+          breed: { select: { id: true, namePt: true, nameSlug: true } },
+          breeder: { select: { id: true, businessName: true, status: true } },
+          paidBy: { select: { email: true } },
+        },
+      })
+      if (slot) {
+        // Patch do sessionId em falta — race do controller. Best-effort,
+        // idempotente: se outro webhook ja patcheou nao ha problema.
+        if (!slot.stripeCheckoutSessionId) {
+          await prisma.sponsoredBreedSlot
+            .update({
+              where: { id: slot.id },
+              data: { stripeCheckoutSessionId: session.id },
+            })
+            .catch((err) => {
+              console.warn(
+                `[Stripe Webhook] Falha a patch stripeCheckoutSessionId no slot ${slot!.id}:`,
+                err,
+              )
+            })
+        }
+      }
+    }
+  }
+
+  if (!slot) {
+    console.warn(
+      `[Stripe Webhook] Slot nao encontrado para session ${session.id} (metadata.slotId=${session.metadata?.slotId ?? 'n/a'}). Lancando para forcar retry.`,
+    )
+    // Lancar (em vez de return) faz o dispatch falhar -> rollback do
+    // StripeEvent -> Stripe retenta. Stripe retenta automaticamente em
+    // 5xx ate ~3 dias, dando tempo para reconciliacao manual.
+    throw new Error(`Slot nao encontrado para session ${session.id}`)
   }
   if (slot.paymentStatus === 'PAID') {
     console.log(`[Stripe Webhook] Slot ${slot.id} já estava PAID, no-op.`)
+    return
+  }
+
+  // Validacao defesa-em-profundidade do montante e moeda recebidos.
+  // Se a Stripe enviar um amount_total diferente do esperado (Price
+  // mal configurado, Stripe API change, manipulacao da Checkout
+  // Session), NAO activamos. Marcar FAILED com nota explicita e
+  // logAudit de alta-severidade para revisao manual + eventual
+  // reembolso. Stripe NAO faz refund automatico — fica para o admin.
+  const expectedAmount = slot.priceCents ?? SPONSORED_SLOT_PRICE_CENTS
+  const expectedCurrency = (slot.currency ?? SPONSORED_SLOT_CURRENCY).toUpperCase()
+  const actualAmount = session.amount_total
+  const actualCurrency = (session.currency ?? '').toUpperCase()
+  if (actualAmount !== expectedAmount || actualCurrency !== expectedCurrency) {
+    console.error(
+      `[Stripe Webhook] CRITICO: amount/currency mismatch no slot ${slot.id}. esperado=${expectedAmount} ${expectedCurrency} recebido=${actualAmount} ${actualCurrency}`,
+    )
+    await prisma.sponsoredBreedSlot
+      .updateMany({
+        where: { id: slot.id, paymentStatus: { not: 'PAID' } },
+        data: {
+          paymentStatus: 'FAILED',
+          status: 'EXPIRED',
+          notes:
+            `amount/currency mismatch: esperado ${expectedAmount} ${expectedCurrency} recebido ${actualAmount} ${actualCurrency}`.slice(
+              0,
+              500,
+            ),
+        },
+      })
+      .catch((err) => {
+        console.error(`[Stripe Webhook] Falha a marcar slot ${slot!.id} FAILED por mismatch:`, err)
+      })
+    await logAudit({
+      userId: slot.paidByUserId,
+      action: 'sponsored_slot.payment_mismatch',
+      entity: 'sponsored_slot',
+      entityId: slot.id,
+      details: `esperado=${expectedAmount} ${expectedCurrency} recebido=${actualAmount} ${actualCurrency} session=${session.id}`,
+    })
+    return
+  }
+
+  // Re-check do estado do criador. Para Multibanco o pagamento pode
+  // confirmar dias depois — se entretanto o criador foi suspenso ou
+  // perdeu verificacao, NAO devemos activar (apareceria pago no
+  // historico mas nunca seria mostrado, sem refund automatico).
+  if (slot.breeder.status !== 'VERIFIED') {
+    console.warn(
+      `[Stripe Webhook] Slot ${slot.id}: breeder ${slot.breeder.id} ja nao esta VERIFIED (${slot.breeder.status}). Pagamento marcado PAID mas slot fica PAUSED para revisao.`,
+    )
+    const now = new Date()
+    const endsAt = new Date(now.getTime() + SPONSORED_SLOT_DURATION_DAYS * 24 * 60 * 60 * 1000)
+    const result = await prisma.sponsoredBreedSlot.updateMany({
+      where: { id: slot.id, paymentStatus: { not: 'PAID' } },
+      data: {
+        paymentStatus: 'PAID',
+        // Fica PAUSED — admin tem de reactivar manualmente apos
+        // resolver o estado do criador (re-verificacao ou refund).
+        status: 'PAUSED',
+        startsAt: now,
+        endsAt,
+        paidAt: now,
+        stripePaymentIntentId:
+          typeof session.payment_intent === 'string' ? session.payment_intent : null,
+        notes: `Pago mas breeder ${slot.breeder.status} a aguardar revisao admin`.slice(0, 500),
+      },
+    })
+    if (result.count > 0) {
+      await logAudit({
+        userId: slot.paidByUserId,
+        action: 'sponsored_slot.paid_pending_review',
+        entity: 'sponsored_slot',
+        entityId: slot.id,
+        details: `breederId=${slot.breeder.id} status=${slot.breeder.status} requer revisao admin`,
+      })
+    }
     return
   }
 
@@ -240,6 +367,15 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
     `[Stripe Webhook] Slot ${slot.id} activado (${slot.breeder.businessName} -> ${slot.breed.namePt}) até ${endsAt.toISOString()}`,
   )
 
+  // Audit do pagamento confirmado.
+  await logAudit({
+    userId: slot.paidByUserId,
+    action: 'sponsored_slot.paid',
+    entity: 'sponsored_slot',
+    entityId: slot.id,
+    details: `breederId=${slot.breeder.id} breedId=${slot.breed.id} priceCents=${expectedAmount} ${expectedCurrency} paymentIntent=${paymentIntentId ?? 'n/a'}`,
+  })
+
   // Email de confirmação (best-effort). Email mascarado em logs para
   // nao vazar PII em ficheiros de log persistidos.
   const recipientEmail = slot.paidBy?.email
@@ -259,6 +395,13 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
         `[Stripe Webhook] Falha a enviar email confirmação para ${maskEmail(recipientEmail)}:`,
         err,
       )
+      await logAudit({
+        userId: slot.paidByUserId,
+        action: 'sponsored_slot.email_send_failed',
+        entity: 'sponsored_slot',
+        entityId: slot.id,
+        details: 'Falha a enviar email de confirmacao apos PAID',
+      })
     }
   }
 }
@@ -266,7 +409,7 @@ async function markSlotPaid(session: Stripe.Checkout.Session): Promise<void> {
 async function markSlotFailed(sessionId: string, reason: string): Promise<void> {
   const slot = await prisma.sponsoredBreedSlot.findUnique({
     where: { stripeCheckoutSessionId: sessionId },
-    select: { id: true },
+    select: { id: true, paidByUserId: true, breederId: true },
   })
   if (!slot) return
 
@@ -286,6 +429,13 @@ async function markSlotFailed(sessionId: string, reason: string): Promise<void> 
     return
   }
   console.log(`[Stripe Webhook] Slot ${slot.id} marcado FAILED por ${reason}`)
+  await logAudit({
+    userId: slot.paidByUserId,
+    action: 'sponsored_slot.payment_failed',
+    entity: 'sponsored_slot',
+    entityId: slot.id,
+    details: `breederId=${slot.breederId} reason=${reason}`,
+  })
 }
 
 async function markSlotRefunded(charge: Stripe.Charge): Promise<void> {
@@ -294,7 +444,7 @@ async function markSlotRefunded(charge: Stripe.Charge): Promise<void> {
 
   const slot = await prisma.sponsoredBreedSlot.findFirst({
     where: { stripePaymentIntentId: paymentIntentId },
-    select: { id: true },
+    select: { id: true, paidByUserId: true, breederId: true },
   })
   if (!slot) return
 
@@ -312,4 +462,11 @@ async function markSlotRefunded(charge: Stripe.Charge): Promise<void> {
     return
   }
   console.log(`[Stripe Webhook] Slot ${slot.id} marcado REFUNDED`)
+  await logAudit({
+    userId: slot.paidByUserId,
+    action: 'sponsored_slot.refunded',
+    entity: 'sponsored_slot',
+    entityId: slot.id,
+    details: `breederId=${slot.breederId} paymentIntent=${paymentIntentId}`,
+  })
 }

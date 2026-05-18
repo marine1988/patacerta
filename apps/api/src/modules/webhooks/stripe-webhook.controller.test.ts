@@ -36,6 +36,9 @@ vi.mock('../../lib/prisma.js', () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
   },
 }))
 
@@ -49,6 +52,8 @@ vi.mock('../../lib/stripe.js', () => ({
     paymentIntents: { retrieve: mockPaymentIntentsRetrieve },
   })),
   SPONSORED_SLOT_DURATION_DAYS: 30,
+  SPONSORED_SLOT_PRICE_CENTS: 1000,
+  SPONSORED_SLOT_CURRENCY: 'eur',
 }))
 
 vi.mock('../../lib/email.js', () => ({
@@ -116,6 +121,11 @@ function makeSession(overrides: Partial<Stripe.Checkout.Session> = {}): Stripe.C
     object: 'checkout.session',
     payment_status: 'paid',
     payment_intent: 'pi_test_123',
+    // Defaults coherentes com SPONSORED_SLOT_PRICE_CENTS=1000 e
+    // SPONSORED_SLOT_CURRENCY='eur' nos mocks. Sem isto o webhook
+    // cai no branch defesa-em-profundidade de amount/currency mismatch.
+    amount_total: 1000,
+    currency: 'eur',
     ...overrides,
   } as Stripe.Checkout.Session
 }
@@ -234,7 +244,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
       priceCents: 1000,
       currency: 'EUR',
       breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador-retriever' },
-      breeder: { id: 7, businessName: 'Canil Teste' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
       paidBy: { email: 'criador@example.com' },
     })
     mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
@@ -287,7 +297,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
     expect(mockedSendEmail).not.toHaveBeenCalled()
   })
 
-  it('paid mas slot não encontrado (session id desconhecida) — no-op silencioso', async () => {
+  it('paid mas slot não encontrado (sem metadata.slotId) — devolve 500 para forçar retry Stripe', async () => {
     const session = makeSession({ payment_status: 'paid', id: 'cs_orphan' })
     const event = makeEvent('checkout.session.completed', session)
     mockConstructEvent.mockReturnValue(event)
@@ -299,8 +309,137 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
 
     await handleStripeWebhook(req, res)
 
-    expect(res.status).toHaveBeenCalledWith(200)
+    // Sem slot encontrado, lancamos para que o Stripe retente. Se for
+    // race entre o webhook e o controller a persistir o sessionId, o
+    // retry seguinte ja encontra o slot (alternativamente via fallback
+    // por metadata.slotId — testado noutro caso).
+    expect(res.status).toHaveBeenCalledWith(500)
     expect(mockedPrisma.sponsoredBreedSlot.update).not.toHaveBeenCalled()
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).not.toHaveBeenCalled()
+    expect(mockedSendEmail).not.toHaveBeenCalled()
+    // Rollback do registo de idempotencia para permitir retry.
+    expect(mockedPrisma.stripeEvent.delete).toHaveBeenCalledWith({ where: { id: event.id } })
+  })
+
+  it('paid sem slot por sessionId mas com metadata.slotId — fallback resolve via id e activa', async () => {
+    const session = makeSession({
+      payment_status: 'paid',
+      id: 'cs_new',
+      metadata: { slotId: '777' },
+    })
+    const event = makeEvent('checkout.session.completed', session)
+    mockConstructEvent.mockReturnValue(event)
+    mockedPrisma.stripeEvent.create.mockResolvedValue({ id: event.id })
+    // Primeira lookup (por sessionId) devolve null. Segunda lookup (por
+    // id=777) devolve o slot. O webhook deve patchear o sessionId em
+    // falta e activar.
+    mockedPrisma.sponsoredBreedSlot.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 777,
+        paymentStatus: 'PENDING',
+        priceCents: 1000,
+        currency: 'EUR',
+        stripeCheckoutSessionId: null,
+        paidByUserId: 1,
+        breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
+        breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
+        paidBy: null,
+      })
+    mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({ id: 777 })
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_test_123',
+      latest_charge: { receipt_url: 'https://stripe.test/r/x' },
+    })
+
+    const req = makeReq({ signature: 't=1,v1=ok' })
+    const res = makeRes()
+
+    await handleStripeWebhook(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    // Patch do stripeCheckoutSessionId em falta.
+    expect(mockedPrisma.sponsoredBreedSlot.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 777 },
+        data: expect.objectContaining({ stripeCheckoutSessionId: 'cs_new' }),
+      }),
+    )
+    // Activacao do slot.
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 777 }),
+        data: expect.objectContaining({ paymentStatus: 'PAID', status: 'ACTIVE' }),
+      }),
+    )
+  })
+
+  it('paid com amount/currency diferente do esperado — marca FAILED, nao activa', async () => {
+    const session = makeSession({
+      payment_status: 'paid',
+      amount_total: 500, // esperado 1000
+      currency: 'eur',
+    })
+    const event = makeEvent('checkout.session.completed', session)
+    mockConstructEvent.mockReturnValue(event)
+    mockedPrisma.stripeEvent.create.mockResolvedValue({ id: event.id })
+    mockedPrisma.sponsoredBreedSlot.findUnique.mockResolvedValue({
+      id: 88,
+      paymentStatus: 'PENDING',
+      priceCents: 1000,
+      currency: 'EUR',
+      paidByUserId: 1,
+      breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
+      paidBy: { email: 'x@example.com' },
+    })
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
+
+    const req = makeReq({ signature: 't=1,v1=ok' })
+    const res = makeRes()
+
+    await handleStripeWebhook(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    // Slot marcado FAILED, NAO activado.
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ paymentStatus: 'FAILED', status: 'EXPIRED' }),
+      }),
+    )
+    expect(mockedSendEmail).not.toHaveBeenCalled()
+  })
+
+  it('paid mas breeder ja nao VERIFIED — marca PAID + PAUSED (aguarda revisao admin)', async () => {
+    const session = makeSession({ payment_status: 'paid' })
+    const event = makeEvent('checkout.session.completed', session)
+    mockConstructEvent.mockReturnValue(event)
+    mockedPrisma.stripeEvent.create.mockResolvedValue({ id: event.id })
+    mockedPrisma.sponsoredBreedSlot.findUnique.mockResolvedValue({
+      id: 89,
+      paymentStatus: 'PENDING',
+      priceCents: 1000,
+      currency: 'EUR',
+      paidByUserId: 1,
+      breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'SUSPENDED' },
+      paidBy: { email: 'x@example.com' },
+    })
+    mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
+
+    const req = makeReq({ signature: 't=1,v1=ok' })
+    const res = makeRes()
+
+    await handleStripeWebhook(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(mockedPrisma.sponsoredBreedSlot.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ paymentStatus: 'PAID', status: 'PAUSED' }),
+      }),
+    )
+    // Sem email enquanto fica pending de revisao.
     expect(mockedSendEmail).not.toHaveBeenCalled()
   })
 
@@ -315,7 +454,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
       priceCents: 1000,
       currency: 'EUR',
       breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
-      breeder: { id: 7, businessName: 'Canil Teste' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
       paidBy: { email: 'criador@example.com' },
     })
 
@@ -340,7 +479,7 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
       priceCents: 1000,
       currency: 'EUR',
       breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
-      breeder: { id: 7, businessName: 'Canil Teste' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
       paidBy: null,
     })
     mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
@@ -378,7 +517,7 @@ describe('handleStripeWebhook — async / failed / refunded', () => {
       priceCents: 1000,
       currency: 'EUR',
       breed: { id: 2, namePt: 'Beagle', nameSlug: 'beagle' },
-      breeder: { id: 8, businessName: 'Canil Multibanco' },
+      breeder: { id: 8, businessName: 'Canil Multibanco', status: 'VERIFIED' },
       paidBy: { email: 'mb@example.com' },
     })
     mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })

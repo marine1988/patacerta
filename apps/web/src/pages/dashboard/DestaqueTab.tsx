@@ -414,7 +414,7 @@ function PurchaseModal({
         onError('Resposta de pagamento inválida.')
         return
       }
-      const allowedHosts = ['checkout.stripe.com', 'js.stripe.com']
+      const allowedHosts = ['checkout.stripe.com']
       if (target.protocol !== 'https:' || !allowedHosts.includes(target.hostname)) {
         onError('URL de pagamento não autorizada.')
         return

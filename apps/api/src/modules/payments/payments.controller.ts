@@ -29,6 +29,7 @@ import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { getFrontendBaseUrl } from '../../lib/env.js'
 import { AppError } from '../../middleware/error-handler.js'
+import { logAudit } from '../../lib/audit.js'
 import {
   getStripe,
   isStripeConfigured,
@@ -37,6 +38,7 @@ import {
   SPONSORED_SLOT_CURRENCY,
 } from '../../lib/stripe.js'
 import { Prisma } from '@prisma/client'
+import Stripe from 'stripe'
 import { z } from 'zod'
 
 const MAX_SLOTS_PER_BREED = 3
@@ -202,11 +204,12 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
 
   const stripe = getStripe()
   // Importante: se a chamada a Stripe falhar (ex: chave invalida, rate
-  // limit, parametro rejeitado), apagamos o slot que acabamos de criar.
-  // Caso contrario fica um PAUSED+PENDING orfao a ocupar vaga (ate' 24h
-  // no countOccupyingSlots) e a impedir o proprio criador de tentar de
-  // novo (DUPLICATE_SLOT). Esta limpeza torna o endpoint idempotente do
-  // ponto de vista do utilizador.
+  // limit, parametro rejeitado), marcamos o slot como FAILED em vez de
+  // o apagar. Apagar perdia o rasto para investigacao e abria a porta
+  // a uma webhook tardia (a session foi criada mas a HTTP response
+  // falhou) chegar e nao encontrar slot algum. Manter o registo como
+  // FAILED preserva audit history e os queries que filtram por estados
+  // activos continuam a ignora-lo.
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>
   try {
     session = await stripe.checkout.sessions.create({
@@ -247,11 +250,42 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
       expires_at: Math.floor(Date.now() / 1000) + 23 * 60 * 60,
     })
   } catch (err) {
-    // Cleanup do slot orfao. Best-effort: se o delete falhar, deixamos
-    // o erro original ser lancado para nao mascarar a causa-raiz.
-    await prisma.sponsoredBreedSlot.delete({ where: { id: slot.id } }).catch(() => {
-      /* ignore */
+    // Marcar slot como FAILED em vez de delete (preserva rasto). Log
+    // do erro original em audit log para forense; o utilizador recebe
+    // mensagem generica para nao vazar detalhes Stripe (codigos
+    // internos, IDs, etc).
+    await prisma.sponsoredBreedSlot
+      .update({
+        where: { id: slot.id },
+        data: {
+          paymentStatus: 'FAILED',
+          status: 'EXPIRED',
+          notes: 'stripe_session_create_error',
+        },
+      })
+      .catch((cleanupErr) => {
+        console.error(
+          `[Payments] Falha a marcar slot ${slot.id} como FAILED apos erro Stripe:`,
+          cleanupErr,
+        )
+      })
+    const stripeMsg = err instanceof Stripe.errors.StripeError ? err.message : String(err)
+    await logAudit({
+      userId,
+      action: 'sponsored_slot.checkout_failed',
+      entity: 'sponsored_slot',
+      entityId: slot.id,
+      details: `Stripe session create error: ${stripeMsg.slice(0, 400)}`,
+      ipAddress: req.ip,
     })
+    if (err instanceof Stripe.errors.StripeError) {
+      console.error(`[Payments] Stripe API error em checkout:`, err)
+      throw new AppError(
+        502,
+        'Nao foi possivel iniciar o pagamento. Tente novamente.',
+        'STRIPE_API_ERROR',
+      )
+    }
     throw err
   }
 
@@ -259,6 +293,17 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
   await prisma.sponsoredBreedSlot.update({
     where: { id: slot.id },
     data: { stripeCheckoutSessionId: session.id },
+  })
+
+  // Audit do inicio de checkout (P0-2): regista quem comprou, quanto, para
+  // que raca. Permite forense em disputas sem ter de cruzar com Stripe.
+  await logAudit({
+    userId,
+    action: 'sponsored_slot.checkout_initiated',
+    entity: 'sponsored_slot',
+    entityId: slot.id,
+    details: `breederId=${breeder.id} breedId=${breed.id} priceCents=${SPONSORED_SLOT_PRICE_CENTS} ${SPONSORED_SLOT_CURRENCY.toUpperCase()} sessionId=${session.id}`,
+    ipAddress: req.ip,
   })
 
   res.status(201).json({

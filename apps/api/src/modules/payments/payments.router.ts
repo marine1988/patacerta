@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth, requireBreederProfile } from '../../middleware/auth.js'
+import { requireAuth, requireBreederProfile, requireActiveUser } from '../../middleware/auth.js'
 import { rateLimit, apiRateLimit } from '../../middleware/rate-limit.js'
 import { validate } from '../../middleware/validate.js'
 import {
@@ -37,10 +37,12 @@ paymentsRouter.get(
 )
 
 // POST /api/payments/sponsored-slot/checkout
-// Requer auth + perfil de criador VERIFIED (validação extra no controller).
+// Requer auth + utilizador activo (suspensos nao podem comprar) +
+// perfil de criador VERIFIED (validacao extra no controller).
 paymentsRouter.post(
   '/sponsored-slot/checkout',
   requireAuth,
+  requireActiveUser,
   requireBreederProfile,
   checkoutRateLimit,
   ctrl.createSponsoredSlotCheckout,
