@@ -78,7 +78,10 @@ export interface AuditLog {
   action: string
   entity: string
   entityId: string | number | null
-  details: unknown
+  // String?  no schema Prisma. Mantido `string | null` para alinhar
+  // com o que a API devolve; antes era `unknown`, o que levava o FE
+  // a chamar `JSON.stringify(string)` e renderizar com aspas escapadas.
+  details: string | null
   ipAddress: string | null
   createdAt: string
   user: { id: number; firstName: string; lastName: string; email: string } | null

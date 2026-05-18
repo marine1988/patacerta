@@ -414,7 +414,7 @@ export function AuditoriaTab() {
                       </button>
                       {isOpen && (
                         <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-line bg-surface-alt/60 p-2 font-mono text-[11px] text-ink">
-                          {JSON.stringify(log.details, null, 2)}
+                          {log.details}
                         </pre>
                       )}
                     </div>
@@ -442,7 +442,6 @@ export function AuditoriaTab() {
                 {data.data.map((log, i) => {
                   const hasDetails = !!log.details
                   const isOpen = expanded.has(log.id)
-                  const detailsStr = hasDetails ? JSON.stringify(log.details, null, 2) : ''
                   return (
                     <Fragment key={log.id}>
                       <tr
@@ -507,7 +506,7 @@ export function AuditoriaTab() {
                         >
                           <td colSpan={7} className="px-3 pb-3">
                             <pre className="whitespace-pre-wrap break-words rounded-md border border-line bg-surface-alt/60 p-3 font-mono text-xs text-ink">
-                              {detailsStr}
+                              {log.details}
                             </pre>
                           </td>
                         </tr>

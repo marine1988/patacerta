@@ -101,7 +101,10 @@ interface UserAuditLog {
   action: string
   entity: string
   entityId: number | string | null
-  details: unknown
+  // String? no schema Prisma — string | null em runtime. O render
+  // antigo usava type-guard defensivo `typeof === 'string'` por causa
+  // do tipo `unknown`; com o tipo correcto o guard e' desnecessario.
+  details: string | null
   ipAddress: string | null
   createdAt: string
   user: { id: number; firstName: string; lastName: string; email: string } | null
@@ -607,11 +610,7 @@ export function AdminUserDetailPage() {
                       </td>
                       <td className="px-2 py-1.5 text-xs text-muted">
                         {log.details ? (
-                          <span className="line-clamp-2 break-words">
-                            {typeof log.details === 'string'
-                              ? log.details
-                              : JSON.stringify(log.details)}
-                          </span>
+                          <span className="line-clamp-2 break-words">{log.details}</span>
                         ) : (
                           '—'
                         )}

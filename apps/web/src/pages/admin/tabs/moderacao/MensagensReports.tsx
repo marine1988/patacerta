@@ -120,6 +120,11 @@ export function MensagensReportsView() {
       setResolution('')
       setActionError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-message-reports'] })
+      // Tambem o cache do detail individual (`['admin-message-report', id]`):
+      // se o admin reabrir o mesmo report logo a seguir, sem isto o modal
+      // continuaria a mostrar status=PENDING e os botoes "Resolver/Descartar"
+      // estariam visiveis apesar do report ja estar processado.
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.messageReport(openReportId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.pendingCounts() })
     },
     onError: (err: unknown) => {
