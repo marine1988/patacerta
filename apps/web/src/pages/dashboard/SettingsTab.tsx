@@ -13,6 +13,7 @@ export function SettingsTab() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [exportLoading, setExportLoading] = useState(false)
 
   const deleteMutation = useMutation({
     mutationFn: () => api.delete('/users/me'),
@@ -27,8 +28,14 @@ export function SettingsTab() {
 
   async function handleExport() {
     setExportError(null)
+    setExportLoading(true)
     try {
-      const { data } = await api.get('/users/me')
+      // RGPD Art. 15/20 export completo. Endpoint dedicado em /users/me/export
+      // (diferente de /users/me, que so' devolve o user basico). Inclui
+      // breeder profile, services, threads, mensagens, reviews, reports,
+      // consents e audit log proprio. O backend regista a accao em audit
+      // log (USER_DATA_EXPORT) para rastreabilidade RGPD.
+      const { data } = await api.get('/users/me/export')
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -36,7 +43,7 @@ export function SettingsTab() {
       // Nao usar email no filename — escreve PII em disco/historico do browser.
       // ID + data sao suficientes para o utilizador identificar o export.
       const date = new Date().toISOString().slice(0, 10)
-      a.download = `dados-${user?.id ?? 'export'}-${date}.json`
+      a.download = `patacerta-dados-${user?.id ?? 'export'}-${date}.json`
       // Firefox/Safari requerem o <a> anexado ao DOM para o click programatico
       // funcionar.
       document.body.appendChild(a)
@@ -45,6 +52,8 @@ export function SettingsTab() {
       URL.revokeObjectURL(url)
     } catch (err) {
       setExportError(extractApiError(err, 'Erro ao exportar dados. Tente novamente.'))
+    } finally {
+      setExportLoading(false)
     }
   }
 
@@ -63,8 +72,8 @@ export function SettingsTab() {
       <Card hover={false}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Dados e privacidade</h3>
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={handleExport}>
-            Exportar dados (RGPD)
+          <Button variant="secondary" onClick={handleExport} disabled={exportLoading}>
+            {exportLoading ? 'A exportar...' : 'Exportar dados (RGPD)'}
           </Button>
           <Button
             variant="danger"

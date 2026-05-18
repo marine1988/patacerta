@@ -160,6 +160,286 @@ export const deleteMe = asyncHandler(async (req, res) => {
   res.status(204).send()
 })
 
+/**
+ * RGPD Art. 15 (Right of Access) + Art. 20 (Right to Data Portability):
+ * devolve um JSON estruturado com TODOS os dados pessoais do utilizador
+ * que processamos. Substitui o export anterior em FE que apenas devolvia
+ * o user basico (firstName, email, etc.) — claramente insuficiente para
+ * compliance.
+ *
+ * Inclui: perfil, breeder profile (se existe) + photos/breeds/docs/sponsored,
+ * services publicados + photos/coverage, threads e mensagens enviadas,
+ * reviews escritas e recebidas (criador e servico), reports submetidos,
+ * flags submetidas, consent logs, cookie consent logs, audit logs proprios.
+ *
+ * Exclui: passwordHash, resetToken, emailVerificationToken, refreshTokens
+ * — artefactos de auth sem valor para o sujeito e que nao se enquadram
+ * em "dados pessoais portaveis" (sao credenciais derivadas).
+ *
+ * Dados de terceiros (e.g. corpo de mensagens recebidas, autor de reviews
+ * recebidas) sao incluidos porque sao tambem dados sobre interaccoes do
+ * sujeito; identidades de terceiros sao pseudonimizadas a nivel de campos
+ * (apenas id e nome publico, sem email/phone).
+ */
+export const exportMe = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      phone: true,
+      avatarUrl: true,
+      isActive: true,
+      emailVerified: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+  if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
+
+  // Identidades de terceiros — apenas info publica.
+  const publicUserFields = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    avatarUrl: true,
+  }
+
+  const [
+    breeder,
+    services,
+    threadsAsOwner,
+    threadsAsBreeder,
+    threadsAsServiceProvider,
+    sentMessages,
+    breederReviewsWritten,
+    serviceReviewsWritten,
+    breederReviewsReceived,
+    serviceReviewsReceived,
+    messageReports,
+    reviewFlags,
+    serviceReviewFlags,
+    serviceReports,
+    consentLogs,
+    cookieConsentLogs,
+    auditLogs,
+    sponsoredSlotsPaid,
+  ] = await Promise.all([
+    prisma.breeder.findUnique({
+      where: { userId },
+      include: {
+        district: { select: { id: true, namePt: true } },
+        municipality: { select: { id: true, namePt: true } },
+        photos: true,
+        breeds: { include: { breed: { select: { id: true, namePt: true } } } },
+        species: { include: { species: { select: { id: true, namePt: true } } } },
+        verificationDocs: true,
+      },
+    }),
+    prisma.service.findMany({
+      where: { providerId: userId },
+      include: {
+        category: { select: { id: true, namePt: true, nameSlug: true } },
+        district: { select: { id: true, namePt: true } },
+        municipality: { select: { id: true, namePt: true } },
+        photos: true,
+        coverageAreas: { include: { municipality: { select: { id: true, namePt: true } } } },
+      },
+    }),
+    prisma.thread.findMany({
+      where: { ownerId: userId },
+      include: {
+        breeder: { select: { id: true, businessName: true } },
+        service: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.thread.findMany({
+      where: { breeder: { userId } },
+      include: {
+        owner: { select: publicUserFields },
+        breeder: { select: { id: true, businessName: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.thread.findMany({
+      where: { service: { providerId: userId } },
+      include: {
+        owner: { select: publicUserFields },
+        service: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.message.findMany({
+      where: { senderId: userId },
+      select: {
+        id: true,
+        threadId: true,
+        body: true,
+        readAt: true,
+        createdAt: true,
+        editedAt: true,
+        deletedAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.review.findMany({
+      where: { authorId: userId },
+      include: { breeder: { select: { id: true, businessName: true } } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.serviceReview.findMany({
+      where: { authorId: userId },
+      include: { service: { select: { id: true, title: true } } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.review.findMany({
+      where: { breeder: { userId } },
+      include: { author: { select: publicUserFields } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.serviceReview.findMany({
+      where: { service: { providerId: userId } },
+      include: { author: { select: publicUserFields } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.messageReport.findMany({
+      where: { reporterId: userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.reviewFlag.findMany({
+      where: { reporterId: userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.serviceReviewFlag.findMany({
+      where: { reporterId: userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.serviceReport.findMany({
+      where: { reporterId: userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.consentLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.cookieConsentLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    // Apenas accoes proprias (filtrar por userId === self). Excluimos
+    // accoes em que o utilizador foi alvo de admin actions (que ficariam
+    // em entityId), para evitar leak de detalhes operacionais internos.
+    prisma.auditLog.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        details: true,
+        createdAt: true,
+        // Excluimos ipAddress do export — e' tracked para audit interno
+        // mas nao e' "dado pessoal portavel" no sentido RGPD (e o sujeito
+        // tipicamente sabe o seu proprio IP). Reduz risco se export for
+        // partilhado.
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.sponsoredBreedSlot.findMany({
+      where: { paidByUserId: userId },
+      select: {
+        id: true,
+        breedId: true,
+        startsAt: true,
+        endsAt: true,
+        priceCents: true,
+        currency: true,
+        stripePaymentIntentId: true,
+        stripeReceiptUrl: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ])
+
+  // Messages recebidas: todas as messages nas threads em que o utilizador
+  // participa, exceto as suas (ja' incluidas em sentMessages). Util para o
+  // sujeito ter o registo completo das conversas em que participou.
+  const threadIds = [
+    ...threadsAsOwner.map((t) => t.id),
+    ...threadsAsBreeder.map((t) => t.id),
+    ...threadsAsServiceProvider.map((t) => t.id),
+  ]
+  const receivedMessages = threadIds.length
+    ? await prisma.message.findMany({
+        where: { threadId: { in: threadIds }, NOT: { senderId: userId } },
+        include: { sender: { select: publicUserFields } },
+        orderBy: { createdAt: 'asc' },
+      })
+    : []
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    exportVersion: '1.0',
+    userId,
+    profile: user,
+    breeder,
+    services,
+    threads: {
+      asOwner: threadsAsOwner,
+      asBreeder: threadsAsBreeder,
+      asServiceProvider: threadsAsServiceProvider,
+    },
+    messages: {
+      sent: sentMessages,
+      received: receivedMessages,
+    },
+    reviews: {
+      writtenAboutBreeders: breederReviewsWritten,
+      writtenAboutServices: serviceReviewsWritten,
+      receivedAsBreeder: breederReviewsReceived,
+      receivedAsServiceProvider: serviceReviewsReceived,
+    },
+    reports: {
+      messageReportsFiled: messageReports,
+      serviceReportsFiled: serviceReports,
+      breederReviewFlagsFiled: reviewFlags,
+      serviceReviewFlagsFiled: serviceReviewFlags,
+    },
+    consent: {
+      consentLogs,
+      cookieConsentLogs,
+    },
+    sponsoredSlotsPaid,
+    auditLog: auditLogs,
+  }
+
+  // Audit log da accao (RGPD requer rastreabilidade de pedidos de acesso)
+  await logAudit({
+    userId,
+    action: 'USER_DATA_EXPORT',
+    entity: 'User',
+    entityId: userId,
+    details: `RGPD data export requested; included ${threadIds.length} threads, ${sentMessages.length} sent messages, ${receivedMessages.length} received messages, ${services.length} services, ${breederReviewsWritten.length + serviceReviewsWritten.length} reviews written`,
+    ipAddress: req.ip,
+  })
+
+  // Content-Disposition para encorajar download em vez de inline (alguns
+  // browsers fazem render JSON). FE faz Blob download mas headers ajudam
+  // em casos de chamada directa.
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="patacerta-export-${userId}-${new Date().toISOString().slice(0, 10)}.json"`,
+  )
+  res.json(payload)
+})
+
 export const listUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>, 100)
   const role = req.query.role as string | undefined

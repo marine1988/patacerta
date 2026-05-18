@@ -21,6 +21,11 @@ usersRouter.get('/me', requireAuth, ctrl.getMe)
 usersRouter.patch('/me', requireAuth, validate(updateUserSchema), ctrl.updateMe)
 usersRouter.delete('/me', requireAuth, ctrl.deleteMe)
 
+// RGPD Art. 15/20 — export completo de dados pessoais. Diferente de GET /me
+// (que so' devolve o user basico): aqui inclui breeder, services, threads,
+// mensagens, reviews, reports, consents, audit logs.
+usersRouter.get('/me/export', requireAuth, ctrl.exportMe)
+
 // Avatar (current user). Multer e' chamado dentro do controller para
 // poder devolver AppError consistente em vez de erros opacos de multer.
 // uploadRateLimit limita o custo de CPU (sharp) + I/O (MinIO) por user.
