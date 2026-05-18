@@ -277,6 +277,18 @@ export const serviceMutationRateLimit = rateLimit({
   bucket: 'service-mutation',
 })
 
+// Mesma logica para mutacoes owner-side de perfis de criador
+// (PATCH /me, reorder, delete photo, submit-verification, delete profile).
+// Sem isto, um cliente comprometido podia spammar reorder ou re-submeter
+// para verificacao em loop.
+export const breederMutationRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: 'Demasiadas alterações ao perfil de criador. Aguarde um momento.',
+  keyGenerator: userKey,
+  bucket: 'breeder-mutation',
+})
+
 // Forgot-password tem dois vectores de abuso distintos:
 // 1) Atacante usa um IP para martelar emails de varias vitimas (IP-bound).
 // 2) Atacante usa varios IPs para bombardear o email de uma so vitima

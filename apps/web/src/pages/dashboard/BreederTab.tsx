@@ -277,17 +277,23 @@ export function BreederTab() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const deleteProfileMutation = useMutation({
     mutationFn: () => api.delete('/breeders/me'),
-    onSuccess: () => {
+    onSuccess: async () => {
       // Refresca user (role mudou) e limpa caches do perfil + probe
-      // (a probe controla a presença da tab "Criador").
+      // (a probe controla a presença da tab "Criador"). Buscamos o
+      // role efectivo do servidor — o servidor pode despromover para
+      // SERVICE_PROVIDER (se ainda tiver servicos) ou OWNER; uma
+      // suposicao optimistica acabava por errar metade dos casos.
       queryClient.removeQueries({ queryKey: ['breeder-profile'] })
       queryClient.removeQueries({ queryKey: ['breeder-profile-probe'] })
       queryClient.invalidateQueries({ queryKey: ['breeder-profile-probe'] })
-      if (user) {
-        // Se o user era BREEDER, baixa para OWNER (server pode ter posto SP — mas
-        // mais comum é OWNER). Resync via /auth/me na próxima mount; aqui
-        // só ajustamos optimisticamente para refletir UI.
-        updateUser({ ...user, role: user.role === 'BREEDER' ? 'OWNER' : user.role })
+      try {
+        const me = await api.get('/users/me')
+        if (me.data && user) {
+          updateUser({ ...user, ...(me.data as Partial<typeof user>) })
+        }
+      } catch {
+        // Se o /users/me falhar, ficamos com o user em cache; o proximo
+        // mount re-hidrata. Nao bloqueia o flow de delete.
       }
       setDeleteOpen(false)
       navigate('/area-pessoal')
@@ -435,7 +441,6 @@ export function BreederTab() {
       initialTraining: form.initialTraining,
       pickupInPerson: form.pickupInPerson,
       deliveryByCar: form.deliveryByCar,
-      deliveryByPlane: false,
       pickupNotes: form.pickupNotes.trim() || undefined,
       breedIds: form.breedIds,
       otherBreedsNote: otherBreedsNote ?? undefined,
@@ -450,20 +455,20 @@ export function BreederTab() {
       return
     }
 
-    // O endpoint actual aceita null para "limpar" certos campos. Mantemos a
-    // forma do payload existente (com null em vez de undefined) para compat.
-    const finalPayload = {
-      ...parsed.data,
-      description: form.description,
-      website: form.website,
-      phone: form.phone,
-      youtubeVideoId: form.youtubeVideoId,
-      pickupNotes: form.pickupNotes,
-      districtId: form.districtId ? Number(form.districtId) : null,
-      municipalityId: form.municipalityId ? Number(form.municipalityId) : null,
-      breedIds: form.breedIds,
-      otherBreedsNote,
-    }
+    // Usar directamente o payload validado pelo Zod. As transformações
+    // (e.g. youtubeVideoIdSchema converte URL completo em ID de 11
+    // chars) ficariam perdidas se reconstruíssemos o objecto a partir
+    // de form.* — o backend rejeitaria com 400 mesmo depois do FE
+    // dizer "ok". O endpoint actual aceita o que o schema valida; null
+    // só é necessário para o caso explícito de location, que tratamos
+    // a seguir.
+    const finalPayload: Record<string, unknown> = { ...parsed.data }
+    // location pode vir undefined (omit) ou number (set). FE não permite
+    // "limpar" estes campos via PATCH (ambos são obrigatórios), por isso
+    // sem tratamento adicional. breedIds idem — sempre array.
+    // otherBreedsNote: garantir que vazio vira null em vez de undefined
+    // para "limpar" o campo no PATCH.
+    if (otherBreedsNote === null) finalPayload.otherBreedsNote = null
 
     if (!breeder) {
       // Fluxo "criar perfil" — cria breeder, depois faz upload sequencial

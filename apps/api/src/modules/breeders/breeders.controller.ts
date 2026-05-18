@@ -45,6 +45,10 @@ const BREEDER_INCLUDE = {
  */
 const BREEDER_PUBLIC_SELECT = {
   id: true,
+  // userId é exposto para o FE poder detectar "este perfil é meu" e
+  // esconder UI de contacto/avaliação para o próprio. Não é PII — o
+  // user.id já é entregue via /auth/me.
+  userId: true,
   slug: true,
   businessName: true,
   description: true,
@@ -292,6 +296,19 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     throw err
   }
 
+  await logAudit({
+    userId,
+    action: 'breeder.create',
+    entity: 'breeder',
+    entityId: breeder.id,
+    details: JSON.stringify({
+      businessName: breeder.businessName,
+      districtId: breeder.districtId,
+      municipalityId: breeder.municipalityId,
+    }),
+    ipAddress: req.ip,
+  })
+
   res.status(201).json(breeder)
 })
 
@@ -319,7 +336,14 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     // o URL publico ficaria preso ao nome inicial — permitindo registar
     // "Doggo Heaven" (slug doggo-heaven), depois mudar para "Acme Kennels"
     // mantendo o slug atraente.
-    updateData.slug = await generateBreederSlug(data.businessName)
+    //
+    // No-op quando o nome nao mudou (FE espalha o form completo em cada
+    // PATCH, mesmo sem alteracoes neste campo). Regenerar o slug a cada
+    // PATCH "vazio" gerava colisao desnecessaria e mudanca silenciosa
+    // de URLs publicos.
+    if (data.businessName !== breeder.businessName) {
+      updateData.slug = await generateBreederSlug(data.businessName)
+    }
   }
   if (data.nif !== undefined) {
     const nifExists = await prisma.breeder.findFirst({
@@ -429,6 +453,33 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
     }
     throw err
   }
+
+  // Auditoria: regista mudancas sensiveis (NIF/DGAV/businessName) e
+  // tambem alteracoes de localizacao/raca. Detalhes ficam truncados
+  // para nao inchar o audit log; campos opcionais sao agregados como
+  // contagem de campos alterados em vez de dump completo.
+  const sensitiveChanges: Record<string, unknown> = {}
+  if (updateData.nif !== undefined) sensitiveChanges.nifChanged = true
+  if (updateData.dgavNumber !== undefined) sensitiveChanges.dgavChanged = true
+  if (updateData.businessName !== undefined)
+    sensitiveChanges.businessNameChanged = true
+  if (updateData.districtId !== undefined || updateData.municipalityId !== undefined)
+    sensitiveChanges.locationChanged = true
+  if (breedIdsToSet !== undefined) sensitiveChanges.breedsCount = breedIdsToSet.length
+  const otherFieldsChanged = Object.keys(updateData).filter(
+    (k) => !['nif', 'dgavNumber', 'businessName', 'slug', 'districtId', 'municipalityId'].includes(k),
+  ).length
+  if (otherFieldsChanged > 0) sensitiveChanges.otherFieldsChanged = otherFieldsChanged
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'breeder.update',
+    entity: 'breeder',
+    entityId: breeder.id,
+    details: JSON.stringify(sensitiveChanges),
+    ipAddress: req.ip,
+  })
+
   res.json(updated)
 })
 
@@ -460,13 +511,18 @@ export const submitForVerification = asyncHandler(async (req, res) => {
   if (breeder.status === 'SUSPENDED')
     throw new AppError(403, 'Perfil suspenso — contacte o suporte', 'BREEDER_SUSPENDED')
 
-  // Unico requisito de submissao: ter um certificado DGAV. Os outros
-  // tipos de documento foram removidos do dominio.
-  const hasDgavDoc = breeder.verificationDocs.some((d) => d.docType === 'DGAV')
+  // Unico requisito de submissao: ter um certificado DGAV nao rejeitado.
+  // Os outros tipos de documento foram removidos do dominio. Excluimos
+  // REJECTED para forcar o utilizador a substituir o documento — sem
+  // isto, um criador podia reenviar o perfil para verificacao sem
+  // sequer ter actualizado o doc que ja tinha sido recusado.
+  const hasDgavDoc = breeder.verificationDocs.some(
+    (d) => d.docType === 'DGAV' && d.status !== 'REJECTED',
+  )
   if (!hasDgavDoc) {
     throw new AppError(
       400,
-      'Envie o certificado DGAV antes de submeter o perfil para verificação',
+      'Envie um certificado DGAV válido antes de submeter o perfil para verificação',
       'DGAV_DOC_REQUIRED',
     )
   }
@@ -476,6 +532,15 @@ export const submitForVerification = asyncHandler(async (req, res) => {
     data: { status: 'PENDING_VERIFICATION' },
     select: { id: true, status: true },
   })
+
+  await logAudit({
+    userId: req.user!.userId,
+    action: 'breeder.submit_verification',
+    entity: 'breeder',
+    entityId: breeder.id,
+    ipAddress: req.ip,
+  })
+
   res.json(updated)
 })
 
@@ -573,7 +638,12 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
   // independente; processá-los em série (await dentro do loop) inflava a
   // latência ~N×. Concurrency limitada implicitamente pela memória do worker
   // (já validámos N≤10 fotos no schema do controller).
-  const created = await Promise.all(
+  //
+  // Cleanup em caso de falha parcial: se um upload concluiu (blob em MinIO)
+  // mas a `breederPhoto.create` falhou (FK, P2002, etc.), o blob ficaria
+  // orfao. Usamos allSettled + cleanup dos uploads bem-sucedidos cujas
+  // rows nao foram criadas — depois propagamos o primeiro erro encontrado.
+  const uploadResults = await Promise.allSettled(
     files.map(async (file, i) => {
       const buffer = await (await createSafeSharp(file.buffer))
         .rotate()
@@ -589,11 +659,44 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
       const objectName = `breeders/${breeder.id}/photo-${randomUUID()}.jpg`
       const url = await uploadFile(objectName, buffer, 'image/jpeg')
 
-      return prisma.breederPhoto.create({
-        data: { breederId: breeder.id, url, sortOrder: baseSort + i },
-        select: { id: true, url: true, caption: true, sortOrder: true },
-      })
+      try {
+        const row = await prisma.breederPhoto.create({
+          data: { breederId: breeder.id, url, sortOrder: baseSort + i },
+          select: { id: true, url: true, caption: true, sortOrder: true },
+        })
+        return { row, objectName }
+      } catch (err) {
+        // Falha de DB apos upload: limpar o blob para nao deixar orfao.
+        await deleteFile(objectName).catch((e) =>
+          console.error('[breeder.photos.upload] orphan cleanup failed', { objectName, e }),
+        )
+        throw err
+      }
     }),
+  )
+
+  const failures = uploadResults.filter((r) => r.status === 'rejected')
+  if (failures.length > 0) {
+    // Cleanup dos uploads bem-sucedidos cujos amigos falharam — tudo-ou-
+    // -nada para nao apresentar uma galeria parcial ao utilizador.
+    const successes = uploadResults.flatMap((r) =>
+      r.status === 'fulfilled' ? [r.value] : [],
+    )
+    await Promise.all(
+      successes.map(async (s) => {
+        await prisma.breederPhoto.delete({ where: { id: s.row.id } }).catch(() => {})
+        await deleteFile(s.objectName).catch(() => {})
+      }),
+    )
+    // Propagar o primeiro erro como AppError generico (os errors
+    // originais podem ser PrismaErrors / sharp errors com PII).
+    const first = (failures[0] as PromiseRejectedResult).reason
+    if (first instanceof AppError) throw first
+    throw new AppError(500, 'Erro ao processar uma ou mais fotos', 'PHOTO_UPLOAD_FAILED')
+  }
+
+  const created = uploadResults.flatMap((r) =>
+    r.status === 'fulfilled' ? [r.value.row] : [],
   )
 
   await logAudit({
@@ -743,7 +846,12 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
     )
   }
 
-  // Buscar os ficheiros para cleanup do storage antes do delete.
+  // Buscar os ficheiros ANTES do delete (precisamos das URLs), mas
+  // so apagamos o storage DEPOIS do commit da TX. Se a TX rebentar
+  // (FK constraint, conflito concorrente), nao quebramos o perfil
+  // existente apagando blobs cuja referencia ainda esta na BD. Com
+  // a ordem invertida, uma falha de TX deixava o perfil intacto na
+  // BD mas com fotos a apontar para 404 no MinIO.
   const [photos, docs] = await Promise.all([
     prisma.breederPhoto.findMany({
       where: { breederId: breeder.id },
@@ -752,28 +860,6 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
     prisma.verificationDoc.findMany({
       where: { breederId: breeder.id },
       select: { fileUrl: true },
-    }),
-  ])
-
-  // Best-effort: falhas de storage não bloqueiam o delete da BD.
-  // Importante: os documentos DGAV recentes ficam no bucket *privado*
-  // com o prefixo `private:{bucket}/...` em fileUrl. Sem distincao, o
-  // strip generico assumia bucket publico e produzia um objectName
-  // invalido, deixando o ficheiro privado orfao (RGPD: PII oficial fica
-  // no MinIO sem pointer na BD). Resolver por prefixo.
-  await Promise.all([
-    ...photos.map((p) => {
-      const objectName = p.url.replace(/^\/[^/]+\//, '')
-      return deleteFile(objectName).catch(() => {})
-    }),
-    ...docs.map((d) => {
-      if (d.fileUrl.startsWith('private:')) {
-        const rest = d.fileUrl.slice('private:'.length)
-        const objectName = rest.replace(/^[^/]+\//, '')
-        return deletePrivateFile(objectName).catch(() => {})
-      }
-      const objectName = d.fileUrl.replace(/^\/[^/]+\//, '')
-      return deleteFile(objectName).catch(() => {})
     }),
   ])
 
@@ -796,6 +882,38 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
       })
     }
   })
+
+  // Storage cleanup best-effort APOS o commit. Falhas aqui geram
+  // ficheiros orfaos no MinIO mas nao afectam a BD. Os documentos
+  // DGAV ficam no bucket *privado* com o prefixo `private:{bucket}/...`
+  // em fileUrl — distinguir por prefixo para usar deletePrivateFile.
+  await Promise.all([
+    ...photos.map((p) => {
+      const objectName = p.url.replace(/^\/[^/]+\//, '')
+      return deleteFile(objectName).catch((err) => {
+        console.error('[breeder.delete] photo storage cleanup failed', { url: p.url, err })
+      })
+    }),
+    ...docs.map((d) => {
+      if (d.fileUrl.startsWith('private:')) {
+        const rest = d.fileUrl.slice('private:'.length)
+        const objectName = rest.replace(/^[^/]+\//, '')
+        return deletePrivateFile(objectName).catch((err) => {
+          console.error('[breeder.delete] private doc storage cleanup failed', {
+            fileUrl: d.fileUrl,
+            err,
+          })
+        })
+      }
+      const objectName = d.fileUrl.replace(/^\/[^/]+\//, '')
+      return deleteFile(objectName).catch((err) => {
+        console.error('[breeder.delete] doc storage cleanup failed', {
+          fileUrl: d.fileUrl,
+          err,
+        })
+      })
+    }),
+  ])
 
   await logAudit({
     userId,
