@@ -848,7 +848,7 @@ export function BreederProfilePage() {
                 <a
                   href={breeder.website}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow ugc"
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
                   Website
