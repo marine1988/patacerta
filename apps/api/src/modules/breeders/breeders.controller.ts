@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, getBreederForUser } from '../../lib/helpers.js'
-import { uploadFile, deleteFile, deletePrivateFile } from '../../lib/minio.js'
+import { uploadFile, deleteFile, deleteByRef } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
 import { Prisma } from '@prisma/client'
@@ -183,6 +183,12 @@ export const getBreederById = asyncHandler(async (req, res) => {
   // Remover campos sensíveis (isActive/suspendedAt) antes de devolver
   // ao cliente. Foram usados só para a guarda acima.
   const { isActive: _ia, suspendedAt: _sa, ...publicUser } = breeder.user
+  // Perfil publico nao depende de quem faz o request — pode ser
+  // cacheado intermediariamente (CDN, browser). TTL curto porque
+  // o criador pode actualizar dados (descricao, fotos, etc.) e
+  // queremos que apareca rapidamente nas pesquisas. 5 min e um
+  // compromisso entre frescura e load.
+  res.set('Cache-Control', 'public, max-age=300')
   res.json({ ...breeder, user: publicUser })
 })
 
@@ -724,8 +730,7 @@ export const deleteBreederPhoto = asyncHandler(async (req, res) => {
   })
   if (!photo) throw new AppError(404, 'Foto não encontrada', 'PHOTO_NOT_FOUND')
 
-  const objectName = photo.url.replace(/^\/[^/]+\//, '')
-  await deleteFile(objectName).catch(() => {
+  await deleteByRef(photo.url).catch(() => {
     // Best-effort
   })
 
@@ -884,35 +889,23 @@ export const deleteMyBreederProfile = asyncHandler(async (req, res) => {
   })
 
   // Storage cleanup best-effort APOS o commit. Falhas aqui geram
-  // ficheiros orfaos no MinIO mas nao afectam a BD. Os documentos
-  // DGAV ficam no bucket *privado* com o prefixo `private:{bucket}/...`
-  // em fileUrl — distinguir por prefixo para usar deletePrivateFile.
+  // ficheiros orfaos no MinIO mas nao afectam a BD. `deleteByRef`
+  // resolve automaticamente publico vs privado a partir do prefixo
+  // do ref persistido em DB (centralizado em lib/minio.ts).
   await Promise.all([
-    ...photos.map((p) => {
-      const objectName = p.url.replace(/^\/[^/]+\//, '')
-      return deleteFile(objectName).catch((err) => {
+    ...photos.map((p) =>
+      deleteByRef(p.url).catch((err) => {
         console.error('[breeder.delete] photo storage cleanup failed', { url: p.url, err })
-      })
-    }),
-    ...docs.map((d) => {
-      if (d.fileUrl.startsWith('private:')) {
-        const rest = d.fileUrl.slice('private:'.length)
-        const objectName = rest.replace(/^[^/]+\//, '')
-        return deletePrivateFile(objectName).catch((err) => {
-          console.error('[breeder.delete] private doc storage cleanup failed', {
-            fileUrl: d.fileUrl,
-            err,
-          })
-        })
-      }
-      const objectName = d.fileUrl.replace(/^\/[^/]+\//, '')
-      return deleteFile(objectName).catch((err) => {
+      }),
+    ),
+    ...docs.map((d) =>
+      deleteByRef(d.fileUrl).catch((err) => {
         console.error('[breeder.delete] doc storage cleanup failed', {
           fileUrl: d.fileUrl,
           err,
         })
-      })
-    }),
+      }),
+    ),
   ])
 
   await logAudit({

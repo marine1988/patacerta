@@ -62,6 +62,10 @@ export const searchBreeders = asyncHandler(async (req, res) => {
     prisma.breeder.count({ where }),
   ])
 
+  // Listagem publica nao varia por user — pode ser cacheada na borda
+  // por TTL curto. CDN/browser podem reutilizar entre utilizadores
+  // anonimos com os mesmos query params.
+  res.set('Cache-Control', 'public, max-age=120')
   res.json(paginatedResponse(breeders, total, page, limit))
 })
 
@@ -134,6 +138,7 @@ export const mapBreeders = asyncHandler(async (req, res) => {
       longitude: b.district.longitude as number,
     }))
 
+  res.set('Cache-Control', 'public, max-age=120')
   res.json({ data, total: data.length })
 })
 

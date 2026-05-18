@@ -154,3 +154,79 @@ export async function deleteFile(objectName: string): Promise<void> {
 export async function deletePrivateFile(objectName: string): Promise<void> {
   await minioClient.removeObject(PRIVATE_BUCKET, objectName)
 }
+
+/**
+ * Parse o identificador de storage que persistimos em DB e devolve o
+ * bucket + objectName a usar nas operacoes do MinIO. Suporta:
+ *
+ *   - `/{bucket}/{objectName}`              (legado publico)
+ *   - `private:{bucket}/{objectName}`       (DGAV docs)
+ *   - `https?://host/{bucket}/{objectName}` (URLs completos)
+ *
+ * Centralizado para evitar replicar a regex `^\/[^/]+\/` por 5 sitios e
+ * para tornar explicito o erro quando o formato e desconhecido — antes
+ * disto, um valor invalido em DB caia silenciosamente em `removeObject('')`
+ * ou similar, gerando 400 BadRequest no MinIO sem contexto.
+ *
+ * Devolve `null` quando o input nao pode ser parseado em vez de lancar —
+ * o storage cleanup e best-effort e nao deve quebrar o caller (delete
+ * row em DB ja foi feito).
+ */
+export function parseStorageRef(
+  ref: string,
+): { bucket: 'public' | 'private'; objectName: string } | null {
+  if (!ref || typeof ref !== 'string') return null
+
+  // private:{bucket}/{objectName}
+  if (ref.startsWith('private:')) {
+    const rest = ref.slice('private:'.length)
+    const slash = rest.indexOf('/')
+    if (slash <= 0) return null
+    const objectName = rest.slice(slash + 1)
+    if (!objectName) return null
+    return { bucket: 'private', objectName }
+  }
+
+  // https?://host/{bucket}/{objectName}
+  if (ref.startsWith('http://') || ref.startsWith('https://')) {
+    try {
+      const u = new URL(ref)
+      // pathname: /{bucket}/{objectName...}
+      const path = u.pathname.replace(/^\//, '')
+      const slash = path.indexOf('/')
+      if (slash <= 0) return null
+      const objectName = path.slice(slash + 1)
+      if (!objectName) return null
+      return { bucket: 'public', objectName }
+    } catch {
+      return null
+    }
+  }
+
+  // /{bucket}/{objectName}
+  if (ref.startsWith('/')) {
+    const path = ref.slice(1)
+    const slash = path.indexOf('/')
+    if (slash <= 0) return null
+    const objectName = path.slice(slash + 1)
+    if (!objectName) return null
+    return { bucket: 'public', objectName }
+  }
+
+  return null
+}
+
+/**
+ * Best-effort delete usando o ref completo persistido em DB. Resolve o
+ * bucket automaticamente (publico vs privado) e ignora silenciosamente
+ * refs malformados — o caller faz logging quando relevante.
+ */
+export async function deleteByRef(ref: string): Promise<void> {
+  const parsed = parseStorageRef(ref)
+  if (!parsed) return
+  if (parsed.bucket === 'private') {
+    await deletePrivateFile(parsed.objectName)
+  } else {
+    await deleteFile(parsed.objectName)
+  }
+}

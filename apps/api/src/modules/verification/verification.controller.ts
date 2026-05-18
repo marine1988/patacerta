@@ -9,6 +9,7 @@ import {
   deleteFile as deletePublicFile,
   getPresignedUrl as getPublicPresignedUrl,
   streamObject,
+  parseStorageRef,
 } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { logAudit } from '../../lib/audit.js'
@@ -19,15 +20,22 @@ import { Prisma } from '@prisma/client'
  * `/{bucket}/{objectName}`. Os novos vao para o bucket privado com
  * formato `private:{bucket}/{objectName}`. Este helper devolve a accao
  * correcta para qualquer um dos dois.
+ *
+ * Delega o parsing em `parseStorageRef` (lib/minio.ts) para garantir
+ * consistencia com o resto da codebase. Mantemos o nome local e o tipo
+ * de retorno (`isPrivate` boolean) porque os call sites usam para
+ * decidir entre streamObject('public') vs streamObject('private').
+ *
+ * Lanca erro quando o ref nao pode ser parseado — diferente do
+ * `parseStorageRef` (que devolve null para casos best-effort); aqui o
+ * caller depende de ter um objectName valido para servir ao browser.
  */
 function resolveDocStorage(fileUrl: string): { isPrivate: boolean; objectName: string } {
-  if (fileUrl.startsWith('private:')) {
-    const rest = fileUrl.slice('private:'.length) // {bucket}/{object}
-    const objectName = rest.replace(/^[^/]+\//, '')
-    return { isPrivate: true, objectName }
+  const parsed = parseStorageRef(fileUrl)
+  if (!parsed) {
+    throw new AppError(500, 'Referencia de ficheiro invalida', 'INVALID_FILE_REF')
   }
-  // Formato legacy: /{bucket}/{object}
-  return { isPrivate: false, objectName: fileUrl.replace(/^\/[^/]+\//, '') }
+  return { isPrivate: parsed.bucket === 'private', objectName: parsed.objectName }
 }
 import multer from 'multer'
 import path from 'path'

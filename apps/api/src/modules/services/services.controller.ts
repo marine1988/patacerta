@@ -26,7 +26,7 @@ import { randomUUID } from 'node:crypto'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
-import { uploadFile, deleteFile } from '../../lib/minio.js'
+import { uploadFile, deleteByRef } from '../../lib/minio.js'
 import { assertFileKind } from '../../lib/file-validation.js'
 import { generateServiceSlug } from '../../lib/service-slug.js'
 import { isNumericId } from '../../lib/slugify.js'
@@ -665,9 +665,8 @@ export const deletePhoto = asyncHandler(async (req, res) => {
   })
   if (!photo) throw new AppError(404, 'Foto não encontrada', 'PHOTO_NOT_FOUND')
 
-  // Extract MinIO object name from stored URL (format: /{bucket}/{objectName})
-  const objectName = photo.url.replace(/^\/[^/]+\//, '')
-  await deleteFile(objectName).catch(() => {
+  // Resolve bucket + objectName centralmente — ver lib/minio:parseStorageRef.
+  await deleteByRef(photo.url).catch(() => {
     // Best-effort — don't block DB deletion if MinIO is momentarily unavailable.
   })
 

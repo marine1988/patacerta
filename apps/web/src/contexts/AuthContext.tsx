@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { RegisterInput, LoginInput } from '@patacerta/shared'
 
@@ -52,6 +53,7 @@ function isTokenExpired(token: string): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   // Hydrate from localStorage on mount. O refresh token vive em cookie
   // httpOnly e portanto nao e legivel daqui — quando o access token esta
@@ -84,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => {
           localStorage.removeItem('access_token')
           localStorage.removeItem('user')
+          // Sessao morta — limpar cache da sessao anterior.
+          queryClient.clear()
         })
         .finally(() => setIsLoading(false))
     } else {
@@ -96,11 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // O servidor responde com { user, accessToken } e define o cookie
     // refresh_token httpOnly automaticamente.
     const { user: u, accessToken } = res.data
+    // Limpar cache antes de aplicar a nova sessao. Cobre o caso raro
+    // de login directo (sem logout previo) — ex: dois separadores onde
+    // um faz logout e outro tenta autenticar com user diferente.
+    queryClient.clear()
     localStorage.setItem('access_token', accessToken)
     localStorage.setItem('user', JSON.stringify(u))
     setUser(u)
     return u
-  }, [])
+  }, [queryClient])
 
   const register = useCallback(
     async (
@@ -126,7 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('access_token')
     localStorage.removeItem('user')
     setUser(null)
-  }, [])
+    // Limpa toda a cache React Query. Sem isto, dados do user anterior
+    // (ex: ['breeder-profile'], ['threads']) podiam aparecer brevemente
+    // ao novo user que faca login na mesma tab, ate cada query revalidar.
+    // Equivalente a uma "fronteira de seguranca" entre sessoes.
+    queryClient.clear()
+  }, [queryClient])
 
   const updateUser = useCallback((u: User) => {
     localStorage.setItem('user', JSON.stringify(u))
