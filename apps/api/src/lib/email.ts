@@ -98,6 +98,21 @@ interface SendMailParams {
 async function sendMail({ to, subject, html, text }: SendMailParams): Promise<void> {
   const transporter = getTransporter()
   if (!transporter) {
+    // Sem SMTP configurado:
+    // - dev local: imprime o corpo (developer precisa do token plain
+    //   para testar fluxos de verify/reset; o hash em DB nao reverte).
+    // - stage/prod: NUNCA imprimir corpo — tokens de reset/verify
+    //   ficariam nos logs do Dokploy/journald, equivalente a expor
+    //   a credencial. Falha silenciosa (loud-log) e' preferivel a
+    //   leak; o sintoma — utilizadores sem receber email — e' obvio
+    //   o suficiente para o operador resolver.
+    const env = process.env.NODE_ENV
+    if (env === 'production' || env === 'stage') {
+      console.error(
+        `[Email] SMTP_HOST nao configurado em ${env}. Email para ${maskEmail(to)} (assunto: ${subject}) NAO foi enviado. Configurar SMTP_HOST imediatamente.`,
+      )
+      return
+    }
     console.log(`[Email] (dev) To: ${to} | Subject: ${subject}\n${text}`)
     return
   }
