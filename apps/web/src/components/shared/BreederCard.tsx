@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '../ui/Badge'
+import { ImageFallback } from '../ui/ImageFallback'
 
 interface BreederCardProps {
   id: number
@@ -35,13 +36,7 @@ export function BreederCard({
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
-        {cover ? (
-          <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
-            sem foto
-          </div>
-        )}
+        <ImageFallback src={cover} alt={businessName} variant="breeder" className="h-full w-full" />
         {status === 'VERIFIED' && (
           <span className="absolute left-2 top-2">
             <Badge variant="green">
