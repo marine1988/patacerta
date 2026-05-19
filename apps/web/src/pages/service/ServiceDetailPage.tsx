@@ -256,6 +256,13 @@ export function ServiceDetailPage() {
   const isSelf = !!user && !!service && service.providerId === user.id
   const canWriteReview = !!user && !isSelf
 
+  // O `id` da URL pode ser slug ou numero (rota /servicos/:id aceita ambos
+  // e getServiceById no backend resolve via isNumericId). Para endpoints
+  // que recebem `serviceId` como query param (reviews/eligibility) ou que
+  // chamam parseId() no path (contact/report), precisamos do ID numerico.
+  // Number(slug) devolvia NaN e batia 400 — pega no service.id resolvido.
+  const serviceNumericId = service?.id ?? null
+
   const eligibilityQuery = useQuery<{
     eligible: boolean
     reason: string | null
@@ -267,18 +274,18 @@ export function ServiceDetailPage() {
       minPerSide: number
     }
   }>({
-    queryKey: ['service-review-eligibility', { serviceId: id }],
+    queryKey: ['service-review-eligibility', { serviceId: serviceNumericId }],
     queryFn: () =>
       api
-        .get('/service-reviews/eligibility', { params: { serviceId: Number(id) } })
+        .get('/service-reviews/eligibility', { params: { serviceId: serviceNumericId } })
         .then((r) => r.data),
-    enabled: !!id && canWriteReview,
+    enabled: !!serviceNumericId && canWriteReview,
     staleTime: 30_000,
   })
 
   const contactMutation = useMutation({
     mutationFn: (values: { subject: string; body: string }) =>
-      api.post(`/services/${id}/contact`, values).then((r) => r.data),
+      api.post(`/services/${serviceNumericId}/contact`, values).then((r) => r.data),
     onSuccess: (res) => {
       setThreadModalOpen(false)
       setThreadError(null)
@@ -291,7 +298,7 @@ export function ServiceDetailPage() {
 
   const reportMutation = useMutation({
     mutationFn: (reason: string) =>
-      api.post(`/services/${id}/report`, { reason }).then((r) => r.data),
+      api.post(`/services/${serviceNumericId}/report`, { reason }).then((r) => r.data),
     onSuccess: () => {
       setReportModalOpen(false)
       setReportError(null)
@@ -304,19 +311,19 @@ export function ServiceDetailPage() {
 
   // ─── Reviews ──────────────────────────────────────────────────────
   const reviewsQuery = useQuery<ServiceReviewsResponse>({
-    queryKey: queryKeys.reviews.byService(id, reviewSort, reviewPage),
+    queryKey: queryKeys.reviews.byService(serviceNumericId, reviewSort, reviewPage),
     queryFn: () =>
       api
         .get('/service-reviews', {
           params: {
-            serviceId: Number(id),
+            serviceId: serviceNumericId,
             page: reviewPage,
             limit: REVIEWS_PAGE_SIZE,
             sort: reviewSort,
           },
         })
         .then((r) => r.data),
-    enabled: !!id,
+    enabled: !!serviceNumericId,
   })
 
   // Própria review do autor (todos os status). O listing público filtra a
@@ -325,14 +332,14 @@ export function ServiceDetailPage() {
   // levando a 409 REVIEW_EXISTS no POST. O backend devolve todos os status
   // quando authorId === requester.userId.
   const myReviewQuery = useQuery<ServiceReviewsResponse>({
-    queryKey: queryKeys.reviews.myOnService(id, user?.id),
+    queryKey: queryKeys.reviews.myOnService(serviceNumericId, user?.id),
     queryFn: () =>
       api
         .get('/service-reviews', {
-          params: { serviceId: Number(id), authorId: user!.id, page: 1, limit: 1 },
+          params: { serviceId: serviceNumericId, authorId: user!.id, page: 1, limit: 1 },
         })
         .then((r) => r.data),
-    enabled: !!id && !!user && !isSelf,
+    enabled: !!serviceNumericId && !!user && !isSelf,
     staleTime: 30_000,
   })
 
@@ -352,7 +359,9 @@ export function ServiceDetailPage() {
 
   const createReviewMutation = useMutation({
     mutationFn: (values: ReviewFormValues) =>
-      api.post('/service-reviews', { serviceId: Number(id), ...values }).then((r) => r.data),
+      api
+        .post('/service-reviews', { serviceId: serviceNumericId, ...values })
+        .then((r) => r.data),
     onSuccess: () => {
       setReviewModalOpen(false)
       setEditingReview(null)
