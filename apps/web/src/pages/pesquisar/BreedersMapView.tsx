@@ -6,6 +6,7 @@ import { PORTUGAL_CENTER, PORTUGAL_ZOOM } from '../../lib/leaflet-setup'
 import { MarkerClusterLayer, type MapMarker } from '../../components/map/MarkerClusterLayer'
 import { Spinner } from '../../components/ui/Spinner'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
@@ -156,16 +157,16 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">
-        <p className="text-gray-600">
+        <div className="text-gray-600">
           {isLoading ? (
-            'A carregar...'
+            <Skeleton height="h-4" width="w-40" />
           ) : (
-            <>
+            <p>
               <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> criadores no
               mapa
-            </>
+            </p>
           )}
-        </p>
+        </div>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

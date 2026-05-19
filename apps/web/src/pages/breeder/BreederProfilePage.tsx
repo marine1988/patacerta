@@ -27,6 +27,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Pagination } from '../../components/ui/Pagination'
+import { Skeleton, SkeletonText } from '../../components/ui/Skeleton'
 import { useConfirm } from '../../components/ui/ConfirmDialog'
 import { ReviewForm, type ReviewFormValues } from '../../components/reviews/ReviewForm'
 import { FlagReviewModal } from '../../components/reviews/FlagReviewModal'
@@ -97,6 +98,90 @@ interface ReviewsResponse {
 type SortOption = 'recent' | 'oldest' | 'highest' | 'lowest'
 
 const PAGE_SIZE = 10
+
+// ─── Skeleton ────────────────────────────────────────────────────────
+// Espelha a layout real (header com avatar + grid 2/3 + sidebar 1/3)
+// para evitar salto/CLS quando os dados chegam.
+
+function BreederDetailSkeleton() {
+  return (
+    <div className="page-container animate-pulse">
+      <Skeleton height="h-4" width="w-64" className="mb-6" />
+
+      {/* Header: avatar + nome + meta */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <Skeleton height="h-24" width="w-24" rounded="rounded-full" animate={false} />
+        <div className="flex-1 space-y-3">
+          <Skeleton height="h-7" width="w-2/3" animate={false} />
+          <Skeleton height="h-4" width="w-1/3" animate={false} />
+          <Skeleton height="h-4" width="w-1/4" animate={false} />
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Coluna principal */}
+        <div className="space-y-6 lg:col-span-2">
+          <Card hover={false}>
+            <Skeleton className="aspect-[16/9] w-full" rounded="rounded-lg" animate={false} />
+            <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-square" rounded="rounded-md" animate={false} />
+              ))}
+            </div>
+          </Card>
+
+          <Card hover={false}>
+            <Skeleton height="h-5" width="w-32" animate={false} />
+            <SkeletonText lines={4} className="mt-3" />
+          </Card>
+
+          <Card hover={false}>
+            <Skeleton height="h-5" width="w-40" animate={false} />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} height="h-7" width="w-24" rounded="rounded-full" animate={false} />
+              ))}
+            </div>
+          </Card>
+
+          <Card hover={false}>
+            <Skeleton height="h-5" width="w-36" animate={false} />
+            <div className="mt-4 space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="border-b border-line/60 pb-4 last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <Skeleton height="h-10" width="w-10" rounded="rounded-full" animate={false} />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton height="h-4" width="w-1/3" animate={false} />
+                      <Skeleton height="h-3" width="w-1/4" animate={false} />
+                    </div>
+                  </div>
+                  <SkeletonText lines={2} className="mt-3" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <Card hover={false}>
+            <Skeleton height="h-5" width="w-28" animate={false} />
+            <div className="mt-3 space-y-3">
+              <Skeleton height="h-10" width="w-full" animate={false} />
+              <Skeleton height="h-10" width="w-full" animate={false} />
+            </div>
+          </Card>
+
+          <Card hover={false}>
+            <Skeleton height="h-5" width="w-28" animate={false} />
+            <Skeleton height="h-48" width="w-full" rounded="rounded-lg" className="mt-3" animate={false} />
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function BreederProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -377,11 +462,7 @@ export function BreederProfilePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    )
+    return <BreederDetailSkeleton />
   }
 
   if (isError || !breeder) {

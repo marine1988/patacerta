@@ -9,6 +9,7 @@ import {
 } from '../../components/map/ServiceMarkerClusterLayer'
 import { Spinner } from '../../components/ui/Spinner'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { Select } from '../../components/ui/Select'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
@@ -297,22 +298,22 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">
-        <p className="text-gray-600">
+        <div className="text-gray-600">
           {isLoading ? (
-            'A carregar...'
+            <Skeleton height="h-4" width="w-48" />
           ) : geo.coords ? (
-            <>
+            <p>
               <span className="font-semibold text-gray-900">{markers.length}</span> anúncios num
               raio de {radiusKm} km{' '}
               <span className="text-gray-400">(total nacional: {data?.total ?? 0})</span>
-            </>
+            </p>
           ) : (
-            <>
+            <p>
               <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> anúncios no
               mapa
-            </>
+            </p>
           )}
-        </p>
+        </div>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

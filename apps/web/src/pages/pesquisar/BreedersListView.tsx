@@ -6,6 +6,7 @@ import { SearchBar } from '../../components/shared/SearchBar'
 import { BreederCard, BreederCardSkeleton } from '../../components/shared/BreederCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { useItemListJsonLd } from '../../hooks/useItemListJsonLd'
 
 interface BreederResult {
@@ -100,16 +101,16 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600">
           {meta ? (
-            <>
+            <p>
               <span className="font-semibold text-gray-900">{meta.total}</span> criadores
               encontrados
-            </>
+            </p>
           ) : (
-            'A carregar...'
+            <Skeleton height="h-4" width="w-40" />
           )}
-        </p>
+        </div>
 
         <div className="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5">
           <button

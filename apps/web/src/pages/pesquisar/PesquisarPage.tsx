@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { Spinner } from '../../components/ui/Spinner'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { breadcrumbListJsonLd } from '../../lib/jsonld'
 import { Breadcrumbs, type BreadcrumbItem } from '../../components/shared/Breadcrumbs'
@@ -25,8 +25,33 @@ const ServicesMapView = lazy(() =>
 
 function ViewFallback() {
   return (
-    <div className="flex items-center justify-center py-16">
-      <Spinner />
+    <div
+      className="py-6"
+      aria-busy="true"
+      aria-label="A carregar resultados"
+    >
+      {/* Filtros stripe */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Skeleton height="h-10" width="w-40" rounded="rounded-md" />
+        <Skeleton height="h-10" width="w-32" rounded="rounded-md" />
+        <Skeleton height="h-10" width="w-32" rounded="rounded-md" />
+        <Skeleton height="h-10" width="w-24" rounded="rounded-md" />
+      </div>
+      {/* Contador */}
+      <Skeleton height="h-4" width="w-40" className="mb-4" />
+      {/* Grelha de cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="card overflow-hidden">
+            <Skeleton className="aspect-[4/3] w-full" animate={false} />
+            <div className="card-body space-y-2">
+              <Skeleton height="h-5" width="w-3/4" animate={false} />
+              <Skeleton height="h-4" width="w-1/2" animate={false} />
+              <Skeleton height="h-3" width="w-2/3" animate={false} />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   Input,
   Select,
   Spinner,
+  Skeleton,
   Modal,
   Accordion,
   AccordionSection,
@@ -580,8 +581,24 @@ export function BreederTab() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+      <div className="space-y-6 py-4" aria-busy="true" aria-label="A carregar perfil">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Skeleton height="h-20" width="w-20" rounded="rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton height="h-6" width="w-1/2" />
+            <Skeleton height="h-4" width="w-1/3" />
+          </div>
+        </div>
+        {/* Form sections */}
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-3 rounded-lg border border-line/60 p-4">
+            <Skeleton height="h-5" width="w-40" />
+            <Skeleton height="h-10" width="w-full" />
+            <Skeleton height="h-10" width="w-full" />
+            <Skeleton height="h-20" width="w-full" />
+          </div>
+        ))}
       </div>
     )
   }

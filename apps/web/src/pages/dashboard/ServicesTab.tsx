@@ -37,7 +37,7 @@ import {
   Input,
   Select,
   EmptyState,
-  Spinner,
+  Skeleton,
   Modal,
   Tabs,
   Accordion,
@@ -472,8 +472,24 @@ export function ServicesTab() {
   // ── Render: loading ────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+      <div className="space-y-4 py-4" aria-busy="true" aria-label="A carregar anúncios">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-col gap-3 rounded-lg border border-line/60 bg-surface p-4 sm:flex-row"
+          >
+            <Skeleton className="aspect-[4/3] w-full sm:w-48" rounded="rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton height="h-5" width="w-3/4" />
+              <Skeleton height="h-4" width="w-1/2" />
+              <Skeleton height="h-4" width="w-1/3" />
+              <div className="flex gap-2 pt-2">
+                <Skeleton height="h-8" width="w-24" />
+                <Skeleton height="h-8" width="w-24" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -968,9 +984,20 @@ function ServiceEditView(props: ServiceEditViewProps) {
                       Selecione primeiro o distrito.
                     </p>
                   ) : municipalities.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      A carregar concelhos…
-                    </p>
+                    <div
+                      className="flex flex-wrap gap-2"
+                      aria-busy="true"
+                      aria-label="A carregar concelhos"
+                    >
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton
+                          key={i}
+                          height="h-7"
+                          width="w-20"
+                          rounded="rounded-full"
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <>
                       <div className="flex flex-wrap gap-2">

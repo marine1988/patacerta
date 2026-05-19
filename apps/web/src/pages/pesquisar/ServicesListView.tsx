@@ -8,6 +8,7 @@ import {
   type ServiceCardData,
 } from '../../components/shared/ServiceCard'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
@@ -374,15 +375,15 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600">
           {meta ? (
-            <>
+            <p>
               <span className="font-semibold text-gray-900">{meta.total}</span> anúncios encontrados
-            </>
+            </p>
           ) : (
-            'A carregar...'
+            <Skeleton height="h-4" width="w-40" />
           )}
-        </p>
+        </div>
       </div>
 
       {showInitialSkeleton ? (

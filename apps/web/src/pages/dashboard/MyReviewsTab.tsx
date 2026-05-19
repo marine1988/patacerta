@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { extractApiError } from '../../lib/errors'
-import { Button, EmptyState, Spinner, useConfirm } from '../../components/ui'
+import { Button, EmptyState, SkeletonAvatarLine, SkeletonText, useConfirm } from '../../components/ui'
 import { Pagination } from '../../components/ui/Pagination'
 import { ReviewCard } from '../../components/reviews/ReviewCard'
 import type { PaginatedMeta } from '../../lib/pagination'
@@ -66,8 +66,13 @@ export function MyReviewsTab() {
 
   if (breederQuery.isLoading || serviceQuery.isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+      <div className="space-y-4 py-4" aria-busy="true" aria-label="A carregar avaliações">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-line/60 bg-surface p-4">
+            <SkeletonAvatarLine size={40} lines={2} />
+            <SkeletonText lines={2} className="mt-3" />
+          </div>
+        ))}
       </div>
     )
   }

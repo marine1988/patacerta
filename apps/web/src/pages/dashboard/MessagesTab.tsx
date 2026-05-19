@@ -6,7 +6,7 @@ import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDateTime, formatSmart } from '../../lib/dates'
-import { Card, Avatar, Badge, Button, EmptyState, Spinner, useConfirm } from '../../components/ui'
+import { Card, Avatar, Badge, Button, EmptyState, Spinner, SkeletonAvatarLine, useConfirm } from '../../components/ui'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
@@ -510,8 +510,15 @@ export function MessagesTab() {
 
   if (threadsLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+      <div className="space-y-3 py-4" aria-busy="true" aria-label="A carregar conversas">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-3 rounded-lg border border-line/60 bg-surface p-4"
+          >
+            <SkeletonAvatarLine size={44} lines={2} className="flex-1" />
+          </div>
+        ))}
       </div>
     )
   }
