@@ -543,6 +543,24 @@ export const streamDocument = asyncHandler(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('Cache-Control', 'no-store')
 
+  // Cleanup quando o cliente fecha a conexao a meio do download. Sem
+  // isto, o stream MinIO continua a consumir o objecto inteiro do lado
+  // do API ate o GC fechar tudo — desperdicio de banda e file descriptors
+  // se o utilizador navegar para fora antes do PDF terminar.
+  //
+  // `streamObject` devolve `NodeJS.ReadableStream` (interface base, sem
+  // .destroy garantido), mas na pratica o cliente MinIO usa
+  // `stream.Readable`. Type-narrow defensivamente e cai silenciosamente
+  // se a implementacao mudar no futuro.
+  res.on('close', () => {
+    const s = stream as NodeJS.ReadableStream & {
+      destroyed?: boolean
+      destroy?: (err?: Error) => void
+    }
+    if (typeof s.destroy === 'function' && s.destroyed !== true) {
+      s.destroy()
+    }
+  })
   stream.pipe(res)
   stream.on('error', (err) => {
     // Se o stream falhar a meio, ja enviamos headers — apenas destruir
