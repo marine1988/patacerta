@@ -3,6 +3,7 @@ import {
   requireAuth,
   requireRole,
   requireBreederProfile,
+  requireActiveUser,
   optionalAuth,
 } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
@@ -47,20 +48,32 @@ reviewsRouter.get('/', optionalAuth, validate(listReviewsSchema, 'query'), ctrl.
 reviewsRouter.get('/:id', optionalAuth, ctrl.getReviewById)
 
 // Authenticated (owners)
+// requireActiveUser em TODAS as mutations: utilizador suspenso nao pode
+// criar/editar/eliminar reviews nem responder, flag ou moderar (admin
+// suspenso por par tambem fica trancado). Padrao consistente com
+// /services, /messages, /payments e /verification.
 reviewsRouter.post(
   '/',
   requireAuth,
+  requireActiveUser,
   reviewCreateRateLimit,
   validate(createReviewSchema),
   ctrl.createReview,
 )
-reviewsRouter.patch('/:id', requireAuth, validate(updateReviewSchema), ctrl.updateReview)
-reviewsRouter.delete('/:id', requireAuth, ctrl.deleteReview)
+reviewsRouter.patch(
+  '/:id',
+  requireAuth,
+  requireActiveUser,
+  validate(updateReviewSchema),
+  ctrl.updateReview,
+)
+reviewsRouter.delete('/:id', requireAuth, requireActiveUser, ctrl.deleteReview)
 
 // Breeder reply
 reviewsRouter.post(
   '/:id/reply',
   requireAuth,
+  requireActiveUser,
   requireBreederProfile,
   validate(replyToReviewSchema),
   ctrl.replyToReview,
@@ -70,6 +83,7 @@ reviewsRouter.post(
 reviewsRouter.post(
   '/:id/flag',
   requireAuth,
+  requireActiveUser,
   reviewFlagRateLimit,
   validate(flagReviewSchema),
   ctrl.flagReview,
@@ -79,9 +93,16 @@ reviewsRouter.post(
 reviewsRouter.patch(
   '/:id/moderate',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   validate(moderateReviewSchema),
   ctrl.moderateReview,
 )
 reviewsRouter.get('/:id/flags', requireAuth, requireRole('ADMIN'), ctrl.listReviewFlags)
-reviewsRouter.delete('/:id/flags', requireAuth, requireRole('ADMIN'), ctrl.dismissReviewFlags)
+reviewsRouter.delete(
+  '/:id/flags',
+  requireAuth,
+  requireActiveUser,
+  requireRole('ADMIN'),
+  ctrl.dismissReviewFlags,
+)

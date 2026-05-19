@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth, requireRole, optionalAuth } from '../../middleware/auth.js'
+import { requireAuth, requireRole, requireActiveUser, optionalAuth } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import {
   createServiceReviewSchema,
@@ -40,9 +40,13 @@ serviceReviewsRouter.get(
 serviceReviewsRouter.get('/:id', optionalAuth, ctrl.getServiceReviewById)
 
 // Authenticated (any owner)
+// requireActiveUser em TODAS as mutations: padrao consistente com
+// /services, /reviews, /messages, /payments e /verification — fecha
+// a janela ~15min em que um utilizador suspenso mantinha JWT valido.
 serviceReviewsRouter.post(
   '/',
   requireAuth,
+  requireActiveUser,
   reviewCreateRateLimit,
   validate(createServiceReviewSchema),
   ctrl.createServiceReview,
@@ -50,15 +54,17 @@ serviceReviewsRouter.post(
 serviceReviewsRouter.patch(
   '/:id',
   requireAuth,
+  requireActiveUser,
   validate(updateServiceReviewSchema),
   ctrl.updateServiceReview,
 )
-serviceReviewsRouter.delete('/:id', requireAuth, ctrl.deleteServiceReview)
+serviceReviewsRouter.delete('/:id', requireAuth, requireActiveUser, ctrl.deleteServiceReview)
 
 // Provider reply
 serviceReviewsRouter.post(
   '/:id/reply',
   requireAuth,
+  requireActiveUser,
   validate(replyToServiceReviewSchema),
   ctrl.replyToServiceReview,
 )
@@ -67,6 +73,7 @@ serviceReviewsRouter.post(
 serviceReviewsRouter.post(
   '/:id/flag',
   requireAuth,
+  requireActiveUser,
   reviewFlagRateLimit,
   validate(flagServiceReviewSchema),
   ctrl.flagServiceReview,
@@ -76,6 +83,7 @@ serviceReviewsRouter.post(
 serviceReviewsRouter.patch(
   '/:id/moderate',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   validate(moderateServiceReviewSchema),
   ctrl.moderateServiceReview,
@@ -89,6 +97,7 @@ serviceReviewsRouter.get(
 serviceReviewsRouter.delete(
   '/:id/flags',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   ctrl.dismissServiceReviewFlags,
 )
