@@ -178,11 +178,14 @@ services:
       ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-}
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/health']
+      # start_period generoso: o entrypoint corre backfill-slugs + detector
+      # de drift + migrate deploy + seed + backfill stats antes de exec node.
+      # Em stage observado ~67s end-to-end; 120s da margem para reparacoes.
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/api/health']
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 120s
 
   # ── Cron jobs ──
   # Reusa a mesma imagem do API (mesmo build context + Dockerfile), mas

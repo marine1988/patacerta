@@ -154,7 +154,10 @@ ensureBucket()
   .then(() => console.log('[PataCerta API] MinIO bucket OK'))
   .catch((err) => console.error('[PataCerta API] MinIO bucket setup failed:', err))
 
-app.listen(PORT, () => {
+// Bind explicito a 0.0.0.0 para garantir IPv4 acessivel a healthchecks Docker
+// (alguns ambientes node:20-alpine fazem bind dual-stack inconsistente quando
+// host e' omitido, causando wget http://127.0.0.1 a falhar mesmo com servidor a correr).
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`[PataCerta API] Running on http://localhost:${PORT}`)
   console.log(`[PataCerta API] Environment: ${process.env.NODE_ENV || 'development'}`)
 
