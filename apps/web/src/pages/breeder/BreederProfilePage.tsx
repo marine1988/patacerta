@@ -189,6 +189,13 @@ export function BreederProfilePage() {
   // outros criadores/prestadores e era inconsistente com ServiceDetailPage.
   const canWriteReview = !!user && !isSelf
 
+  // O `id` da URL pode ser um slug (canil-malinois-do-tejo) ou um numero;
+  // o backend /breeders/:idOrSlug aceita ambos. Para as APIs de reviews
+  // e messages que recebem `breederId`, precisamos do ID numerico — tira-mo
+  // da resposta de /breeders (breeder.id), nao de Number(id) que devolvia
+  // NaN para slugs e causava 400 nos endpoints downstream.
+  const breederNumericId = breeder?.id ?? null
+
   const eligibilityQuery = useQuery<{
     eligible: boolean
     reason: string | null
@@ -200,22 +207,24 @@ export function BreederProfilePage() {
       minPerSide: number
     }
   }>({
-    queryKey: ['review-eligibility', { breederId: id }],
+    queryKey: ['review-eligibility', { breederId: breederNumericId }],
     queryFn: () =>
-      api.get('/reviews/eligibility', { params: { breederId: Number(id) } }).then((r) => r.data),
-    enabled: !!id && canWriteReview,
+      api
+        .get('/reviews/eligibility', { params: { breederId: breederNumericId } })
+        .then((r) => r.data),
+    enabled: !!breederNumericId && canWriteReview,
     staleTime: 30_000,
   })
 
   const reviewsQuery = useQuery<ReviewsResponse>({
-    queryKey: ['reviews', { breederId: id, sort, page }],
+    queryKey: ['reviews', { breederId: breederNumericId, sort, page }],
     queryFn: () =>
       api
         .get('/reviews', {
-          params: { breederId: Number(id), page, limit: PAGE_SIZE, sort },
+          params: { breederId: breederNumericId, page, limit: PAGE_SIZE, sort },
         })
         .then((r) => r.data),
-    enabled: !!id,
+    enabled: !!breederNumericId,
   })
 
   // Própria review do autor para este criador, independentemente do status
@@ -224,14 +233,14 @@ export function BreederProfilePage() {
   // Sem isto, o botão "Escrever avaliação" reapareceria após moderação
   // ocultar a review do autor, levando a 409 REVIEW_EXISTS no POST.
   const myReviewQuery = useQuery<ReviewsResponse>({
-    queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+    queryKey: queryKeys.reviews.myOnBreeder(breederNumericId, user?.id),
     queryFn: () =>
       api
         .get('/reviews', {
-          params: { breederId: Number(id), authorId: user!.id, page: 1, limit: 1 },
+          params: { breederId: breederNumericId, authorId: user!.id, page: 1, limit: 1 },
         })
         .then((r) => r.data),
-    enabled: !!id && !!user && !isSelf,
+    enabled: !!breederNumericId && !!user && !isSelf,
     staleTime: 30_000,
   })
 
@@ -247,14 +256,14 @@ export function BreederProfilePage() {
 
   const createReviewMutation = useMutation({
     mutationFn: (values: ReviewFormValues) =>
-      api.post('/reviews', { breederId: Number(id), ...values }).then((r) => r.data),
+      api.post('/reviews', { breederId: breederNumericId, ...values }).then((r) => r.data),
     onSuccess: () => {
       setReviewModalOpen(false)
       setEditingReview(null)
       setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: breederNumericId }] })
       queryClient.invalidateQueries({
-        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+        queryKey: queryKeys.reviews.myOnBreeder(breederNumericId, user?.id),
       })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
@@ -271,9 +280,9 @@ export function BreederProfilePage() {
       setReviewModalOpen(false)
       setEditingReview(null)
       setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: breederNumericId }] })
       queryClient.invalidateQueries({
-        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+        queryKey: queryKeys.reviews.myOnBreeder(breederNumericId, user?.id),
       })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
@@ -287,9 +296,9 @@ export function BreederProfilePage() {
     mutationFn: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
     onSuccess: () => {
       setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: breederNumericId }] })
       queryClient.invalidateQueries({
-        queryKey: queryKeys.reviews.myOnBreeder(id, user?.id),
+        queryKey: queryKeys.reviews.myOnBreeder(breederNumericId, user?.id),
       })
       queryClient.invalidateQueries({ queryKey: ['breeder', id] })
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
@@ -305,7 +314,7 @@ export function BreederProfilePage() {
     onSuccess: () => {
       setFlagTarget(null)
       setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: id }] })
+      queryClient.invalidateQueries({ queryKey: ['reviews', { breederId: breederNumericId }] })
     },
     onError: (err) => {
       setActionError(extractApiError(err, 'Erro ao denunciar avaliação.'))
@@ -314,7 +323,9 @@ export function BreederProfilePage() {
 
   const createThreadMutation = useMutation({
     mutationFn: (values: { subject: string; body: string }) =>
-      api.post('/messages/threads', { breederId: Number(id), ...values }).then((r) => r.data),
+      api
+        .post('/messages/threads', { breederId: breederNumericId, ...values })
+        .then((r) => r.data),
     onSuccess: (res) => {
       setThreadModalOpen(false)
       setThreadError(null)
