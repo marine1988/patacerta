@@ -124,13 +124,28 @@ sitemapRouter.get(
 
       const [breeders, services] = await Promise.all([
         prisma.breeder.findMany({
-          where: { status: 'VERIFIED' },
+          // Apenas criadores VERIFIED cujo utilizador esta activo e nao
+          // suspenso. Sem este filtro, o sitemap incluia perfis que
+          // depois devolvem 404 em /criador/:slug — Google penaliza
+          // sitemaps com soft-404s (descredibiliza o sitemap inteiro)
+          // e, do lado UX, o utilizador clica num resultado SERP que
+          // nao existe. Coerente com getBreederById que ja exclui estes.
+          where: {
+            status: 'VERIFIED',
+            user: { isActive: true, suspendedAt: null },
+          },
           select: { id: true, slug: true, updatedAt: true },
           orderBy: { updatedAt: 'desc' },
           take: 10000,
         }),
         prisma.service.findMany({
-          where: { status: 'ACTIVE' },
+          // Idem para servicos: ACTIVE + provider activo nao-suspenso.
+          // Coerente com publicServicePublicSelect's where filter em
+          // services.controller.ts.
+          where: {
+            status: 'ACTIVE',
+            provider: { isActive: true, suspendedAt: null },
+          },
           select: { id: true, slug: true, updatedAt: true },
           orderBy: { updatedAt: 'desc' },
           take: 10000,
