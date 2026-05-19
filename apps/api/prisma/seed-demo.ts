@@ -2,14 +2,16 @@
  * Seed DEMO (dados fictícios) — APENAS para staging/desenvolvimento.
  *
  * ⚠ NÃO correr em produção real: cria utilizadores e negócios falsos
- * (`canil.alvalade@example.pt`, NIFs inventados, fotos via picsum.photos).
+ * (`canil.alvalade@example.pt`, NIFs inventados, avatares e fotos
+ * curados de Unsplash via seed-demo-images.ts).
  *
  * Cria:
- *   - 4 owner users fictícios (clientes para reviews)
+ *   - 4 owner users fictícios (clientes para reviews) com avatares
  *   - 6 canis fictícios verificados (cobertura geográfica de PT)
- *   - 2-3 fotos picsum por canil (seed estável)
+ *   - 2-3 fotos por canil (Unsplash, mix racas/cenarios)
  *   - 8 reviews publicadas
  *   - ~25 serviços (passeio + pet-sitting) com coverage e fotos
+ *     temáticas à categoria
  *   - cleanup de demos legados não-cão (defesa dupla com seed.ts)
  *
  * Pré-requisitos: seed.ts precisa de ter corrido antes (espécie `cao`,
@@ -31,6 +33,11 @@ import {
 import bcrypt from 'bcryptjs'
 import { generateBreederSlug } from '../src/lib/breeder-slug.js'
 import { generateServiceSlug } from '../src/lib/service-slug.js'
+import {
+  avatarForEmail,
+  breederPhotoForSeed,
+  servicePhotoForSeed,
+} from './seed-demo-images.js'
 
 const prisma = new PrismaClient()
 
@@ -47,7 +54,9 @@ type BreederSeed = {
   districtCode: string
   municipalityCode: string
   status: BreederStatus
-  /** URLs picsum.photos (seed estavel para reproducibilidade). 1a = capa. */
+  /** Seed numerico que mapeia deterministicamente para BREEDER_PHOTOS
+   *  (ver seed-demo-images.ts). 1a entrada = capa. Numero arbitrario
+   *  mas estavel para reproducibilidade do seed. */
   photoSeeds: number[]
 }
 
@@ -798,9 +807,10 @@ async function main() {
   console.log('Creating demo owner users...')
   const ownerByEmail = new Map<string, number>()
   for (const o of OWNERS) {
+    const avatarUrl = avatarForEmail(o.email)
     const user = await prisma.user.upsert({
       where: { email: o.email },
-      update: { emailVerified: true },
+      update: { emailVerified: true, avatarUrl },
       create: {
         email: o.email,
         passwordHash,
@@ -808,6 +818,7 @@ async function main() {
         lastName: o.lastName,
         role: UserRole.OWNER,
         emailVerified: true,
+        avatarUrl,
       },
     })
     ownerByEmail.set(o.email, user.id)
@@ -825,9 +836,10 @@ async function main() {
       continue
     }
 
+    const avatarUrl = avatarForEmail(b.email)
     const user = await prisma.user.upsert({
       where: { email: b.email },
-      update: { role: UserRole.BREEDER, emailVerified: true },
+      update: { role: UserRole.BREEDER, emailVerified: true, avatarUrl },
       create: {
         email: b.email,
         passwordHash,
@@ -836,6 +848,7 @@ async function main() {
         role: UserRole.BREEDER,
         phone: b.phone,
         emailVerified: true,
+        avatarUrl,
       },
     })
 
@@ -877,14 +890,16 @@ async function main() {
       data: { breederId: breeder.id, speciesId: dogSpecies.id },
     })
 
-    // Photos: URLs publicos picsum.photos com seed estavel
+    // Photos: URLs curados de Unsplash (ver seed-demo-images.ts).
+    // Seed numerico (photoSeeds) mapeia deterministicamente para o pool
+    // BREEDER_PHOTOS — idempotente entre runs, com spread visual.
     await prisma.breederPhoto.deleteMany({ where: { breederId: breeder.id } })
     for (let i = 0; i < b.photoSeeds.length; i++) {
       const seed = b.photoSeeds[i]
       await prisma.breederPhoto.create({
         data: {
           breederId: breeder.id,
-          url: `https://picsum.photos/seed/patacerta-breeder-${seed}/800/600`,
+          url: breederPhotoForSeed(seed),
           sortOrder: i,
         },
       })
@@ -1016,14 +1031,15 @@ async function main() {
       coverageCount++
     }
 
-    // Photos: URLs publicos picsum.photos com seed estavel
+    // Photos: URLs curados de Unsplash por categoria do servico (passeio/
+    // pet-sitting/treino). Ver seed-demo-images.ts.
     await prisma.servicePhoto.deleteMany({ where: { serviceId: service.id } })
     for (let i = 0; i < s.photoSeeds.length; i++) {
       const seed = s.photoSeeds[i]
       await prisma.servicePhoto.create({
         data: {
           serviceId: service.id,
-          url: `https://picsum.photos/seed/patacerta-svc-${seed}/800/600`,
+          url: servicePhotoForSeed(s.categorySlug, seed),
           sortOrder: i,
         },
       })

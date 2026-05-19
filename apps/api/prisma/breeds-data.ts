@@ -3074,10 +3074,13 @@ export const BREEDS: BreedSeed[] = [
 // público e gratuito. Foram fixadas (não geradas em runtime) para o
 // resultado ser determinístico e o seed idempotente.
 //
-// As 4 raças autóctones portuguesas (Estrela, Cão de Água, Podengo,
-// Rafeiro) não estão cobertas pelo Dog CEO. Ficam com `null` e o
-// frontend mostra um placeholder. A adicionar manualmente quando
-// tivermos imagens próprias com licença clara.
+// Cobertura: Dog CEO cobre ~35 das 104 racas. As restantes 65 (incluindo
+// novas raças MVP) ficam com `null` — o frontend usa <ImageFallback
+// variant="breed"> que renderiza uma silhueta editorial caramel.
+//
+// As 4 racas autoctones portuguesas usam imagens curadas do Unsplash
+// (licenca Unsplash, uso comercial OK). Sao identificaveis o suficiente
+// para justificar o esforco editorial em vez de placeholder generico.
 
 const BREED_IMAGES: Record<string, string | null> = {
   'akita-inu': 'https://images.dog.ceo/breeds/akita/Akita_inu_blanc.jpg',
@@ -3087,15 +3090,22 @@ const BREED_IMAGES: Record<string, string | null> = {
   boxer: 'https://images.dog.ceo/breeds/boxer/n02108089_625.jpg',
   'bulldog-frances': 'https://images.dog.ceo/breeds/bulldog-french/n02108915_4214.jpg',
   'bulldog-ingles': 'https://images.dog.ceo/breeds/bulldog-english/jager-1.jpg',
-  'cao-da-serra-da-estrela': null,
-  'cao-de-agua-portugues': null,
+  // Cao da Serra da Estrela — molossoide PT, pelagem fawn/lobeira
+  'cao-da-serra-da-estrela':
+    'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800&h=600&q=80&auto=format&fit=crop',
+  // Cao de Agua Portugues — pelagem ondulada preta caracteristica
+  'cao-de-agua-portugues':
+    'https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=800&h=600&q=80&auto=format&fit=crop',
   'cavalier-king-charles': 'https://images.dog.ceo/breeds/spaniel-blenheim/n02086646_2725.jpg',
   chihuahua: 'https://images.dog.ceo/breeds/chihuahua/n02085620_4919.jpg',
   'cocker-spaniel-ingles': 'https://images.dog.ceo/breeds/spaniel-cocker/n02102318_10226.jpg',
   dalmata: 'https://images.dog.ceo/breeds/dalmatian/cooper2.jpg',
   dachshund: 'https://images.dog.ceo/breeds/dachshund/dog-1018408_640.jpg',
   doberman: 'https://images.dog.ceo/breeds/doberman/n02107142_788.jpg',
-  'galgo-portugues': null, // Podengo Português — sem imagem em dog.ceo
+  // Podengo Portugues — slug `galgo-portugues` mantido por compat seed.
+  // Imagem editorial de podengo tipo galgo
+  'galgo-portugues':
+    'https://images.unsplash.com/photo-1568572933382-74d440642117?w=800&h=600&q=80&auto=format&fit=crop',
   'golden-retriever': 'https://images.dog.ceo/breeds/retriever-golden/n02099601_3666.jpg',
   'husky-siberiano': 'https://images.dog.ceo/breeds/husky/n02110185_4115.jpg',
   'jack-russell-terrier': 'https://images.dog.ceo/breeds/terrier-russell/jack-koda-2.jpg',
@@ -3108,7 +3118,9 @@ const BREED_IMAGES: Record<string, string | null> = {
   'pinscher-miniatura': 'https://images.dog.ceo/breeds/pinscher-miniature/n02107312_2893.jpg',
   'poodle-medio': 'https://images.dog.ceo/breeds/poodle-medium/PXL_20210220_100624962.jpg',
   pug: 'https://images.dog.ceo/breeds/pug/n02110958_9642.jpg',
-  'rafeiro-do-alentejo': null,
+  // Rafeiro do Alentejo — molossoide PT grande, tipo guarda de gado
+  'rafeiro-do-alentejo':
+    'https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?w=800&h=600&q=80&auto=format&fit=crop',
   rottweiler: 'https://images.dog.ceo/breeds/rottweiler/n02106550_4254.jpg',
   samoiedo: 'https://images.dog.ceo/breeds/samoyed/n02111889_6622.jpg',
   'sao-bernardo': 'https://images.dog.ceo/breeds/stbernard/n02109525_523.jpg',
