@@ -161,14 +161,29 @@ export function ProfileTab() {
   return (
     <div className="space-y-6">
       <Card hover={false}>
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <div className="flex flex-col items-center gap-2">
+        {/* Header: avatar | nome+email+badge+acoes avatar | botao editar
+            Alinhamento start em vez de center para que os botoes do avatar
+            (Alterar/Remover) nao "empurrem" verticalmente o nome — o nome
+            fica colado ao topo do avatar e os controlos cabem por baixo
+            sem desalinhamento. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          {/* Coluna avatar */}
+          <div className="flex shrink-0 justify-center sm:justify-start">
             <Avatar
               name={`${user.firstName} ${user.lastName}`}
               imageUrl={user.avatarUrl ?? undefined}
               size="xl"
             />
-            <div className="flex gap-2">
+          </div>
+
+          {/* Coluna identidade + acoes avatar */}
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {user.firstName} {user.lastName}
+            </h2>
+            <p className="truncate text-sm text-gray-500">{user.email}</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <Badge variant={roleBadgeVariant}>{roleLabel}</Badge>
               <input
                 ref={avatarInputRef}
                 type="file"
@@ -179,15 +194,17 @@ export function ProfileTab() {
               <Button
                 type="button"
                 variant="secondary"
+                size="sm"
                 onClick={() => avatarInputRef.current?.click()}
                 loading={avatarUploadMutation.isPending}
               >
-                {user.avatarUrl ? 'Alterar' : 'Carregar'}
+                {user.avatarUrl ? 'Alterar foto' : 'Carregar foto'}
               </Button>
               {user.avatarUrl && (
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   onClick={handleRemoveAvatar}
                   loading={avatarDeleteMutation.isPending}
                 >
@@ -197,26 +214,21 @@ export function ProfileTab() {
             </div>
             {avatarMsg && (
               <p
-                className={`text-xs ${avatarMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+                className={`mt-2 text-xs ${avatarMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
                 role={avatarMsg.type === 'error' ? 'alert' : undefined}
               >
                 {avatarMsg.text}
               </p>
             )}
           </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {user.firstName} {user.lastName}
-            </h2>
-            <p className="text-sm text-gray-500">{user.email}</p>
-            <div className="mt-1">
-              <Badge variant={roleBadgeVariant}>{roleLabel}</Badge>
-            </div>
-          </div>
+
+          {/* Coluna accao */}
           {!editing && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Editar perfil
-            </Button>
+            <div className="flex justify-center sm:justify-end">
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Editar perfil
+              </Button>
+            </div>
           )}
         </div>
 

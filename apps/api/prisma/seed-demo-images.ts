@@ -18,30 +18,10 @@
 // Se uma URL Unsplash for despromovida no futuro, o frontend cai para
 // <ImageFallback variant="..."> (silhueta editorial caramel). Sem
 // imagens partidas.
-
-/** Pessoas — avatares de utilizadores (200x200, retrato). */
-export const AVATAR_PORTRAITS = [
-  // Mulher 30s, sorridente, casual
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Homem 30s, barba, sorridente
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Mulher 40s, profissional
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Homem 40s, mais velho
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Mulher jovem, casual outdoor
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Homem jovem, sorriso amplo
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Mulher 50s, calorosa
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Homem 50s, profissional
-  'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Mulher, brunette com sorriso
-  'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-  // Homem, casual, ao ar livre
-  'https://images.unsplash.com/photo-1463453091185-61582044d556?w=200&h=200&q=80&auto=format&fit=crop&crop=faces',
-] as const
+//
+// Nota: avatares de utilizadores NAO usam Unsplash. Usam DiceBear (ver
+// `avatarForEmail`) — avatares gerados deterministicamente, sem fotos
+// reais de pessoas em dev/stage.
 
 /** Caes — perfis de criadores (800x600 4:3). Mix de racas em cenarios canil/exterior. */
 export const BREEDER_PHOTOS = [
@@ -140,16 +120,25 @@ export function pickByIndex<T>(pool: readonly T[], seed: number): T {
 }
 
 /**
- * URL avatar para utilizador pelo email — hash simples deterministico.
- * Usado em vez de pickByIndex com numero arbitrario, porque os seeds dos
- * users (OWNERS/BREEDERS) sao identificados por email, nao por inteiro.
+ * URL avatar para utilizador pelo email — DiceBear (avatares gerados
+ * deterministicamente a partir do email como seed).
+ *
+ * Porque DiceBear em vez de fotos reais (Unsplash):
+ *  - Avatares dev/stage devem ser obviamente fake (avatares ilustrativos),
+ *    nao fotos reais de pessoas (privacidade + risco de despromocao do
+ *    photoId).
+ *  - DiceBear devolve sempre uma imagem valida para qualquer string seed
+ *    (zero falhas/404).
+ *  - Sem dependencia de licencas/CDNs externos serem permanentes.
+ *
+ * Style `initials` usa as iniciais do email com cores deterministicas —
+ * leitura instantanea e profissional. Para variedade visual maior pode-se
+ * trocar para `lorelei`/`adventurer` (avatares ilustrados).
  */
 export function avatarForEmail(email: string): string {
-  let h = 0
-  for (let i = 0; i < email.length; i++) {
-    h = (h * 31 + email.charCodeAt(i)) | 0
-  }
-  return pickByIndex(AVATAR_PORTRAITS, h)
+  // encodeURIComponent para suportar `+` em emails tipo `rita+stage@...`.
+  // backgroundType `gradientLinear` adiciona profundidade visual.
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(email)}&backgroundType=gradientLinear&fontSize=42`
 }
 
 /** URL passa-fotos breeder por seed. */
