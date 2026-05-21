@@ -675,13 +675,13 @@ export function BreederTab() {
             return (
               <div
                 key={doc.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
+                className="flex flex-col gap-3 rounded-lg border border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700">{doc.docType}</span>
-                  <span className="text-sm text-gray-500">{doc.fileName}</span>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="shrink-0 text-sm font-medium text-gray-700">{doc.docType}</span>
+                  <span className="truncate text-sm text-gray-500">{doc.fileName}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3">
                   <Badge variant={docStatusVariant[doc.status] ?? 'gray'}>
                     {docStatusLabel[doc.status] ?? doc.status}
                   </Badge>
@@ -1254,15 +1254,15 @@ export function BreederTab() {
       {breeder && (
         <Card hover={false}>
           {/* Estado + accoes */}
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h3 className="text-lg font-semibold text-gray-900">Estado do criador</h3>
               <div className="mt-2">
                 <VerificationBadge status={breeder.status} />
               </div>
             </div>
             {!editing && (
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button variant="secondary" onClick={() => setEditing(true)}>
                   Editar
                 </Button>

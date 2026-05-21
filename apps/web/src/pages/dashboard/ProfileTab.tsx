@@ -162,13 +162,12 @@ export function ProfileTab() {
     <div className="space-y-6">
       <Card hover={false}>
         {/* Header: avatar | nome+email+badge+acoes avatar | botao editar
-            Alinhamento start em vez de center para que os botoes do avatar
-            (Alterar/Remover) nao "empurrem" verticalmente o nome — o nome
-            fica colado ao topo do avatar e os controlos cabem por baixo
-            sem desalinhamento. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            Stack vertical ate lg (1024px) — em viewports tablet (640-1023px)
+            o header tem 4-5 controlos inline que ficam apertados se forcamos
+            row a 640. Em lg+ vai para 3 colunas horizontais. */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           {/* Coluna avatar */}
-          <div className="flex shrink-0 justify-center sm:justify-start">
+          <div className="flex shrink-0 justify-center lg:justify-start">
             <Avatar
               name={`${user.firstName} ${user.lastName}`}
               imageUrl={user.avatarUrl ?? undefined}
@@ -177,12 +176,12 @@ export function ProfileTab() {
           </div>
 
           {/* Coluna identidade + acoes avatar */}
-          <div className="min-w-0 flex-1 text-center sm:text-left">
+          <div className="min-w-0 flex-1 text-center lg:text-left">
             <h2 className="text-xl font-semibold text-gray-900">
               {user.firstName} {user.lastName}
             </h2>
             <p className="truncate text-sm text-gray-500">{user.email}</p>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
               <Badge variant={roleBadgeVariant}>{roleLabel}</Badge>
               <input
                 ref={avatarInputRef}
@@ -224,7 +223,7 @@ export function ProfileTab() {
 
           {/* Coluna accao */}
           {!editing && (
-            <div className="flex justify-center sm:justify-end">
+            <div className="flex shrink-0 justify-center lg:justify-end">
               <Button variant="secondary" onClick={() => setEditing(true)}>
                 Editar perfil
               </Button>

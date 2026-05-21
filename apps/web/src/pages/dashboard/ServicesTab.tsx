@@ -476,10 +476,10 @@ export function ServicesTab() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="flex flex-col gap-3 rounded-lg border border-line/60 bg-surface p-4 sm:flex-row"
+            className="flex flex-col gap-3 rounded-lg border border-line/60 bg-surface p-4 lg:flex-row"
           >
-            <Skeleton className="aspect-[4/3] w-full sm:w-48" rounded="rounded-md" />
-            <div className="flex-1 space-y-2">
+            <Skeleton className="h-32 w-full lg:h-20 lg:w-28 shrink-0" rounded="rounded-md" />
+            <div className="flex-1 space-y-2 min-w-0">
               <Skeleton height="h-5" width="w-3/4" />
               <Skeleton height="h-4" width="w-1/2" />
               <Skeleton height="h-4" width="w-1/3" />
@@ -543,14 +543,14 @@ export function ServicesTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold text-gray-900">Os meus anúncios</h3>
           <p className="text-sm text-gray-500">
             Crie e gira os seus anúncios de passeios, pet-sitting e treino.
           </p>
         </div>
-        <Button onClick={startNew}>Novo anúncio</Button>
+        <Button className="shrink-0" onClick={startNew}>Novo anúncio</Button>
       </div>
 
       {msg && (
@@ -621,8 +621,11 @@ export function ServicesTab() {
                 const cover = s.photos[0]?.url ?? null
                 return (
                   <Card key={s.id} hover={false}>
-                    <div className="flex flex-col gap-4 sm:flex-row">
-                      <div className="h-24 w-full overflow-hidden rounded-lg bg-gray-100 sm:h-20 sm:w-28 shrink-0">
+                    {/* Stack vertical ate lg para que o card de servico
+                        (thumb + 5 metas + ate 3 botoes de accao) tenha
+                        respiro em viewports tablet (640-1023px). */}
+                    <div className="flex flex-col gap-4 lg:flex-row">
+                      <div className="h-32 w-full overflow-hidden rounded-lg bg-gray-100 shrink-0 lg:h-20 lg:w-28">
                         {cover ? (
                           <img
                             src={cover}
@@ -641,7 +644,7 @@ export function ServicesTab() {
                           <h4 className="text-base font-semibold text-gray-900 truncate">
                             {s.title}
                           </h4>
-                          <Badge variant={serviceStatusVariant[s.status]}>
+                          <Badge className="shrink-0" variant={serviceStatusVariant[s.status]}>
                             {serviceStatusLabel[s.status]}
                           </Badge>
                         </div>
@@ -664,7 +667,7 @@ export function ServicesTab() {
                           Atualizado {formatSmart(s.updatedAt)}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
+                      <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end lg:shrink-0">
                         <Button size="sm" variant="secondary" onClick={() => startEdit(s.id)}>
                           Editar
                         </Button>
