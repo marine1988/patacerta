@@ -240,11 +240,12 @@ else
   echo "[PataCerta] Skipping seed (set RUN_SEED_ON_BOOT=true to enable)"
 fi
 
-if [ "$RUN_SEED_DEMO_ON_BOOT" = "true" ] || [ "$RUN_SEED_DEMO_ON_BOOT" = "1" ]; then
-  echo "[PataCerta] Running demo seed (RUN_SEED_DEMO_ON_BOOT=$RUN_SEED_DEMO_ON_BOOT)..."
+if [ "$RUN_SEED_DEMO_ON_BOOT" = "true" ] || [ "$RUN_SEED_DEMO_ON_BOOT" = "1" ] \
+  || [ "$SEED_INCLUDE_DEMO" = "true" ] || [ "$SEED_INCLUDE_DEMO" = "1" ]; then
+  echo "[PataCerta] Running demo seed (RUN_SEED_DEMO_ON_BOOT=$RUN_SEED_DEMO_ON_BOOT SEED_INCLUDE_DEMO=$SEED_INCLUDE_DEMO)..."
   npx tsx prisma/seed-demo.ts || echo "[PataCerta] Demo seed finished with non-zero exit"
 else
-  echo "[PataCerta] Skipping demo seed (set RUN_SEED_DEMO_ON_BOOT=true to enable)"
+  echo "[PataCerta] Skipping demo seed (set RUN_SEED_DEMO_ON_BOOT=true or SEED_INCLUDE_DEMO=true to enable)"
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
