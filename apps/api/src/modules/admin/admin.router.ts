@@ -139,3 +139,7 @@ adminRouter.patch(
   sponsoredCtrl.updateSponsoredSlot,
 )
 adminRouter.delete('/sponsored-slots/:id', sponsoredCtrl.deleteSponsoredSlot)
+
+// Internal/maintenance — utilitarios admin para staging
+// (bloqueados em producao pelo controller via NODE_ENV check).
+adminRouter.post('/internal/run-demo-seed', ctrl.runDemoSeed)

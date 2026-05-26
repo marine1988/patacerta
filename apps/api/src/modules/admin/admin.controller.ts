@@ -4,6 +4,8 @@ import { asyncHandler, parseId, parsePagination, paginatedResponse } from '../..
 import { logAudit } from '../../lib/audit.js'
 import { maskEmail } from '../../lib/redact.js'
 import { invalidateFeaturedCache } from '../home/home.controller.js'
+import { spawn } from 'node:child_process'
+import { resolve as pathResolve } from 'node:path'
 import type {
   ResolveReportInput,
   ResolveServiceReportInput,
@@ -1497,4 +1499,107 @@ export const setBreederFeatured = asyncHandler(async (req, res) => {
   await invalidateFeaturedCache().catch(() => undefined)
 
   res.json(updated)
+})
+
+/**
+ * POST /admin/internal/run-demo-seed
+ *
+ * Executa o script `prisma/seed-demo.ts` on-demand. Util quando a flag
+ * `RUN_SEED_DEMO_ON_BOOT` nao foi aplicada pelo orquestrador (Dokploy)
+ * mas o admin precisa de popular o staging com dados fake.
+ *
+ * Restricoes:
+ *  - Apenas role ADMIN (validado por requireRole no router).
+ *  - Apenas fora de produccao (`NODE_ENV !== 'production'`) — em prod
+ *    o seed-demo cria users/NIFs falsos, totalmente inadequado.
+ *  - Spawn de processo separado: isola o ciclo de vida (Prisma client
+ *    proprio, exit code claro) e nao polui o event-loop da API.
+ *  - Timeout 5min: o seed-demo demora ~30-60s; 5min e' folga generosa.
+ */
+export const runDemoSeed = asyncHandler(async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new AppError(403, 'Demo seed nao pode correr em produccao', 'FORBIDDEN_IN_PRODUCTION')
+  }
+
+  const adminUserId = req.user!.userId
+  const started = Date.now()
+  const stdoutChunks: string[] = []
+  const stderrChunks: string[] = []
+
+  let exitCode = -1
+
+  await new Promise<void>((resolve, reject) => {
+    // O cwd em runtime e' /app/apps/api (definido no entrypoint via
+    // `cd /app/apps/api`), por isso `prisma/seed-demo.ts` resolve.
+    const child = spawn('npx', ['tsx', 'prisma/seed-demo.ts'], {
+      cwd: pathResolve(process.cwd()),
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    const timeout = setTimeout(
+      () => {
+        child.kill('SIGTERM')
+        reject(new AppError(504, 'Demo seed excedeu 5 minutos', 'SEED_TIMEOUT'))
+      },
+      5 * 60 * 1000,
+    )
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      const s = chunk.toString('utf8')
+      stdoutChunks.push(s)
+      process.stdout.write(`[seed-demo] ${s}`)
+    })
+
+    child.stderr.on('data', (chunk: Buffer) => {
+      const s = chunk.toString('utf8')
+      stderrChunks.push(s)
+      process.stderr.write(`[seed-demo:err] ${s}`)
+    })
+
+    child.on('error', (err) => {
+      clearTimeout(timeout)
+      reject(err)
+    })
+
+    child.on('exit', (code) => {
+      clearTimeout(timeout)
+      exitCode = code ?? -1
+      resolve()
+    })
+  }).catch((err) => {
+    if (err instanceof AppError) throw err
+    throw new AppError(500, `Demo seed falhou: ${(err as Error).message}`, 'SEED_SPAWN_ERROR')
+  })
+
+  const durationMs = Date.now() - started
+  const stdout = stdoutChunks.join('')
+  const stderr = stderrChunks.join('')
+
+  await logAudit({
+    userId: adminUserId,
+    action: 'ADMIN_RUN_DEMO_SEED',
+    entity: 'System',
+    entityId: 0,
+    details: `exitCode=${exitCode} durationMs=${durationMs} stdoutChars=${stdout.length} stderrChars=${stderr.length}`,
+    ipAddress: req.ip,
+  })
+
+  if (exitCode !== 0) {
+    res.status(500).json({
+      ok: false,
+      exitCode,
+      durationMs,
+      stdoutTail: stdout.slice(-3000),
+      stderrTail: stderr.slice(-3000),
+    })
+    return
+  }
+
+  res.json({
+    ok: true,
+    exitCode,
+    durationMs,
+    stdoutTail: stdout.slice(-2000),
+  })
 })
