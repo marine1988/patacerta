@@ -4,6 +4,20 @@ set -e
 cd /app/apps/api
 
 # ──────────────────────────────────────────────────────────────────────────
+# DEBUG: imprimir env vars relevantes para diagnostico de seeds/flags.
+# Nao imprime valores sensiveis (DATABASE_URL, JWT_SECRET, etc).
+# ──────────────────────────────────────────────────────────────────────────
+echo "[PataCerta][debug] NODE_ENV=$NODE_ENV"
+echo "[PataCerta][debug] RESET_DB_ON_BOOT=$RESET_DB_ON_BOOT"
+echo "[PataCerta][debug] RUN_SEED_ON_BOOT=$RUN_SEED_ON_BOOT"
+echo "[PataCerta][debug] RUN_SEED_DEMO_ON_BOOT=$RUN_SEED_DEMO_ON_BOOT"
+echo "[PataCerta][debug] SEED_INCLUDE_DEMO=$SEED_INCLUDE_DEMO"
+echo "[PataCerta][debug] AUTH_SKIP_EMAIL_VERIFICATION=$AUTH_SKIP_EMAIL_VERIFICATION"
+echo "[PataCerta][debug] DISABLE_RATE_LIMITS=$DISABLE_RATE_LIMITS"
+echo "[PataCerta][debug] env vars com SEED no nome:"
+env | grep -i seed || echo "[PataCerta][debug]   (nenhuma)"
+
+# ──────────────────────────────────────────────────────────────────────────
 # RESET_DB_ON_BOOT: dropa schema public. NUNCA usar em prod sem confirmacao
 # explicita. Usado em stage para reset rapido durante desenvolvimento.
 # ──────────────────────────────────────────────────────────────────────────
