@@ -6,6 +6,7 @@ import { maskEmail } from '../../lib/redact.js'
 import { invalidateFeaturedCache } from '../home/home.controller.js'
 import { spawn } from 'node:child_process'
 import { resolve as pathResolve } from 'node:path'
+import { existsSync } from 'node:fs'
 import type {
   ResolveReportInput,
   ResolveServiceReportInput,
@@ -1529,10 +1530,38 @@ export const runDemoSeed = asyncHandler(async (req, res) => {
   let exitCode = -1
 
   await new Promise<void>((resolve, reject) => {
-    // O cwd em runtime e' /app/apps/api (definido no entrypoint via
-    // `cd /app/apps/api`), por isso `prisma/seed-demo.ts` resolve.
-    const child = spawn('npx', ['tsx', 'prisma/seed-demo.ts'], {
-      cwd: pathResolve(process.cwd()),
+    // No container Docker o cwd do API pode ser `/app` (raiz do monorepo)
+    // em vez de `/app/apps/api`. Resolver explicitamente o caminho do
+    // script tentando varios candidatos para suportar tanto runtime
+    // containerizado como execucao local (`pnpm dev`).
+    const candidates = [
+      pathResolve(process.cwd(), 'apps/api/prisma/seed-demo.ts'),
+      pathResolve(process.cwd(), 'prisma/seed-demo.ts'),
+      '/app/apps/api/prisma/seed-demo.ts',
+    ]
+    let scriptPath: string | null = null
+    for (const c of candidates) {
+      if (existsSync(c)) {
+        scriptPath = c
+        break
+      }
+    }
+    if (!scriptPath) {
+      reject(
+        new AppError(
+          500,
+          `seed-demo.ts nao encontrado (tried: ${candidates.join(', ')})`,
+          'SEED_SCRIPT_NOT_FOUND',
+        ),
+      )
+      return
+    }
+
+    // Cwd do spawn = directorio do script (para imports relativos / .env).
+    const cwd = pathResolve(scriptPath, '..', '..')
+
+    const child = spawn('npx', ['tsx', scriptPath], {
+      cwd,
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
