@@ -49,6 +49,14 @@ COPY --from=base /app/apps/api/dist ./apps/api/dist
 COPY --from=base /app/apps/api/package.json ./apps/api/package.json
 COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
+# `src/` e' necessario em runtime apenas para o endpoint admin
+# /admin/internal/run-demo-seed (e equivalente local) que executa
+# `tsx prisma/seed-demo.ts`. O seed importa `src/lib/*.ts` (slugs,
+# prisma client wrapper, etc.). Em producao real este endpoint esta
+# bloqueado por NODE_ENV !== 'production', mas a presenca dos source
+# files nao tem impacto runtime para a API normal (~1MB extra).
+COPY --from=base /app/apps/api/src ./apps/api/src
+COPY --from=base /app/apps/api/tsconfig.json ./apps/api/tsconfig.json
 COPY apps/api/entrypoint.sh /app/entrypoint.sh
 COPY apps/api/cron-entrypoint.sh /app/cron-entrypoint.sh
 COPY apps/api/scripts/ /app/scripts/
