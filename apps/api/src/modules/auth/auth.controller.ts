@@ -236,9 +236,6 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   if (skip) {
-    console.log(
-      `[EmailVerification] SKIPPED for ${maskEmail(user.email)} (AUTH_SKIP_EMAIL_VERIFICATION enabled)`,
-    )
     await logAudit({
       userId: user.id,
       action: 'USER_REGISTERED',
@@ -268,9 +265,9 @@ export const register = asyncHandler(async (req, res) => {
   })
 
   res.status(201).json({
-    message: 'Conta criada. Verifique o seu email para ativar a conta antes de iniciar sessão.',
+    message: 'Conta criada. Pode iniciar sessão.',
     email: user.email,
-    verificationSent: true,
+    verificationSent: false,
   })
 })
 
