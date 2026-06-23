@@ -60,7 +60,66 @@ if [ "$USE_DB_PUSH" = "true" ] || [ "$USE_DB_PUSH" = "1" ]; then
   npx prisma db push --skip-generate --accept-data-loss
 else
   echo "[PataCerta] A correr 'prisma migrate deploy'..."
-  npx prisma migrate deploy
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Auto-recovery de P3009 (migrations FAILED).
+  #
+  # Defesa em profundidade: mesmo que o bloco de detector/drift-repair
+  # acima nao tenha disparado (ex: detector silenciosamente falhou,
+  # imagem antiga sem essa logica, etc.), capturamos a falha de migrate
+  # deploy, identificamos migrations com finished_at IS NULL ou
+  # rolled_back_at != NULL, marcamo-las como rolled-back+applied, e
+  # voltamos a tentar uma unica vez.
+  #
+  # NAO mascara falhas reais: se migrate deploy falhar por outra razao
+  # (sintaxe SQL, constraint violation, etc.) o segundo deploy tambem
+  # falhara e o script sai com erro como sempre.
+  # ────────────────────────────────────────────────────────────────────────
+  set +e
+  MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+  MIGRATE_EXIT=$?
+  set -e
+  echo "$MIGRATE_OUTPUT"
+
+  if [ "$MIGRATE_EXIT" -ne 0 ] && echo "$MIGRATE_OUTPUT" | grep -q "P3009"; then
+    echo "[PataCerta] AVISO: migrate deploy falhou com P3009 — a tentar auto-recovery"
+
+    FAILED_LIST=$(node --input-type=module -e "
+      import { PrismaClient } from '@prisma/client'
+      const p = new PrismaClient()
+      try {
+        const r = await p.\$queryRawUnsafe(
+          \"SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL ORDER BY started_at\"
+        )
+        process.stdout.write(r.map(x => x.migration_name).join('\n'))
+      } catch (err) {
+        process.stderr.write('[recovery] ' + (err && err.message || err) + '\n')
+        process.exit(2)
+      } finally {
+        await p.\$disconnect()
+      }
+    ")
+
+    if [ -z "$FAILED_LIST" ]; then
+      echo "[PataCerta] P3009 reportado mas nenhuma migration FAILED encontrada na tabela. A re-lancar erro original."
+      exit "$MIGRATE_EXIT"
+    fi
+
+    echo "[PataCerta] Migrations a recuperar:"
+    echo "$FAILED_LIST" | sed 's/^/  - /'
+
+    echo "$FAILED_LIST" | while IFS= read -r mig; do
+      [ -z "$mig" ] && continue
+      echo "[PataCerta] Recovery: $mig → rolled-back + applied"
+      npx prisma migrate resolve --rolled-back "$mig" 2>&1 | sed 's/^/    /' || true
+      npx prisma migrate resolve --applied "$mig" 2>&1 | sed 's/^/    /' || true
+    done
+
+    echo "[PataCerta] Recovery concluido. A re-tentar migrate deploy..."
+    npx prisma migrate deploy
+  elif [ "$MIGRATE_EXIT" -ne 0 ]; then
+    exit "$MIGRATE_EXIT"
+  fi
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
