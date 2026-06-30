@@ -1,5 +1,5 @@
 FROM node:20-alpine AS base
-# Cache bust: 2026-06-30
+# Cache bust: 2026-06-30-v2 - force rebuild with fixed migrations
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 WORKDIR /app

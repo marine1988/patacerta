@@ -1,6 +1,6 @@
 import 'dotenv/config'
-// Build: 2026-06-30T14:35 - escape hatch v2
-console.log('[PataCerta API] Build: 2026-06-30T14:35 - Starting...')
+// Build: 2026-06-30T16:15 - fixed migrations
+console.log('[PataCerta API] Build: 2026-06-30T16:15 - Starting...')
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
