@@ -26,16 +26,38 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Starting seed...\n')
 
+  const isProd = process.env.NODE_ENV === 'production'
+
   // ---- Admin User ----
   console.log('Creating admin user...')
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@patacerta.pt'
-  const adminPass = process.env.ADMIN_PASSWORD || 'AdminPass123!'
-  const passwordHash = await bcrypt.hash(adminPass, 12)
+
+  // In production, require explicit credentials — no fallback to known defaults
+  const adminEmail = process.env.ADMIN_EMAIL
+  const adminPass = process.env.ADMIN_PASSWORD
+
+  if (isProd && (!adminEmail || !adminPass)) {
+    throw new Error(
+      '[SEED] FATAL: ADMIN_EMAIL and ADMIN_PASSWORD are required in production. ' +
+        'Set these environment variables in Dokploy before running seed.',
+    )
+  }
+
+  // In dev/test, allow fallback for convenience
+  const finalEmail = adminEmail || 'admin@patacerta.pt'
+  const finalPass = adminPass || 'AdminPass123!'
+
+  if (!adminEmail || !adminPass) {
+    console.warn(
+      '  ⚠ Using default admin credentials (dev only). Set ADMIN_EMAIL/ADMIN_PASSWORD in production.',
+    )
+  }
+
+  const passwordHash = await bcrypt.hash(finalPass, 12)
   const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
+    where: { email: finalEmail },
     update: { emailVerified: true, role: UserRole.ADMIN },
     create: {
-      email: adminEmail,
+      email: finalEmail,
       passwordHash,
       firstName: 'Admin',
       lastName: 'PataCerta',
@@ -43,7 +65,7 @@ async function main() {
       emailVerified: true,
     },
   })
-  console.log(`  ✓ Admin user created (id: ${admin.id}, email: ${adminEmail})`)
+  console.log(`  ✓ Admin user created (id: ${admin.id}, email: ${finalEmail})`)
 
   // ---- Districts ----
   // Centroides aproximados (capital de distrito / cidade principal da região)
