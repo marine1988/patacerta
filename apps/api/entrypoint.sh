@@ -4,6 +4,11 @@ set -e
 cd /app/apps/api
 
 # ──────────────────────────────────────────────────────────────────────────
+# DEBUG: Print key env vars for troubleshooting
+# ──────────────────────────────────────────────────────────────────────────
+echo "[PataCerta] ENV check: USE_DB_PUSH='$USE_DB_PUSH' RESET_DB_ON_BOOT='$RESET_DB_ON_BOOT'"
+
+# ──────────────────────────────────────────────────────────────────────────
 # RESET_DB_ON_BOOT: dropa schema public. NUNCA usar em prod sem confirmacao
 # explicita. Usado em stage para reset rapido durante desenvolvimento.
 # ──────────────────────────────────────────────────────────────────────────
@@ -24,57 +29,34 @@ if [ "$RESET_DB_ON_BOOT" = "true" ] || [ "$RESET_DB_ON_BOOT" = "1" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
-# Pre-migrate: backfill de slugs (idempotente, zero-op se ja' OK).
-# Necessario porque migrations historicas adicionaram NOT NULL a slug em
-# bases criadas antes via db push. Em DB ja' migrada, nao faz nada.
+# USE_DB_PUSH: Skip migrations entirely and use prisma db push.
+# This MUST be checked BEFORE any migration-related steps.
 # ──────────────────────────────────────────────────────────────────────────
-echo "[PataCerta] Pre-migrate: backfill de slugs (idempotente)..."
-node dist/jobs/backfill-slugs.js || echo "[PataCerta] Pre-migrate slug backfill finished with non-zero exit"
-
-# ──────────────────────────────────────────────────────────────────────────
-# Migration strategy.
-#
-# Por defeito usamos `prisma migrate deploy` (versionado, sem perda de
-# dados, audit trail em _prisma_migrations).
-#
-# Casos especiais tratados automaticamente:
-#
-#  1. DB vazia (sem tabelas): migrate deploy cria tudo a partir das
-#     migrations versionadas. Comportamento normal.
-#
-#  2. DB com schema mas SEM _prisma_migrations (ex: foi criada antes via
-#     `db push`, como o stage actual): fazemos baseline — marcamos todas
-#     as migrations existentes como aplicadas e seguimos. As migrations
-#     usam IF NOT EXISTS / idempotent SQL, logo qualquer drift mestre e'
-#     tolerado.
-#
-#  3. DB ja' com _prisma_migrations: comportamento standard, migrate
-#     deploy aplica apenas as novas pendentes.
-#
-# Escape hatch: definir USE_DB_PUSH=1 forca o comportamento legado
-# (`prisma db push --accept-data-loss`). NUNCA usar em prod salvo
-# instrucao explicita do operador.
-# ──────────────────────────────────────────────────────────────────────────
-if [ "$USE_DB_PUSH" = "true" ] || [ "$USE_DB_PUSH" = "1" ]; then
+USE_DB_PUSH_TRIMMED=$(echo "$USE_DB_PUSH" | tr -d '[:space:]')
+if [ "$USE_DB_PUSH_TRIMMED" = "true" ] || [ "$USE_DB_PUSH_TRIMMED" = "1" ]; then
   echo "[PataCerta] ⚠  USE_DB_PUSH=$USE_DB_PUSH — usando 'prisma db push --accept-data-loss' (legado, sem audit trail)"
   npx prisma db push --skip-generate --accept-data-loss
+  
+  # Skip to seeds
+  goto_seeds=1
 else
+  goto_seeds=0
+fi
+
+if [ "$goto_seeds" = "0" ]; then
+  # ──────────────────────────────────────────────────────────────────────────
+  # Pre-migrate: backfill de slugs (idempotente, zero-op se ja' OK).
+  # Necessario porque migrations historicas adicionaram NOT NULL a slug em
+  # bases criadas antes via db push. Em DB ja' migrada, nao faz nada.
+  # ──────────────────────────────────────────────────────────────────────────
+  echo "[PataCerta] Pre-migrate: backfill de slugs (idempotente)..."
+  node dist/jobs/backfill-slugs.js || echo "[PataCerta] Pre-migrate slug backfill finished with non-zero exit"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Migration strategy - prisma migrate deploy
+  # ──────────────────────────────────────────────────────────────────────────
   echo "[PataCerta] A correr 'prisma migrate deploy'..."
 
-  # ────────────────────────────────────────────────────────────────────────
-  # Auto-recovery de P3009 (migrations FAILED).
-  #
-  # Defesa em profundidade: mesmo que o bloco de detector/drift-repair
-  # acima nao tenha disparado (ex: detector silenciosamente falhou,
-  # imagem antiga sem essa logica, etc.), capturamos a falha de migrate
-  # deploy, identificamos migrations com finished_at IS NULL ou
-  # rolled_back_at != NULL, marcamo-las como rolled-back+applied, e
-  # voltamos a tentar uma unica vez.
-  #
-  # NAO mascara falhas reais: se migrate deploy falhar por outra razao
-  # (sintaxe SQL, constraint violation, etc.) o segundo deploy tambem
-  # falhara e o script sai com erro como sempre.
-  # ────────────────────────────────────────────────────────────────────────
   set +e
   MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
   MIGRATE_EXIT=$?
