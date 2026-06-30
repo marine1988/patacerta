@@ -293,13 +293,17 @@ services:
       timeout: 10s
       retries: 3
 
+# Volume prefix: use VOLUME_PREFIX env var to separate stage/prod data.
+# Stage:  VOLUME_PREFIX=stage_patacerta (default)
+# Prod:   VOLUME_PREFIX=prod_patacerta
+# IMPORTANT: Set this BEFORE first deploy, changing later requires data migration.
 volumes:
   postgres_data:
-    name: patacerta_postgres_data
+    name: ${VOLUME_PREFIX:-stage_patacerta}_postgres_data
   minio_data:
-    name: patacerta_minio_data
+    name: ${VOLUME_PREFIX:-stage_patacerta}_minio_data
   redis_data:
-    name: patacerta_redis_data
+    name: ${VOLUME_PREFIX:-stage_patacerta}_redis_data
 
 networks:
   dokploy-network:
