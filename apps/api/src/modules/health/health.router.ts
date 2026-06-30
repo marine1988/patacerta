@@ -15,6 +15,11 @@ healthRouter.get(
         services: {
           database: 'connected',
         },
+        // Debug: expose maintenance mode status
+        maintenance: {
+          enabled: process.env.MAINTENANCE_MODE === '1' || process.env.MAINTENANCE_MODE === 'true',
+          raw: process.env.MAINTENANCE_MODE ?? '(not set)',
+        },
       })
     } catch {
       res.status(503).json({
