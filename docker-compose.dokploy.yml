@@ -165,17 +165,21 @@ services:
       # no dashboard Stripe apontando para /api/webhooks/stripe.
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      # SMTP — obrigatorio em producao (NODE_ENV=production). Em stage
-      # opcional se AUTH_SKIP_EMAIL_VERIFICATION=true. Ver cabecalho
-      # deste ficheiro para setup Mailgun EU.
+      # Email — Resend (recomendado) ou SMTP. Obrigatorio em producao.
+      # Resend: criar conta em resend.com, verificar dominio, obter API key.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      FROM_EMAIL: ${FROM_EMAIL:-Patacerta <noreply@patacerta.pt>}
+      # SMTP alternativo (se nao usar Resend)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-Patacerta <noreply@patacerta.pt>}
-      # Escape hatches para arrancar prod sem SMTP e com flags debug (NAO recomendado em uso normal).
-      # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar SMTP.
+      # Escape hatches para arrancar prod sem email e com flags debug (NAO recomendado em uso normal).
+      # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar email.
+      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
+      ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
       ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
       ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
       # Maintenance mode — set MAINTENANCE_MODE=1 in Dokploy to return 503 for all requests.
