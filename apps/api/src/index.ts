@@ -170,13 +170,24 @@ app.listen(PORT, '0.0.0.0', () => {
     // Refusing to run with these flags in production protects against
     // accidental staging-config leak. Operator must remove the flags
     // explicitly to start in production.
+    //
+    // Escape hatch: ALLOW_INSECURE_FLAGS_IN_PROD=1 permite contornar este
+    // check durante o setup inicial (antes de configurar email provider).
+    // NAO usar em producao permanente — apenas para validar deploy inicial.
+    const allowInsecure = process.env.ALLOW_INSECURE_FLAGS_IN_PROD === '1'
     const offending = [skipOn && 'AUTH_SKIP_EMAIL_VERIFICATION', rlOff && 'DISABLE_RATE_LIMITS']
       .filter(Boolean)
       .join(', ')
-    console.error(
-      `[PataCerta API] FATAL: ${offending} cannot be enabled when NODE_ENV=production. Exiting.`,
-    )
-    process.exit(1)
+    if (allowInsecure) {
+      console.warn(
+        `[PataCerta API] ⚠️  WARNING: ${offending} enabled in production via ALLOW_INSECURE_FLAGS_IN_PROD=1. This is INSECURE — remove after initial setup!`,
+      )
+    } else {
+      console.error(
+        `[PataCerta API] FATAL: ${offending} cannot be enabled when NODE_ENV=production. Set ALLOW_INSECURE_FLAGS_IN_PROD=1 to override (NOT recommended). Exiting.`,
+      )
+      process.exit(1)
+    }
   }
 
   // SMTP fail-fast em producao.
