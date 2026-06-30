@@ -180,8 +180,6 @@ services:
       # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar email.
       ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
       ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
-      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
-      ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
       # Maintenance mode — set MAINTENANCE_MODE=1 in Dokploy to return 503 for all requests.
       # Use MAINTENANCE_BYPASS_KEY for admin access via X-Maintenance-Bypass header.
       MAINTENANCE_MODE: ${MAINTENANCE_MODE:-0}
