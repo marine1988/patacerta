@@ -12,7 +12,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared/ packages/shared/
 COPY apps/api/ apps/api/
 
-RUN pnpm --filter @patacerta/shared build
+# Force rebuild: change this value to invalidate build cache
+ARG BUILD_DATE=2026-06-30T14:35
+RUN echo "Build date: $BUILD_DATE" && pnpm --filter @patacerta/shared build
 RUN pnpm --filter @patacerta/api db:generate
 RUN pnpm --filter @patacerta/api build
 
