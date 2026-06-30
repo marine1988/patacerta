@@ -31,13 +31,10 @@ fi
 # ──────────────────────────────────────────────────────────────────────────
 # USE_DB_PUSH: Skip migrations entirely and use prisma db push.
 # This MUST be checked BEFORE any migration-related steps.
-# TEMPORARY FORCE: Always use db push until migrations are fixed
 # ──────────────────────────────────────────────────────────────────────────
 USE_DB_PUSH_TRIMMED=$(echo "$USE_DB_PUSH" | tr -d '[:space:]')
-# FORCE db push - migrations are broken, remove this after first successful deploy
-FORCE_DB_PUSH=1
-if [ "$FORCE_DB_PUSH" = "1" ] || [ "$USE_DB_PUSH_TRIMMED" = "true" ] || [ "$USE_DB_PUSH_TRIMMED" = "1" ]; then
-  echo "[PataCerta] ⚠  USE_DB_PUSH (FORCED) — usando 'prisma db push --accept-data-loss'"
+if [ "$USE_DB_PUSH_TRIMMED" = "true" ] || [ "$USE_DB_PUSH_TRIMMED" = "1" ]; then
+  echo "[PataCerta] ⚠  USE_DB_PUSH=$USE_DB_PUSH — usando 'prisma db push --accept-data-loss'"
   npx prisma db push --skip-generate --accept-data-loss
   
   # Skip to seeds

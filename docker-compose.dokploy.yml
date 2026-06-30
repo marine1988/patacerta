@@ -174,8 +174,10 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-Patacerta <noreply@patacerta.pt>}
-      # Escape hatch para arrancar prod sem SMTP (NAO recomendado).
-      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-}
+      # Escape hatches para arrancar prod sem SMTP e com flags debug (NAO recomendado em uso normal).
+      # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar SMTP.
+      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
+      ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
     restart: unless-stopped
     healthcheck:
       # start_period generoso: o entrypoint corre backfill-slugs + detector

@@ -168,10 +168,6 @@ app.listen(PORT, '0.0.0.0', () => {
   const skipOn = skipFlag === '1' || skipFlag === 'true' || skipFlag === 'TRUE'
   const rlOff = rlFlag === '1' || rlFlag === 'true' || rlFlag === 'TRUE'
 
-  // TEMPORARY BYPASS: Dokploy env vars not being passed correctly
-  // TODO: Remove after first successful deploy and fix env var passing
-  const TEMP_BYPASS_PROD_CHECKS = true
-
   if (isProd && (skipOn || rlOff)) {
     // Refusing to run with these flags in production protects against
     // accidental staging-config leak. Operator must remove the flags
@@ -180,13 +176,13 @@ app.listen(PORT, '0.0.0.0', () => {
     // Escape hatch: ALLOW_INSECURE_FLAGS_IN_PROD=1 permite contornar este
     // check durante o setup inicial (antes de configurar email provider).
     // NAO usar em producao permanente — apenas para validar deploy inicial.
-    const allowInsecure = TEMP_BYPASS_PROD_CHECKS || process.env.ALLOW_INSECURE_FLAGS_IN_PROD === '1'
+    const allowInsecure = process.env.ALLOW_INSECURE_FLAGS_IN_PROD === '1'
     const offending = [skipOn && 'AUTH_SKIP_EMAIL_VERIFICATION', rlOff && 'DISABLE_RATE_LIMITS']
       .filter(Boolean)
       .join(', ')
     if (allowInsecure) {
       console.warn(
-        `[PataCerta API] ⚠️  WARNING: ${offending} enabled in production via TEMP_BYPASS. This is INSECURE — remove after initial setup!`,
+        `[PataCerta API] ⚠️  WARNING: ${offending} enabled in production via ALLOW_INSECURE_FLAGS_IN_PROD=1. This is INSECURE — remove after initial setup!`,
       )
     } else {
       console.error(
@@ -210,9 +206,9 @@ app.listen(PORT, '0.0.0.0', () => {
   // depende de email, ou janela de manutencao do provider). Nao
   // recomendado em uso normal.
   if (isProd && !process.env.SMTP_HOST) {
-    if (TEMP_BYPASS_PROD_CHECKS || process.env.ALLOW_NO_SMTP_IN_PROD === '1' || process.env.ALLOW_NO_SMTP_IN_PROD === 'true') {
+    if (process.env.ALLOW_NO_SMTP_IN_PROD === '1' || process.env.ALLOW_NO_SMTP_IN_PROD === 'true') {
       console.warn(
-        '[PataCerta API] ⚠  SMTP_HOST ausente (TEMP_BYPASS) — emails serao apenas logados. NAO usar em uso normal.',
+        '[PataCerta API] ⚠  ALLOW_NO_SMTP_IN_PROD=1 e SMTP_HOST ausente — emails serao apenas logados. NAO usar em uso normal.',
       )
     } else {
       console.error(
