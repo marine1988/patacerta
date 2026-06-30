@@ -28,6 +28,7 @@ import { paymentsRouter } from './modules/payments/payments.router.js'
 import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
 import { ensureBucket } from './lib/minio.js'
 import { isProd, isHttps } from './lib/env.js'
+import { maintenanceMode } from './middleware/maintenance.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
@@ -72,6 +73,14 @@ app.use((_req, res, next) => {
   )
   next()
 })
+
+// ---- Maintenance Mode ----
+// Returns 503 for all requests when MAINTENANCE_MODE=1 (except /api/health).
+// Toggle in Dokploy without rebuild. Bypass with X-Maintenance-Bypass header.
+app.use(maintenanceMode)
+if (process.env.MAINTENANCE_MODE === '1' || process.env.MAINTENANCE_MODE === 'true') {
+  console.log('[PataCerta API] ⚠️  MAINTENANCE_MODE enabled — returning 503 for all requests')
+}
 
 // CORS: aceita lista separada por virgulas em CORS_ORIGIN.
 // - Se CORS_ORIGIN nao estiver definido, recai sobre FRONTEND_URL — que
