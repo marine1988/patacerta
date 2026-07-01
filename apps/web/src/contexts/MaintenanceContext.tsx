@@ -10,7 +10,8 @@ interface MaintenanceContextType {
 const MaintenanceContext = createContext<MaintenanceContextType | undefined>(undefined)
 
 export function MaintenanceProvider({ children }: { children: ReactNode }) {
-  const [isInMaintenance, setIsInMaintenance] = useState(false)
+  // Começar em modo indeterminado (null) até verificar
+  const [isInMaintenance, setIsInMaintenance] = useState<boolean | null>(null)
 
   const setMaintenanceMode = useCallback((value: boolean) => {
     setIsInMaintenance(value)
@@ -31,9 +32,10 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Initial health check to detect if already in maintenance
+    // Verificar estado de manutenção usando /api/status (não tem bypass)
+    // Este endpoint retorna 503 se MAINTENANCE_MODE=1
     api
-      .get('/health')
+      .get('/status')
       .then(() => setIsInMaintenance(false))
       .catch((error: AxiosError) => {
         if (error.response?.status === 503) {
@@ -41,6 +43,9 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
           if (data?.code === 'MAINTENANCE_MODE') {
             setIsInMaintenance(true)
           }
+        } else {
+          // Outro erro - assumir que não está em manutenção
+          setIsInMaintenance(false)
         }
       })
 
@@ -48,6 +53,11 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
       api.interceptors.response.eject(interceptorId)
     }
   }, [])
+
+  // Enquanto não sabe o estado, não renderizar nada (evita flash)
+  if (isInMaintenance === null) {
+    return null
+  }
 
   return (
     <MaintenanceContext.Provider value={{ isInMaintenance, setMaintenanceMode }}>

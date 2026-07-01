@@ -7,7 +7,7 @@ import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { errorHandler } from './middleware/error-handler.js'
 import { apiRateLimit } from './middleware/rate-limit.js'
-import { healthRouter } from './modules/health/health.router.js'
+import { healthRouter, statusRouter } from './modules/health/health.router.js'
 import { authRouter } from './modules/auth/auth.router.js'
 import { usersRouter } from './modules/users/users.router.js'
 import { breedersRouter } from './modules/breeders/breeders.router.js'
@@ -132,6 +132,7 @@ app.use(apiRateLimit)
 
 // ---- Routes ----
 app.use('/api/health', healthRouter)
+app.use('/api/status', statusRouter) // Frontend usa para detectar manutenção (sem bypass)
 app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/breeders', breedersRouter)
@@ -201,12 +202,12 @@ app.listen(PORT, '0.0.0.0', () => {
     }
   }
 
-  // SMTP fail-fast em producao.
+  // Resend API key fail-fast em producao.
   //
   // o fallback silencioso para console.log em apps/api/src/lib/email.ts
   // mantem-se para dev local e stage (onde AUTH_SKIP_EMAIL_VERIFICATION
   // contorna a necessidade de email verificado), mas em prod nao podemos
-  // arrancar sem SMTP — emails de verificacao, reset de password e
+  // arrancar sem email configurado — emails de verificacao, reset de password e
   // confirmacao de pagamentos Stripe sao essenciais e silenciar falhas
   // tornar-se-ia uma armadilha invisivel.
   //
@@ -214,14 +215,14 @@ app.listen(PORT, '0.0.0.0', () => {
   // ALLOW_NO_SMTP_IN_PROD=1 (ex: rolling deploy de uma feature que nao
   // depende de email, ou janela de manutencao do provider). Nao
   // recomendado em uso normal.
-  if (isProd && !process.env.SMTP_HOST) {
+  if (isProd && !process.env.RESEND_API_KEY) {
     if (process.env.ALLOW_NO_SMTP_IN_PROD === '1' || process.env.ALLOW_NO_SMTP_IN_PROD === 'true') {
       console.warn(
-        '[PataCerta API] ⚠  ALLOW_NO_SMTP_IN_PROD=1 e SMTP_HOST ausente — emails serao apenas logados. NAO usar em uso normal.',
+        '[PataCerta API] ⚠  ALLOW_NO_SMTP_IN_PROD=1 e RESEND_API_KEY ausente — emails serao apenas logados. NAO usar em uso normal.',
       )
     } else {
       console.error(
-        '[PataCerta API] FATAL: SMTP_HOST e obrigatorio em producao (verificacao de email, reset de password, confirmacao Stripe). Defina SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM ou ALLOW_NO_SMTP_IN_PROD=1 para contornar (nao recomendado). Exiting.',
+        '[PataCerta API] FATAL: RESEND_API_KEY e obrigatorio em producao (verificacao de email, reset de password, confirmacao Stripe). Defina RESEND_API_KEY ou ALLOW_NO_SMTP_IN_PROD=1 para contornar (nao recomendado). Exiting.',
       )
       process.exit(1)
     }

@@ -27,3 +27,18 @@ healthRouter.get(
     }
   }),
 )
+
+// Endpoint para frontend verificar estado de manutenção.
+// Este endpoint NÃO tem bypass - retorna 503 se MAINTENANCE_MODE=1.
+// Registado DEPOIS do middleware de manutenção no index.ts.
+export const statusRouter = Router()
+
+statusRouter.get(
+  '/',
+  (_req, res) => {
+    res.json({
+      status: 'online',
+      timestamp: new Date().toISOString(),
+    })
+  },
+)
