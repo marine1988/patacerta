@@ -180,8 +180,12 @@ Para activar manutencao sem downtime:
 
 1. Definir `MAINTENANCE_MODE=1` no Dokploy
 2. Reiniciar containers (nao rebuild)
-3. API retorna 503 (excepto `/api/health`)
+3. API retorna 503 (excepto `/api/health` e o bypass admin via `X-Maintenance-Bypass`)
 4. Frontend mostra pagina de manutencao
+
+> **Nota:** O frontend deteta o modo de manutenção via `/api/status` (que NAO
+> tem bypass e retorna 503 quando `MAINTENANCE_MODE=1`). Nao use `/api/health`
+> para este fim — esse endpoint esta sempre disponivel para healthchecks.
 
 Para bypass (admin):
 ```bash

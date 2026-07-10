@@ -69,7 +69,7 @@ Outros eventos são ignorados com log.
 | `STRIPE_SECRET_KEY`           | api  | `sk_test_...` (stage) / `sk_live_...` (prod)                              |
 | `STRIPE_WEBHOOK_SECRET`       | api  | `whsec_...` (do endpoint configurado em Stripe Dashboard)                 |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | web  | `pk_test_...` / `pk_live_...` (não é usada no fluxo actual mas reservada) |
-| `BACKEND_URL`                 | api  | `https://api-stage.patacerta.pt` (success/cancel URLs)                    |
+| `BACKEND_URL`                 | api  | `https://stage.patacerta.pt` (success/cancel URLs)                    |
 | `FRONTEND_URL`                | api  | `https://stage.patacerta.pt` (redirect pós-pagamento)                     |
 
 **Como verificar quais estão presentes em runtime:**
@@ -84,7 +84,7 @@ env | grep -E 'STRIPE|FRONTEND|BACKEND' | sed 's/=.*/=***/'
 ## 4. Configurar webhook na Stripe (uma vez por ambiente)
 
 1. Stripe Dashboard → **Developers > Webhooks > Add endpoint**.
-2. URL: `https://api-stage.patacerta.pt/api/webhooks/stripe` (ou prod equivalente).
+2. URL: `https://stage.patacerta.pt/api/webhooks/stripe` (ou prod equivalente).
 3. **Eventos a subscrever** (cinco):
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
@@ -164,14 +164,14 @@ Se o webhook não correu por algum motivo, eliminar via API admin:
 
 ```bash
 # Login admin
-TOKEN=$(curl -s -X POST https://api-stage.patacerta.pt/api/auth/login \
+TOKEN=$(curl -s -X POST https://stage.patacerta.pt/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@patacerta.pt","password":"AdminPass123!"}' \
   | jq -r .accessToken)
 
 # DELETE slot
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  https://api-stage.patacerta.pt/api/admin/sponsored-slots/123
+  https://stage.patacerta.pt/api/admin/sponsored-slots/123
 ```
 
 ### 6.4 Rotação test → live (go-live)

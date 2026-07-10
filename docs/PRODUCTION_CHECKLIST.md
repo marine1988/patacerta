@@ -1,6 +1,6 @@
 # PataCerta — Production Readiness Checklist
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Security Audit Status
 
@@ -97,9 +97,9 @@ These are temporary bypasses for initial setup. **Remove after configuring prope
 
 | Variable | Current | Target | Action Required |
 |----------|---------|--------|-----------------|
-| `ALLOW_NO_SMTP_IN_PROD` | `1` | `0` | Configure RESEND_API_KEY, then set to 0 |
-| `ALLOW_INSECURE_FLAGS_IN_PROD` | `1` | `0` | Ensure no debug flags, then set to 0 |
-| `RUN_SEED_ON_BOOT` | `true` | Remove | Remove after seed data is populated |
+| `ALLOW_NO_SMTP_IN_PROD` | `0` | `0` | ✅ Concluido (RESEND_API_KEY configurado) |
+| `ALLOW_INSECURE_FLAGS_IN_PROD` | `0` | `0` | ✅ Concluido (sem flags debug) |
+| `RUN_SEED_ON_BOOT` | `true` | `false` | Manter `true` ate confirmar que seed nao falha em cold start; depois definir `false` |
 | `MAINTENANCE_MODE` | `1` | `0` | Set to 0 when ready to go live |
 
 ---
@@ -128,10 +128,10 @@ These are temporary bypasses for initial setup. **Remove after configuring prope
 - [ ] Remove RUN_SEED_ON_BOOT after verification
 
 ### Email
-- [ ] Configure RESEND_API_KEY or SMTP
+- [x] Configure RESEND_API_KEY (Resend, dominio patacerta.pt verificado)
 - [ ] Test email verification flow
 - [ ] Test password reset flow
-- [ ] Set ALLOW_NO_SMTP_IN_PROD=0
+- [x] Set ALLOW_NO_SMTP_IN_PROD=0
 
 ### Payments (if enabling)
 - [ ] Configure Stripe live keys
