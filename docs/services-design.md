@@ -347,23 +347,34 @@ Rota: `/explorar?tipo=criadores|servicos|mapa` + redirects de `/diretorio` e `/m
 
 ## 7. Plano de PRs
 
-> **Nota operacional crítica**: o stage usa `prisma db push` (ver `apps/api/entrypoint.sh`), não `migrate deploy`. Isso significa:
+> **Nota operacional (corrigida em 2026-07-01):** a afirmação original — "o stage
+> usa `prisma db push`" — **estava incorreta**. A fonte de verdade é
+> `apps/api/entrypoint.sh`, cujo comportamento é:
 >
-> - O `schema.prisma` é aplicado directamente em cada deploy
-> - **Não escrevemos migrations SQL à mão** neste PR
-> - Features que o Prisma não modela (CHECK constraints polimórficos, índices GIN tsvector, triggers Postgres) ficam **fora do PR-1** e são adicionadas quando migrarmos para `migrate deploy`
-> - Consequências imediatas:
+> - **Por defeito** (prod E stage): `prisma migrate deploy` (migrations versionadas).
+> - `prisma db push` só é usado quando **`USE_DB_PUSH=1`** está definido no ambiente.
+>
+> Ver `docs/DATABASE_BOOT_STRATEGY.md` para o fluxo completo. Consequências para
+> este plano de PRs:
+>
+> - Se o objetivo for iterar sem escrever migrations à mão (workflow `db push`),
+>   é preciso **definir explicitamente `USE_DB_PUSH=1`** no stage. Não é o default.
+> - Caso contrário, **PR-1 TEM de incluir uma migration Prisma** (`prisma migrate dev`
+>   em local → commit da migration → `migrate deploy` aplica em stage/prod).
+> - Features que o Prisma não modela (CHECK constraints polimórficos, índices GIN
+>   tsvector, triggers Postgres) → adicionar via SQL manual **dentro da migration**.
+> - Consequências de MVP (independentes da estratégia de schema):
 >   - CHECK constraint `(breeder_id XOR service_id)` no Thread → **validação em application code** (service layer)
 >   - Full-text search com `tsvector` → **substituído por ILIKE** no MVP (padrão já usado no resto do código)
 >   - Triggers de `avg_rating`/`review_count` → **campos existem mas não são mantidos**; reviews de serviços estão fora do MVP de qualquer modo
 
-| PR       | Conteúdo                                                                                                                                    | Smoke test                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **PR-1** | Schema Prisma (enums, tabelas novas, Thread polimórfico). Seed: `ServiceCategory` populada + flag `is_active`. Sem controllers              | `prisma db push` aplica limpo em stage; `prisma generate` ok; API arranca |
-| **PR-2** | Backend CRUD Service + upload fotos (sharp, MinIO) + geocoding Nominatim. Validação aplicacional do XOR no Thread. Guards, DTOs zod, testes | Postman: criar Service, editar, upload 8 fotos, rejeitar 9ª               |
-| **PR-3** | Backend público (listagem com ILIKE/filtros geo) + contacto (Thread polimórfico) + reports + admin                                          | cURL com `?q=passear`, `?radiusKm=10`, `/services/:id/contact`            |
-| **PR-4** | Frontend Dashboard tab Serviços (CRUD UI, upload, mapa de morada)                                                                           | Utilizador-teste no stage cria anúncio, upload, publica                   |
-| **PR-5** | Frontend público (ExplorarPage com tabs, ServicesList, detalhe, mapa combinado, redirects, badge admin)                                     | Browser: explorar → filtrar → contactar → mensagem entra no inbox         |
+| PR       | Conteúdo                                                                                                                                    | Smoke test                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **PR-1** | Schema Prisma (enums, tabelas novas, Thread polimórfico). Seed: `ServiceCategory` populada + flag `is_active`. Sem controllers              | migration aplica limpo (`migrate deploy`, ou `db push` se `USE_DB_PUSH=1`); `prisma generate` ok; API arranca |
+| **PR-2** | Backend CRUD Service + upload fotos (sharp, MinIO) + geocoding Nominatim. Validação aplicacional do XOR no Thread. Guards, DTOs zod, testes | Postman: criar Service, editar, upload 8 fotos, rejeitar 9ª                                                   |
+| **PR-3** | Backend público (listagem com ILIKE/filtros geo) + contacto (Thread polimórfico) + reports + admin                                          | cURL com `?q=passear`, `?radiusKm=10`, `/services/:id/contact`                                                |
+| **PR-4** | Frontend Dashboard tab Serviços (CRUD UI, upload, mapa de morada)                                                                           | Utilizador-teste no stage cria anúncio, upload, publica                                                       |
+| **PR-5** | Frontend público (ExplorarPage com tabs, ServicesList, detalhe, mapa combinado, redirects, badge admin)                                     | Browser: explorar → filtrar → contactar → mensagem entra no inbox                                             |
 
 ## 8. Riscos & observações
 
