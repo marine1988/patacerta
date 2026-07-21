@@ -12,11 +12,11 @@ Em produção: https://patacerta.pt
 
 Monorepo pnpm com 3 workspaces:
 
-| Workspace | Caminho | Stack |
-|-----------|---------|-------|
-| `@patacerta/api` | `apps/api` | Express 4 · Prisma 5 · PostgreSQL 16 · Redis · MinIO |
-| `@patacerta/web` | `apps/web` | React 18 · Vite 5 · TailwindCSS · React Router 6 · TanStack Query |
-| `@patacerta/shared` | `packages/shared` | Schemas Zod partilhados |
+| Workspace           | Caminho           | Stack                                                             |
+| ------------------- | ----------------- | ----------------------------------------------------------------- |
+| `@patacerta/api`    | `apps/api`        | Express 4 · Prisma 5 · PostgreSQL 16 · Redis · MinIO              |
+| `@patacerta/web`    | `apps/web`        | React 18 · Vite 5 · TailwindCSS · React Router 6 · TanStack Query |
+| `@patacerta/shared` | `packages/shared` | Schemas Zod partilhados                                           |
 
 Requisitos: **Node >= 20**, **pnpm 9.12.0** (versão fixada em `package.json`), **Docker**.
 
@@ -43,6 +43,7 @@ pnpm dev
 ```
 
 Acessos:
+
 - Frontend: http://localhost:5173
 - API: http://localhost:3001/api
 - Prisma Studio: `pnpm db:studio` → http://localhost:5555
@@ -52,16 +53,16 @@ Acessos:
 
 ## Comandos principais
 
-| Comando | Descrição |
-|---------|-----------|
-| `pnpm dev` | Arranca API + Web |
-| `pnpm typecheck` | `tsc --noEmit` (**fonte de verdade** — corre antes de commit) |
-| `pnpm format:check` | Verifica formatação Prettier |
-| `pnpm format` | Formata o código |
-| `pnpm build` | Build de produção |
-| `pnpm --filter @patacerta/api test` | Testes unitários da API (Vitest) |
-| `pnpm --filter @patacerta/web test:e2e` | Testes E2E (Playwright) |
-| `pnpm db:migrate` / `db:seed` / `db:studio` | Base de dados (dev local) |
+| Comando                                     | Descrição                                                     |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                                  | Arranca API + Web                                             |
+| `pnpm typecheck`                            | `tsc --noEmit` (**fonte de verdade** — corre antes de commit) |
+| `pnpm format:check`                         | Verifica formatação Prettier                                  |
+| `pnpm format`                               | Formata o código                                              |
+| `pnpm build`                                | Build de produção                                             |
+| `pnpm --filter @patacerta/api test`         | Testes unitários da API (Vitest)                              |
+| `pnpm --filter @patacerta/web test:e2e`     | Testes E2E (Playwright)                                       |
+| `pnpm db:migrate` / `db:seed` / `db:studio` | Base de dados (dev local)                                     |
 
 > **Nota:** não existe ESLint configurado (`pnpm lint` é um stub). A validação
 > real é `pnpm typecheck && pnpm format:check`.
@@ -83,27 +84,30 @@ Ver [`apps/web/e2e/README.md`](./apps/web/e2e/README.md). Em CI, o workflow
 
 ## Documentação
 
-| Documento | Conteúdo |
-|-----------|----------|
-| [`AGENTS.md`](./AGENTS.md) | **Regras para agentes de IA** (ler primeiro) |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Arquitetura, stack, fluxos, padrões |
-| [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) | Setup local, comandos, testes, debugging |
-| [`docs/API.md`](./docs/API.md) | Endpoints, autenticação, middlewares, erros |
-| [`docs/DATABASE.md`](./docs/DATABASE.md) | Schema, entidades, enums, índices |
-| [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) | Deploy Dokploy, env vars, backups, manutenção |
-| [`docs/PRODUCTION_CHECKLIST.md`](./docs/PRODUCTION_CHECKLIST.md) | Checklist pré-lançamento |
-| [`docs/RESTORE.md`](./docs/RESTORE.md) | Disaster recovery / restore de backups |
-| [`docs/stripe-runbook.md`](./docs/stripe-runbook.md) | Operações e troubleshooting de pagamentos |
-| [`docs/ADSENSE_SETUP.md`](./docs/ADSENSE_SETUP.md) | Configuração de publicidade (AdSense + RGPD) |
+| Documento                                                            | Conteúdo                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`AGENTS.md`](./AGENTS.md)                                           | **Regras para agentes de IA** (ler primeiro)                             |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)                     | Arquitetura, stack, fluxos, padrões                                      |
+| [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)                       | Setup local, comandos, testes, debugging                                 |
+| [`docs/API.md`](./docs/API.md)                                       | Endpoints, autenticação, middlewares, erros                              |
+| [`docs/DATABASE.md`](./docs/DATABASE.md)                             | Schema, entidades, enums, índices                                        |
+| [`docs/DATABASE_BOOT_STRATEGY.md`](./docs/DATABASE_BOOT_STRATEGY.md) | Como a DB é preparada no arranque (**ler antes de tocar em migrations**) |
+| [`docs/ENVIRONMENT_VARIABLES.md`](./docs/ENVIRONMENT_VARIABLES.md)   | Referência única de todas as variáveis de ambiente                       |
+| [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)                         | Deploy Dokploy, env vars, backups, manutenção                            |
+| [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md)               | Sintomas → causa → solução (diagnóstico central)                         |
+| [`docs/PRODUCTION_CHECKLIST.md`](./docs/PRODUCTION_CHECKLIST.md)     | Checklist pré-lançamento                                                 |
+| [`docs/RESTORE.md`](./docs/RESTORE.md)                               | Disaster recovery / restore de backups                                   |
+| [`docs/stripe-runbook.md`](./docs/stripe-runbook.md)                 | Operações e troubleshooting de pagamentos                                |
+| [`docs/ADSENSE_SETUP.md`](./docs/ADSENSE_SETUP.md)                   | Configuração de publicidade (AdSense + RGPD)                             |
 
 ---
 
 ## Ambientes
 
-| Ambiente | URL | Branch | Deploy |
-|----------|-----|--------|--------|
-| Produção | https://patacerta.pt | `main` | Automático via Dokploy (~3-5 min) |
-| Stage | https://stage.patacerta.pt | `dev` | Automático via Dokploy |
+| Ambiente | URL                        | Branch | Deploy                            |
+| -------- | -------------------------- | ------ | --------------------------------- |
+| Produção | https://patacerta.pt       | `main` | Automático via Dokploy (~3-5 min) |
+| Stage    | https://stage.patacerta.pt | `dev`  | Automático via Dokploy            |
 
 A API é servida no mesmo domínio via proxy nginx (`/api/*`).
 
