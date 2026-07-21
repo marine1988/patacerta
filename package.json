@@ -14,8 +14,8 @@
     "dev:web": "pnpm --filter @patacerta/web dev",
     "build": "pnpm -r --filter \"./apps/*\" build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint:fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "pnpm -r test",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
@@ -27,7 +27,11 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "eslint": "9",
+    "eslint-plugin-react-hooks": "5",
+    "globals": "^17.7.0",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "typescript-eslint": "8"
   }
 }

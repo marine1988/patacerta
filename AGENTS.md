@@ -14,11 +14,11 @@ Está **em produção** em https://patacerta.pt.
 
 Monorepo pnpm com 3 workspaces:
 
-| Workspace | Caminho | Stack |
-|-----------|---------|-------|
-| `@patacerta/api` | `apps/api` | Express 4 + Prisma 5 + PostgreSQL 16 + Redis + MinIO |
-| `@patacerta/web` | `apps/web` | React 18 + Vite 5 + TailwindCSS + React Router 6 |
-| `@patacerta/shared` | `packages/shared` | Schemas Zod partilhados |
+| Workspace           | Caminho           | Stack                                                |
+| ------------------- | ----------------- | ---------------------------------------------------- |
+| `@patacerta/api`    | `apps/api`        | Express 4 + Prisma 5 + PostgreSQL 16 + Redis + MinIO |
+| `@patacerta/web`    | `apps/web`        | React 18 + Vite 5 + TailwindCSS + React Router 6     |
+| `@patacerta/shared` | `packages/shared` | Schemas Zod partilhados                              |
 
 ---
 
@@ -54,12 +54,15 @@ pnpm db:studio        # GUI Prisma
 ## 3. FONTE DE VERDADE e validação
 
 1. **`pnpm typecheck` (tsc --noEmit) é a fonte de verdade.** Se passa, a mudança é estruturalmente válida.
-2. **NÃO existe ESLint configurado.** O script `lint` é um stub (`echo "no lint configured yet"`).
-   Não confies em `pnpm lint`. Usa `typecheck` + `format:check`.
+2. **ESLint existe mas é _advisory_.** `pnpm lint` corre o ESLint (flat config em `eslint.config.js`).
+   Regras de bug real são `error`; ruído de código legado é `warning`. Warnings **não** quebram o
+   exit code e o lint **não** está no CI. Corre `pnpm lint:fix` para auto-correções. A validação
+   OBRIGATÓRIA continua a ser `typecheck` + `format:check`.
 3. O CI (`.github/workflows/ci.yml`) corre: `typecheck`, `format:check`, testes API, typecheck+testes Web, build.
    Se o teu objetivo passar nesses passos, estás bom.
 
 **Antes de considerar qualquer tarefa concluída:**
+
 ```bash
 pnpm typecheck && pnpm format:check
 ```
@@ -83,20 +86,21 @@ pnpm typecheck && pnpm format:check
 
 Estas partes quebram silenciosamente ou causam perda de dados:
 
-| Ficheiro / Zona | Porquê é perigoso |
-|-----------------|-------------------|
-| `apps/api/src/index.ts` — ordem dos middleware | O webhook Stripe usa `express.raw()` que TEM de vir ANTES de `express.json()`. `maintenanceMode` tem de vir cedo. Reordenar quebra pagamentos/manutenção. |
-| `apps/api/prisma/migrations/**` | NUNCA edites uma migration já aplicada. Cria uma nova. |
-| `apps/api/entrypoint.sh` | Controla o boot da DB. Contém `--accept-data-loss` e `RESET_DB_ON_BOOT` (dropa schema!). Ver `docs/DEPLOYMENT.md`. |
-| `apps/api/src/lib/stripe.ts` e `modules/webhooks` | Idempotência e validação de assinatura. Ver `docs/stripe-runbook.md`. |
-| `docker-compose.dokploy.yml` | Chaves de env duplicadas quebram o deploy. Verifica unicidade. |
-| Qualquer coisa que envolva secrets, migrations destrutivas ou pagamentos | **PÁRA e pergunta ao utilizador.** |
+| Ficheiro / Zona                                                          | Porquê é perigoso                                                                                                                                         |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/index.ts` — ordem dos middleware                           | O webhook Stripe usa `express.raw()` que TEM de vir ANTES de `express.json()`. `maintenanceMode` tem de vir cedo. Reordenar quebra pagamentos/manutenção. |
+| `apps/api/prisma/migrations/**`                                          | NUNCA edites uma migration já aplicada. Cria uma nova.                                                                                                    |
+| `apps/api/entrypoint.sh`                                                 | Controla o boot da DB. Contém `--accept-data-loss` e `RESET_DB_ON_BOOT` (dropa schema!). Ver `docs/DEPLOYMENT.md`.                                        |
+| `apps/api/src/lib/stripe.ts` e `modules/webhooks`                        | Idempotência e validação de assinatura. Ver `docs/stripe-runbook.md`.                                                                                     |
+| `docker-compose.dokploy.yml`                                             | Chaves de env duplicadas quebram o deploy. Verifica unicidade.                                                                                            |
+| Qualquer coisa que envolva secrets, migrations destrutivas ou pagamentos | **PÁRA e pergunta ao utilizador.**                                                                                                                        |
 
 ---
 
 ## 6. Padrões de código a manter
 
 ### API — adicionar/alterar um endpoint (fluxo completo)
+
 1. Schema Zod em `packages/shared/src/` (ou local ao módulo se não for partilhado).
 2. Router em `apps/api/src/modules/<feature>/<feature>.router.ts`:
    ```ts
@@ -114,16 +118,19 @@ Estas partes quebram silenciosamente ou causam perda de dados:
 5. Registar o router em `apps/api/src/index.ts` (respeitando a ordem — ver zona proibida).
 
 ### Autorização (compõe middleware)
+
 ```ts
 router.use(requireAuth, requireRole('ADMIN'), requireActiveUser)
 ```
 
 ### Web — adicionar página
+
 1. Componente em `apps/web/src/pages/<feature>/`.
 2. Rota em `apps/web/src/App.tsx` com lazy loading.
 3. Data fetching via TanStack Query + `api` (axios) de `apps/web/src/lib/`.
 
 ### Regras gerais
+
 - Mensagens ao utilizador final: **pt-PT**.
 - `packages/shared` TEM de ser buildado antes da API/Web em CI:
   `pnpm --filter @patacerta/shared build`.
@@ -133,14 +140,14 @@ router.use(requireAuth, requireRole('ADMIN'), requireActiveUser)
 
 ## 7. Debugging rápido
 
-| Sintoma | Onde olhar |
-|---------|-----------|
-| API não arranca / tabelas não existem | `apps/api/entrypoint.sh`, estado de `_prisma_migrations`, ver `docs/DEPLOYMENT.md` |
-| Webhook Stripe 400 "assinatura inválida" | `docs/stripe-runbook.md` §7 |
-| Emails não enviados | `RESEND_API_KEY` em falta; `apps/api/src/lib/email.ts` |
-| CORS bloqueado | `CORS_ORIGIN`/`FRONTEND_URL` em `apps/api/src/index.ts` |
-| Modo manutenção intermitente | Frontend usa `/api/status` (sem bypass), NÃO `/api/health` |
-| Restore de backup | `docs/RESTORE.md` |
+| Sintoma                                  | Onde olhar                                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| API não arranca / tabelas não existem    | `apps/api/entrypoint.sh`, estado de `_prisma_migrations`, ver `docs/DEPLOYMENT.md` |
+| Webhook Stripe 400 "assinatura inválida" | `docs/stripe-runbook.md` §7                                                        |
+| Emails não enviados                      | `RESEND_API_KEY` em falta; `apps/api/src/lib/email.ts`                             |
+| CORS bloqueado                           | `CORS_ORIGIN`/`FRONTEND_URL` em `apps/api/src/index.ts`                            |
+| Modo manutenção intermitente             | Frontend usa `/api/status` (sem bypass), NÃO `/api/health`                         |
+| Restore de backup                        | `docs/RESTORE.md`                                                                  |
 
 Logs em produção: Dokploy UI → Logs, ou `docker logs <container> -f`.
 
@@ -158,10 +165,10 @@ Logs em produção: Dokploy UI → Logs, ou `docker logs <container> -f`.
 
 ## 9. Ambientes
 
-| Ambiente | URL | Branch | Volumes |
-|----------|-----|--------|---------|
-| Produção | https://patacerta.pt | `main` | `prod_patacerta_*` |
-| Stage | https://stage.patacerta.pt | `dev` | `stage_patacerta_*` |
+| Ambiente | URL                        | Branch | Volumes             |
+| -------- | -------------------------- | ------ | ------------------- |
+| Produção | https://patacerta.pt       | `main` | `prod_patacerta_*`  |
+| Stage    | https://stage.patacerta.pt | `dev`  | `stage_patacerta_*` |
 
 - A API é servida no MESMO domínio via proxy nginx (`/api/*`). **Não existe** subdomínio `api-*`.
 - Deploy é automático via Dokploy no push (`main`→prod, `dev`→stage), ~3-5 min.

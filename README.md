@@ -59,13 +59,15 @@ Acessos:
 | `pnpm typecheck`                            | `tsc --noEmit` (**fonte de verdade** — corre antes de commit) |
 | `pnpm format:check`                         | Verifica formatação Prettier                                  |
 | `pnpm format`                               | Formata o código                                              |
+| `pnpm lint`                                 | ESLint (advisory — warnings não quebram; não está no CI)      |
 | `pnpm build`                                | Build de produção                                             |
 | `pnpm --filter @patacerta/api test`         | Testes unitários da API (Vitest)                              |
 | `pnpm --filter @patacerta/web test:e2e`     | Testes E2E (Playwright)                                       |
 | `pnpm db:migrate` / `db:seed` / `db:studio` | Base de dados (dev local)                                     |
 
-> **Nota:** não existe ESLint configurado (`pnpm lint` é um stub). A validação
-> real é `pnpm typecheck && pnpm format:check`.
+> **Nota:** `pnpm lint` (ESLint) é uma rede de segurança _advisory_ — warnings não
+> quebram o build e o lint não está no CI. A validação obrigatória é
+> `pnpm typecheck && pnpm format:check`.
 
 ---
 
