@@ -4,18 +4,18 @@ Last updated: 2026-07-01
 
 ## Security Audit Status
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| JWT Implementation | **SECURE** | Env-sourced secrets, 15min access/7d refresh, HS256 fixed |
-| Password Security | **SECURE** | bcrypt cost 12, strong validation (8+ chars, upper/lower/number) |
-| Auth/Authorization | **SECURE** | Triple guard on admin (auth + role + active user) |
-| Session/Cookies | **SECURE** | httpOnly, secure, sameSite=strict |
-| Input Validation | **SECURE** | Zod on all endpoints, Prisma parameterized queries |
-| Rate Limiting | **SECURE** | Implemented on all public endpoints |
-| Security Headers | **SECURE** | Helmet, HSTS (1 year, preload), CSP, Permissions-Policy |
-| CORS | **SECURE** | Whitelist only, no wildcards, credentials enabled |
-| Logs | **SECURE** | Pino with redact for password/token fields |
-| Secrets | **SECURE** | All from env vars, no hardcoded defaults in prod |
+| Category           | Status     | Notes                                                            |
+| ------------------ | ---------- | ---------------------------------------------------------------- |
+| JWT Implementation | **SECURE** | Env-sourced secrets, 15min access/7d refresh, HS256 fixed        |
+| Password Security  | **SECURE** | bcrypt cost 12, strong validation (8+ chars, upper/lower/number) |
+| Auth/Authorization | **SECURE** | Triple guard on admin (auth + role + active user)                |
+| Session/Cookies    | **SECURE** | httpOnly, secure, sameSite=strict                                |
+| Input Validation   | **SECURE** | Zod on all endpoints, Prisma parameterized queries               |
+| Rate Limiting      | **SECURE** | Implemented on all public endpoints                              |
+| Security Headers   | **SECURE** | Helmet, HSTS (1 year, preload), CSP, Permissions-Policy          |
+| CORS               | **SECURE** | Whitelist only, no wildcards, credentials enabled                |
+| Logs               | **SECURE** | Pino with redact for password/token fields                       |
+| Secrets            | **SECURE** | All from env vars, no hardcoded defaults in prod                 |
 
 ---
 
@@ -95,26 +95,31 @@ MAINTENANCE_BYPASS_KEY=<secret-key>   # Optional: admin bypass via header
 
 These are temporary bypasses for initial setup. **Remove after configuring properly.**
 
-| Variable | Current | Target | Action Required |
-|----------|---------|--------|-----------------|
-| `ALLOW_NO_SMTP_IN_PROD` | `0` | `0` | ✅ Concluido (RESEND_API_KEY configurado) |
-| `ALLOW_INSECURE_FLAGS_IN_PROD` | `0` | `0` | ✅ Concluido (sem flags debug) |
-| `RUN_SEED_ON_BOOT` | `true` | `false` | Manter `true` ate confirmar que seed nao falha em cold start; depois definir `false` |
-| `MAINTENANCE_MODE` | `1` | `0` | Set to 0 when ready to go live |
+| Variable                       | Current | Target  | Action Required                                                                      |
+| ------------------------------ | ------- | ------- | ------------------------------------------------------------------------------------ |
+| `ALLOW_NO_SMTP_IN_PROD`        | `0`     | `0`     | ✅ Concluido (RESEND_API_KEY configurado)                                            |
+| `ALLOW_INSECURE_FLAGS_IN_PROD` | `0`     | `0`     | ✅ Concluido (sem flags debug)                                                       |
+| `RUN_SEED_ON_BOOT`             | `true`  | `false` | Manter `true` ate confirmar que seed nao falha em cold start; depois definir `false` |
+| `MAINTENANCE_MODE`             | `1`     | `0`     | Set to 0 when ready to go live                                                       |
 
 ---
 
 ## Pre-Launch Checklist
 
 ### Infrastructure
+
 - [x] PostgreSQL running with strong password
 - [x] MinIO running with strong password
 - [x] Redis running
-- [x] Volumes separated (prod_patacerta_*)
+- [x] Volumes separated (prod*patacerta*\*)
 - [x] Domain configured (patacerta.pt)
 - [x] SSL/HTTPS working
+- [x] Routing collision resolved (removed leftover `api-*.patacerta.pt` domains
+      that collided the `api` alias on the shared dokploy-network; prod now
+      consistently in maintenance, stage consistently open)
 
 ### Security
+
 - [x] All secrets from environment variables
 - [x] JWT secrets are unique and strong (64+ chars)
 - [x] Admin password is strong
@@ -123,34 +128,42 @@ These are temporary bypasses for initial setup. **Remove after configuring prope
 - [x] Security headers (Helmet, HSTS)
 
 ### Data
+
 - [x] Seed data populated (districts, municipalities, breeds, categories)
 - [x] Admin user created
 - [ ] Remove RUN_SEED_ON_BOOT after verification
 
 ### Email
+
 - [x] Configure RESEND_API_KEY (Resend, dominio patacerta.pt verificado)
 - [ ] Test email verification flow
 - [ ] Test password reset flow
 - [x] Set ALLOW_NO_SMTP_IN_PROD=0
 
 ### Payments (if enabling)
+
 - [ ] Configure Stripe live keys
 - [ ] Create webhook endpoint in Stripe dashboard
 - [ ] Test payment flow in test mode first
 
 ### Backups
+
+> Full plan and setup steps: **`docs/BACKUP.md`**.
+
 - [ ] Generate age keypair, store private key securely OFFLINE
 - [ ] Set AGE_RECIPIENT in Dokploy
 - [ ] Create Healthchecks.io checks
-- [ ] Set HEALTHCHECKS_URL_* variables
+- [ ] Set HEALTHCHECKS*URL*\* variables
 - [ ] Verify first backup runs (check docker logs cron)
 - [ ] Test restore procedure (see docs/RESTORE.md)
 
 ### Monitoring
+
 - [ ] Healthchecks.io configured
 - [ ] Set up alerting (email/Slack/Discord)
 
 ### Final Steps
+
 - [ ] Set ALLOW_INSECURE_FLAGS_IN_PROD=0
 - [ ] Set MAINTENANCE_MODE=0
 - [ ] Verify site is accessible
@@ -178,13 +191,16 @@ docker logs <cron-container-id> --tail 100
 ## Emergency Procedures
 
 ### Rollback
+
 1. In Dokploy, go to Deployments
 2. Click "Redeploy" on the previous working version
 
 ### Database Restore
+
 See `docs/RESTORE.md` for full procedure.
 
 ### Maintenance Mode
+
 1. In Dokploy, set `MAINTENANCE_MODE=1`
 2. Restart the compose
 3. Site shows maintenance page, API returns 503
