@@ -24,6 +24,15 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
 
 export default tseslint.config(
+  // Não reportar/remover diretivas eslint-disable "não usadas": muitas
+  // referenciam regras opt-in (no-console, no-require-imports) que documentam
+  // intenção. `lint:fix` sem isto apagava-as e deixava linhas em branco.
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: false,
+    },
+  },
+
   // Ignorados globais
   {
     ignores: [
