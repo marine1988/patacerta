@@ -73,6 +73,11 @@ echo "[backup-minio] $(date -u +%FT%TZ) mirror ${MINIO_BUCKET} -> tmp"
 # 1. Mirror bucket para temp local. --quiet evita ruido de N ficheiros.
 # Se o bucket nao existir ou estiver vazio, mc mirror nao falha (cria 0
 # ficheiros) — comportamento aceitavel para primeiros dias do MVP.
+#
+# IMPORTANTE: mc mirror NAO cria o dir de destino quando ha 0 ficheiros,
+# e o `tar uploads` a seguir falharia com "Cannot stat: No such file".
+# Criamos o dir explicitamente → com bucket vazio geramos um tar vazio valido.
+mkdir -p "$TEMP_DIR/uploads"
 if ! mc mirror --quiet --overwrite "${MC_ALIAS}/${MINIO_BUCKET}" "$TEMP_DIR/uploads"; then
   echo "[backup-minio] FATAL: mc mirror falhou" >&2
   exit 2
