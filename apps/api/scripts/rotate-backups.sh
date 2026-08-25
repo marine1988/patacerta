@@ -113,7 +113,7 @@ rotate_prefix() {
         # busybox awk nao tem, entao usamos representacao lexicografica.
         sortkey = sprintf("%04d%02d%02d%02d%02d%02d", year, mon, day, hh, mm, ss)
         # week-of-year aproximada: nao temos calendario completo em awk
-        # busybox, mas year+iso-week e' suficiente para granularidade semanal.
+        # busybox, mas year+iso-week e suficiente para granularidade semanal.
         # Aproximacao: week = floor((day_of_year + day_of_year_jan1_offset) / 7)
         # Para evitar complicacoes, usamos year+truncated-week como key:
         # (year * 53) + floor((mon-1)*4.345 + (day-1)/7)
