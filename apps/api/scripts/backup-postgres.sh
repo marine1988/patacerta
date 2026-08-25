@@ -85,12 +85,18 @@ echo "[backup-pg] $(date -u +%FT%TZ) inicio backup -> ${MINIO_BACKUP_BUCKET}/${O
 # nao tem PIPESTATUS, mas com `set -o pipefail` em ash isto funciona).
 set -o pipefail 2>/dev/null || true
 
+# pg_dump NAO aceita os query params especificos do Prisma no URI
+# (schema, connection_limit, pool_timeout, connect_timeout, socket_timeout) e
+# aborta com "invalid URI query parameter: schema". Removemos a query string —
+# pg_dump faz dump da BD inteira (schema public por defeito).
+PG_DSN="${DATABASE_URL%%\?*}"
+
 if ! pg_dump \
     --format=custom \
     --no-owner \
     --no-privileges \
     --compress=6 \
-    --dbname="$DATABASE_URL" \
+    --dbname="$PG_DSN" \
   | age -r "$AGE_RECIPIENT" \
   | mc pipe "${MC_ALIAS}/${MINIO_BACKUP_BUCKET}/${OBJECT_PATH}"
 then
