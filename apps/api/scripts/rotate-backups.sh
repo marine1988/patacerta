@@ -69,8 +69,7 @@ rotate_prefix() {
 
   # Listar todos os objectos. mc ls --recursive --json devolve 1 JSON por linha.
   # Extraimos "key" (caminho relativo ao bucket).
-  local listing
-  listing=$(mc ls --recursive --json "${MC_ALIAS}/${MINIO_BACKUP_BUCKET}/${prefix}/" 2>/dev/null | grep -o '"key":"[^"]*"' | cut -d'"' -f4 || true)
+  local listing  listing=$(mc ls --recursive --json "${MC_ALIAS}/${MINIO_BACKUP_BUCKET}/${prefix}/" 2>/dev/null | grep -o '"key":"[^"]*"' | cut -d'"' -f4 || true)
 
   if [ -z "$listing" ]; then
     echo "[rotate] ${label}: 0 backups, nada a rotacionar"
@@ -89,8 +88,12 @@ rotate_prefix() {
   # (max RETENTION_WEEKLY); depois 1 por mes unico (max RETENTION_MONTHLY).
   #
   # Output: "KEEP <path> <razao>" ou "DELETE <path>"
-  local decisions
-  decisions=$(echo "$listing" | awk -v daily="$RETENTION_DAILY" -v weekly="$RETENTION_WEEKLY" -v monthly="$RETENTION_MONTHLY" '
+  # NOTA: escrevemos para ficheiro em vez de decisions=$(awk '...') porque o
+  # busybox sh (ash) do container falha a parsear command-substitution quando o
+  # programa awk tem parenteses aninhados (int(((...))) -> "unexpected (").
+  local dec_file
+  dec_file=$(mktemp -t rotate-dec-XXXXXX)
+  echo "$listing" | awk -v daily="$RETENTION_DAILY" -v weekly="$RETENTION_WEEKLY" -v monthly="$RETENTION_MONTHLY" '
     BEGIN {
       n = 0
     }
@@ -180,12 +183,12 @@ rotate_prefix() {
         }
       }
     }
-  ')
+  ' > "$dec_file"
 
   # ── Aplicar decisoes ──
   local kept=0
   local deleted=0
-  echo "$decisions" | while IFS= read -r line; do
+  cat "$dec_file" | while IFS= read -r line; do
     case "$line" in
       KEEP\ *)
         kept=$((kept + 1))
@@ -210,9 +213,10 @@ rotate_prefix() {
   # Resumo (kept/deleted nao sobrevivem ao subshell do pipe — recalcular)
   local kept_count
   local del_count
-  kept_count=$(echo "$decisions" | grep -c '^KEEP ' || true)
-  del_count=$(echo "$decisions" | grep -c '^DELETE ' || true)
+  kept_count=$(grep -c '^KEEP ' "$dec_file" || true)
+  del_count=$(grep -c '^DELETE ' "$dec_file" || true)
   echo "[rotate] ${label}: ${kept_count} mantidos, ${del_count} apagados"
+  rm -f "$dec_file"
 }
 
 rotate_prefix "postgres" "Postgres"
