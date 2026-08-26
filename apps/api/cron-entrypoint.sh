@@ -89,6 +89,10 @@ cat > "$CRON_FILE" <<'EOF'
 # Corre 25 min apos o backup-postgres (margem para minio terminar).
 30 2 * * * . /app/.cron.env && /app/scripts/rotate-backups.sh > /proc/1/fd/1 2>&1
 
+# 02:45 UTC — push offsite (Fase B): mirror encriptado (.age) para S3/R2 externo.
+# Corre 15 min apos a rotacao. Salta sozinho se OFFSITE_* nao estiver definido.
+45 2 * * * . /app/.cron.env && /app/scripts/push-offsite.sh > /proc/1/fd/1 2>&1
+
 # ── Jobs aplicacionais ──
 # Expirar sponsored slots cujo endsAt ja' passou. Horario.
 0 * * * * . /app/.cron.env && cd /app && /usr/local/bin/node apps/api/dist/jobs/expire-sponsored-slots.js > /proc/1/fd/1 2>&1

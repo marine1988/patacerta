@@ -247,6 +247,13 @@ services:
       RETENTION_DAILY: ${RETENTION_DAILY:-7}
       RETENTION_WEEKLY: ${RETENTION_WEEKLY:-4}
       RETENTION_MONTHLY: ${RETENTION_MONTHLY:-6}
+      # Offsite (Fase B) - mirror encriptado (.age) do bucket de backups para
+      # um S3/R2 externo. Sem estas vars, push-offsite.sh salta (sem offsite).
+      OFFSITE_ENDPOINT: ${OFFSITE_ENDPOINT:-}
+      OFFSITE_ACCESS_KEY: ${OFFSITE_ACCESS_KEY:-}
+      OFFSITE_SECRET_KEY: ${OFFSITE_SECRET_KEY:-}
+      OFFSITE_BUCKET: ${OFFSITE_BUCKET:-patacerta-backups-offsite}
+      HEALTHCHECKS_URL_OFFSITE: ${HEALTHCHECKS_URL_OFFSITE:-}
     entrypoint: ['/app/cron-entrypoint.sh']
     restart: unless-stopped
 
