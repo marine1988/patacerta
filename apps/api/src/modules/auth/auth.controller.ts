@@ -376,8 +376,7 @@ export const refresh = asyncHandler(async (req, res) => {
     // TokenExpiredError tem o name proprio; tudo o resto agrupa-se em
     // INVALID_REFRESH_TOKEN. Nao logamos detalhes para nao dar info a
     // quem tenta sondar tokens.
-    const isExpired =
-      err instanceof Error && err.name === 'TokenExpiredError'
+    const isExpired = err instanceof Error && err.name === 'TokenExpiredError'
     throw new AppError(
       401,
       isExpired ? 'Refresh token expirado' : 'Refresh token inválido',

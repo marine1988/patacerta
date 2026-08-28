@@ -55,7 +55,14 @@ export const queryKeys = {
       dateFrom?: string,
       dateTo?: string,
     ) =>
-      ['admin-audit-logs', page, action ?? null, entity ?? null, dateFrom ?? null, dateTo ?? null] as const,
+      [
+        'admin-audit-logs',
+        page,
+        action ?? null,
+        entity ?? null,
+        dateFrom ?? null,
+        dateTo ?? null,
+      ] as const,
     reviewFlags: (type: string | null, id: number | string | null | undefined) =>
       ['review-flags', type, id ?? null] as const,
     sponsoredSlots: (

@@ -30,9 +30,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {error}
           </p>
         )}
-        {hint && !error && (
-          <p className="mt-1 text-xs text-gray-500">{hint}</p>
-        )}
+        {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
       </div>
     )
   },

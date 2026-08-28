@@ -168,11 +168,7 @@ export const listAllUsers = asyncHandler(async (req, res) => {
   // Se `q` parecer um email, mascaramos antes de gravar no audit log
   // — caso contrario o email completo de qualquer utilizador pesquisado
   // ficaria persistido em texto claro em ``audit_logs``.
-  const qForAudit = q
-    ? q.includes('@')
-      ? maskEmail(q.slice(0, 100))
-      : q.slice(0, 50)
-    : ''
+  const qForAudit = q ? (q.includes('@') ? maskEmail(q.slice(0, 100)) : q.slice(0, 50)) : ''
   await logAudit({
     userId: req.user!.userId,
     action: 'ADMIN_LIST_USERS',

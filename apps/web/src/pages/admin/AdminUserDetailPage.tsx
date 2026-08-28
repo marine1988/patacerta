@@ -7,12 +7,7 @@ import { formatDateShort } from '../../lib/dates'
 import { extractApiError } from '../../lib/errors'
 import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
-import {
-  statusBadgeVariant,
-  statusLabel,
-  roleBadgeVariant,
-  roleLabel,
-} from './_shared'
+import { statusBadgeVariant, statusLabel, roleBadgeVariant, roleLabel } from './_shared'
 
 /**
  * AdminUserDetailPage — visao 360 de um utilizador para o admin.
@@ -202,8 +197,7 @@ export function AdminUserDetailPage() {
   }
 
   const suspendMutation = useMutation({
-    mutationFn: (reason: string) =>
-      api.patch(`/admin/users/${userId}/suspend`, { reason }),
+    mutationFn: (reason: string) => api.patch(`/admin/users/${userId}/suspend`, { reason }),
     onSuccess: () => {
       setSuspendOpen(false)
       setSuspendReason('')
@@ -365,47 +359,23 @@ export function AdminUserDetailPage() {
           <Field label="Telefone" value={user.phone ?? '—'} />
           <Field label="Papel" value={roleLabel[user.role] ?? user.role} />
           <Field label="Estado" value={isSuspended ? 'Suspensa' : 'Activa'} />
-          <Field
-            label="Email verificado"
-            value={user.emailVerified ? 'Sim' : 'Não'}
-          />
+          <Field label="Email verificado" value={user.emailVerified ? 'Sim' : 'Não'} />
           <Field label="Criada em" value={formatDateShort(user.createdAt)} />
           <Field label="Actualizada em" value={formatDateShort(user.updatedAt)} />
         </SectionCard>
 
         <SectionCard title="Actividade">
-          <Field
-            label="Mensagens enviadas"
-            value={String(user._count.sentMessages)}
-          />
-          <Field
-            label="Conversas iniciadas"
-            value={String(user._count.threadsAsOwner)}
-          />
-          <Field
-            label="Avaliações de criadores"
-            value={String(user._count.reviews)}
-          />
-          <Field
-            label="Avaliações de serviços"
-            value={String(user._count.serviceReviews)}
-          />
-          <Field
-            label="Denúncias de mensagens"
-            value={String(user._count.messageReportsFiled)}
-          />
-          <Field
-            label="Denúncias de serviços"
-            value={String(user._count.serviceReportsFiled)}
-          />
+          <Field label="Mensagens enviadas" value={String(user._count.sentMessages)} />
+          <Field label="Conversas iniciadas" value={String(user._count.threadsAsOwner)} />
+          <Field label="Avaliações de criadores" value={String(user._count.reviews)} />
+          <Field label="Avaliações de serviços" value={String(user._count.serviceReviews)} />
+          <Field label="Denúncias de mensagens" value={String(user._count.messageReportsFiled)} />
+          <Field label="Denúncias de serviços" value={String(user._count.serviceReportsFiled)} />
           <Field
             label="Sessões activas (refresh tokens)"
             value={String(user._count.refreshTokens)}
           />
-          <Field
-            label="Acções de auditoria como actor"
-            value={String(user._count.auditLogs)}
-          />
+          <Field label="Acções de auditoria como actor" value={String(user._count.auditLogs)} />
         </SectionCard>
 
         {user.breeder && (
@@ -605,9 +575,7 @@ export function AdminUserDetailPage() {
                       <td className="px-2 py-1.5 text-ink">
                         {log.user ? `${log.user.firstName} ${log.user.lastName}` : 'Sistema'}
                       </td>
-                      <td className="px-2 py-1.5 text-xs text-muted">
-                        {log.ipAddress ?? '—'}
-                      </td>
+                      <td className="px-2 py-1.5 text-xs text-muted">{log.ipAddress ?? '—'}</td>
                       <td className="px-2 py-1.5 text-xs text-muted">
                         {log.details ? (
                           <span className="line-clamp-2 break-words">{log.details}</span>

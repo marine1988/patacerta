@@ -48,8 +48,7 @@ export const listServiceReviews = asyncHandler(async (req, res) => {
   // Visibility (igual a /reviews): admins, autores das próprias reviews ou
   // PUBLISHED para o público. Permite à UI detectar reviews PENDING/HIDDEN
   // do autor sem expor reviews de terceiros não publicadas.
-  const isOwnAuthorQuery =
-    !!requester && authorId !== undefined && authorId === requester.userId
+  const isOwnAuthorQuery = !!requester && authorId !== undefined && authorId === requester.userId
   if (requester?.role === 'ADMIN') {
     if (status) where.status = status
   } else if (isOwnAuthorQuery) {

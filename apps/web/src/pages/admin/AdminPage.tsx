@@ -117,8 +117,7 @@ export function AdminPage() {
     ...pollingQueryDefaults(),
   })
 
-  const verificacoesPending =
-    (pending?.pendingDocs ?? 0) + (pending?.pendingBreeders ?? 0)
+  const verificacoesPending = (pending?.pendingDocs ?? 0) + (pending?.pendingBreeders ?? 0)
   const moderacaoPending =
     (pending?.pendingMessageReports ?? 0) +
     (pending?.pendingServiceReports ?? 0) +
@@ -127,7 +126,11 @@ export function AdminPage() {
   // Sincroniza tab activa <-> ?tab=. Permite deep-linking e back/forward.
   // Ignora valores invalidos do URL (mantem 'resumo').
   useEffect(() => {
-    if (tabParam && (VALID_TAB_IDS as readonly string[]).includes(tabParam) && tabParam !== activeTab) {
+    if (
+      tabParam &&
+      (VALID_TAB_IDS as readonly string[]).includes(tabParam) &&
+      tabParam !== activeTab
+    ) {
       setActiveTab(tabParam)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

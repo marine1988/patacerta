@@ -6,12 +6,24 @@ import { extractApiError } from '../../lib/errors'
 import type { PaginatedMeta } from '../../lib/pagination'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDateTime, formatSmart } from '../../lib/dates'
-import { Card, Avatar, Badge, Button, EmptyState, Spinner, SkeletonAvatarLine, useConfirm } from '../../components/ui'
+import {
+  Card,
+  Avatar,
+  Badge,
+  Button,
+  EmptyState,
+  Spinner,
+  SkeletonAvatarLine,
+  useConfirm,
+} from '../../components/ui'
 import { NewThreadModal } from '../../components/messages/NewThreadModal'
 import { LinkifiedText } from '../../components/messages/LinkifiedText'
 import { MessageActionsMenu } from '../../components/messages/MessageActionsMenu'
 import { ReportMessageModal } from '../../components/messages/ReportMessageModal'
-import { MESSAGE_EDIT_WINDOW_MINUTES, MESSAGE_EDIT_WINDOW_CLIENT_SAFETY_SECONDS } from '@patacerta/shared'
+import {
+  MESSAGE_EDIT_WINDOW_MINUTES,
+  MESSAGE_EDIT_WINDOW_CLIENT_SAFETY_SECONDS,
+} from '@patacerta/shared'
 interface ThreadUser {
   id: number
   firstName: string

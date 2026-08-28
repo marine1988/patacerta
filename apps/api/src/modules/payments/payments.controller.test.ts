@@ -34,8 +34,8 @@ vi.mock('../../lib/prisma.js', () => {
   // $transaction(callback) invoca o callback com o proprio prisma mock
   // como TransactionClient — os mesmos vi.fn() registam ambas as chamadas
   // (dentro/fora de transaccao), o que e' o que os testes assumem.
-  prismaMock.$transaction = vi.fn(
-    async (cb: (tx: unknown) => Promise<unknown>, _opts?: unknown) => cb(prismaMock),
+  prismaMock.$transaction = vi.fn(async (cb: (tx: unknown) => Promise<unknown>, _opts?: unknown) =>
+    cb(prismaMock),
   )
   return { prisma: prismaMock }
 })

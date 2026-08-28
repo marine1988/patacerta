@@ -623,7 +623,9 @@ export const uploadMyAvatar = asyncHandler(async (req, res) => {
 
   const userId = req.user!.userId
 
-  const buffer = await (await createSafeSharp(req.file.buffer))
+  const buffer = await (
+    await createSafeSharp(req.file.buffer)
+  )
     .rotate()
     .resize({
       width: AVATAR_MAX_DIMENSION,

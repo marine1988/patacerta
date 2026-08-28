@@ -33,12 +33,9 @@ healthRouter.get(
 // Registado DEPOIS do middleware de manutenção no index.ts.
 export const statusRouter = Router()
 
-statusRouter.get(
-  '/',
-  (_req, res) => {
-    res.json({
-      status: 'online',
-      timestamp: new Date().toISOString(),
-    })
-  },
-)
+statusRouter.get('/', (_req, res) => {
+  res.json({
+    status: 'online',
+    timestamp: new Date().toISOString(),
+  })
+})

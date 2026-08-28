@@ -1216,9 +1216,7 @@ export function BreederTab() {
             type="button"
             onClick={() => {
               if (isFormDirty()) {
-                const ok = window.confirm(
-                  'Tem alterações por guardar. Sair sem guardar?',
-                )
+                const ok = window.confirm('Tem alterações por guardar. Sair sem guardar?')
                 if (!ok) return
               }
               setEditing(false)

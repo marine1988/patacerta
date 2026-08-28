@@ -359,9 +359,7 @@ export function ServiceDetailPage() {
 
   const createReviewMutation = useMutation({
     mutationFn: (values: ReviewFormValues) =>
-      api
-        .post('/service-reviews', { serviceId: serviceNumericId, ...values })
-        .then((r) => r.data),
+      api.post('/service-reviews', { serviceId: serviceNumericId, ...values }).then((r) => r.data),
     onSuccess: () => {
       setReviewModalOpen(false)
       setEditingReview(null)

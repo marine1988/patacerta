@@ -93,9 +93,7 @@ export function DenunciasTab() {
               {count > 0 && (
                 <span
                   className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                    isActive
-                      ? 'bg-caramel-500 text-white'
-                      : 'bg-red-100 text-red-700'
+                    isActive ? 'bg-caramel-500 text-white' : 'bg-red-100 text-red-700'
                   }`}
                   aria-label={`${count} pendentes`}
                 >

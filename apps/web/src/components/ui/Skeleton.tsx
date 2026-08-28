@@ -119,10 +119,7 @@ export function SkeletonAvatarLine({
   const sizeStyle: CSSProperties = { width: size, height: size }
   return (
     <div className={`flex items-start gap-3 ${className}`} aria-hidden="true">
-      <div
-        className="shrink-0 animate-pulse rounded-full bg-gray-200"
-        style={sizeStyle}
-      />
+      <div className="shrink-0 animate-pulse rounded-full bg-gray-200" style={sizeStyle} />
       <div className="flex-1 space-y-2 pt-1">
         {Array.from({ length: lines }).map((_, i) => (
           <div

@@ -140,9 +140,7 @@ export function HomePage() {
               aria-live="polite"
               className="mt-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4"
             >
-              <p className="text-sm text-red-700">
-                Não foi possível carregar as estatísticas.
-              </p>
+              <p className="text-sm text-red-700">Não foi possível carregar as estatísticas.</p>
               <button
                 type="button"
                 onClick={() => refetchStats()}

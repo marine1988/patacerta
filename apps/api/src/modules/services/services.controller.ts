@@ -618,7 +618,9 @@ export const uploadPhotos = asyncHandler(async (req, res) => {
   // breeders.controller para racional. Schema do controller já valida N≤10.
   const created = await Promise.all(
     files.map(async (file, i) => {
-      const buffer = await (await createSafeSharp(file.buffer))
+      const buffer = await (
+        await createSafeSharp(file.buffer)
+      )
         .rotate() // honour EXIF orientation
         .resize({
           width: PHOTO_MAX_DIMENSION,

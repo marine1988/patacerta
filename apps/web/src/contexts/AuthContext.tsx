@@ -20,7 +20,9 @@ interface AuthContextValue {
   isAuthenticated: boolean
   isLoading: boolean
   login: (data: LoginInput) => Promise<User>
-  register: (data: RegisterInput) => Promise<{ message: string; email: string; verificationSent: boolean }>
+  register: (
+    data: RegisterInput,
+  ) => Promise<{ message: string; email: string; verificationSent: boolean }>
   logout: () => void
   updateUser: (user: User) => void
 }
@@ -95,20 +97,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = useCallback(async (data: LoginInput): Promise<User> => {
-    const res = await api.post('/auth/login', data)
-    // O servidor responde com { user, accessToken } e define o cookie
-    // refresh_token httpOnly automaticamente.
-    const { user: u, accessToken } = res.data
-    // Limpar cache antes de aplicar a nova sessao. Cobre o caso raro
-    // de login directo (sem logout previo) — ex: dois separadores onde
-    // um faz logout e outro tenta autenticar com user diferente.
-    queryClient.clear()
-    localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('user', JSON.stringify(u))
-    setUser(u)
-    return u
-  }, [queryClient])
+  const login = useCallback(
+    async (data: LoginInput): Promise<User> => {
+      const res = await api.post('/auth/login', data)
+      // O servidor responde com { user, accessToken } e define o cookie
+      // refresh_token httpOnly automaticamente.
+      const { user: u, accessToken } = res.data
+      // Limpar cache antes de aplicar a nova sessao. Cobre o caso raro
+      // de login directo (sem logout previo) — ex: dois separadores onde
+      // um faz logout e outro tenta autenticar com user diferente.
+      queryClient.clear()
+      localStorage.setItem('access_token', accessToken)
+      localStorage.setItem('user', JSON.stringify(u))
+      setUser(u)
+      return u
+    },
+    [queryClient],
+  )
 
   const register = useCallback(
     async (

@@ -15,10 +15,7 @@ type Tx = Prisma.TransactionClient | typeof defaultPrisma
  * tx mantemos o try/catch defensivo (best-effort) para nao falhar o
  * request principal; o agregado fica stale ate' a' proxima escrita.
  */
-export async function recomputeBreederRating(
-  breederId: number,
-  tx?: Tx,
-): Promise<void> {
+export async function recomputeBreederRating(breederId: number, tx?: Tx): Promise<void> {
   if (tx) {
     const agg = await tx.review.aggregate({
       where: { breederId, status: 'PUBLISHED' },

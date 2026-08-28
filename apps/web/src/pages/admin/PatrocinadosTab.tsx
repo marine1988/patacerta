@@ -15,7 +15,17 @@ import { formatDateShort } from '../../lib/dates'
 import { extractApiError } from '../../lib/errors'
 import { Pagination } from '../../components/ui/Pagination'
 import type { Paginated } from '../../lib/pagination'
-import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner, useConfirm } from '../../components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Modal,
+  Select,
+  Spinner,
+  useConfirm,
+} from '../../components/ui'
 
 // ─── Tipos ───────────────────────────────────────────────────────────
 

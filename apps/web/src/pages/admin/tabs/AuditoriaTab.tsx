@@ -491,7 +491,11 @@ export function AuditoriaTab() {
                                 strokeWidth="2"
                                 stroke="currentColor"
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m19 9-7 7-7-7"
+                                />
                               </svg>
                             </button>
                           ) : (

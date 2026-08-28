@@ -228,8 +228,8 @@ export function VerificacoesTab() {
                 <td className="px-3 py-2">
                   <div className="font-medium text-ink">{doc.breeder.businessName}</div>
                   <div className="text-xs text-muted">
-                    {doc.breeder.user.firstName} {doc.breeder.user.lastName}{' '}
-                    {'\u2014'} {doc.breeder.user.email}
+                    {doc.breeder.user.firstName} {doc.breeder.user.lastName} {'\u2014'}{' '}
+                    {doc.breeder.user.email}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-ink">{doc.breeder.nif}</td>
@@ -283,9 +283,7 @@ export function VerificacoesTab() {
               {rejectingDoc && (
                 <div className="rounded border border-line bg-surface-alt/40 p-3 text-sm">
                   <p className="font-medium text-ink">{rejectingDoc.breeder.businessName}</p>
-                  <p className="truncate text-xs text-muted">
-                    Ficheiro: {rejectingDoc.fileName}
-                  </p>
+                  <p className="truncate text-xs text-muted">Ficheiro: {rejectingDoc.fileName}</p>
                   <p className="text-xs text-muted">
                     NIF: {rejectingDoc.breeder.nif} {'\u2022'} {rejectingDoc.docType}
                   </p>

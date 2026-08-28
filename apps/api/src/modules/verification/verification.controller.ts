@@ -46,12 +46,7 @@ import type { ReviewVerificationDocInput } from '@patacerta/shared'
 // nao-fiavel) e' servido como application/octet-stream com Content-
 // Disposition attachment para evitar XSS via ficheiros antigos cujo
 // MIME armazenado seja text/html ou similar.
-const SAFE_INLINE_MIMES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-])
+const SAFE_INLINE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
 
 /**
  * Garante que a string e' segura para uso em headers HTTP. Remove
@@ -177,10 +172,9 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     })
     for (const old of previouslyRejected) {
       const { isPrivate, objectName } = resolveDocStorage(old.fileUrl)
-      await (isPrivate
-        ? deletePrivateFile(objectName)
-        : deletePublicFile(objectName)
-      ).catch(() => undefined)
+      await (isPrivate ? deletePrivateFile(objectName) : deletePublicFile(objectName)).catch(
+        () => undefined,
+      )
       await prisma.verificationDoc.delete({ where: { id: old.id } }).catch(() => undefined)
     }
   }
@@ -423,7 +417,8 @@ export const reviewDocument = asyncHandler(async (req, res) => {
   // detail inclui sempre a transicao para facilitar troubleshooting.
   // Notas truncadas a 200 chars para evitar duplicar texto longo no
   // audit log (a versao completa fica em verificationDoc.notes).
-  const baseAction = status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED'
+  const baseAction =
+    status === 'APPROVED' ? 'VERIFICATION_DOC_APPROVED' : 'VERIFICATION_DOC_REJECTED'
   const notesSummary = truncateForAudit(notes)
   await logAudit({
     userId: req.user!.userId,

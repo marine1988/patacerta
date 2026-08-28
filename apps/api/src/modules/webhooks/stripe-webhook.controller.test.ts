@@ -333,19 +333,17 @@ describe('handleStripeWebhook — checkout.session.completed', () => {
     // Primeira lookup (por sessionId) devolve null. Segunda lookup (por
     // id=777) devolve o slot. O webhook deve patchear o sessionId em
     // falta e activar.
-    mockedPrisma.sponsoredBreedSlot.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 777,
-        paymentStatus: 'PENDING',
-        priceCents: 1000,
-        currency: 'EUR',
-        stripeCheckoutSessionId: null,
-        paidByUserId: 1,
-        breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
-        breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
-        paidBy: null,
-      })
+    mockedPrisma.sponsoredBreedSlot.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 777,
+      paymentStatus: 'PENDING',
+      priceCents: 1000,
+      currency: 'EUR',
+      stripeCheckoutSessionId: null,
+      paidByUserId: 1,
+      breed: { id: 1, namePt: 'Labrador', nameSlug: 'labrador' },
+      breeder: { id: 7, businessName: 'Canil Teste', status: 'VERIFIED' },
+      paidBy: null,
+    })
     mockedPrisma.sponsoredBreedSlot.update.mockResolvedValue({ id: 777 })
     mockedPrisma.sponsoredBreedSlot.updateMany.mockResolvedValue({ count: 1 })
     mockPaymentIntentsRetrieve.mockResolvedValue({

@@ -139,7 +139,13 @@ function BreederDetailSkeleton() {
             <Skeleton height="h-5" width="w-40" animate={false} />
             <div className="mt-3 flex flex-wrap gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} height="h-7" width="w-24" rounded="rounded-full" animate={false} />
+                <Skeleton
+                  key={i}
+                  height="h-7"
+                  width="w-24"
+                  rounded="rounded-full"
+                  animate={false}
+                />
               ))}
             </div>
           </Card>
@@ -175,7 +181,13 @@ function BreederDetailSkeleton() {
 
           <Card hover={false}>
             <Skeleton height="h-5" width="w-28" animate={false} />
-            <Skeleton height="h-48" width="w-full" rounded="rounded-lg" className="mt-3" animate={false} />
+            <Skeleton
+              height="h-48"
+              width="w-full"
+              rounded="rounded-lg"
+              className="mt-3"
+              animate={false}
+            />
           </Card>
         </div>
       </div>
@@ -408,9 +420,7 @@ export function BreederProfilePage() {
 
   const createThreadMutation = useMutation({
     mutationFn: (values: { subject: string; body: string }) =>
-      api
-        .post('/messages/threads', { breederId: breederNumericId, ...values })
-        .then((r) => r.data),
+      api.post('/messages/threads', { breederId: breederNumericId, ...values }).then((r) => r.data),
     onSuccess: (res) => {
       setThreadModalOpen(false)
       setThreadError(null)
@@ -493,10 +503,7 @@ export function BreederProfilePage() {
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl font-bold text-gray-900">{breeder.businessName}</h1>
-                  <VerificationBadge
-                    status={breeder.status}
-                    verifiedAt={breeder.verifiedAt}
-                  />
+                  <VerificationBadge status={breeder.status} verifiedAt={breeder.verifiedAt} />
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">

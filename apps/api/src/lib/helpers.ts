@@ -23,8 +23,7 @@ export function parseId(raw: string): number {
   // passa o `isNaN` e o `> 0`. Sem o `Number.isSafeInteger` (ou pelo
   // menos `Number.isFinite`), o Prisma e' chamado com Infinity e rebenta
   // com 500 em vez do 400 esperado.
-  if (!Number.isSafeInteger(id) || id <= 0)
-    throw new AppError(400, 'ID inválido', 'INVALID_ID')
+  if (!Number.isSafeInteger(id) || id <= 0) throw new AppError(400, 'ID inválido', 'INVALID_ID')
   return id
 }
 

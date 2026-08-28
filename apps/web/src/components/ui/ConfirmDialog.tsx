@@ -42,12 +42,7 @@ export function ConfirmDialog({
       <div className="space-y-5">
         <div className="text-sm leading-relaxed text-gray-700">{message}</div>
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isPending}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={onCancel} disabled={isPending} className="btn-secondary">
             {cancelLabel}
           </button>
           <button

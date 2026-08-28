@@ -29,7 +29,7 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
           }
         }
         return Promise.reject(error)
-      }
+      },
     )
 
     // Verificar estado de manutenção usando /api/status (não tem bypass)

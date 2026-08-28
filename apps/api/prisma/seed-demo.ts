@@ -33,11 +33,7 @@ import {
 import bcrypt from 'bcryptjs'
 import { generateBreederSlug } from '../src/lib/breeder-slug.js'
 import { generateServiceSlug } from '../src/lib/service-slug.js'
-import {
-  avatarForEmail,
-  breederPhotoForSeed,
-  servicePhotoForSeed,
-} from './seed-demo-images.js'
+import { avatarForEmail, breederPhotoForSeed, servicePhotoForSeed } from './seed-demo-images.js'
 
 const prisma = new PrismaClient()
 

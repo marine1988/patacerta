@@ -69,7 +69,7 @@ Outros eventos são ignorados com log.
 | `STRIPE_SECRET_KEY`           | api  | `sk_test_...` (stage) / `sk_live_...` (prod)                              |
 | `STRIPE_WEBHOOK_SECRET`       | api  | `whsec_...` (do endpoint configurado em Stripe Dashboard)                 |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | web  | `pk_test_...` / `pk_live_...` (não é usada no fluxo actual mas reservada) |
-| `BACKEND_URL`                 | api  | `https://stage.patacerta.pt` (success/cancel URLs)                    |
+| `BACKEND_URL`                 | api  | `https://stage.patacerta.pt` (success/cancel URLs)                        |
 | `FRONTEND_URL`                | api  | `https://stage.patacerta.pt` (redirect pós-pagamento)                     |
 
 **Como verificar quais estão presentes em runtime:**

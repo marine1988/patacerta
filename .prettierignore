@@ -1,0 +1,20 @@
+# Dependências e artefactos de build
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+.turbo
+
+# Ficheiros gerados / geridos por ferramentas (não formatar)
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Infra sensível (formatação pode mascarar diffs; gerir manualmente)
+docker-compose*.yml
+
+# Migrations Prisma — NUNCA reformatar (zona proibida)
+apps/api/prisma/migrations

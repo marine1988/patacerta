@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: "20"
-  PNPM_VERSION: "9.12.0"
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.12.0'
 
 jobs:
   lint-and-typecheck:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @patacerta/shared build
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @patacerta/shared build
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build

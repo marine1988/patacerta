@@ -25,6 +25,7 @@ PostgreSQL 16 com Prisma ORM.
 ## Entidades Principais
 
 ### User
+
 Utilizador da plataforma. Pode ter multiplos roles atraves de relacoes.
 
 ```prisma
@@ -50,6 +51,7 @@ model User {
 ```
 
 ### Breeder
+
 Perfil de criador de animais. Requer verificacao DGAV.
 
 ```prisma
@@ -75,6 +77,7 @@ model Breeder {
 ```
 
 ### Service
+
 Servico pet-related (dog-walking, pet-sitting, etc).
 
 ```prisma
@@ -103,6 +106,7 @@ model Service {
 ```
 
 ### Breed
+
 Catalogo de racas para o simulador "encontrar raca ideal".
 
 ```prisma
@@ -124,6 +128,7 @@ model Breed {
 ```
 
 ### Review / ServiceReview
+
 Avaliacoes de criadores e servicos.
 
 ```prisma
@@ -143,6 +148,7 @@ model Review {
 ```
 
 ### Thread / Message
+
 Sistema de mensagens privadas.
 
 ```prisma
@@ -168,6 +174,7 @@ model Message {
 ```
 
 ### SponsoredBreedSlot
+
 Slots patrocinados no simulador de racas (monetizacao).
 
 ```prisma
@@ -187,6 +194,7 @@ model SponsoredBreedSlot {
 ```
 
 ### RefreshToken
+
 Refresh tokens com rotacao e revogacao.
 
 ```prisma
@@ -270,6 +278,7 @@ enum SponsoredSlotPaymentStatus {
 ## Indices Importantes
 
 ### Breeder
+
 ```prisma
 @@index([status])
 @@index([districtId])
@@ -280,6 +289,7 @@ enum SponsoredSlotPaymentStatus {
 ```
 
 ### Service
+
 ```prisma
 @@index([status])
 @@index([categoryId])
@@ -290,12 +300,14 @@ enum SponsoredSlotPaymentStatus {
 ```
 
 ### Review
+
 ```prisma
 @@unique([breederId, authorId])
 @@index([breederId, status, createdAt])
 ```
 
 ### AuditLog
+
 ```prisma
 @@index([userId, createdAt(sort: Desc)])
 @@index([action, createdAt(sort: Desc)])
@@ -305,12 +317,15 @@ enum SponsoredSlotPaymentStatus {
 ## Tabelas de Lookup
 
 ### District / Municipality
+
 Distritos e concelhos de Portugal (seed estatico).
 
 ### Species
+
 Especies de animais (cao, gato, etc).
 
 ### ServiceCategory
+
 Categorias de servicos (passeios, pet-sitting, etc).
 
 ## Migracoes

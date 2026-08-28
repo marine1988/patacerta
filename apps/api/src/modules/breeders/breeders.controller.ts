@@ -168,7 +168,10 @@ export const getBreederById = asyncHandler(async (req, res) => {
     // Incluir user.isActive/suspendedAt para validar disponibilidade
     // após o fetch. Não fazem parte do BREEDER_PUBLIC_SELECT (que protege
     // PII como NIF/DGAV) por isso pedimos só o necessário.
-    select: { ...BREEDER_PUBLIC_SELECT, user: { select: { ...BREEDER_PUBLIC_SELECT.user.select, isActive: true, suspendedAt: true } } },
+    select: {
+      ...BREEDER_PUBLIC_SELECT,
+      user: { select: { ...BREEDER_PUBLIC_SELECT.user.select, isActive: true, suspendedAt: true } },
+    },
   })
 
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
@@ -467,13 +470,13 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
   const sensitiveChanges: Record<string, unknown> = {}
   if (updateData.nif !== undefined) sensitiveChanges.nifChanged = true
   if (updateData.dgavNumber !== undefined) sensitiveChanges.dgavChanged = true
-  if (updateData.businessName !== undefined)
-    sensitiveChanges.businessNameChanged = true
+  if (updateData.businessName !== undefined) sensitiveChanges.businessNameChanged = true
   if (updateData.districtId !== undefined || updateData.municipalityId !== undefined)
     sensitiveChanges.locationChanged = true
   if (breedIdsToSet !== undefined) sensitiveChanges.breedsCount = breedIdsToSet.length
   const otherFieldsChanged = Object.keys(updateData).filter(
-    (k) => !['nif', 'dgavNumber', 'businessName', 'slug', 'districtId', 'municipalityId'].includes(k),
+    (k) =>
+      !['nif', 'dgavNumber', 'businessName', 'slug', 'districtId', 'municipalityId'].includes(k),
   ).length
   if (otherFieldsChanged > 0) sensitiveChanges.otherFieldsChanged = otherFieldsChanged
 
@@ -651,7 +654,9 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
   // rows nao foram criadas — depois propagamos o primeiro erro encontrado.
   const uploadResults = await Promise.allSettled(
     files.map(async (file, i) => {
-      const buffer = await (await createSafeSharp(file.buffer))
+      const buffer = await (
+        await createSafeSharp(file.buffer)
+      )
         .rotate()
         .resize({
           width: PHOTO_MAX_DIMENSION,
@@ -685,9 +690,7 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
   if (failures.length > 0) {
     // Cleanup dos uploads bem-sucedidos cujos amigos falharam — tudo-ou-
     // -nada para nao apresentar uma galeria parcial ao utilizador.
-    const successes = uploadResults.flatMap((r) =>
-      r.status === 'fulfilled' ? [r.value] : [],
-    )
+    const successes = uploadResults.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
     await Promise.all(
       successes.map(async (s) => {
         await prisma.breederPhoto.delete({ where: { id: s.row.id } }).catch(() => {})
@@ -701,9 +704,7 @@ export const uploadBreederPhotos = asyncHandler(async (req, res) => {
     throw new AppError(500, 'Erro ao processar uma ou mais fotos', 'PHOTO_UPLOAD_FAILED')
   }
 
-  const created = uploadResults.flatMap((r) =>
-    r.status === 'fulfilled' ? [r.value.row] : [],
-  )
+  const created = uploadResults.flatMap((r) => (r.status === 'fulfilled' ? [r.value.row] : []))
 
   await logAudit({
     userId,

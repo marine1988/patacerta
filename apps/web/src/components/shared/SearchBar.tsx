@@ -19,9 +19,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
   const [district, setDistrict] = useState(() =>
     isOnSearch ? (searchParams.get('districtId') ?? '') : '',
   )
-  const [breed, setBreed] = useState(() =>
-    isOnSearch ? (searchParams.get('breedId') ?? '') : '',
-  )
+  const [breed, setBreed] = useState(() => (isOnSearch ? (searchParams.get('breedId') ?? '') : ''))
   const [query, setQuery] = useState(() => (isOnSearch ? (searchParams.get('query') ?? '') : ''))
 
   // Mantém o estado sincronizado quando o utilizador altera a URL por outro caminho

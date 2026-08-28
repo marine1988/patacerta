@@ -51,8 +51,7 @@ export const listReviews = asyncHandler(async (req, res) => {
   //   recebe todos os status (necessário para detectar PENDING/HIDDEN/FLAGGED
   //   na UI do criador/serviço e mostrar estado em vez de "Escrever avaliação").
   // - Restantes utilizadores (anónimos ou outros autenticados): apenas PUBLISHED.
-  const isOwnAuthorQuery =
-    !!requester && authorId !== undefined && authorId === requester.userId
+  const isOwnAuthorQuery = !!requester && authorId !== undefined && authorId === requester.userId
   if (requester?.role === 'ADMIN') {
     if (status) where.status = status
   } else if (isOwnAuthorQuery) {

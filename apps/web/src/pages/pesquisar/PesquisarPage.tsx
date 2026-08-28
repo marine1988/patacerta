@@ -25,11 +25,7 @@ const ServicesMapView = lazy(() =>
 
 function ViewFallback() {
   return (
-    <div
-      className="py-6"
-      aria-busy="true"
-      aria-label="A carregar resultados"
-    >
+    <div className="py-6" aria-busy="true" aria-label="A carregar resultados">
       {/* Filtros stripe */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Skeleton height="h-10" width="w-40" rounded="rounded-md" />

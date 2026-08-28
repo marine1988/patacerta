@@ -32,6 +32,7 @@ pnpm dev
 ```
 
 Aceder a:
+
 - Frontend: http://localhost:5173
 - API: http://localhost:3001/api
 - MinIO Console: http://localhost:9001 (user: patacerta_minio)
@@ -41,31 +42,31 @@ Aceder a:
 
 ### Root (monorepo)
 
-| Comando | Descricao |
-|---------|-----------|
-| `pnpm dev` | Iniciar API + Web em paralelo |
-| `pnpm dev:api` | Iniciar apenas API |
-| `pnpm dev:web` | Iniciar apenas Web |
-| `pnpm build` | Build de producao |
-| `pnpm typecheck` | Verificar tipos TypeScript |
-| `pnpm lint` | Correr linters |
-| `pnpm format` | Formatar codigo (Prettier) |
-| `pnpm test` | Correr testes |
+| Comando          | Descricao                     |
+| ---------------- | ----------------------------- |
+| `pnpm dev`       | Iniciar API + Web em paralelo |
+| `pnpm dev:api`   | Iniciar apenas API            |
+| `pnpm dev:web`   | Iniciar apenas Web            |
+| `pnpm build`     | Build de producao             |
+| `pnpm typecheck` | Verificar tipos TypeScript    |
+| `pnpm lint`      | Correr linters                |
+| `pnpm format`    | Formatar codigo (Prettier)    |
+| `pnpm test`      | Correr testes                 |
 
 ### Base de Dados
 
-| Comando | Descricao |
-|---------|-----------|
-| `pnpm db:migrate` | Criar/aplicar migracoes (dev) |
-| `pnpm db:seed` | Seed dados base (distritos, categorias, admin) |
-| `pnpm db:studio` | Abrir Prisma Studio |
+| Comando           | Descricao                                      |
+| ----------------- | ---------------------------------------------- |
+| `pnpm db:migrate` | Criar/aplicar migracoes (dev)                  |
+| `pnpm db:seed`    | Seed dados base (distritos, categorias, admin) |
+| `pnpm db:studio`  | Abrir Prisma Studio                            |
 
 ### Docker
 
-| Comando | Descricao |
-|---------|-----------|
-| `pnpm docker:up` | Iniciar Postgres + Redis + MinIO |
-| `pnpm docker:down` | Parar containers |
+| Comando            | Descricao                        |
+| ------------------ | -------------------------------- |
+| `pnpm docker:up`   | Iniciar Postgres + Redis + MinIO |
+| `pnpm docker:down` | Parar containers                 |
 
 ## Estrutura de Testes
 
@@ -86,11 +87,13 @@ Localizacao: `apps/api/src/**/*.test.ts`
 ### Web (`apps/web/`)
 
 Testes unitarios:
+
 ```bash
 pnpm --filter @patacerta/web test
 ```
 
 Testes E2E (Playwright):
+
 ```bash
 # Instalar browsers
 pnpm --filter @patacerta/web test:e2e:install
@@ -125,6 +128,7 @@ Localizacao: `apps/web/e2e/**/*.spec.ts`
 4. Testar com curl/Postman
 
 Exemplo:
+
 ```typescript
 // router
 router.post('/', validate(createXxxSchema), createXxx)
@@ -149,9 +153,10 @@ export const createXxx = asyncHandler(async (req, res) => {
 1. Criar componente em `apps/web/src/pages/<feature>/`
 2. Adicionar rota em `apps/web/src/App.tsx`
 3. Usar lazy loading:
+
 ```typescript
 const NovaPagina = lazy(() =>
-  import('./pages/feature/NovaPagina').then((m) => ({ default: m.NovaPagina }))
+  import('./pages/feature/NovaPagina').then((m) => ({ default: m.NovaPagina })),
 )
 ```
 
@@ -190,6 +195,7 @@ DISABLE_RATE_LIMITS=true           # Desligar rate limits
 ### API
 
 Usar VS Code debugger com configuracao:
+
 ```json
 {
   "type": "node",
@@ -202,6 +208,7 @@ Usar VS Code debugger com configuracao:
 ```
 
 Ou com `console.log` e `docker logs`:
+
 ```bash
 docker logs patacerta-api -f
 ```
@@ -233,6 +240,7 @@ pnpm --filter @patacerta/api db:seed:demo
 ```
 
 Ou via API (apenas em dev/stage):
+
 ```bash
 curl -X POST http://localhost:3001/api/admin/internal/run-demo-seed \
   -H "Authorization: Bearer <admin_token>"

@@ -7,7 +7,15 @@ import { formatDateShort } from '../../../lib/dates'
 import { extractApiError } from '../../../lib/errors'
 import { Pagination } from '../../../components/ui/Pagination'
 import type { Paginated } from '../../../lib/pagination'
-import { Badge, Button, SearchInput, Spinner, EmptyState, Select, Modal } from '../../../components/ui'
+import {
+  Badge,
+  Button,
+  SearchInput,
+  Spinner,
+  EmptyState,
+  Select,
+  Modal,
+} from '../../../components/ui'
 import { type User, statusBadgeVariant, roleBadgeVariant, statusLabel, roleLabel } from '../_shared'
 
 export function UtilizadoresTab() {

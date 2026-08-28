@@ -550,7 +550,9 @@ export function ServicesTab() {
             Crie e gira os seus anúncios de passeios, pet-sitting e treino.
           </p>
         </div>
-        <Button className="shrink-0" onClick={startNew}>Novo anúncio</Button>
+        <Button className="shrink-0" onClick={startNew}>
+          Novo anúncio
+        </Button>
       </div>
 
       {msg && (
@@ -685,7 +687,9 @@ export function ServicesTab() {
                         {s.status === 'PAUSED' && (
                           <Button
                             size="sm"
-                            loading={publishMutation.isPending && publishMutation.variables === s.id}
+                            loading={
+                              publishMutation.isPending && publishMutation.variables === s.id
+                            }
                             disabled={pauseMutation.isPending || publishMutation.isPending}
                             onClick={() => publishMutation.mutate(s.id)}
                           >
@@ -695,7 +699,9 @@ export function ServicesTab() {
                         {s.status === 'DRAFT' && s.photos.length > 0 && (
                           <Button
                             size="sm"
-                            loading={publishMutation.isPending && publishMutation.variables === s.id}
+                            loading={
+                              publishMutation.isPending && publishMutation.variables === s.id
+                            }
                             disabled={pauseMutation.isPending || publishMutation.isPending}
                             onClick={() => publishMutation.mutate(s.id)}
                           >
@@ -993,12 +999,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                       aria-label="A carregar concelhos"
                     >
                       {Array.from({ length: 6 }).map((_, i) => (
-                        <Skeleton
-                          key={i}
-                          height="h-7"
-                          width="w-20"
-                          rounded="rounded-full"
-                        />
+                        <Skeleton key={i} height="h-7" width="w-20" rounded="rounded-full" />
                       ))}
                     </div>
                   ) : (
@@ -1009,8 +1010,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                           .map((m) => {
                             const selected = form.coverageMunicipalityIds.includes(m.id)
                             const disabled =
-                              !selected &&
-                              form.coverageMunicipalityIds.length >= COVERAGE_MAX
+                              !selected && form.coverageMunicipalityIds.length >= COVERAGE_MAX
                             return (
                               <button
                                 key={m.id}

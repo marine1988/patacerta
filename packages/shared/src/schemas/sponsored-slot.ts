@@ -62,9 +62,7 @@ export type ListSponsoredSlotsInput = z.infer<typeof listSponsoredSlotsSchema>
 export const sponsoredSlotAvailabilityQuerySchema = z.object({
   breedId: z.coerce.number().int().positive(),
 })
-export type SponsoredSlotAvailabilityQuery = z.infer<
-  typeof sponsoredSlotAvailabilityQuerySchema
->
+export type SponsoredSlotAvailabilityQuery = z.infer<typeof sponsoredSlotAvailabilityQuerySchema>
 
 // ─── Owner: listagem do proprio criador (paginada) ───────────────────
 //
