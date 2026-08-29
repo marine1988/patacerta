@@ -8,6 +8,11 @@ import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { AdContainer, AD_SLOTS } from '../../components/ads'
 import { usePageMeta } from '../../hooks/usePageMeta'
 
+// Estatísticas públicas ocultas no arranque: com 0 criadores/serviços/avaliações
+// os números não ajudam à imagem. Reativar (SHOW_HOME_STATS = true) quando
+// houver dados que valha a pena mostrar.
+const SHOW_HOME_STATS = false
+
 interface PublicStats {
   breederCount: number
   breedCount: number
@@ -70,6 +75,7 @@ export function HomePage() {
     queryKey: ['public-stats'],
     queryFn: () => api.get('/search/stats').then((r) => r.data),
     staleTime: 3600_000,
+    enabled: SHOW_HOME_STATS,
   })
 
   const {
@@ -126,29 +132,33 @@ export function HomePage() {
             </aside>
           </div>
 
-          {/* Stats editoriais */}
-          <dl className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat value={stats?.breederCount} label="Criadores" loading={statsLoading} />
-            <Stat value={stats?.serviceCount} label="Serviços" loading={statsLoading} />
-            <Stat value={stats?.breedCount} label="Raças" loading={statsLoading} />
-            <Stat value={stats?.districtCount} label="Distritos" loading={statsLoading} />
-            <Stat value={stats?.reviewCount} label="Avaliações" loading={statsLoading} />
-          </dl>
-          {statsError && (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="mt-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4"
-            >
-              <p className="text-sm text-red-700">Não foi possível carregar as estatísticas.</p>
-              <button
-                type="button"
-                onClick={() => refetchStats()}
-                className="text-xs font-medium uppercase tracking-caps text-caramel-700 underline-offset-4 hover:underline"
-              >
-                Tentar novamente
-              </button>
-            </div>
+          {/* Stats editoriais — ocultas no arranque (ver SHOW_HOME_STATS no topo) */}
+          {SHOW_HOME_STATS && (
+            <>
+              <dl className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
+                <Stat value={stats?.breederCount} label="Criadores" loading={statsLoading} />
+                <Stat value={stats?.serviceCount} label="Serviços" loading={statsLoading} />
+                <Stat value={stats?.breedCount} label="Raças" loading={statsLoading} />
+                <Stat value={stats?.districtCount} label="Distritos" loading={statsLoading} />
+                <Stat value={stats?.reviewCount} label="Avaliações" loading={statsLoading} />
+              </dl>
+              {statsError && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4"
+                >
+                  <p className="text-sm text-red-700">Não foi possível carregar as estatísticas.</p>
+                  <button
+                    type="button"
+                    onClick={() => refetchStats()}
+                    className="text-xs font-medium uppercase tracking-caps text-caramel-700 underline-offset-4 hover:underline"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
