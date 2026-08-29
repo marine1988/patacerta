@@ -168,14 +168,17 @@ services:
       # Email — Resend (recomendado) ou SMTP. Obrigatorio em producao.
       # Resend: criar conta em resend.com, verificar dominio, obter API key.
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      FROM_EMAIL: ${FROM_EMAIL:-Patacerta <noreply@patacerta.pt>}
+      # NOTA: o remetente TEM de usar um dominio verificado no Resend.
+      # O dominio verificado e' 'mail.patacerta.pt' (o raiz 'patacerta.pt'
+      # NAO esta' verificado -> envios falham com 403). Ver docs.
+      FROM_EMAIL: ${FROM_EMAIL:-Patacerta <noreply@mail.patacerta.pt>}
       # SMTP alternativo (se nao usar Resend)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Patacerta <noreply@patacerta.pt>}
+      SMTP_FROM: ${SMTP_FROM:-Patacerta <noreply@mail.patacerta.pt>}
       # Escape hatches para arrancar prod sem email e com flags debug (NAO recomendado em uso normal).
       # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar email.
       ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}

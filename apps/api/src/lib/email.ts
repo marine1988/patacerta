@@ -2,7 +2,10 @@ import { Resend } from 'resend'
 import { maskEmail } from './redact.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Patacerta <noreply@patacerta.pt>'
+// O remetente TEM de usar um dominio verificado no Resend. O dominio
+// verificado e' 'mail.patacerta.pt' (o raiz 'patacerta.pt' NAO esta'
+// verificado, pelo que enviar a partir dele devolve 403).
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Patacerta <noreply@mail.patacerta.pt>'
 
 let resendClient: Resend | null = null
 
