@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { maskEmail } from './redact.js'
+import { getFrontendBaseUrl } from './env.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 // O remetente TEM de usar um dominio verificado no Resend. O dominio
@@ -54,23 +55,103 @@ async function sendMail({ to, subject, html, text }: SendMailParams): Promise<vo
   }
 }
 
+/* ==========================================================================
+ * Design tokens da marca (espelham tailwind.config: caramel/ink/cream/line).
+ * Emails usam estilos inline + tabelas por compatibilidade com clientes.
+ * ======================================================================== */
+const BRAND = {
+  caramel: '#B8895F',
+  caramelDeep: '#A07548',
+  ink: '#1A1A1A',
+  muted: '#5C574E',
+  subtle: '#8A837A',
+  cream: '#F7F3EC',
+  surface: '#FFFFFF',
+  line: '#E0D7C6',
+}
+
+const SERIF = "Georgia,'Times New Roman',serif"
+const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
+/** Botão de acção "bulletproof" (tabela) na cor da marca. */
+function ctaButton(url: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
+    <tr><td align="center" style="border-radius:10px;background:${BRAND.caramel};">
+      <a href="${url}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:${SANS};font-size:15px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:10px;">${label}</a>
+    </td></tr>
+  </table>`
+}
+
+/** Link de recurso quando o botão não funciona. */
+function fallbackLink(url: string): string {
+  return `<p style="font-family:${SANS};font-size:13px;line-height:1.6;color:${BRAND.subtle};margin:0;">
+    Se o botão não funcionar, copie este endereço para o navegador:<br>
+    <a href="${url}" target="_blank" style="color:${BRAND.caramelDeep};word-break:break-all;">${url}</a>
+  </p>`
+}
+
+/**
+ * Layout base da marca: fundo cream, cartão branco com header (logótipo +
+ * wordmark), corpo e rodapé. O logótipo é servido pelo frontend em
+ * `/email-logo.png` (PNG porque o Gmail bloqueia SVG).
+ */
 function baseLayout(title: string, bodyHtml: string): string {
+  const base = getFrontendBaseUrl()
+  const logoUrl = `${base}/email-logo.png`
+  const year = new Date().getFullYear()
   return `<!DOCTYPE html>
 <html lang="pt-PT">
-<head><meta charset="utf-8"><title>${title}</title></head>
-<body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f7f9;margin:0;padding:24px;color:#1f2937">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
-    <tr><td>
-      <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a">Patacerta</h1>
-      ${bodyHtml}
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0" />
-      <p style="font-size:12px;color:#6b7280;margin:0">
-        Recebeu este email porque tem uma conta em Patacerta. Se não foi você, ignore esta mensagem.
-      </p>
-    </td></tr>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:${BRAND.cream};-webkit-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BRAND.cream};">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${BRAND.surface};border:1px solid ${BRAND.line};border-radius:16px;overflow:hidden;">
+          <tr>
+            <td align="center" style="padding:36px 32px 18px;">
+              <img src="${logoUrl}" width="64" height="64" alt="PataCerta" style="display:block;width:64px;height:64px;border:0;outline:none;text-decoration:none;margin:0 auto 12px;">
+              <div style="font-family:${SERIF};font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:0.3px;">PataCerta</div>
+              <div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${BRAND.caramel};margin-top:7px;">◆ Criadores verificados · Portugal</div>
+            </td>
+          </tr>
+          <tr><td style="padding:0 32px;"><div style="height:1px;line-height:1px;font-size:0;background:${BRAND.line};">&nbsp;</div></td></tr>
+          <tr>
+            <td style="padding:28px 32px 8px;font-family:${SANS};color:${BRAND.ink};">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 32px 30px;">
+              <div style="height:1px;line-height:1px;font-size:0;background:${BRAND.line};margin:18px 0;">&nbsp;</div>
+              <p style="font-family:${SANS};font-size:12px;line-height:1.6;color:${BRAND.subtle};margin:0;">
+                Recebeu este email porque tem uma conta em <strong style="color:${BRAND.muted};">PataCerta</strong>. Se não foi você, ignore esta mensagem.
+              </p>
+              <p style="font-family:${SANS};font-size:11px;letter-spacing:1px;color:${BRAND.caramel};margin:12px 0 0;">
+                ◆ PATACERTA · <a href="${base}" target="_blank" style="color:${BRAND.subtle};text-decoration:none;">patacerta.pt</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+        <p style="font-family:${SANS};font-size:11px;color:#B0A99C;margin:16px 0 0;">© ${year} PataCerta — Portugal</p>
+      </td>
+    </tr>
   </table>
 </body>
 </html>`
+}
+
+function heading(text: string): string {
+  return `<h1 style="font-family:${SERIF};font-size:21px;font-weight:700;color:${BRAND.ink};margin:0 0 14px;">${text}</h1>`
+}
+
+function paragraph(text: string): string {
+  return `<p style="font-family:${SANS};font-size:15px;line-height:1.65;color:${BRAND.muted};margin:0 0 10px;">${text}</p>`
 }
 
 export async function sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
@@ -83,12 +164,11 @@ ${verificationUrl}
 Se não criou esta conta, ignore este email.`
   const html = baseLayout(
     subject,
-    `<p>Bem-vindo à <strong>Patacerta</strong>!</p>
-     <p>Para ativar a sua conta, clique no botão abaixo. O link é válido por 24 horas.</p>
-     <p style="margin:24px 0">
-       <a href="${verificationUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Confirmar email</a>
-     </p>
-     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${verificationUrl}</span></p>`,
+    `${heading('Bem-vindo à PataCerta!')}
+     ${paragraph('Falta só um passo: confirme o seu email para ativar a sua conta e começar a explorar criadores verificados e serviços de confiança.')}
+     ${paragraph('O link é válido por <strong style="color:' + BRAND.ink + '">24 horas</strong>.')}
+     ${ctaButton(verificationUrl, 'Confirmar email')}
+     ${fallbackLink(verificationUrl)}`,
   )
   await sendMail({ to, subject, html, text })
 }
@@ -103,13 +183,12 @@ ${resetUrl}
 Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.`
   const html = baseLayout(
     subject,
-    `<p>Recebemos um pedido para repor a palavra-passe da sua conta.</p>
-     <p>Para definir uma nova palavra-passe, clique no botão abaixo. O link é válido por 1 hora.</p>
-     <p style="margin:24px 0">
-       <a href="${resetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Repor palavra-passe</a>
-     </p>
-     <p style="font-size:13px;color:#6b7280">Se o botão não funcionar, copie este endereço para o navegador:<br><span style="word-break:break-all">${resetUrl}</span></p>
-     <p style="font-size:13px;color:#6b7280">Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.</p>`,
+    `${heading('Repor a sua palavra-passe')}
+     ${paragraph('Recebemos um pedido para repor a palavra-passe da sua conta. Clique no botão abaixo para definir uma nova.')}
+     ${paragraph('O link é válido por <strong style="color:' + BRAND.ink + '">1 hora</strong>.')}
+     ${ctaButton(resetUrl, 'Repor palavra-passe')}
+     ${fallbackLink(resetUrl)}
+     ${paragraph('Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.')}`,
   )
   await sendMail({ to, subject, html, text })
 }
@@ -152,25 +231,25 @@ A sua ficha aparece agora como criador recomendado para "${cleanBreedName}" no s
 Obrigado pelo apoio!
 Equipa Patacerta`
 
-  const safeBreederName = cleanBreederName
-  const safeBreedName = cleanBreedName
-  const safeEndsAt = endsAtFmt
-  const safePrice = formattedPrice
-  const safeReceiptUrl = receiptUrl
+  const row = (labelTxt: string, valueTxt: string) =>
+    `<tr>
+      <td style="padding:6px 14px 6px 0;font-family:${SANS};font-size:14px;color:${BRAND.subtle};">${labelTxt}</td>
+      <td style="padding:6px 0;font-family:${SANS};font-size:14px;font-weight:600;color:${BRAND.ink};">${valueTxt}</td>
+    </tr>`
 
   const html = baseLayout(
     subject,
-    `<p>O seu destaque no simulador de raça foi <strong>activado</strong>.</p>
-     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Criador:</td><td style="padding:6px 0;font-weight:600">${safeBreederName}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Raça:</td><td style="padding:6px 0;font-weight:600">${safeBreedName}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Activo até:</td><td style="padding:6px 0;font-weight:600">${safeEndsAt}</td></tr>
-       <tr><td style="padding:6px 12px 6px 0;color:#6b7280">Valor pago:</td><td style="padding:6px 0;font-weight:600">${safePrice}</td></tr>
+    `${heading('Destaque activado 🎉')}
+     ${paragraph('O seu destaque no simulador de raça foi <strong style="color:' + BRAND.ink + '">activado</strong>.')}
+     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;border-collapse:collapse;">
+       ${row('Criador', cleanBreederName)}
+       ${row('Raça', cleanBreedName)}
+       ${row('Activo até', endsAtFmt)}
+       ${row('Valor pago', formattedPrice)}
      </table>
-     ${safeReceiptUrl ? `<p style="margin:16px 0"><a href="${safeReceiptUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Ver recibo</a></p>` : ''}
-     <p>A sua ficha aparece agora como criador recomendado para <strong>${safeBreedName}</strong> no simulador da Patacerta.</p>
-     <p>Pode acompanhar impressões e cliques na sua <em>área pessoal</em>.</p>
-     <p>Obrigado pelo apoio!<br>Equipa Patacerta</p>`,
+     ${receiptUrl ? ctaButton(receiptUrl, 'Ver recibo') : ''}
+     ${paragraph('A sua ficha aparece agora como criador recomendado para <strong style="color:' + BRAND.ink + '">' + cleanBreedName + '</strong> no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.')}
+     ${paragraph('Obrigado pelo apoio!<br>Equipa PataCerta')}`,
   )
   await sendMail({ to, subject, html, text })
 }
