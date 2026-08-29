@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'r
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
-import { Card, Avatar, Badge, Button, Input, useConfirm } from '../../components/ui'
+import { Card, Avatar, Badge, Button, Input, PasswordInput, useConfirm } from '../../components/ui'
 import { extractApiError } from '../../lib/errors'
 import { validatePassword } from '../../lib/validation'
 export function ProfileTab() {
@@ -290,24 +290,21 @@ export function ProfileTab() {
       <Card hover={false}>
         <h3 className="text-lg font-semibold text-gray-900">Alterar palavra-passe</h3>
         <form onSubmit={handlePasswordSave} className="mt-4 space-y-4">
-          <Input
+          <PasswordInput
             label="Palavra-passe atual"
-            type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
+            <PasswordInput
               label="Nova palavra-passe"
-              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
             />
-            <Input
+            <PasswordInput
               label="Confirmar nova palavra-passe"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

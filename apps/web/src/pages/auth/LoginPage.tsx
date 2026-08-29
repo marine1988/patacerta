@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { loginSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { extractApiErrorInfo } from '../../lib/errors'
@@ -124,9 +125,8 @@ export function LoginPage() {
               autoComplete="email"
             />
 
-            <Input
+            <PasswordInput
               label="Palavra-passe"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { registerSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { validatePassword as validatePasswordShared } from '../../lib/validation'
@@ -234,9 +235,8 @@ export function RegisterPage() {
               autoComplete="email"
             />
 
-            <Input
+            <PasswordInput
               label="Palavra-passe"
-              type="password"
               value={form.password}
               onChange={(e) => update('password', e.target.value)}
               onBlur={handlePasswordBlur}
@@ -246,9 +246,8 @@ export function RegisterPage() {
               error={fieldErrors.password}
             />
 
-            <Input
+            <PasswordInput
               label="Confirmar palavra-passe"
-              type="password"
               value={form.confirmPassword}
               onChange={(e) => update('confirmPassword', e.target.value)}
               onBlur={handleConfirmPasswordBlur}

@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import { forgotPasswordSchema, resetPasswordSchema } from '@patacerta/shared'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { validatePassword } from '../../lib/validation'
@@ -237,18 +238,16 @@ function SetNewPasswordForm({ token }: { token: string }) {
               </div>
             )}
 
-            <Input
+            <PasswordInput
               label="Nova palavra-passe"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
             />
 
-            <Input
+            <PasswordInput
               label="Confirmar palavra-passe"
-              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
