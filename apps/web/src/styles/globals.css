@@ -237,6 +237,14 @@
     color: theme('colors.ink.dark');
   }
 
+  /* Leaflet: isolar o stacking context do mapa. Os panes (z-400) e controlos
+     (z-1000) do Leaflet ficavam acima da navbar (sticky, z-40) e cobriam o
+     menu ao fazer scroll. Com isolation:isolate, os z-index internos ficam
+     contidos na caixa do mapa e deixam de escapar por cima do cabeçalho. */
+  .leaflet-container {
+    isolation: isolate;
+  }
+
   /* ============================================================
    * CARDS
    * ============================================================ */
