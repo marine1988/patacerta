@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { LogoMark } from '@/components/shared/LogoMark'
 
 export function Footer() {
@@ -139,9 +139,33 @@ export function Footer() {
 }
 
 function FooterLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const location = useLocation()
+  const [targetPath, targetSearch = ''] = to.split('?')
+  const isCurrent =
+    location.pathname === targetPath &&
+    (targetSearch.length === 0
+      ? location.search.length === 0
+      : location.search === `?${targetSearch}`)
+
+  function handleClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!isCurrent) return
+    event.preventDefault()
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth'
+    window.scrollTo({ top: 0, behavior })
+  }
+
   return (
     <li>
-      <Link to={to} className="text-sm text-ink transition-colors hover:text-caramel-500">
+      <Link
+        to={to}
+        onClick={handleClick}
+        aria-current={isCurrent ? 'page' : undefined}
+        className={`text-sm underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500 ${
+          isCurrent ? 'font-medium text-caramel-500' : 'text-ink'
+        }`}
+      >
         {children}
       </Link>
     </li>

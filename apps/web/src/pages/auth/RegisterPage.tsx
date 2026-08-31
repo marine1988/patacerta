@@ -284,7 +284,7 @@ export function RegisterPage() {
                   to="/termos"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-caramel-600 hover:text-caramel-500"
+                  className="link-inline font-medium"
                 >
                   Termos de Utilização
                 </Link>{' '}
@@ -293,7 +293,7 @@ export function RegisterPage() {
                   to="/politica-privacidade"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-caramel-600 hover:text-caramel-500"
+                  className="link-inline font-medium"
                 >
                   Política de Privacidade
                 </Link>
