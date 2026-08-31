@@ -237,14 +237,6 @@
     color: theme('colors.ink.dark');
   }
 
-  /* Leaflet: isolar o stacking context do mapa. Os panes (z-400) e controlos
-     (z-1000) do Leaflet ficavam acima da navbar (sticky, z-40) e cobriam o
-     menu ao fazer scroll. Com isolation:isolate, os z-index internos ficam
-     contidos na caixa do mapa e deixam de escapar por cima do cabeçalho. */
-  .leaflet-container {
-    isolation: isolate;
-  }
-
   /* ============================================================
    * CARDS
    * ============================================================ */
@@ -504,4 +496,14 @@
 }
 .dark .text-red-700 {
   color: #f87171;
+}
+
+/* Leaflet: isolar o stacking context do mapa. Os panes (z-400) e controlos
+   (z-1000) do Leaflet ficavam acima da navbar (sticky, z-40) e cobriam o menu
+   ao fazer scroll. Com isolation:isolate os z-index internos ficam contidos na
+   caixa do mapa. Regra FORA de @layer de propósito: a classe .leaflet-container
+   é adicionada pelo Leaflet em runtime e o Tailwind purgaria a regra se
+   estivesse num @layer (não a encontra no código-fonte). */
+.leaflet-container {
+  isolation: isolate;
 }
