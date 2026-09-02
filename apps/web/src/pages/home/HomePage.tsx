@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -7,6 +8,7 @@ import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { AdContainer, AD_SLOTS } from '../../components/ads'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { LogoMark } from '../../components/shared/LogoMark'
 
 // Estatísticas públicas ocultas no arranque: com 0 criadores/serviços/avaliações
 // os números não ajudam à imagem. Reativar (SHOW_HOME_STATS = true) quando
@@ -57,6 +59,8 @@ interface FeaturedResponse {
 }
 
 export function HomePage() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
   usePageMeta({
     title: 'Criadores Verificados e Serviços para Cães em Portugal',
     description:
@@ -95,8 +99,13 @@ export function HomePage() {
       {/* ============================================================
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
-      <section className="relative">
-        <div className="mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
+      <section className="relative overflow-hidden">
+        <LogoMark
+          aria-hidden="true"
+          size={360}
+          className="pointer-events-none absolute -right-24 top-12 hidden rotate-[-18deg] opacity-[0.07] sm:block lg:-right-12 lg:top-4 lg:opacity-[0.09]"
+        />
+        <div className="relative mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
           <p className="eyebrow mb-6">◆ Criadores e Serviços · Portugal</p>
 
           <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
@@ -178,12 +187,51 @@ export function HomePage() {
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
       <section className="sticky top-[80px] z-30 border-y border-line bg-bg/95 backdrop-blur-md">
-        <div className="mx-auto max-w-[72rem] px-6 py-6 lg:px-8 lg:py-8">
-          <div className="mb-5 flex items-baseline gap-3 lg:mb-6">
-            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
-            <span className="h-px flex-1 bg-line" />
+        <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen((open) => !open)}
+              className="btn-icon h-11 w-11 border border-line bg-surface hover:border-caramel-500"
+              aria-label={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
+              aria-controls="homepage-search"
+              aria-expanded={isSearchOpen}
+              title={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
+            >
+              {isSearchOpen ? (
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              ) : (
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m21 21-4.35-4.35m1.1-5.4a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
+                  />
+                </svg>
+              )}
+            </button>
           </div>
-          <SearchBar showSearchType />
+          {isSearchOpen && (
+            <div id="homepage-search" className="pb-4 pt-3">
+              <SearchBar showSearchType />
+            </div>
+          )}
         </div>
       </section>
 
