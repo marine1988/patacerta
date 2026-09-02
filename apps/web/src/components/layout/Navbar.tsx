@@ -164,11 +164,12 @@ export function Navbar() {
           </Link>
           <Link
             to="/simulador-raca"
-            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+            className={`text-center text-[11px] font-medium uppercase leading-tight tracking-caps transition-colors ${
               isActive('/simulador-raca') ? 'text-caramel-500' : 'text-muted hover:text-ink'
             }`}
           >
-            Simulador
+            <span className="block">Companheiro</span>
+            <span className="block">ideal</span>
           </Link>
 
           {isAuthenticated ? (
@@ -364,9 +365,10 @@ export function Navbar() {
             <Link
               to="/simulador-raca"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
+              className="px-2 py-3 text-[11px] font-medium uppercase leading-tight tracking-caps text-ink"
             >
-              Simulador
+              <span className="block">Companheiro</span>
+              <span className="block">ideal</span>
             </Link>
 
             {isAuthenticated ? (
