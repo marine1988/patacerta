@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -59,6 +59,24 @@ interface FeaturedResponse {
 
 export function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [showStickySearch, setShowStickySearch] = useState(false)
+  const searchSectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    function updateStickySearch() {
+      const section = searchSectionRef.current
+      if (!section) return
+      setShowStickySearch(section.getBoundingClientRect().bottom <= 80)
+    }
+
+    updateStickySearch()
+    window.addEventListener('scroll', updateStickySearch, { passive: true })
+    window.addEventListener('resize', updateStickySearch)
+    return () => {
+      window.removeEventListener('scroll', updateStickySearch)
+      window.removeEventListener('resize', updateStickySearch)
+    }
+  }, [])
 
   usePageMeta({
     title: 'Criadores Verificados e Serviços para Cães em Portugal',
@@ -190,54 +208,66 @@ export function HomePage() {
       {/* ============================================================
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
-      <section className="sticky top-[80px] z-30 border-y border-line bg-bg/95 backdrop-blur-md">
-        <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setIsSearchOpen((open) => !open)}
-              className="btn-icon h-11 w-11 border border-line bg-surface hover:border-caramel-500"
-              aria-label={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
-              aria-controls="homepage-search"
-              aria-expanded={isSearchOpen}
-              title={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
-            >
-              {isSearchOpen ? (
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m21 21-4.35-4.35m1.1-5.4a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
-                  />
-                </svg>
-              )}
-            </button>
+      <section ref={searchSectionRef} className="border-y border-line">
+        <div className="mx-auto max-w-[72rem] px-6 py-8 lg:px-8 lg:py-10">
+          <div className="mb-5 flex items-baseline gap-3 lg:mb-6">
+            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
+            <span className="h-px flex-1 bg-line" />
           </div>
-          {isSearchOpen && (
-            <div id="homepage-search" className="pb-4 pt-3">
-              <SearchBar showSearchType />
-            </div>
-          )}
+          <SearchBar showSearchType idPrefix="home-search" />
         </div>
       </section>
+
+      {showStickySearch && (
+        <div className="fixed inset-x-0 top-[80px] z-30 border-b border-line bg-bg/95 backdrop-blur-md">
+          <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen((open) => !open)}
+                className="btn-icon h-11 w-11 border border-line bg-surface hover:border-caramel-500"
+                aria-label={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
+                aria-controls="homepage-search"
+                aria-expanded={isSearchOpen}
+                title={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
+              >
+                {isSearchOpen ? (
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m21 21-4.35-4.35m1.1-5.4a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {isSearchOpen && (
+              <div id="homepage-search" className="pb-4 pt-3">
+                <SearchBar showSearchType idPrefix="sticky-search" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ============================================================
        * DESTAQUES — dois carrosseis horizontais (estilo OLX)

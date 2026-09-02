@@ -6,11 +6,16 @@ import { useBreeds, useDistricts } from '../../lib/useLookups'
 interface SearchBarProps {
   compact?: boolean
   showSearchType?: boolean
+  idPrefix?: string
 }
 
 type SearchType = 'criadores' | 'servicos'
 
-export function SearchBar({ compact = false, showSearchType = false }: SearchBarProps) {
+export function SearchBar({
+  compact = false,
+  showSearchType = false,
+  idPrefix = 'searchbar',
+}: SearchBarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -124,11 +129,11 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
         className={`grid gap-4 sm:grid-cols-2 ${searchType === 'criadores' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}
       >
         <div>
-          <label className="label" htmlFor="searchbar-district">
+          <label className="label" htmlFor={`${idPrefix}-district`}>
             Distrito
           </label>
           <select
-            id="searchbar-district"
+            id={`${idPrefix}-district`}
             className="select searchbar-control"
             aria-label="Distrito"
             value={district}
@@ -145,11 +150,11 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
 
         {searchType === 'criadores' && (
           <div>
-            <label className="label" htmlFor="searchbar-breed">
+            <label className="label" htmlFor={`${idPrefix}-breed`}>
               Raça
             </label>
             <select
-              id="searchbar-breed"
+              id={`${idPrefix}-breed`}
               className="select searchbar-control"
               aria-label="Raça"
               value={breed}
@@ -166,11 +171,11 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
         )}
 
         <div>
-          <label className="label" htmlFor="searchbar-query">
+          <label className="label" htmlFor={`${idPrefix}-query`}>
             Pesquisa
           </label>
           <input
-            id="searchbar-query"
+            id={`${idPrefix}-query`}
             type="text"
             className="input searchbar-control"
             placeholder={
