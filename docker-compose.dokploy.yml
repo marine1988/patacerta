@@ -157,6 +157,7 @@ services:
       # Lower-environment flags — do NOT enable in production
       RESET_DB_ON_BOOT: ${RESET_DB_ON_BOOT:-false}
       RUN_SEED_ON_BOOT: ${RUN_SEED_ON_BOOT:-false}
+      SEED_INCLUDE_DEMO: ${SEED_INCLUDE_DEMO:-false}
       AUTH_SKIP_EMAIL_VERIFICATION: ${AUTH_SKIP_EMAIL_VERIFICATION:-false}
       DISABLE_RATE_LIMITS: ${DISABLE_RATE_LIMITS:-false}
       # Stripe — definir no painel Dokploy. Em stage usar chaves de
