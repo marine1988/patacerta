@@ -120,7 +120,7 @@ export function HomePage() {
         <div className="mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
           <p className="eyebrow mb-6">◆ Criadores e Serviços · Portugal</p>
 
-          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
+          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr_0.8fr] lg:items-end lg:gap-10">
             <div>
               <h1 className="font-serif text-[2.75rem] leading-[1.02] sm:text-display">
                 O portal dos
@@ -143,24 +143,19 @@ export function HomePage() {
               </div>
             </div>
 
-            <figure className="hidden lg:block">
-              <img
-                src="/malinois-hero.jpg"
-                alt="Pastor Belga Malinois numa praia"
-                className="aspect-[4/3] w-full object-cover"
-              />
-              <figcaption className="mt-2 text-xs text-subtle">
-                Foto: JimsBack,{' '}
-                <a
-                  href="https://commons.wikimedia.org/wiki/File:Belgian_Malinois_at_beach_(52444841247).jpg"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-ink"
-                >
-                  CC BY-SA 2.0
-                </a>
-              </figcaption>
-            </figure>
+            <aside className="hidden border-l border-line pl-10 lg:block">
+              <p className="eyebrow-muted mb-4">— Manifesto</p>
+              <p className="font-serif text-xl italic leading-snug text-ink">
+                "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
+                o passeia, quem o acompanha. Rigor, transparência e cuidado em cada passo."
+              </p>
+            </aside>
+
+            <img
+              src="/Gemini_Generated_Image_9fi5ej9fi5ej9fi5.jpg"
+              alt="Pastor Belga Malinois sentado"
+              className="hidden w-full mix-blend-multiply lg:block"
+            />
           </div>
 
           {/* Stats editoriais — ocultas no arranque (ver SHOW_HOME_STATS no topo) */}
