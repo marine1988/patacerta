@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../ui/Button'
 import { useBreeds, useDistricts } from '../../lib/useLookups'
 
 interface SearchBarProps {
   compact?: boolean
+  showSearchType?: boolean
 }
 
-export function SearchBar({ compact = false }: SearchBarProps) {
+type SearchType = 'criadores' | 'servicos'
+
+export function SearchBar({ compact = false, showSearchType = false }: SearchBarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -21,6 +24,9 @@ export function SearchBar({ compact = false }: SearchBarProps) {
   )
   const [breed, setBreed] = useState(() => (isOnSearch ? (searchParams.get('breedId') ?? '') : ''))
   const [query, setQuery] = useState(() => (isOnSearch ? (searchParams.get('query') ?? '') : ''))
+  const [searchType, setSearchType] = useState<SearchType>(() =>
+    isOnSearch && searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores',
+  )
 
   // Mantém o estado sincronizado quando o utilizador altera a URL por outro caminho
   // (ex: botão "Limpar" ou navegação back/forward) enquanto está em `/pesquisar`.
@@ -29,27 +35,37 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     setDistrict(searchParams.get('districtId') ?? '')
     setBreed(searchParams.get('breedId') ?? '')
     setQuery(searchParams.get('query') ?? '')
+    setSearchType(searchParams.get('tipo') === 'servicos' ? 'servicos' : 'criadores')
   }, [isOnSearch, searchParams])
 
   const { data: districtList = [] } = useDistricts()
   const { data: breedList = [] } = useBreeds()
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
+  function getSearchParams() {
     // Preserva params alheios (ex: `tipo`, `vista`, `page`) que pertencem
     // a outros controlos da página `/pesquisar`.
     const params = isOnSearch ? new URLSearchParams(searchParams) : new URLSearchParams()
+    if (showSearchType && searchType === 'servicos') params.set('tipo', 'servicos')
+    else params.delete('tipo')
     if (district) params.set('districtId', district)
     else params.delete('districtId')
-    if (breed) params.set('breedId', breed)
+    if (breed && searchType === 'criadores') params.set('breedId', breed)
     else params.delete('breedId')
     const q = query.trim()
     if (q) params.set('query', q)
     else params.delete('query')
     // Ao mudar filtros, voltamos sempre à página 1.
     params.delete('page')
+    return params
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    const params = getSearchParams()
     navigate(`/pesquisar?${params.toString()}`)
   }
+
+  const advancedSearchPath = `/pesquisar?${getSearchParams().toString()}`
 
   if (compact) {
     return (
@@ -73,7 +89,40 @@ export function SearchBar({ compact = false }: SearchBarProps) {
       onSubmit={handleSearch}
       className="rounded-2xl border border-gray-200 bg-white p-4 shadow-lg sm:p-6"
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {showSearchType && (
+        <div className="mb-5 border-b border-line">
+          <div className="-mb-px flex gap-6" aria-label="Tipo de pesquisa">
+            <button
+              type="button"
+              onClick={() => setSearchType('criadores')}
+              className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
+                searchType === 'criadores'
+                  ? 'border-caramel-600 text-caramel-700'
+                  : 'border-transparent text-muted hover:border-line hover:text-ink'
+              }`}
+              aria-pressed={searchType === 'criadores'}
+            >
+              Criadores
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchType('servicos')}
+              className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
+                searchType === 'servicos'
+                  ? 'border-caramel-600 text-caramel-700'
+                  : 'border-transparent text-muted hover:border-line hover:text-ink'
+              }`}
+              aria-pressed={searchType === 'servicos'}
+            >
+              Serviços
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`grid gap-4 sm:grid-cols-2 ${searchType === 'criadores' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}
+      >
         <div>
           <label className="label" htmlFor="searchbar-district">
             Distrito
@@ -94,25 +143,27 @@ export function SearchBar({ compact = false }: SearchBarProps) {
           </select>
         </div>
 
-        <div>
-          <label className="label" htmlFor="searchbar-breed">
-            Raça
-          </label>
-          <select
-            id="searchbar-breed"
-            className="select"
-            aria-label="Raça"
-            value={breed}
-            onChange={(e) => setBreed(e.target.value)}
-          >
-            <option value="">Todas as raças</option>
-            {breedList.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.namePt}
-              </option>
-            ))}
-          </select>
-        </div>
+        {searchType === 'criadores' && (
+          <div>
+            <label className="label" htmlFor="searchbar-breed">
+              Raça
+            </label>
+            <select
+              id="searchbar-breed"
+              className="select"
+              aria-label="Raça"
+              value={breed}
+              onChange={(e) => setBreed(e.target.value)}
+            >
+              <option value="">Todas as raças</option>
+              {breedList.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.namePt}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="label" htmlFor="searchbar-query">
@@ -122,7 +173,9 @@ export function SearchBar({ compact = false }: SearchBarProps) {
             id="searchbar-query"
             type="text"
             className="input"
-            placeholder="Nome do criador..."
+            placeholder={
+              searchType === 'servicos' ? 'Serviço ou profissional...' : 'Nome do criador...'
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -149,6 +202,13 @@ export function SearchBar({ compact = false }: SearchBarProps) {
           </Button>
         </div>
       </div>
+      {showSearchType && (
+        <div className="mt-5 flex justify-center border-t border-line pt-4">
+          <Link to={advancedSearchPath} className="btn-secondary btn-sm">
+            Pesquisa avançada
+          </Link>
+        </div>
+      )}
     </form>
   )
 }

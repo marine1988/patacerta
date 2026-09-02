@@ -180,10 +180,10 @@ export function HomePage() {
       <section className="border-t border-line">
         <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
           <div className="mb-8 flex items-baseline gap-3">
-            <span className="eyebrow">◆ Encontrar criadores</span>
+            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
           </div>
-          <SearchBar />
+          <SearchBar showSearchType />
         </div>
       </section>
 
