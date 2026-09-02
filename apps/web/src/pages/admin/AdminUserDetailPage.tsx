@@ -58,7 +58,7 @@ interface UserDetailUser {
     verifiedAt: string | null
     suspendedAt: string | null
     suspendedReason: string | null
-    avgRating: number | null
+    avgRating: number | string | null
     reviewCount: number
     featuredUntil: string | null
     createdAt: string
@@ -71,7 +71,7 @@ interface UserDetailUser {
     priceCents: number
     priceUnit: string
     currency: string
-    avgRating: number | null
+    avgRating: number | string | null
     reviewCount: number
     createdAt: string
     publishedAt: string | null
@@ -153,6 +153,17 @@ function formatPrice(cents: number, currency: string, unit: string) {
     currency: currency || 'EUR',
   })
   return `${value} / ${unit}`
+}
+function formatRating(value: number | string | null): string | null {
+  if (value === null) return null
+
+  const rating = Number(value)
+  return Number.isFinite(rating) ? rating.toFixed(2) : null
+}
+
+function formatRatingWithCount(value: number | string | null, reviewCount: number): string {
+  const rating = formatRating(value)
+  return rating ? `${rating} (${reviewCount})` : '—'
 }
 
 export function AdminUserDetailPage() {
@@ -400,11 +411,7 @@ export function AdminUserDetailPage() {
               />
               <Field
                 label="Avaliação média"
-                value={
-                  user.breeder.avgRating !== null
-                    ? `${user.breeder.avgRating.toFixed(2)} (${user.breeder.reviewCount})`
-                    : '—'
-                }
+                value={formatRatingWithCount(user.breeder.avgRating, user.breeder.reviewCount)}
               />
               <Field
                 label="Destaque até"
@@ -454,9 +461,7 @@ export function AdminUserDetailPage() {
                         {formatPrice(s.priceCents, s.currency, s.priceUnit)}
                       </td>
                       <td className="px-2 py-1.5 text-ink">
-                        {s.avgRating !== null
-                          ? `${s.avgRating.toFixed(2)} (${s.reviewCount})`
-                          : '—'}
+                        {formatRatingWithCount(s.avgRating, s.reviewCount)}
                       </td>
                       <td className="px-2 py-1.5 text-muted">{formatDateShort(s.createdAt)}</td>
                       <td className="px-2 py-1.5">
