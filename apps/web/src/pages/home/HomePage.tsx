@@ -8,7 +8,6 @@ import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { AdContainer, AD_SLOTS } from '../../components/ads'
 import { usePageMeta } from '../../hooks/usePageMeta'
-import { LogoMark } from '../../components/shared/LogoMark'
 
 // Estatísticas públicas ocultas no arranque: com 0 criadores/serviços/avaliações
 // os números não ajudam à imagem. Reativar (SHOW_HOME_STATS = true) quando
@@ -100,12 +99,7 @@ export function HomePage() {
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative overflow-hidden">
-        <LogoMark
-          aria-hidden="true"
-          size={360}
-          className="pointer-events-none absolute -right-24 top-12 hidden rotate-[-18deg] opacity-[0.07] sm:block lg:-right-12 lg:top-4 lg:opacity-[0.09]"
-        />
-        <div className="relative mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
           <p className="eyebrow mb-6">◆ Criadores e Serviços · Portugal</p>
 
           <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
@@ -131,14 +125,24 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Aside editorial — manifesto curto */}
-            <aside className="hidden border-l border-line pl-10 lg:block">
-              <p className="eyebrow-muted mb-4">— Manifesto</p>
-              <p className="font-serif text-xl italic leading-snug text-ink">
-                "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
-                o passeia, quem o acompanha. Rigor, transparência e cuidado em cada passo."
-              </p>
-            </aside>
+            <figure className="hidden lg:block">
+              <img
+                src="/malinois-hero.jpg"
+                alt="Pastor Belga Malinois numa praia"
+                className="aspect-[4/3] w-full object-cover"
+              />
+              <figcaption className="mt-2 text-xs text-subtle">
+                Foto: JimsBack,{' '}
+                <a
+                  href="https://commons.wikimedia.org/wiki/File:Belgian_Malinois_at_beach_(52444841247).jpg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-ink"
+                >
+                  CC BY-SA 2.0
+                </a>
+              </figcaption>
+            </figure>
           </div>
 
           {/* Stats editoriais — ocultas no arranque (ver SHOW_HOME_STATS no topo) */}
