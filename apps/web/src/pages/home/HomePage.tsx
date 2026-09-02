@@ -145,9 +145,9 @@ export function HomePage() {
 
             <aside className="hidden border-l border-line pl-10 lg:block">
               <img
-                src="/Gemini_Generated_Image_9fi5ej9fi5ej9fi5.jpg"
+                src="/malinois-hero.png"
                 alt="Pastor Belga Malinois sentado"
-                className="mb-6 w-full mix-blend-multiply"
+                className="mb-6 w-full"
               />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
