@@ -30,7 +30,6 @@ RUN pnpm --filter @patacerta/shared build
 RUN pnpm --filter @patacerta/web build
 
 FROM nginx:alpine AS runner
-RUN apk add --no-cache apache2-utils
 COPY --from=base /app/apps/web/dist /usr/share/nginx/html
 
 # Templating do nginx.conf: a imagem oficial corre
@@ -40,8 +39,6 @@ COPY --from=base /app/apps/web/dist /usr/share/nginx/html
 # substituicao a `ROBOTS_HEADER`, evitando que `$host`, `$remote_addr`,
 # etc. (variaveis de runtime do nginx) sejam comidos pelo envsubst.
 COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY apps/web/docker-entrypoint.d/10-stage-basic-auth.sh /docker-entrypoint.d/10-stage-basic-auth.sh
-RUN chmod +x /docker-entrypoint.d/10-stage-basic-auth.sh
 ENV NGINX_ENVSUBST_FILTER=ROBOTS_HEADER
 ENV ROBOTS_HEADER=""
 

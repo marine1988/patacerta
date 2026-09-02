@@ -27,8 +27,6 @@ server {
     # as variaveis substituidas e nao quebrar `$host`, `$remote_addr`, etc.
     ${ROBOTS_HEADER}
 
-    include /etc/nginx/stage-basic-auth.conf;
-
     # Proxy API requests to the backend service.
     # IMPORTANTE: usar variavel `$api_upstream` (em vez de literal
     # `http://api:3001`) forca o nginx a re-resolver o hostname a cada
