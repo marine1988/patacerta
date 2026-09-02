@@ -87,7 +87,7 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
   return (
     <form
       onSubmit={handleSearch}
-      className="rounded-2xl border border-gray-200 bg-white p-4 shadow-lg sm:p-6"
+      className="rounded-md border border-line bg-surface p-5 shadow-soft sm:p-6"
     >
       {showSearchType && (
         <div className="mb-5 border-b border-line">
@@ -129,7 +129,7 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
           </label>
           <select
             id="searchbar-district"
-            className="select"
+            className="select searchbar-control"
             aria-label="Distrito"
             value={district}
             onChange={(e) => setDistrict(e.target.value)}
@@ -150,7 +150,7 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
             </label>
             <select
               id="searchbar-breed"
-              className="select"
+              className="select searchbar-control"
               aria-label="Raça"
               value={breed}
               onChange={(e) => setBreed(e.target.value)}
@@ -172,7 +172,7 @@ export function SearchBar({ compact = false, showSearchType = false }: SearchBar
           <input
             id="searchbar-query"
             type="text"
-            className="input"
+            className="input searchbar-control"
             placeholder={
               searchType === 'servicos' ? 'Serviço ou profissional...' : 'Nome do criador...'
             }
