@@ -96,23 +96,23 @@ export function HomePage() {
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative">
-        <div className="mx-auto max-w-[72rem] px-6 pb-24 pt-20 lg:px-8">
-          <p className="eyebrow mb-8">◆ Criadores e Serviços · Portugal</p>
+        <div className="mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
+          <p className="eyebrow mb-6">◆ Criadores e Serviços · Portugal</p>
 
-          <div className="grid gap-16 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
             <div>
-              <h1 className="display">
+              <h1 className="font-serif text-[2.75rem] leading-[1.02] sm:text-display">
                 O portal dos
                 <br />
                 <em>patudos</em> em Portugal.
               </h1>
-              <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted">
+              <p className="mt-6 max-w-lg text-base leading-relaxed text-muted lg:mt-8 lg:text-lg">
                 Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
                 passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
                 informadas.
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-6">
+              <div className="mt-8 flex flex-wrap items-center gap-4 lg:mt-10 lg:gap-6">
                 <Link to="/pesquisar" className="btn-primary">
                   Pesquisar criadores
                 </Link>
@@ -123,7 +123,7 @@ export function HomePage() {
             </div>
 
             {/* Aside editorial — manifesto curto */}
-            <aside className="border-l border-line pl-10">
+            <aside className="hidden border-l border-line pl-10 lg:block">
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
                 "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
@@ -177,9 +177,9 @@ export function HomePage() {
       {/* ============================================================
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
-          <div className="mb-8 flex items-baseline gap-3">
+      <section className="sticky top-[80px] z-30 border-y border-line bg-bg/95 backdrop-blur-md">
+        <div className="mx-auto max-w-[72rem] px-6 py-6 lg:px-8 lg:py-8">
+          <div className="mb-5 flex items-baseline gap-3 lg:mb-6">
             <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
           </div>
