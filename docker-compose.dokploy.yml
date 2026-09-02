@@ -105,6 +105,10 @@ services:
       # Em prod fica vazio. Em stage definir:
       #   ROBOTS_HEADER='add_header X-Robots-Tag "noindex, nofollow" always;'
       ROBOTS_HEADER: ${ROBOTS_HEADER:-}
+      # Em stage, definir STAGE_BASIC_AUTH_PASSWORD no Dokploy para proteger
+      # toda a aplicação (incluindo /api) com HTTP Basic Auth.
+      STAGE_BASIC_AUTH_PASSWORD: ${STAGE_BASIC_AUTH_PASSWORD:-}
+      STAGE_BASIC_AUTH_USER: ${STAGE_BASIC_AUTH_USER:-stage}
     networks:
       - dokploy-network
       - default

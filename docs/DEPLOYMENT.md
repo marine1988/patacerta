@@ -58,12 +58,14 @@ Deploy via Dokploy (Docker Compose).
 
 ### Opcionais
 
-| Variavel           | Default           | Descricao                              |
-| ------------------ | ----------------- | -------------------------------------- |
-| `VOLUME_PREFIX`    | `stage_patacerta` | Prefixo dos volumes Docker             |
-| `CORS_ORIGIN`      | `FRONTEND_URL`    | Origens CORS permitidas                |
-| `MAINTENANCE_MODE` | `0`               | `1` para activar modo manutencao       |
-| `ROBOTS_HEADER`    | vazio             | Header X-Robots-Tag (stage: `noindex`) |
+| Variavel                    | Default           | Descricao                                              |
+| --------------------------- | ----------------- | ------------------------------------------------------ |
+| `VOLUME_PREFIX`             | `stage_patacerta` | Prefixo dos volumes Docker                             |
+| `CORS_ORIGIN`               | `FRONTEND_URL`    | Origens CORS permitidas                                |
+| `MAINTENANCE_MODE`          | `0`               | `1` para activar modo manutencao                       |
+| `ROBOTS_HEADER`             | vazio             | Header X-Robots-Tag (stage: `noindex`)                 |
+| `STAGE_BASIC_AUTH_PASSWORD` | vazio             | Activa HTTP Basic Auth no nginx. Usar apenas em stage. |
+| `STAGE_BASIC_AUTH_USER`     | `stage`           | Utilizador do HTTP Basic Auth de stage.                |
 
 ### Flags de Seguranca (NUNCA em producao)
 
