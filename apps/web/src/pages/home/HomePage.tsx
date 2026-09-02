@@ -405,10 +405,9 @@ function Stat({
     <div className="flex flex-col-reverse">
       <dt className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</dt>
       {loading && value == null ? (
-        <dd
-          aria-label={`${label}: a carregar`}
-          className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12"
-        />
+        <dd className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12">
+          <span className="sr-only">{label}: a carregar</span>
+        </dd>
       ) : (
         <dd className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
           {value ?? '—'}
@@ -532,10 +531,11 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
           {s.municipality.namePt}, {s.district.namePt}
         </p>
         {rating && s.reviewCount > 0 && (
-          <div
-            className="mt-2 flex items-center gap-1.5 text-xs"
-            aria-label={`Avaliação ${rating} de 5, ${s.reviewCount} ${s.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
-          >
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="sr-only">
+              Avaliação {rating} de 5, {s.reviewCount}{' '}
+              {s.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+            </span>
             <span aria-hidden="true" className="font-semibold text-yellow-600">
               {rating}
             </span>
@@ -584,10 +584,11 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
           {b.municipality.namePt}, {b.district.namePt}
         </p>
         {rating && b.reviewCount > 0 && (
-          <div
-            className="mt-2 flex items-center gap-1.5 text-xs"
-            aria-label={`Avaliação ${rating} de 5, ${b.reviewCount} ${b.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
-          >
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="sr-only">
+              Avaliação {rating} de 5, {b.reviewCount}{' '}
+              {b.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+            </span>
             <span aria-hidden="true" className="font-semibold text-yellow-600">
               {rating}
             </span>

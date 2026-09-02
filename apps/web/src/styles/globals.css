@@ -136,7 +136,7 @@
     @apply btn bg-caramel-500 text-white hover:bg-caramel-700 active:bg-caramel-800;
   }
   .dark .btn-primary {
-    @apply text-bg-dark;
+    @apply text-white;
   }
 
   .btn-secondary {

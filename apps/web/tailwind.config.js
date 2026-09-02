@@ -12,11 +12,11 @@ export default {
           200: '#E4C6A6',
           300: '#D4A77E',
           400: '#C69568',
-          500: '#B8895F', // primary accent
-          600: '#A07548',
-          700: '#8F6541', // hover/deep
-          800: '#6E4E33',
-          900: '#4D3624',
+          500: '#8F6541', // primary accent, AA on light backgrounds
+          600: '#805A3A',
+          700: '#6E4E33', // hover/deep
+          800: '#5D402A',
+          900: '#493222',
         },
         sage: {
           50: '#EEF1EC',
