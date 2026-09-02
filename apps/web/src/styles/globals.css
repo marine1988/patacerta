@@ -251,7 +251,7 @@
     background-color: theme('colors.surface.dark');
     border-color: theme('colors.line.dark');
   }
-  .card:hover {
+  .card.card-hover:hover {
     border-color: theme('colors.caramel.500');
   }
   .card-body {

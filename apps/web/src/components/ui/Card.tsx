@@ -14,7 +14,7 @@ export function Card({
   ...props
 }: CardProps) {
   return (
-    <div className={`card ${hover ? 'hover:shadow-sm' : ''} ${className}`} {...props}>
+    <div className={`card ${hover ? 'card-hover hover:shadow-sm' : ''} ${className}`} {...props}>
       {padding ? <div className="card-body">{children}</div> : children}
     </div>
   )

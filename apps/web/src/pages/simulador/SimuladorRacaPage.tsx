@@ -289,7 +289,7 @@ export function SimuladorRacaPage() {
         ) : (
           <div className="flex flex-col gap-6">
             {results.map((r, idx) => (
-              <Card key={r.breed.id}>
+              <Card key={r.breed.id} hover={false}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   {/* Imagem da raça (à esquerda em desktop, no topo em mobile) */}
                   <BreedImage
