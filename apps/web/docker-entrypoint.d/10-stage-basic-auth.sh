@@ -18,7 +18,9 @@ case "$user" in
     ;;
 esac
 
-printf '%s\n' "$password" | htpasswd -i -B -c /etc/nginx/.htpasswd "$user"
+# APR1 e' suportado nativamente pelo modulo auth_basic do nginx Alpine.
+# Usamos stdin para que a password nunca apareca na lista de processos.
+printf '%s\n' "$password" | htpasswd -i -m -c /etc/nginx/.htpasswd "$user" >/dev/null
 
 cat > "$auth_config" <<'EOF'
 auth_basic "PataCerta stage";
