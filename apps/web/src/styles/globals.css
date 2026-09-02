@@ -47,6 +47,9 @@
   .dark .text-subtle {
     color: theme('colors.subtle.dark');
   }
+  .dark .text-caramel-500 {
+    color: theme('colors.caramel.300');
+  }
   .dark .border-line {
     border-color: theme('colors.line.dark');
   }
