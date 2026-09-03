@@ -231,8 +231,8 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
 
   return (
     <>
-      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="space-y-3">
+      <div className="mt-4 rounded-xl border border-line bg-surface p-3 text-ink shadow-sm sm:mt-6 sm:p-4">
+        <form onSubmit={handleSearchSubmit} className="space-y-2 sm:space-y-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
@@ -374,7 +374,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
         </form>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-between sm:mt-6">
         <div className="text-sm text-gray-600">
           {meta ? (
             <p>
@@ -387,7 +387,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
       </div>
 
       {showInitialSkeleton ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <ServiceCardSkeleton key={i} />
           ))}
@@ -426,14 +426,14 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
         )
       ) : (
         <>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {accumulated.map((s) => (
               <ServiceCard key={s.id} {...s} />
             ))}
           </div>
 
           {hasMore && (
-            <div className="mt-8 flex justify-center">
+            <div className="mt-6 flex justify-center sm:mt-8">
               <Button
                 variant="secondary"
                 onClick={loadMore}

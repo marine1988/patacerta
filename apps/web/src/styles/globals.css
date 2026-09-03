@@ -321,13 +321,13 @@
    * PAGE LAYOUT
    * ============================================================ */
   .page-container {
-    @apply mx-auto max-w-[72rem] px-4 py-7 md:px-6 md:py-12 lg:px-8;
+    @apply mx-auto max-w-[72rem] px-4 py-5 sm:py-7 md:px-6 md:py-10 lg:px-8;
   }
   .page-header {
-    @apply mb-6 md:mb-12;
+    @apply mb-4 sm:mb-6 md:mb-10;
   }
   .page-title {
-    @apply text-h1;
+    @apply text-3xl leading-tight sm:text-4xl md:text-h1;
     font-family: 'Lora', Georgia, serif;
     font-weight: 400;
   }

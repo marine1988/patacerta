@@ -6,15 +6,15 @@ export function Footer() {
     <>
       <ResponsibleAdoption />
       <footer className="border-t border-line bg-bg">
-        <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-12 lg:px-8 lg:py-16">
           {/* Editorial top line */}
-          <div className="mb-12 flex items-baseline gap-3">
+          <div className="mb-8 flex items-baseline gap-3 sm:mb-10">
             <span className="eyebrow">◆ PataCerta</span>
             <span className="h-px flex-1 bg-line" />
             <span className="eyebrow-muted">Est. 2025 · Portugal</span>
           </div>
 
-          <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-12">
             {/* Brand statement */}
             <div>
               <Link
@@ -34,8 +34,8 @@ export function Footer() {
 
             {/* Plataforma */}
             <div>
-              <h3 className="eyebrow mb-5">— Plataforma</h3>
-              <ul className="space-y-3">
+              <h3 className="eyebrow mb-4 sm:mb-5">— Plataforma</h3>
+              <ul className="space-y-2 sm:space-y-3">
                 <FooterLink to="/pesquisar">Criadores</FooterLink>
                 <FooterLink to="/pesquisar?tipo=servicos">Serviços</FooterLink>
                 <FooterLink to="/pesquisar?vista=mapa">Mapa</FooterLink>
@@ -46,8 +46,8 @@ export function Footer() {
 
             {/* Legal */}
             <div>
-              <h3 className="eyebrow mb-5">— Legal</h3>
-              <ul className="space-y-3">
+              <h3 className="eyebrow mb-4 sm:mb-5">— Legal</h3>
+              <ul className="space-y-2 sm:space-y-3">
                 <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
                 <FooterLink to="/termos">Termos de Utilização</FooterLink>
                 <FooterLink to="/termos-pagamento">Termos de Pagamento</FooterLink>
@@ -67,15 +67,15 @@ export function Footer() {
 
             {/* Contacto */}
             <div>
-              <h3 className="eyebrow mb-5">— Contacto</h3>
-              <ul className="space-y-3">
+              <h3 className="eyebrow mb-4 sm:mb-5">— Contacto</h3>
+              <ul className="space-y-2 sm:space-y-3">
                 <li className="text-sm text-muted">info@patacerta.pt</li>
                 <li className="text-sm text-muted">Lisboa, Portugal</li>
               </ul>
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-line pt-6 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-line pt-5 sm:mt-12 sm:flex-row sm:items-center sm:pt-6">
             <p className="text-[11px] uppercase tracking-caps text-subtle">
               © {new Date().getFullYear()} PataCerta — Todos os direitos reservados.
             </p>
@@ -92,10 +92,10 @@ export function Footer() {
 function ResponsibleAdoption() {
   return (
     <section
-      className="mt-24 border-t border-line bg-bg"
+      className="mt-10 border-t border-line bg-bg sm:mt-16 lg:mt-24"
       aria-labelledby="responsible-adoption-title"
     >
-      <div className="mx-auto max-w-[72rem] px-6 py-12 lg:px-8">
+      <div className="mx-auto max-w-[72rem] px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
         <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:items-start md:gap-12">
           <div>
             <h2 id="responsible-adoption-title" className="eyebrow mb-3">

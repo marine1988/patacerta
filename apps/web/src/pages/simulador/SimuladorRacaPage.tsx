@@ -415,39 +415,39 @@ export function SimuladorRacaPage() {
 
   // ─── Quiz ───────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[60rem] px-4 py-6 sm:px-6 md:py-10 lg:px-8">
-      <Breadcrumbs items={breadcrumbs} className="mb-6" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-10">
+    <div className="mx-auto max-w-[60rem] px-4 py-3 sm:px-6 sm:py-6 md:py-10 lg:px-8">
+      <Breadcrumbs items={breadcrumbs} className="mb-3 sm:mb-6" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-10">
         <figure className="order-first overflow-hidden border border-line bg-surface lg:sticky lg:top-24">
           <img
             src="/97e66299-877e-4534-a96d-994c239bc11a.jpg"
             alt="Cinco cães de diferentes raças sentados lado a lado"
-            className="h-auto w-full object-cover"
+            className="h-auto max-h-44 w-full object-cover sm:max-h-56 lg:max-h-none"
           />
-          <figcaption className="border-t border-line px-4 py-3 text-xs leading-relaxed text-muted">
+          <figcaption className="border-t border-line px-4 py-2 text-xs leading-relaxed text-muted sm:py-3">
             Cada cão tem necessidades próprias. Encontre o perfil mais próximo do seu estilo de
             vida.
           </figcaption>
         </figure>
 
         <div>
-          <header className="mb-5 text-center md:mb-8">
+          <header className="mb-3 text-center sm:mb-5 md:mb-8">
             <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
               Simulador de raça
             </p>
             <h1 className="mt-2 font-serif text-xl leading-tight text-ink sm:text-2xl md:text-3xl">
               Encontre o cão ideal para si
             </h1>
-            <p className="mt-3 text-muted">
+            <p className="mt-2 text-sm text-muted sm:mt-3 sm:text-base">
               Responda a {totalSteps} perguntas curtas. Demora menos de 2 minutos.
             </p>
-            <p className="mt-3 text-xs leading-relaxed text-muted">
+            <p className="mt-2 text-xs leading-relaxed text-muted sm:mt-3">
               Ferramenta orientativa — os resultados são sugestões, não recomendações profissionais.
             </p>
           </header>
 
           {/* Barra de progresso */}
-          <div className="mb-6 md:mb-8">
+          <div className="mb-4 sm:mb-6 md:mb-8">
             <div className="flex items-center justify-between text-xs text-muted">
               <span>
                 Pergunta {stepIndex + 1} de {totalSteps}
@@ -484,7 +484,7 @@ export function SimuladorRacaPage() {
               <div
                 role="radiogroup"
                 aria-labelledby={`quiz-q-${stepIndex}`}
-                className="mt-6 flex flex-col gap-3"
+                className="mt-4 flex flex-col gap-2 sm:mt-6 sm:gap-3"
                 onKeyDown={(e) => {
                   // ARIA radiogroup keyboard pattern: setas movem foco entre
                   // opcoes (sem alterar a seleccao actual ate Enter/Space).

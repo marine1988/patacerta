@@ -96,11 +96,11 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
 
   return (
     <>
-      <div className="mt-6">
+      <div className="mt-4 sm:mt-6">
         <SearchBar />
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-between sm:mt-6">
         <div className="text-sm text-gray-600">
           {meta ? (
             <p>
@@ -145,7 +145,7 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
       </div>
 
       {isLoading ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <BreederCardSkeleton key={i} />
           ))}
@@ -191,9 +191,9 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
       ) : (
         <>
           <div
-            className={`mt-4 ${
+            className={`mt-3 sm:mt-4 ${
               viewMode === 'grid'
-                ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'
+                ? 'grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3'
                 : 'flex flex-col gap-3'
             }`}
           >
@@ -220,7 +220,7 @@ interface PaginationProps {
 function Pagination({ page, totalPages, onGoToPage }: PaginationProps) {
   return (
     <nav
-      className="mt-8 flex items-center justify-center gap-2"
+      className="mt-6 flex items-center justify-center gap-2 sm:mt-8"
       role="navigation"
       aria-label="Paginação dos resultados"
     >

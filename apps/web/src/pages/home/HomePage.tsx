@@ -202,7 +202,7 @@ export function HomePage() {
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
       <section ref={searchSectionRef} className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           <div className="mb-4 flex items-baseline gap-3 lg:mb-6">
             <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
@@ -223,7 +223,7 @@ export function HomePage() {
        * DESTAQUES — dois carrosseis horizontais (estilo OLX)
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-12 px-4 py-12 sm:px-6 lg:space-y-16 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-14 lg:px-8 lg:py-14">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
@@ -262,8 +262,8 @@ export function HomePage() {
        * SIMULADOR — banner editorial para o quiz de raça
        * ============================================================ */}
       <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-          <div className="grid items-center gap-8 md:grid-cols-[1.4fr_1fr] lg:gap-12">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-20">
+          <div className="grid items-center gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-12">
             <div>
               <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
               <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
@@ -318,8 +318,8 @@ export function HomePage() {
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <div className="mb-10 max-w-2xl sm:mb-16">
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
+          <div className="mb-6 max-w-2xl sm:mb-10">
             <p className="eyebrow mb-4 sm:mb-6">— O que nos distingue</p>
             <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
               Três princípios que nos guiam em{' '}
@@ -327,7 +327,7 @@ export function HomePage() {
             </h2>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3 lg:gap-12">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-12">
             <Pillar
               number="01"
               title="Verificação documental"
@@ -351,19 +351,19 @@ export function HomePage() {
        * SERVIÇOS — nova vertical em destaque
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
-          <div className="mb-16 max-w-2xl">
-            <p className="eyebrow mb-6">◆ Serviços para patudos</p>
-            <h2 className="font-serif text-h2 text-ink">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-14 lg:px-8 lg:py-24">
+          <div className="mb-8 max-w-2xl sm:mb-12">
+            <p className="eyebrow mb-4 sm:mb-6">◆ Serviços para patudos</p>
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
               Profissionais de confiança, <em className="italic text-caramel-500">perto de si</em>.
             </h2>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
               Anúncios verificados de prestadores em Portugal. Procure por categoria, distrito ou
               proximidade — e fale directamente com quem vai cuidar do seu animal.
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-8">
             <ServiceCategoryCard
               eyebrow="01"
               title="Passeios"
@@ -384,7 +384,7 @@ export function HomePage() {
             />
           </div>
 
-          <div className="mt-12 flex flex-col items-start gap-6 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-8 flex flex-col items-start gap-5 border-t border-line pt-6 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:pt-8">
             <p className="font-serif text-lg italic text-muted">
               Mais categorias a chegar — banhos, transporte, veterinária.
             </p>
@@ -399,16 +399,16 @@ export function HomePage() {
        * CTA — registar criador
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 text-center lg:px-8">
-          <p className="eyebrow mb-6">◆ Criador ou prestador certificado</p>
-          <h2 className="font-serif text-h2 mx-auto max-w-2xl text-ink">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 text-center sm:py-14 lg:px-8 lg:py-24">
+          <p className="eyebrow mb-4 sm:mb-6">◆ Criador ou prestador certificado</p>
+          <h2 className="font-serif mx-auto max-w-2xl text-2xl leading-tight text-ink sm:text-h2">
             Faça parte de uma rede <em className="italic text-caramel-500">selecta</em> de
             profissionais portugueses.
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted">
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
             Visibilidade junto de famílias que procuram rigor. Perfil curado. Processo gratuito.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-6 sm:flex-row">
+          <div className="mt-7 flex flex-col items-center justify-center gap-5 sm:mt-10 sm:flex-row sm:gap-6">
             <Link to="/registar" className="btn-primary btn-lg">
               Juntar-me à PataCerta
             </Link>
@@ -461,9 +461,9 @@ function Pillar({
   return (
     <article className="group">
       <p className="font-serif text-5xl font-normal italic text-caramel-500">{number}</p>
-      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
-      <div className="mt-6 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
+      <h3 className="mt-4 font-serif text-2xl text-ink sm:mt-6">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-muted sm:mt-4">{description}</p>
+      <div className="mt-4 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24 sm:mt-6" />
     </article>
   )
 }
@@ -502,12 +502,12 @@ function ServiceCategoryCard({
   return (
     <Link
       to={href}
-      className="group block border border-line bg-surface p-10 transition-colors duration-200 hover:border-caramel-500"
+      className="group block border border-line bg-surface p-6 transition-colors duration-200 hover:border-caramel-500 sm:p-8 lg:p-10"
     >
       <p className="font-serif text-4xl font-normal italic text-caramel-500">{eyebrow}</p>
-      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
-      <div className="mt-8 flex items-center gap-3">
+      <h3 className="mt-4 font-serif text-2xl text-ink sm:mt-6">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-muted sm:mt-4">{description}</p>
+      <div className="mt-6 flex items-center gap-3 sm:mt-8">
         <span className="text-[11px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:text-caramel-700">
           Pesquisar
         </span>
