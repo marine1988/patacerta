@@ -417,20 +417,20 @@ export function SimuladorRacaPage() {
   return (
     <div className="mx-auto max-w-[60rem] px-4 py-3 sm:px-6 sm:py-6 md:py-10 lg:px-8">
       <Breadcrumbs items={breadcrumbs} className="mb-3 sm:mb-6" />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-10">
-        <figure className="order-first overflow-hidden border border-line bg-surface lg:sticky lg:top-24">
+      <div className="mx-auto max-w-[48rem]">
+        <figure className="overflow-hidden border border-line bg-surface">
           <img
             src="/97e66299-877e-4534-a96d-994c239bc11a.jpg"
             alt="Cinco cães de diferentes raças sentados lado a lado"
-            className="h-28 w-full object-cover sm:h-auto sm:max-h-56 lg:max-h-none"
+            className="h-28 w-full object-cover object-center sm:h-40 md:h-48"
           />
-          <figcaption className="hidden border-t border-line px-4 py-2 text-xs leading-relaxed text-muted sm:block sm:py-3">
+          <figcaption className="border-t border-line px-4 py-2 text-xs leading-relaxed text-muted sm:py-3">
             Cada cão tem necessidades próprias. Encontre o perfil mais próximo do seu estilo de
             vida.
           </figcaption>
         </figure>
 
-        <div>
+        <div className="mt-6 sm:mt-8">
           <header className="mb-3 text-center sm:mb-5 md:mb-8">
             <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
               Simulador de raça
