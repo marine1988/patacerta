@@ -621,8 +621,8 @@ export function ServiceDetailPage() {
 
           {/* Header */}
           <Card hover={false}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
                 <Badge variant="blue">{service.category.namePt}</Badge>
                 <h1 className="mt-2 text-2xl font-bold text-gray-900">{service.title}</h1>
                 <p className="mt-1 text-sm text-gray-500">
@@ -649,8 +649,8 @@ export function ServiceDetailPage() {
                   </div>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="shrink-0 text-right sm:ml-6">
+                <p className="whitespace-nowrap text-2xl font-bold text-gray-900">
                   {formatPrice(service.priceCents, service.priceUnit)}
                 </p>
                 {service.publishedAt && (
