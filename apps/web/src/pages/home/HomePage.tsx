@@ -58,7 +58,6 @@ interface FeaturedResponse {
 }
 
 export function HomePage() {
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [showStickySearch, setShowStickySearch] = useState(false)
   const searchSectionRef = useRef<HTMLElement>(null)
 
@@ -117,23 +116,23 @@ export function HomePage() {
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-[72rem] px-6 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16">
-          <p className="eyebrow mb-6">◆ Criadores e Serviços · Portugal</p>
+        <div className="mx-auto max-w-[72rem] px-6 pb-8 pt-8 lg:px-8 lg:pb-12 lg:pt-10">
+          <p className="eyebrow mb-4">◆ Criadores e Serviços · Portugal</p>
 
           <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
             <div>
-              <h1 className="font-serif text-[2.75rem] leading-[1.02] sm:text-display">
+              <h1 className="font-serif text-[2.45rem] leading-[1.02] sm:text-[4.25rem]">
                 O portal dos
                 <br />
-                <em>patudos</em> em Portugal.
+                <em className="text-caramel-500">patudos</em> em Portugal.
               </h1>
-              <p className="mt-6 max-w-lg text-base leading-relaxed text-muted lg:mt-8 lg:text-lg">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-muted lg:mt-5 lg:text-lg">
                 Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
                 passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
                 informadas.
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-4 lg:mt-10 lg:gap-6">
+              <div className="mt-6 flex flex-wrap items-center gap-4 lg:mt-7 lg:gap-6">
                 <Link to="/pesquisar" className="btn-primary">
                   Pesquisar criadores
                 </Link>
@@ -215,50 +214,7 @@ export function HomePage() {
       {showStickySearch && (
         <div className="fixed inset-x-0 top-[80px] z-30 border-b border-line bg-bg/95 backdrop-blur-md">
           <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen((open) => !open)}
-                className="btn-icon h-11 w-11 border border-line bg-surface hover:border-caramel-500"
-                aria-label={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
-                aria-controls="homepage-search"
-                aria-expanded={isSearchOpen}
-                title={isSearchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
-              >
-                {isSearchOpen ? (
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m21 21-4.35-4.35m1.1-5.4a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
-                    />
-                  </svg>
-                )}
-              </button>
-            </div>
-            {isSearchOpen && (
-              <div id="homepage-search" className="pb-4 pt-3">
-                <SearchBar showSearchType idPrefix="sticky-search" />
-              </div>
-            )}
+            <SearchBar compact showSearchType idPrefix="sticky-search" />
           </div>
         </div>
       )}

@@ -74,16 +74,68 @@ export function SearchBar({
 
   if (compact) {
     return (
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <form onSubmit={handleSearch} className="flex h-11 items-center gap-2">
         <input
           type="text"
-          className="input flex-1"
-          placeholder="Pesquisar criadores..."
+          className="h-11 min-w-0 flex-1 border border-line bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:border-caramel-500 focus:outline-none"
+          placeholder={
+            searchType === 'servicos' ? 'Pesquisar serviços...' : 'Pesquisar criadores...'
+          }
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <Button type="submit" variant="primary" size="sm">
-          Pesquisar
+        {showSearchType && (
+          <div
+            className="flex h-11 shrink-0 border border-line bg-surface p-0.5"
+            aria-label="Tipo de pesquisa"
+          >
+            <button
+              type="button"
+              onClick={() => setSearchType('criadores')}
+              className={`px-2 text-[10px] font-medium uppercase tracking-caps transition-colors sm:px-3 ${
+                searchType === 'criadores'
+                  ? 'bg-caramel-100 text-caramel-700'
+                  : 'text-muted hover:text-ink'
+              }`}
+              aria-pressed={searchType === 'criadores'}
+            >
+              Criadores
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchType('servicos')}
+              className={`px-2 text-[10px] font-medium uppercase tracking-caps transition-colors sm:px-3 ${
+                searchType === 'servicos'
+                  ? 'bg-caramel-100 text-caramel-700'
+                  : 'text-muted hover:text-ink'
+              }`}
+              aria-pressed={searchType === 'servicos'}
+            >
+              Serviços
+            </button>
+          </div>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          className="h-11 w-11 shrink-0 px-0"
+          aria-label="Pesquisar"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+            />
+          </svg>
+          <span className="sr-only">Pesquisar</span>
         </Button>
       </form>
     )
