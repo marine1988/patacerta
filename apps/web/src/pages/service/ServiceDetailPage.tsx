@@ -621,10 +621,23 @@ export function ServiceDetailPage() {
 
           {/* Header */}
           <Card hover={false}>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:gap-6">
-              <div className="min-w-0 flex-1">
+            <div className="space-y-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:gap-6">
                 <Badge variant="blue">{service.category.namePt}</Badge>
-                <h1 className="mt-2 text-2xl font-bold text-gray-900">{service.title}</h1>
+                <div className="shrink-0 text-right">
+                  <p className="whitespace-nowrap text-xl font-bold text-gray-900 sm:text-2xl">
+                    {formatPrice(service.priceCents, service.priceUnit)}
+                  </p>
+                  {service.publishedAt && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Publicado em {formatDate(service.publishedAt)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900">{service.title}</h1>
                 <p className="mt-1 text-sm text-gray-500">
                   {service.municipality.namePt}, {service.district.namePt}
                   {service.serviceRadiusKm !== null && (
@@ -647,16 +660,6 @@ export function ServiceDetailPage() {
                     </span>
                     <span className="text-gray-500">({service.reviewCount})</span>
                   </div>
-                )}
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="whitespace-nowrap text-xl font-bold text-gray-900 sm:text-2xl">
-                  {formatPrice(service.priceCents, service.priceUnit)}
-                </p>
-                {service.publishedAt && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Publicado em {formatDate(service.publishedAt)}
-                  </p>
                 )}
               </div>
             </div>
