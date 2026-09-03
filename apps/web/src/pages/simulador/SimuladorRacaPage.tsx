@@ -289,7 +289,7 @@ export function SimuladorRacaPage() {
         ) : (
           <div className="flex flex-col gap-6">
             {results.map((r, idx) => (
-              <Card key={r.breed.id}>
+              <Card key={r.breed.id} hover={false}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   {/* Imagem da raça (à esquerda em desktop, no topo em mobile) */}
                   <BreedImage
@@ -415,137 +415,151 @@ export function SimuladorRacaPage() {
 
   // ─── Quiz ───────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[40rem] px-6 py-12 lg:px-8">
-      <Breadcrumbs items={breadcrumbs} className="mb-6" />
-      <header className="mb-8 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
-          Simulador de raça
-        </p>
-        <h1 className="mt-2 font-serif text-3xl text-ink md:text-4xl">
-          Encontre o cão ideal para si
-        </h1>
-        <p className="mt-3 text-muted">
-          Responda a {totalSteps} perguntas curtas. Demora menos de 2 minutos.
-        </p>
-        <p className="mt-3 text-xs leading-relaxed text-muted">
-          Ferramenta orientativa — os resultados são sugestões, não recomendações profissionais.
-        </p>
-      </header>
-
-      {/* Barra de progresso */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span>
-            Pergunta {stepIndex + 1} de {totalSteps}
-          </span>
-          <span>{progress}%</span>
-        </div>
-        <div className="mt-2 h-1 w-full overflow-hidden bg-line">
-          <div
-            className="h-full bg-caramel-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
+    <div className="mx-auto max-w-[60rem] px-4 py-3 sm:px-6 sm:py-6 md:py-10 lg:px-8">
+      <Breadcrumbs items={breadcrumbs} className="mb-3 sm:mb-6" />
+      <div className="mx-auto max-w-[48rem]">
+        <header className="relative isolate mb-5 overflow-hidden px-4 py-8 text-center sm:mb-6 sm:px-8 sm:py-10 md:mb-8">
+          <img
+            src="/97e66299-877e-4534-a96d-994c239bc11a.jpg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover object-[center_18%] opacity-25 dark:opacity-20"
           />
-        </div>
-      </div>
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-bg/35 via-bg/85 to-bg" />
+          <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
+            Simulador de raça
+          </p>
+          <h1 className="mt-2 font-serif text-xl leading-tight text-ink sm:text-2xl md:text-3xl">
+            Encontre o cão ideal para si
+          </h1>
+          <p className="mt-2 text-sm text-muted sm:mt-3 sm:text-base">
+            Responda a {totalSteps} perguntas curtas. Demora menos de 2 minutos.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-muted sm:mt-3">
+            Ferramenta orientativa — os resultados são sugestões, não recomendações profissionais.
+          </p>
+        </header>
 
-      <Card>
         <div>
-          <h2 id={`quiz-q-${stepIndex}`} className="font-serif text-2xl text-ink">
-            {currentStep.title}
-          </h2>
-          {currentStep.subtitle && (
-            <p className="mt-2 text-sm text-muted">{currentStep.subtitle}</p>
-          )}
+          {/* Barra de progresso */}
+          <div className="mb-4 sm:mb-6 md:mb-8">
+            <div className="flex items-center justify-between text-xs text-muted">
+              <span>
+                Pergunta {stepIndex + 1} de {totalSteps}
+              </span>
+              <span>{progress}%</span>
+            </div>
+            <div className="mt-2 h-1 w-full overflow-hidden bg-line">
+              <div
+                className="h-full bg-caramel-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
 
-          {/* role="radiogroup" + role="radio" + aria-checked daoa a
+          <Card>
+            <div>
+              <h2
+                id={`quiz-q-${stepIndex}`}
+                className="font-serif text-lg leading-tight text-ink sm:text-xl md:text-2xl"
+              >
+                {currentStep.title}
+              </h2>
+              {currentStep.subtitle && (
+                <p className="mt-2 text-sm text-muted">{currentStep.subtitle}</p>
+              )}
+
+              {/* role="radiogroup" + role="radio" + aria-checked daoa a
               leitores de ecra a relacao entre as opcoes e a pergunta.
               Como avancamos automaticamente ao clicar, nao usamos
               <input type="radio"> nativo (que precisaria de submit
               separado). aria-labelledby aponta para o titulo da
               pergunta. Navegacao por setas e' feita pelo browser
               quando os elementos tem tabindex correcto. */}
-          <div
-            role="radiogroup"
-            aria-labelledby={`quiz-q-${stepIndex}`}
-            className="mt-6 flex flex-col gap-3"
-            onKeyDown={(e) => {
-              // ARIA radiogroup keyboard pattern: setas movem foco entre
-              // opcoes (sem alterar a seleccao actual ate Enter/Space).
-              // Sem isto, o tabIndex={-1} das opcoes nao seleccionadas
-              // tornava-as inalcancaveis por teclado, contrariando a
-              // expectativa de utilizadores de teclado/AT.
-              if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-              e.preventDefault()
-              const buttons = Array.from(
-                e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]'),
-              )
-              const active = document.activeElement as HTMLButtonElement | null
-              const currentIdx = active ? buttons.indexOf(active) : -1
-              const total = buttons.length
-              if (total === 0) return
-              const delta = e.key === 'ArrowDown' ? 1 : -1
-              const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + total) % total
-              const target = buttons[nextIdx]
-              // Garantir que o foco e' alcancavel mesmo se tabIndex=-1.
-              target.tabIndex = 0
-              target.focus()
-            }}
-          >
-            {currentStep.options.map((opt, idx) => {
-              const selected = answers[currentStep.field] === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={selected || (!answers[currentStep.field] && idx === 0) ? 0 : -1}
-                  onClick={() => handleSelect(opt.value)}
-                  className={`flex flex-col items-start gap-1 border px-4 py-3 text-left transition-colors ${
-                    selected
-                      ? 'border-caramel-500 bg-caramel-100/40'
-                      : 'border-line hover:border-caramel-500'
-                  }`}
-                >
-                  <span className="text-sm font-medium text-ink">{opt.label}</span>
-                  {opt.hint && <span className="text-xs text-muted">{opt.hint}</span>}
-                </button>
-              )
-            })}
-          </div>
+              <div
+                role="radiogroup"
+                aria-labelledby={`quiz-q-${stepIndex}`}
+                className="mt-4 flex flex-col gap-2 sm:mt-6 sm:gap-3"
+                onKeyDown={(e) => {
+                  // ARIA radiogroup keyboard pattern: setas movem foco entre
+                  // opcoes (sem alterar a seleccao actual ate Enter/Space).
+                  // Sem isto, o tabIndex={-1} das opcoes nao seleccionadas
+                  // tornava-as inalcancaveis por teclado, contrariando a
+                  // expectativa de utilizadores de teclado/AT.
+                  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+                  e.preventDefault()
+                  const buttons = Array.from(
+                    e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]'),
+                  )
+                  const active = document.activeElement as HTMLButtonElement | null
+                  const currentIdx = active ? buttons.indexOf(active) : -1
+                  const total = buttons.length
+                  if (total === 0) return
+                  const delta = e.key === 'ArrowDown' ? 1 : -1
+                  const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + total) % total
+                  const target = buttons[nextIdx]
+                  // Garantir que o foco e' alcancavel mesmo se tabIndex=-1.
+                  target.tabIndex = 0
+                  target.focus()
+                }}
+              >
+                {currentStep.options.map((opt, idx) => {
+                  const selected = answers[currentStep.field] === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      tabIndex={selected || (!answers[currentStep.field] && idx === 0) ? 0 : -1}
+                      onClick={() => handleSelect(opt.value)}
+                      className={`flex flex-col items-start gap-1 border px-4 py-3 text-left transition-colors ${
+                        selected
+                          ? 'border-caramel-500 bg-caramel-100/40'
+                          : 'border-line hover:border-caramel-500'
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-ink">{opt.label}</span>
+                      {opt.hint && <span className="text-xs text-muted">{opt.hint}</span>}
+                    </button>
+                  )
+                })}
+              </div>
 
-          {/* Affordance: ao escolher uma opcao avancamos automaticamente.
+              {/* Affordance: ao escolher uma opcao avancamos automaticamente.
               O utilizador pode pensar que ficou bloqueado se quiser
               mudar — clarificamos aqui (so a partir da pergunta 2). */}
-          {stepIndex > 0 && (
-            <p className="mt-4 text-xs text-subtle">
-              Pode voltar atrás a qualquer momento para alterar uma resposta.
-            </p>
-          )}
-        </div>
-      </Card>
+              {stepIndex > 0 && (
+                <p className="mt-4 text-xs text-subtle">
+                  Pode voltar atrás a qualquer momento para alterar uma resposta.
+                </p>
+              )}
+            </div>
+          </Card>
 
-      <div className="mt-6 flex justify-between">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={stepIndex === 0}
-          className={`inline-flex items-center gap-1 border px-3 py-2 text-xs font-medium uppercase tracking-caps transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-            stepIndex === 0
-              ? 'border-line text-muted'
-              : 'border-line text-ink hover:border-caramel-500 hover:text-caramel-500'
-          }`}
-          aria-label="Voltar à pergunta anterior"
-        >
-          ← Voltar
-        </button>
-        <button
-          type="button"
-          onClick={handleRestart}
-          className="text-[11px] font-medium uppercase tracking-caps text-muted hover:text-ink"
-        >
-          Recomeçar
-        </button>
+          <div className="mt-4 flex justify-between md:mt-6">
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={stepIndex === 0}
+              className={`inline-flex items-center gap-1 border px-3 py-2 text-xs font-medium uppercase tracking-caps transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                stepIndex === 0
+                  ? 'border-line text-muted'
+                  : 'border-line text-ink hover:border-caramel-500 hover:text-caramel-500'
+              }`}
+              aria-label="Voltar à pergunta anterior"
+            >
+              ← Voltar
+            </button>
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="text-[11px] font-medium uppercase tracking-caps text-muted hover:text-ink"
+            >
+              Recomeçar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

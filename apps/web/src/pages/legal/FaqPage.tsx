@@ -87,7 +87,7 @@ export function FaqPage() {
   })
 
   return (
-    <div className="container-app py-12">
+    <div className="page-container">
       <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="mx-auto max-w-3xl p-8">
         <h1 className="mb-3 font-serif text-2xl font-bold text-ink">Perguntas Frequentes</h1>

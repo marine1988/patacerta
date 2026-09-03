@@ -63,11 +63,11 @@ export function ConsentBanner() {
         aria-modal="false"
         aria-labelledby="consent-banner-title"
         aria-describedby="consent-banner-desc"
-        className="fixed inset-x-0 bottom-0 z-[1000] border-t border-line bg-surface shadow-lift"
+        className="fixed inset-x-0 bottom-0 z-[1000] max-h-[min(34rem,calc(100dvh-1rem))] overflow-y-auto border-t border-line bg-surface shadow-lift"
       >
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div className="flex-1">
+        <div className="mx-auto max-w-5xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+          <div className="flex flex-col gap-2.5">
+            <div className="min-w-0 max-w-full flex-1 break-words">
               <p
                 id="consent-banner-title"
                 className="text-[11px] uppercase tracking-caps text-subtle"
@@ -87,12 +87,12 @@ export function ConsentBanner() {
                 .
               </p>
             </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
                 disabled={submitting}
-                className="btn-secondary text-sm"
+                className="btn-secondary min-w-0 flex-1 whitespace-nowrap px-2.5 py-2 text-[10px] sm:flex-none sm:px-4 sm:py-2.5 sm:text-sm"
               >
                 Personalizar
               </button>
@@ -100,7 +100,7 @@ export function ConsentBanner() {
                 type="button"
                 onClick={handleRejectOptional}
                 disabled={submitting}
-                className="btn-secondary text-sm"
+                className="btn-secondary min-w-0 flex-1 whitespace-nowrap px-2.5 py-2 text-[10px] sm:flex-none sm:px-4 sm:py-2.5 sm:text-sm"
               >
                 Rejeitar opcionais
               </button>
@@ -108,7 +108,7 @@ export function ConsentBanner() {
                 type="button"
                 onClick={handleAcceptAll}
                 disabled={submitting}
-                className="btn-primary text-sm"
+                className="btn-primary min-w-0 flex-1 whitespace-nowrap px-2.5 py-2 text-[10px] sm:flex-none sm:px-4 sm:py-2.5 sm:text-sm"
               >
                 Aceitar todos
               </button>

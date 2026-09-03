@@ -445,7 +445,9 @@ export function AdminUserDetailPage() {
                     <th className="px-2 py-1.5">Preço</th>
                     <th className="px-2 py-1.5">Avaliação</th>
                     <th className="px-2 py-1.5">Criado</th>
-                    <th className="px-2 py-1.5"></th>
+                    <th scope="col" className="px-2 py-1.5">
+                      <span className="sr-only">Abrir serviço</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

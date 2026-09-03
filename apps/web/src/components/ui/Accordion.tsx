@@ -61,11 +61,11 @@ export function AccordionSection({
   }
 
   return (
-    <div className="border border-line bg-white" style={{ borderRadius: 2 }}>
+    <div className="border border-line bg-surface" style={{ borderRadius: 2 }}>
       <button
         type="button"
         onClick={handleClick}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-cream-50"
+        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-surface-alt sm:px-5 sm:py-4"
         aria-expanded={open}
       >
         <div className="min-w-0">

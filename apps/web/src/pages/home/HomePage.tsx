@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -57,6 +58,25 @@ interface FeaturedResponse {
 }
 
 export function HomePage() {
+  const [showStickySearch, setShowStickySearch] = useState(false)
+  const searchSectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    function updateStickySearch() {
+      const section = searchSectionRef.current
+      if (!section) return
+      setShowStickySearch(section.getBoundingClientRect().bottom <= 80)
+    }
+
+    updateStickySearch()
+    window.addEventListener('scroll', updateStickySearch, { passive: true })
+    window.addEventListener('resize', updateStickySearch)
+    return () => {
+      window.removeEventListener('scroll', updateStickySearch)
+      window.removeEventListener('resize', updateStickySearch)
+    }
+  }, [])
+
   usePageMeta({
     title: 'Criadores Verificados e Serviços para Cães em Portugal',
     description:
@@ -95,24 +115,24 @@ export function HomePage() {
       {/* ============================================================
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
-      <section className="relative">
-        <div className="mx-auto max-w-[72rem] px-6 pb-24 pt-20 lg:px-8">
-          <p className="eyebrow mb-8">◆ Criadores e Serviços · Portugal</p>
+      <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
+          <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
-          <div className="grid gap-16 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+          <div className="grid gap-7 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-10">
             <div>
-              <h1 className="display">
+              <h1 className="font-serif text-[2.15rem] leading-[1.06] sm:text-[4.25rem] lg:text-[3.75rem]">
                 O portal dos
                 <br />
-                <em>patudos</em> em Portugal.
+                <em className="text-caramel-500">patudos</em> em Portugal.
               </h1>
-              <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted">
+              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4 lg:mt-5 lg:text-lg">
                 Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
                 passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
                 informadas.
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-6">
+              <div className="mt-5 flex flex-wrap items-center gap-3 lg:mt-6 lg:gap-4">
                 <Link to="/pesquisar" className="btn-primary">
                   Pesquisar criadores
                 </Link>
@@ -122,8 +142,12 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Aside editorial — manifesto curto */}
-            <aside className="border-l border-line pl-10">
+            <aside className="hidden border-l border-line pl-8 lg:block">
+              <img
+                src="/malinois-hero.png"
+                alt="Pastor Belga Malinois sentado"
+                className="mb-4 w-full"
+              />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
                 "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
@@ -177,21 +201,29 @@ export function HomePage() {
       {/* ============================================================
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-16 lg:px-8">
-          <div className="mb-8 flex items-baseline gap-3">
-            <span className="eyebrow">◆ Encontrar criadores</span>
+      <section ref={searchSectionRef} className="border-y border-line">
+        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-6">
+          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
+            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
           </div>
-          <SearchBar />
+          <SearchBar showSearchType idPrefix="home-search" />
         </div>
       </section>
+
+      {showStickySearch && (
+        <div className="fixed inset-x-0 top-[80px] z-30 border-b border-line bg-bg/95 backdrop-blur-md">
+          <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
+            <SearchBar compact showSearchType idPrefix="sticky-search" />
+          </div>
+        </div>
+      )}
 
       {/* ============================================================
        * DESTAQUES — dois carrosseis horizontais (estilo OLX)
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-16 px-6 py-16 lg:px-8">
+        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-8 lg:px-8 lg:py-8">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
@@ -230,19 +262,19 @@ export function HomePage() {
        * SIMULADOR — banner editorial para o quiz de raça
        * ============================================================ */}
       <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-20 lg:px-8">
-          <div className="grid items-center gap-12 md:grid-cols-[1.4fr_1fr]">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <div className="grid items-center gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-8">
             <div>
-              <p className="eyebrow mb-6">◆ Simulador de raça</p>
-              <h2 className="font-serif text-h2 text-ink">
+              <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
+              <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
                 Escolha o <em className="italic text-caramel-500">companheiro ideal</em> para si.
               </h2>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
                 Onze perguntas, dois minutos. Indicamos as cinco raças que melhor se adaptam ao seu
                 espaço, ao seu ritmo e ao seu agregado familiar — para começar a procurar com mais
                 confiança.
               </p>
-              <div className="mt-10 flex flex-wrap items-center gap-6">
+              <div className="mt-7 flex flex-wrap items-center gap-4 sm:mt-10 sm:gap-6">
                 <Link to="/simulador-raca" className="btn-primary btn-lg">
                   Começar simulador
                 </Link>
@@ -250,7 +282,7 @@ export function HomePage() {
                   Gratuito · sem registo
                 </span>
               </div>
-              <p className="mt-8 max-w-xl text-xs leading-relaxed text-muted">
+              <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted sm:mt-8">
                 <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma
                 ferramenta de orientação. Cada cão é único e a escolha final deve ser feita em
                 conjunto com criadores, veterinários ou associações de adopção.
@@ -258,9 +290,9 @@ export function HomePage() {
             </div>
 
             {/* Aside editorial — 3 sinais visuais sobre o que o simulador avalia */}
-            <aside className="border-l border-line pl-10">
-              <p className="eyebrow-muted mb-6">— O que avaliamos</p>
-              <ul className="space-y-5">
+            <aside className="border-l border-line pl-5 sm:pl-10">
+              <p className="eyebrow-muted mb-4 sm:mb-6">— O que avaliamos</p>
+              <ul className="space-y-4 sm:space-y-5">
                 <SimuladorTopic
                   number="01"
                   title="Espaço e clima"
@@ -286,16 +318,16 @@ export function HomePage() {
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
-          <div className="mb-16 max-w-2xl">
-            <p className="eyebrow mb-6">— O que nos distingue</p>
-            <h2 className="font-serif text-h2 text-ink">
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+          <div className="mb-6 max-w-2xl sm:mb-8">
+            <p className="eyebrow mb-4 sm:mb-6">— O que nos distingue</p>
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
               Três princípios que nos guiam em{' '}
               <em className="italic text-caramel-500">cada verificação</em>.
             </h2>
           </div>
 
-          <div className="grid gap-12 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-8">
             <Pillar
               number="01"
               title="Verificação documental"
@@ -319,19 +351,19 @@ export function HomePage() {
        * SERVIÇOS — nova vertical em destaque
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
-          <div className="mb-16 max-w-2xl">
-            <p className="eyebrow mb-6">◆ Serviços para patudos</p>
-            <h2 className="font-serif text-h2 text-ink">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-14 lg:px-8 lg:py-14">
+          <div className="mb-8 max-w-2xl sm:mb-8">
+            <p className="eyebrow mb-4 sm:mb-6">◆ Serviços para patudos</p>
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
               Profissionais de confiança, <em className="italic text-caramel-500">perto de si</em>.
             </h2>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
               Anúncios verificados de prestadores em Portugal. Procure por categoria, distrito ou
               proximidade — e fale directamente com quem vai cuidar do seu animal.
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-6">
             <ServiceCategoryCard
               eyebrow="01"
               title="Passeios"
@@ -352,7 +384,7 @@ export function HomePage() {
             />
           </div>
 
-          <div className="mt-12 flex flex-col items-start gap-6 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-8 flex flex-col items-start gap-5 border-t border-line pt-6 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:pt-8">
             <p className="font-serif text-lg italic text-muted">
               Mais categorias a chegar — banhos, transporte, veterinária.
             </p>
@@ -367,16 +399,16 @@ export function HomePage() {
        * CTA — registar criador
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 text-center lg:px-8">
-          <p className="eyebrow mb-6">◆ Criador ou prestador certificado</p>
-          <h2 className="font-serif text-h2 mx-auto max-w-2xl text-ink">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 text-center sm:py-14 lg:px-8 lg:py-14">
+          <p className="eyebrow mb-4 sm:mb-6">◆ Criador ou prestador certificado</p>
+          <h2 className="font-serif mx-auto max-w-2xl text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
             Faça parte de uma rede <em className="italic text-caramel-500">selecta</em> de
             profissionais portugueses.
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted">
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
             Visibilidade junto de famílias que procuram rigor. Perfil curado. Processo gratuito.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-6 sm:flex-row">
+          <div className="mt-7 flex flex-col items-center justify-center gap-5 sm:mt-10 sm:flex-row sm:gap-6">
             <Link to="/registar" className="btn-primary btn-lg">
               Juntar-me à PataCerta
             </Link>
@@ -405,10 +437,9 @@ function Stat({
     <div className="flex flex-col-reverse">
       <dt className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</dt>
       {loading && value == null ? (
-        <dd
-          aria-label={`${label}: a carregar`}
-          className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12"
-        />
+        <dd className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12">
+          <span className="sr-only">{label}: a carregar</span>
+        </dd>
       ) : (
         <dd className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
           {value ?? '—'}
@@ -430,9 +461,9 @@ function Pillar({
   return (
     <article className="group">
       <p className="font-serif text-5xl font-normal italic text-caramel-500">{number}</p>
-      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
-      <div className="mt-6 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24" />
+      <h3 className="mt-4 font-serif text-2xl text-ink sm:mt-6">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-muted sm:mt-4">{description}</p>
+      <div className="mt-4 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24 sm:mt-6" />
     </article>
   )
 }
@@ -471,12 +502,12 @@ function ServiceCategoryCard({
   return (
     <Link
       to={href}
-      className="group block border border-line bg-surface p-10 transition-colors duration-200 hover:border-caramel-500"
+      className="group block border border-line bg-surface p-6 transition-colors duration-200 hover:border-caramel-500 sm:p-8 lg:p-10"
     >
       <p className="font-serif text-4xl font-normal italic text-caramel-500">{eyebrow}</p>
-      <h3 className="mt-6 font-serif text-2xl text-ink">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-muted">{description}</p>
-      <div className="mt-8 flex items-center gap-3">
+      <h3 className="mt-4 font-serif text-2xl text-ink sm:mt-6">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-muted sm:mt-4">{description}</p>
+      <div className="mt-6 flex items-center gap-3 sm:mt-8">
         <span className="text-[11px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:text-caramel-700">
           Pesquisar
         </span>
@@ -532,10 +563,11 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
           {s.municipality.namePt}, {s.district.namePt}
         </p>
         {rating && s.reviewCount > 0 && (
-          <div
-            className="mt-2 flex items-center gap-1.5 text-xs"
-            aria-label={`Avaliação ${rating} de 5, ${s.reviewCount} ${s.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
-          >
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="sr-only">
+              Avaliação {rating} de 5, {s.reviewCount}{' '}
+              {s.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+            </span>
             <span aria-hidden="true" className="font-semibold text-yellow-600">
               {rating}
             </span>
@@ -584,10 +616,11 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
           {b.municipality.namePt}, {b.district.namePt}
         </p>
         {rating && b.reviewCount > 0 && (
-          <div
-            className="mt-2 flex items-center gap-1.5 text-xs"
-            aria-label={`Avaliação ${rating} de 5, ${b.reviewCount} ${b.reviewCount === 1 ? 'avaliação' : 'avaliações'}`}
-          >
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="sr-only">
+              Avaliação {rating} de 5, {b.reviewCount}{' '}
+              {b.reviewCount === 1 ? 'avaliação' : 'avaliações'}
+            </span>
             <span aria-hidden="true" className="font-semibold text-yellow-600">
               {rating}
             </span>

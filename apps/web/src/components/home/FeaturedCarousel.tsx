@@ -72,10 +72,12 @@ export function FeaturedCarousel({
 
   return (
     <section>
-      <div className="mb-6 flex items-end justify-between gap-4">
+      <div className="mb-4 flex items-end justify-between gap-3 sm:mb-6 sm:gap-4 lg:mb-4">
         <div>
           <p className="eyebrow mb-3">{eyebrow}</p>
-          <h2 className="font-serif text-2xl text-ink sm:text-3xl">{title}</h2>
+          <h2 className="font-serif text-xl leading-tight text-ink sm:text-3xl lg:text-2xl">
+            {title}
+          </h2>
         </div>
 
         {/* Setas desktop apenas */}
@@ -121,10 +123,10 @@ export function FeaturedCarousel({
         </div>
       </div>
 
-      <div className="relative -mx-6 lg:-mx-8">
+      <div className="relative -mx-4 lg:-mx-8">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 scrollbar-hidden lg:px-8"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-hidden sm:gap-4 lg:px-8"
           style={{ scrollbarWidth: 'none' }}
         >
           {isLoading ? (
@@ -137,7 +139,7 @@ export function FeaturedCarousel({
             <div
               role="alert"
               aria-live="polite"
-              className="flex w-full flex-col items-center gap-3 py-12 text-center"
+              className="flex w-full flex-col items-center gap-3 py-8 text-center sm:py-12"
             >
               <p className="text-sm text-red-700">{errorMessage}</p>
               {onRetry && (
@@ -153,7 +155,9 @@ export function FeaturedCarousel({
           ) : hasChildren ? (
             children
           ) : (
-            <div className="w-full py-12 text-center text-sm italic text-muted">{emptyMessage}</div>
+            <div className="w-full py-8 text-center text-sm italic text-muted sm:py-12">
+              {emptyMessage}
+            </div>
           )}
         </div>
       </div>

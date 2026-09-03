@@ -25,9 +25,9 @@ const ServicesMapView = lazy(() =>
 
 function ViewFallback() {
   return (
-    <div className="py-6" aria-busy="true" aria-label="A carregar resultados">
+    <div className="py-4 sm:py-6" aria-busy="true" aria-label="A carregar resultados">
       {/* Filtros stripe */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2 sm:mb-6">
         <Skeleton height="h-10" width="w-40" rounded="rounded-md" />
         <Skeleton height="h-10" width="w-32" rounded="rounded-md" />
         <Skeleton height="h-10" width="w-32" rounded="rounded-md" />
@@ -258,8 +258,8 @@ function CrossPromoBanner({ currentTipo }: { currentTipo: PesquisarTipo }) {
   const linkLabel = isCriadores ? 'Ver serviços' : 'Ver criadores'
 
   return (
-    <section className="mt-16 border-t border-line pt-12">
-      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mt-10 border-t border-line pt-8 sm:mt-12 sm:pt-10">
+      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="eyebrow mb-3">{eyebrow}</p>
           <h2 className="font-serif text-2xl text-ink">{title}</h2>

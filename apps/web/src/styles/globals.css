@@ -47,8 +47,15 @@
   .dark .text-subtle {
     color: theme('colors.subtle.dark');
   }
+  .dark .text-caramel-500 {
+    color: theme('colors.caramel.300');
+  }
   .dark .border-line {
     border-color: theme('colors.line.dark');
+  }
+
+  .dark .bg-caramel-100\/40 {
+    background-color: rgb(184 137 95 / 0.16);
   }
 
   /* ===== Typography — display serif ===== */
@@ -136,7 +143,7 @@
     @apply btn bg-caramel-500 text-white hover:bg-caramel-700 active:bg-caramel-800;
   }
   .dark .btn-primary {
-    @apply text-bg-dark;
+    @apply text-white;
   }
 
   .btn-secondary {
@@ -220,6 +227,14 @@
   .select {
     @apply input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%23B8895F%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_0.25rem_center] bg-no-repeat pr-8;
   }
+  .searchbar-control {
+    @apply rounded-md border border-line bg-surface px-3 py-2.5 pr-9 shadow-subtle focus:border-caramel-500;
+  }
+  .dark .searchbar-control {
+    background-color: theme('colors.surface.dark');
+    border-color: theme('colors.line.dark');
+    color: theme('colors.ink.dark');
+  }
   /* Dark mode: as <option> do dropdown nativo precisam de fundo explícito.
      Sem isto, o popup do browser (Windows/Chrome) desenha-as sobre branco
      com texto claro herdado do select -> ficam ilegíveis. Afeta apenas o
@@ -248,14 +263,14 @@
     background-color: theme('colors.surface.dark');
     border-color: theme('colors.line.dark');
   }
-  .card:hover {
+  .card.card-hover:hover {
     border-color: theme('colors.caramel.500');
   }
   .card-body {
-    @apply p-6;
+    @apply p-4 md:p-6;
   }
   .card-editorial {
-    @apply card p-8;
+    @apply card p-5 md:p-8;
   }
 
   /* ============================================================
@@ -310,18 +325,18 @@
    * PAGE LAYOUT
    * ============================================================ */
   .page-container {
-    @apply mx-auto max-w-[72rem] px-6 py-16 lg:px-8;
+    @apply mx-auto max-w-[72rem] px-4 py-4 sm:py-6 md:px-6 md:py-8 lg:px-8;
   }
   .page-header {
-    @apply mb-12;
+    @apply mb-4 sm:mb-6 md:mb-10;
   }
   .page-title {
-    @apply text-h1;
+    @apply text-3xl leading-tight sm:text-4xl md:text-h1;
     font-family: 'Lora', Georgia, serif;
     font-weight: 400;
   }
   .page-subtitle {
-    @apply mt-3 max-w-2xl text-base leading-relaxed text-muted;
+    @apply mt-2 max-w-2xl text-sm leading-relaxed text-muted md:text-base;
   }
   .dark .page-subtitle {
     color: theme('colors.muted.dark');
@@ -329,7 +344,7 @@
 
   /* Section — bloco editorial com espaçamento generoso */
   .section {
-    @apply border border-line bg-surface p-8;
+    @apply border border-line bg-surface p-4 md:p-6;
     border-radius: 0;
   }
   .dark .section {
@@ -339,7 +354,7 @@
 
   /* Separador horizontal editorial */
   .divider {
-    @apply my-12 h-px w-full bg-line;
+    @apply my-6 h-px w-full bg-line md:my-10;
   }
   .dark .divider {
     background-color: theme('colors.line.dark');
@@ -447,6 +462,9 @@
 .dark .bg-white {
   background-color: theme('colors.surface.dark');
 }
+  .dark .bg-white\/95 {
+    background-color: rgb(37 35 32 / 0.95);
+  }
 .dark .hover\:bg-gray-50:hover {
   background-color: theme('colors.surface-alt.dark');
 }
