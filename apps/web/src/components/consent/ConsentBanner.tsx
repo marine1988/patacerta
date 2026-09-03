@@ -65,9 +65,9 @@ export function ConsentBanner() {
         aria-describedby="consent-banner-desc"
         className="fixed inset-x-0 bottom-0 z-[1000] border-t border-line bg-surface shadow-lift"
       >
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-5">
+        <div className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <p
                 id="consent-banner-title"
                 className="text-[11px] uppercase tracking-caps text-subtle"
@@ -87,12 +87,12 @@ export function ConsentBanner() {
                 .
               </p>
             </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
                 disabled={submitting}
-                className="btn-secondary text-sm"
+                className="btn-secondary w-full min-w-0 whitespace-normal px-4 py-2.5 text-sm sm:w-auto sm:whitespace-nowrap"
               >
                 Personalizar
               </button>
@@ -100,7 +100,7 @@ export function ConsentBanner() {
                 type="button"
                 onClick={handleRejectOptional}
                 disabled={submitting}
-                className="btn-secondary text-sm"
+                className="btn-secondary w-full min-w-0 whitespace-normal px-4 py-2.5 text-sm sm:w-auto sm:whitespace-nowrap"
               >
                 Rejeitar opcionais
               </button>
@@ -108,7 +108,7 @@ export function ConsentBanner() {
                 type="button"
                 onClick={handleAcceptAll}
                 disabled={submitting}
-                className="btn-primary text-sm"
+                className="btn-primary w-full min-w-0 whitespace-normal px-4 py-2.5 text-sm sm:w-auto sm:whitespace-nowrap"
               >
                 Aceitar todos
               </button>

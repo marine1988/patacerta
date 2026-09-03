@@ -415,7 +415,7 @@ export function SimuladorRacaPage() {
 
   // ─── Quiz ───────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[60rem] px-6 py-8 md:py-10 lg:px-8">
+    <div className="mx-auto max-w-[60rem] px-4 py-6 sm:px-6 md:py-10 lg:px-8">
       <Breadcrumbs items={breadcrumbs} className="mb-6" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-10">
         <figure className="order-first overflow-hidden border border-line bg-surface lg:sticky lg:top-24">
@@ -431,11 +431,11 @@ export function SimuladorRacaPage() {
         </figure>
 
         <div>
-          <header className="mb-6 text-center md:mb-8">
+          <header className="mb-5 text-center md:mb-8">
             <p className="text-[11px] font-medium uppercase tracking-caps text-caramel-500">
               Simulador de raça
             </p>
-            <h1 className="mt-2 font-serif text-2xl text-ink md:text-3xl">
+            <h1 className="mt-2 font-serif text-xl leading-tight text-ink sm:text-2xl md:text-3xl">
               Encontre o cão ideal para si
             </h1>
             <p className="mt-3 text-muted">
@@ -464,7 +464,10 @@ export function SimuladorRacaPage() {
 
           <Card>
             <div>
-              <h2 id={`quiz-q-${stepIndex}`} className="font-serif text-xl text-ink md:text-2xl">
+              <h2
+                id={`quiz-q-${stepIndex}`}
+                className="font-serif text-lg leading-tight text-ink sm:text-xl md:text-2xl"
+              >
                 {currentStep.title}
               </h2>
               {currentStep.subtitle && (

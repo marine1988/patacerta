@@ -116,23 +116,23 @@ export function HomePage() {
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-[72rem] px-6 pb-8 pt-8 lg:px-8 lg:pb-12 lg:pt-10">
-          <p className="eyebrow mb-4">◆ Criadores e Serviços · Portugal</p>
+        <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
+          <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
-          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
+          <div className="grid gap-7 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
             <div>
-              <h1 className="font-serif text-[2.45rem] leading-[1.02] sm:text-[4.25rem]">
+              <h1 className="font-serif text-[2.15rem] leading-[1.06] sm:text-[4.25rem]">
                 O portal dos
                 <br />
                 <em className="text-caramel-500">patudos</em> em Portugal.
               </h1>
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-muted lg:mt-5 lg:text-lg">
+              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4 lg:mt-5 lg:text-lg">
                 Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
                 passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
                 informadas.
               </p>
 
-              <div className="mt-6 flex flex-wrap items-center gap-4 lg:mt-7 lg:gap-6">
+              <div className="mt-5 flex flex-wrap items-center gap-3 lg:mt-7 lg:gap-6">
                 <Link to="/pesquisar" className="btn-primary">
                   Pesquisar criadores
                 </Link>
@@ -202,8 +202,8 @@ export function HomePage() {
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
       <section ref={searchSectionRef} className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-8 lg:px-8 lg:py-10">
-          <div className="mb-5 flex items-baseline gap-3 lg:mb-6">
+        <div className="mx-auto max-w-[72rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+          <div className="mb-4 flex items-baseline gap-3 lg:mb-6">
             <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
           </div>
@@ -223,7 +223,7 @@ export function HomePage() {
        * DESTAQUES — dois carrosseis horizontais (estilo OLX)
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-16 px-6 py-16 lg:px-8">
+        <div className="mx-auto max-w-[72rem] space-y-12 px-4 py-12 sm:px-6 lg:space-y-16 lg:px-8 lg:py-16">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
@@ -262,19 +262,19 @@ export function HomePage() {
        * SIMULADOR — banner editorial para o quiz de raça
        * ============================================================ */}
       <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-20 lg:px-8">
-          <div className="grid items-center gap-12 md:grid-cols-[1.4fr_1fr]">
+        <div className="mx-auto max-w-[72rem] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+          <div className="grid items-center gap-8 md:grid-cols-[1.4fr_1fr] lg:gap-12">
             <div>
-              <p className="eyebrow mb-6">◆ Simulador de raça</p>
-              <h2 className="font-serif text-h2 text-ink">
+              <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
+              <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
                 Escolha o <em className="italic text-caramel-500">companheiro ideal</em> para si.
               </h2>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-muted">
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
                 Onze perguntas, dois minutos. Indicamos as cinco raças que melhor se adaptam ao seu
                 espaço, ao seu ritmo e ao seu agregado familiar — para começar a procurar com mais
                 confiança.
               </p>
-              <div className="mt-10 flex flex-wrap items-center gap-6">
+              <div className="mt-7 flex flex-wrap items-center gap-4 sm:mt-10 sm:gap-6">
                 <Link to="/simulador-raca" className="btn-primary btn-lg">
                   Começar simulador
                 </Link>
@@ -282,7 +282,7 @@ export function HomePage() {
                   Gratuito · sem registo
                 </span>
               </div>
-              <p className="mt-8 max-w-xl text-xs leading-relaxed text-muted">
+              <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted sm:mt-8">
                 <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma
                 ferramenta de orientação. Cada cão é único e a escolha final deve ser feita em
                 conjunto com criadores, veterinários ou associações de adopção.
@@ -290,9 +290,9 @@ export function HomePage() {
             </div>
 
             {/* Aside editorial — 3 sinais visuais sobre o que o simulador avalia */}
-            <aside className="border-l border-line pl-10">
-              <p className="eyebrow-muted mb-6">— O que avaliamos</p>
-              <ul className="space-y-5">
+            <aside className="border-l border-line pl-5 sm:pl-10">
+              <p className="eyebrow-muted mb-4 sm:mb-6">— O que avaliamos</p>
+              <ul className="space-y-4 sm:space-y-5">
                 <SimuladorTopic
                   number="01"
                   title="Espaço e clima"
@@ -318,16 +318,16 @@ export function HomePage() {
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-24 lg:px-8">
-          <div className="mb-16 max-w-2xl">
-            <p className="eyebrow mb-6">— O que nos distingue</p>
-            <h2 className="font-serif text-h2 text-ink">
+        <div className="mx-auto max-w-[72rem] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <div className="mb-10 max-w-2xl sm:mb-16">
+            <p className="eyebrow mb-4 sm:mb-6">— O que nos distingue</p>
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
               Três princípios que nos guiam em{' '}
               <em className="italic text-caramel-500">cada verificação</em>.
             </h2>
           </div>
 
-          <div className="grid gap-12 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-3 lg:gap-12">
             <Pillar
               number="01"
               title="Verificação documental"

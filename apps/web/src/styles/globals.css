@@ -263,7 +263,7 @@
     border-color: theme('colors.caramel.500');
   }
   .card-body {
-    @apply p-4 md:p-6;
+    @apply p-3.5 md:p-6;
   }
   .card-editorial {
     @apply card p-5 md:p-8;
@@ -321,10 +321,10 @@
    * PAGE LAYOUT
    * ============================================================ */
   .page-container {
-    @apply mx-auto max-w-[72rem] px-6 py-10 md:py-12 lg:px-8;
+    @apply mx-auto max-w-[72rem] px-4 py-7 md:px-6 md:py-12 lg:px-8;
   }
   .page-header {
-    @apply mb-8 md:mb-12;
+    @apply mb-6 md:mb-12;
   }
   .page-title {
     @apply text-h1;
@@ -340,7 +340,7 @@
 
   /* Section — bloco editorial com espaçamento generoso */
   .section {
-    @apply border border-line bg-surface p-5 md:p-8;
+    @apply border border-line bg-surface p-4 md:p-8;
     border-radius: 0;
   }
   .dark .section {
