@@ -263,10 +263,10 @@
     border-color: theme('colors.caramel.500');
   }
   .card-body {
-    @apply p-6;
+    @apply p-4 md:p-6;
   }
   .card-editorial {
-    @apply card p-8;
+    @apply card p-5 md:p-8;
   }
 
   /* ============================================================
@@ -321,10 +321,10 @@
    * PAGE LAYOUT
    * ============================================================ */
   .page-container {
-    @apply mx-auto max-w-[72rem] px-6 py-16 lg:px-8;
+    @apply mx-auto max-w-[72rem] px-6 py-10 md:py-12 lg:px-8;
   }
   .page-header {
-    @apply mb-12;
+    @apply mb-8 md:mb-12;
   }
   .page-title {
     @apply text-h1;
@@ -332,7 +332,7 @@
     font-weight: 400;
   }
   .page-subtitle {
-    @apply mt-3 max-w-2xl text-base leading-relaxed text-muted;
+    @apply mt-2 max-w-2xl text-sm leading-relaxed text-muted md:text-base;
   }
   .dark .page-subtitle {
     color: theme('colors.muted.dark');
@@ -340,7 +340,7 @@
 
   /* Section — bloco editorial com espaçamento generoso */
   .section {
-    @apply border border-line bg-surface p-8;
+    @apply border border-line bg-surface p-5 md:p-8;
     border-radius: 0;
   }
   .dark .section {
@@ -350,7 +350,7 @@
 
   /* Separador horizontal editorial */
   .divider {
-    @apply my-12 h-px w-full bg-line;
+    @apply my-8 h-px w-full bg-line md:my-12;
   }
   .dark .divider {
     background-color: theme('colors.line.dark');
