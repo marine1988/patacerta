@@ -622,11 +622,11 @@ export function ServiceDetailPage() {
           {/* Header */}
           <Card hover={false}>
             <div className="space-y-3">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:gap-6">
+              <div className="space-y-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6 sm:space-y-0">
                 <Badge variant="blue" className="justify-self-start">
                   {service.category.namePt}
                 </Badge>
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 text-left sm:text-right">
                   <p className="whitespace-nowrap text-xl font-bold text-gray-900 sm:text-2xl">
                     {formatPrice(service.priceCents, service.priceUnit)}
                   </p>
