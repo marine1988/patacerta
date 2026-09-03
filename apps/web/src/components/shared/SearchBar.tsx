@@ -144,10 +144,10 @@ export function SearchBar({
   return (
     <form
       onSubmit={handleSearch}
-      className="rounded-md border border-line bg-surface p-5 shadow-soft sm:p-6"
+      className="rounded-md border border-line bg-surface p-4 shadow-soft sm:p-5"
     >
       {showSearchType && (
-        <div className="mb-5 border-b border-line">
+        <div className="mb-4 border-b border-line">
           <div className="-mb-px flex gap-6" aria-label="Tipo de pesquisa">
             <button
               type="button"
@@ -260,7 +260,7 @@ export function SearchBar({
         </div>
       </div>
       {showSearchType && (
-        <div className="mt-5 flex justify-center border-t border-line pt-4">
+        <div className="mt-4 flex justify-center border-t border-line pt-3">
           <Link to={advancedSearchPath} className="btn-secondary btn-sm">
             Pesquisa avançada
           </Link>

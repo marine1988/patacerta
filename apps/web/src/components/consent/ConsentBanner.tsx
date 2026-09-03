@@ -63,9 +63,9 @@ export function ConsentBanner() {
         aria-modal="false"
         aria-labelledby="consent-banner-title"
         aria-describedby="consent-banner-desc"
-        className="fixed inset-x-0 bottom-0 z-[1000] max-h-[calc(100dvh-1rem)] overflow-y-auto border-t border-line bg-surface shadow-lift"
+        className="fixed inset-x-0 bottom-0 z-[1000] max-h-[min(34rem,calc(100dvh-1rem))] overflow-y-auto border-t border-line bg-surface shadow-lift"
       >
-        <div className="mx-auto max-w-5xl px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+        <div className="mx-auto max-w-5xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
             <div className="min-w-0 max-w-full flex-1 break-words">
               <p

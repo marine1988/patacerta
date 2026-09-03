@@ -123,10 +123,10 @@ export function FeaturedCarousel({
         </div>
       </div>
 
-      <div className="relative -mx-6 lg:-mx-8">
+      <div className="relative -mx-4 lg:-mx-8">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 scrollbar-hidden lg:px-8"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 scrollbar-hidden sm:gap-4 lg:px-8"
           style={{ scrollbarWidth: 'none' }}
         >
           {isLoading ? (

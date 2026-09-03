@@ -422,9 +422,9 @@ export function SimuladorRacaPage() {
           <img
             src="/97e66299-877e-4534-a96d-994c239bc11a.jpg"
             alt="Cinco cães de diferentes raças sentados lado a lado"
-            className="h-auto max-h-44 w-full object-cover sm:max-h-56 lg:max-h-none"
+            className="h-28 w-full object-cover sm:h-auto sm:max-h-56 lg:max-h-none"
           />
-          <figcaption className="border-t border-line px-4 py-2 text-xs leading-relaxed text-muted sm:py-3">
+          <figcaption className="hidden border-t border-line px-4 py-2 text-xs leading-relaxed text-muted sm:block sm:py-3">
             Cada cão tem necessidades próprias. Encontre o perfil mais próximo do seu estilo de
             vida.
           </figcaption>

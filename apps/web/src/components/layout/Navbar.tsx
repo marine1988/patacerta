@@ -140,7 +140,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-[72rem] items-center justify-between px-6 py-5 lg:px-8">
+      <nav className="mx-auto flex max-w-[72rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         {/* Logo editorial — icone + wordmark em Lora */}
         <Link
           to="/"
@@ -353,7 +353,7 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="border-t border-line bg-bg px-6 pb-8 pt-4 md:hidden">
+        <div className="border-t border-line bg-bg px-4 pb-6 pt-3 md:hidden">
           <div className="flex flex-col gap-1">
             <Link
               to="/pesquisar"

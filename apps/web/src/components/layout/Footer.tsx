@@ -6,15 +6,15 @@ export function Footer() {
     <>
       <ResponsibleAdoption />
       <footer className="border-t border-line bg-bg">
-        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-12 lg:px-8 lg:py-12">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-10">
           {/* Editorial top line */}
-          <div className="mb-8 flex items-baseline gap-3 sm:mb-10">
+          <div className="mb-6 flex items-baseline gap-3 sm:mb-8">
             <span className="eyebrow">◆ PataCerta</span>
             <span className="h-px flex-1 bg-line" />
             <span className="eyebrow-muted">Est. 2025 · Portugal</span>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-8">
+          <div className="grid gap-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-8">
             {/* Brand statement */}
             <div>
               <Link
@@ -26,7 +26,7 @@ export function Footer() {
                   Pata<em className="italic text-caramel-500">Certa</em>
                 </span>
               </Link>
-              <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted">
+              <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
                 O portal dos patudos em Portugal — criadores éticos verificados e serviços de
                 confiança, com rigor e transparência.
               </p>
@@ -35,7 +35,7 @@ export function Footer() {
             {/* Plataforma */}
             <div>
               <h3 className="eyebrow mb-4 sm:mb-5">— Plataforma</h3>
-              <ul className="space-y-2 sm:space-y-3">
+              <ul className="space-y-2">
                 <FooterLink to="/pesquisar">Criadores</FooterLink>
                 <FooterLink to="/pesquisar?tipo=servicos">Serviços</FooterLink>
                 <FooterLink to="/pesquisar?vista=mapa">Mapa</FooterLink>
@@ -47,7 +47,7 @@ export function Footer() {
             {/* Legal */}
             <div>
               <h3 className="eyebrow mb-4 sm:mb-5">— Legal</h3>
-              <ul className="space-y-2 sm:space-y-3">
+              <ul className="space-y-2">
                 <FooterLink to="/politica-privacidade">Política de Privacidade</FooterLink>
                 <FooterLink to="/termos">Termos de Utilização</FooterLink>
                 <FooterLink to="/termos-pagamento">Termos de Pagamento</FooterLink>
@@ -68,7 +68,7 @@ export function Footer() {
             {/* Contacto */}
             <div>
               <h3 className="eyebrow mb-4 sm:mb-5">— Contacto</h3>
-              <ul className="space-y-2 sm:space-y-3">
+              <ul className="space-y-2">
                 <li className="text-sm text-muted">info@patacerta.pt</li>
                 <li className="text-sm text-muted">Lisboa, Portugal</li>
               </ul>

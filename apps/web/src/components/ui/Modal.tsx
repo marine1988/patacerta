@@ -118,14 +118,14 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     >
       <div
         ref={dialogRef}
-        className={`${sizeClasses[size]} w-full rounded-xl bg-white shadow-xl outline-none`}
+        className={`${sizeClasses[size]} w-full rounded-md bg-surface shadow-xl outline-none`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 id={titleId} className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-6 sm:py-4">
+          <h2 id={titleId} className="text-lg font-semibold text-ink">
             {title}
           </h2>
           <button onClick={onClose} className="btn-icon" aria-label="Fechar">
@@ -140,7 +140,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             </svg>
           </button>
         </div>
-        <div className="px-6 py-4">{children}</div>
+        <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto px-4 py-4 sm:px-6">
+          {children}
+        </div>
       </div>
     </div>
   )

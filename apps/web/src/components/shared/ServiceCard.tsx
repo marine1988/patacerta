@@ -50,10 +50,10 @@ export function ServiceCard({
       to={`/servicos/${slug ?? id}`}
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
         <ImageFallback src={cover} alt={title} variant="service" className="h-full w-full" />
         {distanceKm != null && (
-          <span className="absolute right-2 top-2 rounded-full bg-white/95 px-2 py-1 text-xs font-medium text-gray-700 shadow-sm">
+          <span className="absolute right-2 top-2 rounded-full bg-surface px-2 py-1 text-xs font-medium text-ink shadow-sm">
             {formatDistance(distanceKm)}
           </span>
         )}
@@ -61,14 +61,14 @@ export function ServiceCard({
       <div className="card-body">
         <div className="flex items-start justify-between gap-2">
           <Badge variant="blue">{category.namePt}</Badge>
-          <span className="text-base font-semibold text-gray-900 whitespace-nowrap">
+          <span className="whitespace-nowrap text-base font-semibold text-ink">
             {formatPrice(priceCents, priceUnit)}
           </span>
         </div>
 
-        <h2 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{title}</h2>
+        <h2 className="mt-2 line-clamp-2 text-base font-semibold text-ink">{title}</h2>
 
-        <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+        <div className="mt-1 flex items-center gap-1 text-sm text-muted">
           <svg
             className="h-3.5 w-3.5 flex-shrink-0"
             fill="none"
@@ -98,11 +98,11 @@ export function ServiceCard({
             <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
-            <span className="text-gray-400">({reviewCount})</span>
+            <span className="text-subtle">({reviewCount})</span>
           </div>
         )}
 
-        <p className="mt-2 line-clamp-2 text-sm text-gray-600">{description}</p>
+        <p className="mt-2 line-clamp-2 text-sm text-muted">{description}</p>
       </div>
     </Link>
   )
