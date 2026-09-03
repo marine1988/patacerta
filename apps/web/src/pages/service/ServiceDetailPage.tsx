@@ -623,7 +623,9 @@ export function ServiceDetailPage() {
           <Card hover={false}>
             <div className="space-y-3">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:gap-6">
-                <Badge variant="blue">{service.category.namePt}</Badge>
+                <Badge variant="blue" className="justify-self-start">
+                  {service.category.namePt}
+                </Badge>
                 <div className="shrink-0 text-right">
                   <p className="whitespace-nowrap text-xl font-bold text-gray-900 sm:text-2xl">
                     {formatPrice(service.priceCents, service.priceUnit)}
