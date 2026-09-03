@@ -441,7 +441,6 @@ export function SimuladorRacaPage() {
         </header>
 
         <div>
-
           {/* Barra de progresso */}
           <div className="mb-4 sm:mb-6 md:mb-8">
             <div className="flex items-center justify-between text-xs text-muted">
