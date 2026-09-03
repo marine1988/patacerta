@@ -116,12 +116,12 @@ export function HomePage() {
        * HERO — editorial, agora unificado (criadores + serviços)
        * ============================================================ */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
+        <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
           <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
-          <div className="grid gap-7 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-16">
+          <div className="grid gap-7 lg:grid-cols-[1.3fr_1fr] lg:items-end lg:gap-10">
             <div>
-              <h1 className="font-serif text-[2.15rem] leading-[1.06] sm:text-[4.25rem]">
+              <h1 className="font-serif text-[2.15rem] leading-[1.06] sm:text-[4.25rem] lg:text-[3.75rem]">
                 O portal dos
                 <br />
                 <em className="text-caramel-500">patudos</em> em Portugal.
@@ -132,7 +132,7 @@ export function HomePage() {
                 informadas.
               </p>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3 lg:mt-7 lg:gap-6">
+              <div className="mt-5 flex flex-wrap items-center gap-3 lg:mt-6 lg:gap-4">
                 <Link to="/pesquisar" className="btn-primary">
                   Pesquisar criadores
                 </Link>
@@ -142,11 +142,11 @@ export function HomePage() {
               </div>
             </div>
 
-            <aside className="hidden border-l border-line pl-10 lg:block">
+            <aside className="hidden border-l border-line pl-8 lg:block">
               <img
                 src="/malinois-hero.png"
                 alt="Pastor Belga Malinois sentado"
-                className="mb-6 w-full"
+                className="mb-4 w-full"
               />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
@@ -202,8 +202,8 @@ export function HomePage() {
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
       <section ref={searchSectionRef} className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-          <div className="mb-4 flex items-baseline gap-3 lg:mb-6">
+        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-6">
+          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
             <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
           </div>
@@ -223,7 +223,7 @@ export function HomePage() {
        * DESTAQUES — dois carrosseis horizontais (estilo OLX)
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-14 lg:px-8 lg:py-14">
+        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-8 lg:px-8 lg:py-8">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
@@ -262,11 +262,11 @@ export function HomePage() {
        * SIMULADOR — banner editorial para o quiz de raça
        * ============================================================ */}
       <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-20">
-          <div className="grid items-center gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-12">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <div className="grid items-center gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-8">
             <div>
               <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
-              <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
+              <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
                 Escolha o <em className="italic text-caramel-500">companheiro ideal</em> para si.
               </h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
@@ -318,16 +318,16 @@ export function HomePage() {
        * PILLARS — 3 features em grelha editorial
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
-          <div className="mb-6 max-w-2xl sm:mb-10">
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+          <div className="mb-6 max-w-2xl sm:mb-8">
             <p className="eyebrow mb-4 sm:mb-6">— O que nos distingue</p>
-            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
               Três princípios que nos guiam em{' '}
               <em className="italic text-caramel-500">cada verificação</em>.
             </h2>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3 lg:gap-12">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-8">
             <Pillar
               number="01"
               title="Verificação documental"
@@ -351,10 +351,10 @@ export function HomePage() {
        * SERVIÇOS — nova vertical em destaque
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-14 lg:px-8 lg:py-24">
-          <div className="mb-8 max-w-2xl sm:mb-12">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-14 lg:px-8 lg:py-14">
+          <div className="mb-8 max-w-2xl sm:mb-8">
             <p className="eyebrow mb-4 sm:mb-6">◆ Serviços para patudos</p>
-            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-h2">
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
               Profissionais de confiança, <em className="italic text-caramel-500">perto de si</em>.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
@@ -363,7 +363,7 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3 lg:gap-8">
+          <div className="grid gap-6 md:grid-cols-3 lg:gap-6">
             <ServiceCategoryCard
               eyebrow="01"
               title="Passeios"
@@ -399,9 +399,9 @@ export function HomePage() {
        * CTA — registar criador
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-6 py-10 text-center sm:py-14 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 text-center sm:py-14 lg:px-8 lg:py-14">
           <p className="eyebrow mb-4 sm:mb-6">◆ Criador ou prestador certificado</p>
-          <h2 className="font-serif mx-auto max-w-2xl text-2xl leading-tight text-ink sm:text-h2">
+          <h2 className="font-serif mx-auto max-w-2xl text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
             Faça parte de uma rede <em className="italic text-caramel-500">selecta</em> de
             profissionais portugueses.
           </h2>

@@ -6,7 +6,7 @@ export function Footer() {
     <>
       <ResponsibleAdoption />
       <footer className="border-t border-line bg-bg">
-        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-12 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[72rem] px-6 py-10 sm:py-12 lg:px-8 lg:py-12">
           {/* Editorial top line */}
           <div className="mb-8 flex items-baseline gap-3 sm:mb-10">
             <span className="eyebrow">◆ PataCerta</span>
@@ -14,7 +14,7 @@ export function Footer() {
             <span className="eyebrow-muted">Est. 2025 · Portugal</span>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-12">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-8">
             {/* Brand statement */}
             <div>
               <Link
@@ -92,11 +92,11 @@ export function Footer() {
 function ResponsibleAdoption() {
   return (
     <section
-      className="mt-10 border-t border-line bg-bg sm:mt-16 lg:mt-24"
+      className="mt-10 border-t border-line bg-bg sm:mt-16 lg:mt-16"
       aria-labelledby="responsible-adoption-title"
     >
-      <div className="mx-auto max-w-[72rem] px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
-        <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:items-start md:gap-12">
+      <div className="mx-auto max-w-[72rem] px-6 py-8 sm:py-10 lg:px-8 lg:py-10">
+        <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:items-start md:gap-8">
           <div>
             <h2 id="responsible-adoption-title" className="eyebrow mb-3">
               ◆ Adopção responsável
