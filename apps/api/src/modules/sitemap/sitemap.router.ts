@@ -4,7 +4,24 @@ import { asyncHandler } from '../../lib/helpers.js'
 
 export const sitemapRouter = Router()
 
-const SITE_URL = (process.env.PUBLIC_URL || 'https://patacerta.pt').replace(/\/$/, '')
+/**
+ * Origem canónica usada em todas as <loc> do sitemap.
+ *
+ * Ordem de resolução: `PUBLIC_URL` → `FRONTEND_URL` → default de produção.
+ *
+ * O fallback para `FRONTEND_URL` existe porque `PUBLIC_URL` faltava no
+ * `.env.stage.example`: em stage o sitemap publicava `<loc>https://patacerta.pt/…`
+ * (URLs de PRODUÇÃO) porque caía no default. Uma sitemap nunca pode anunciar
+ * outro host que não o que a serve. O default de produção mantém-se (é o
+ * último recurso e em produção `PUBLIC_URL` está sempre definido — ver
+ * `.env.prod.example`), mas deixa de ser o primeiro a apanhar ambientes mal
+ * configurados.
+ */
+const SITE_URL = (
+  process.env.PUBLIC_URL ||
+  process.env.FRONTEND_URL ||
+  'https://patacerta.pt'
+).replace(/\/$/, '')
 
 /**
  * Redirect 301 server-side: /criador/:id -> /criador/:slug.

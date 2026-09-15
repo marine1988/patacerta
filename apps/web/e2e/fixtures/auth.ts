@@ -9,11 +9,25 @@ export function pickDemoEmail(role: DemoRole, idx = 0): string {
 }
 
 /**
- * Faz login direto contra a API e injeta os tokens no localStorage da página
- * antes de navegar. Mais rápido e fiável que passar pelo formulário UI.
+ * Faz login programático contra a API e deixa a página autenticada.
  *
- * Os tokens são guardados nas chaves esperadas pelo `useAuth` da web app
- * (ver apps/web/src/contexts/AuthContext.tsx — `accessToken`/`refreshToken`).
+ * ⚠️ O POST de login é feito através do **contexto do browser**
+ * (`page.context().request`) e NÃO do fixture `request` passado pelo teste.
+ * Isso é essencial: o `refresh_token` vive num cookie `httpOnly` que a API
+ * define na resposta de `/auth/login`. O fixture `request` (standalone) tem o
+ * seu próprio cookie jar — o browser nunca veria esse cookie. Consequência
+ * (observada em stage, PATA-E2E-11): o `AuthContext` hidrata do localStorage,
+ * o `isTokenExpired()` manda-o para o ramo de refresh, o `POST /auth/refresh`
+ * feito pelo browser não tem cookie, devolve 401, o interceptor do `api.ts`
+ * limpa o localStorage e faz `window.location.href = '/entrar?next=...'` —
+ * o teste aterra em `/entrar` a meio de uma rota protegida.
+ *
+ * Mantém-se a injecção em localStorage (chaves `access_token` + `user`, as que
+ * o `AuthContext` lê) para o primeiro render já estar autenticado, sem
+ * depender do refresh.
+ *
+ * O parâmetro `request` é aceite por compatibilidade com os call sites
+ * existentes, mas ignorado de propósito.
  */
 export async function loginViaApi(
   request: APIRequestContext,
@@ -21,7 +35,9 @@ export async function loginViaApi(
   email: string,
   password: string = DEMO_PASSWORD,
 ): Promise<{ accessToken: string; refreshToken: string; user: unknown }> {
-  const res = await request.post(`${API_BASE_URL}/auth/login`, {
+  void request
+  // Contexto do browser: partilha o cookie jar com a página (refresh_token).
+  const res = await page.context().request.post(`${API_BASE_URL}/auth/login`, {
     data: { email, password },
   })
   expect(res.ok(), `Login API falhou para ${email}: ${res.status()} ${await res.text()}`).toBe(true)

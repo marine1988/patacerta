@@ -137,13 +137,23 @@ test.describe('Contrato da API pública @prod-safe', () => {
     const res = await request.get(`${API_BASE_URL}/health`)
     const headers = res.headers()
 
-    // Helmet está montado na API (confirmado em produção).
+    // Helmet está montado na API (confirmado em produção e stage).
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['x-frame-options']).toBeTruthy()
     expect(headers['strict-transport-security']).toContain('max-age=')
-    // Rate-limit exposto — sem isto não se detecta 429 precocemente.
-    expect(headers['x-ratelimit-limit']).toBeTruthy()
-    expect(headers['x-ratelimit-remaining']).toBeTruthy()
+
+    // Rate-limit: os headers existem quando o limiter está ativo. Em stage
+    // `DISABLE_RATE_LIMITS=true` desliga-o (é lá que corremos a suite inteira
+    // sem chunking), pelo que a AUSÊNCIA não é falha — mas se um dos dois
+    // headers vier, tem de vir coerente com o outro.
+    const limit = headers['x-ratelimit-limit']
+    const remaining = headers['x-ratelimit-remaining']
+    if (limit !== undefined || remaining !== undefined) {
+      expect(limit, 'x-ratelimit-limit presente mas remaining ausente').toBeTruthy()
+      expect(remaining, 'x-ratelimit-remaining presente mas limit ausente').toBeTruthy()
+      expect(Number(limit)).toBeGreaterThan(0)
+      expect(Number(remaining)).toBeGreaterThanOrEqual(0)
+    }
   })
 
   test('401 da API não expõe stacktrace e é JSON', async ({ request }) => {
