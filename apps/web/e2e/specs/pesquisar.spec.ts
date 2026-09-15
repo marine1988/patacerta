@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test'
+import { seedSkipReason } from '../fixtures/env'
 
-test.describe('Pesquisa — criadores e serviços', () => {
+test.describe('Pesquisa — criadores e serviços @prod-safe', () => {
   test('alterna entre tabs Criadores e Serviços', async ({ page }) => {
     await page.goto('/pesquisar')
 
@@ -38,7 +39,8 @@ test.describe('Pesquisa — criadores e serviços', () => {
     await expect(lista).toHaveAttribute('aria-selected', 'true')
   })
 
-  test('lista de criadores mostra resultados das seeds', async ({ page }) => {
+  test('lista de criadores mostra resultados das seeds', async ({ page, caps }) => {
+    test.skip(!caps.hasBreeders, seedSkipReason(caps, 'criadores publicados'))
     await page.goto('/pesquisar')
 
     // Espera que a lista carregue (aguardar a chamada à API resolver)
@@ -53,7 +55,8 @@ test.describe('Pesquisa — criadores e serviços', () => {
     expect(await breederLinks.count()).toBeGreaterThan(0)
   })
 
-  test('lista de serviços mostra resultados das seeds', async ({ page }) => {
+  test('lista de serviços mostra resultados das seeds', async ({ page, caps }) => {
+    test.skip(!caps.hasServices, seedSkipReason(caps, 'serviços publicados'))
     await page.goto('/pesquisar?tipo=servicos')
 
     await page.waitForResponse(

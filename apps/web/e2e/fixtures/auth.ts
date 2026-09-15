@@ -20,7 +20,7 @@ export async function loginViaApi(
   page: Page,
   email: string,
   password: string = DEMO_PASSWORD,
-): Promise<{ accessToken: string; refreshToken: string }> {
+): Promise<{ accessToken: string; refreshToken: string; user: unknown }> {
   const res = await request.post(`${API_BASE_URL}/auth/login`, {
     data: { email, password },
   })

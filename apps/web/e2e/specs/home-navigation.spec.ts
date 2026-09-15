@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test'
 
 /**
  * Smoke / navegação core do site.
  */
-test.describe('Homepage e navegação', () => {
+test.describe('Homepage e navegação @prod-safe', () => {
   test('homepage carrega com hero, header e footer', async ({ page }) => {
     await page.goto('/')
 
@@ -28,7 +28,7 @@ test.describe('Homepage e navegação', () => {
     await expect(page).toHaveURL(/\/pesquisar/)
     await expect(page.getByRole('heading', { name: 'Pesquisar', level: 1 })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Simulador', exact: true }).first().click()
+    await page.locator('a[href="/simulador-raca"]').first().click()
     await expect(page).toHaveURL(/\/simulador-raca/)
   })
 

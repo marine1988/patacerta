@@ -23,12 +23,14 @@
  *   6. Polling /mine ate slot ficar ACTIVE+PAID.
  *   7. Cleanup admin.
  *
- * Skipped se E2E_STRIPE_WEBHOOK_SECRET estiver em falta.
+ * Skipped se E2E_STRIPE_WEBHOOK_SECRET estiver em falta, ou se a API ALVO nao
+ * tiver Stripe configurado (`probeStripeOnTarget`, card PATA-CI-4).
  */
 import { test, expect } from '@playwright/test'
 import Stripe from 'stripe'
 import { loginViaApi } from '../fixtures/auth'
 import { API_BASE_URL } from '../fixtures/demo-data'
+import { probeStripeOnTarget, stripeSkipReason } from '../fixtures/env'
 
 const BREEDER_EMAIL = process.env.E2E_BREEDER_EMAIL || 'canil.alvalade@example.pt'
 const BREEDER_PASSWORD = process.env.E2E_BREEDER_PASSWORD || 'DemoPass123'
@@ -65,7 +67,7 @@ test.describe.configure({ mode: 'serial' })
 // IMPORTANTE: ver header dos outros sponsored-slot specs — usar --workers=1
 // quando se corre em conjunto com eles (mesmo user, race em refresh-token).
 
-test.describe('Sponsored Slot — fluxo Multibanco (webhook async 2-step)', () => {
+test.describe('Sponsored Slot — fluxo Multibanco (webhook async 2-step) @destructive', () => {
   test.skip(!WEBHOOK_SECRET, 'E2E_STRIPE_WEBHOOK_SECRET em falta.')
   test.skip(
     !!process.env.E2E_SKIP_DESTRUCTIVE,
@@ -74,6 +76,14 @@ test.describe('Sponsored Slot — fluxo Multibanco (webhook async 2-step)', () =
 
   test('Multibanco unpaid -> async_payment_succeeded activa slot', async ({ page, request }) => {
     test.setTimeout(120_000)
+
+    // Guard PATA-CI-4: o `E2E_STRIPE_WEBHOOK_SECRET` do runner so' diz que
+    // TEMOS secret para assinar; nao diz que a API alvo tem Stripe. Ver
+    // `probeStripeOnTarget` (fixtures/env.ts).
+    const stripeProbe = await probeStripeOnTarget(request)
+    // eslint-disable-next-line no-console
+    console.log(`[E2E] Stripe no alvo: ${stripeProbe.detail}`)
+    test.skip(!stripeProbe.configured, stripeSkipReason(stripeProbe.detail))
 
     // ── 1. Login + descobrir raca ─────────────────────────────────────────
     await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)

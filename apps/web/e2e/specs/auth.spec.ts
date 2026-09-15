@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test'
 import { DEMO_PASSWORD, DEMO_CLIENT_EMAILS } from '../fixtures/demo-data'
 import { uniqueEmail, dismissConsentBanner } from '../fixtures/auth'
+import { seedSkipReason } from '../fixtures/env'
 
 test.beforeEach(async ({ page }) => {
   // O ConsentBanner cobre os botões em viewport pequeno e bloqueia
@@ -8,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await dismissConsentBanner(page)
 })
 
-test.describe('Autenticação — login', () => {
+test.describe('Autenticação — login @prod-safe', () => {
   test('mostra erro com credenciais inválidas', async ({ page }) => {
     await page.goto('/entrar')
 
@@ -18,7 +19,7 @@ test.describe('Autenticação — login', () => {
     const emailInput = page.getByLabel('Email')
     await emailInput.waitFor({ state: 'visible' })
     await emailInput.fill('nao-existe@example.pt')
-    await page.getByLabel('Palavra-passe').fill('SenhaErrada123')
+    await page.getByLabel('Palavra-passe', { exact: true }).fill('SenhaErrada123')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     // Banner de erro tem texto vindo do backend ("Email ou palavra-passe
@@ -28,11 +29,12 @@ test.describe('Autenticação — login', () => {
     })
   })
 
-  test('login com utilizador demo redireciona para home', async ({ page }) => {
+  test('login com utilizador demo redireciona para home', async ({ page, caps }) => {
+    test.skip(!caps.hasDemoClient, seedSkipReason(caps, 'utilizadores demo (cliente)'))
     await page.goto('/entrar')
 
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[0])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
@@ -47,19 +49,21 @@ test.describe('Autenticação — login', () => {
     }
   })
 
-  test('login preserva rota original (from)', async ({ page }) => {
+  test('login preserva rota original (from)', async ({ page, caps }) => {
+    test.skip(!caps.hasDemoClient, seedSkipReason(caps, 'utilizadores demo (cliente)'))
     // Ao tentar abrir /area-pessoal sem login → redireciona para /entrar
     await page.goto('/area-pessoal')
     await expect(page).toHaveURL(/\/entrar/)
 
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[1])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/area-pessoal/, { timeout: 15_000 })
   })
 
-  test('logout limpa sessão e volta a mostrar Entrar', async ({ page }) => {
+  test('logout limpa sessão e volta a mostrar Entrar', async ({ page, caps }) => {
+    test.skip(!caps.hasDemoClient, seedSkipReason(caps, 'utilizadores demo (cliente)'))
     // Em máquinas corporativas com proxy de inspeção TLS (Netskope, Zscaler,
     // BlueCoat, etc.) o POST /api/auth/login deste teste fica preso (status -1
     // no Chromium, sem timeout do edge real). Confirmado: cert TLS de
@@ -76,7 +80,7 @@ test.describe('Autenticação — login', () => {
 
     await page.goto('/entrar')
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[2])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
@@ -95,7 +99,7 @@ test.describe('Autenticação — login', () => {
   })
 })
 
-test.describe('Autenticação — registo', () => {
+test.describe('Autenticação — registo @prod-safe', () => {
   test('valida palavra-passe fraca', async ({ page }) => {
     await page.goto('/registar')
 
@@ -125,7 +129,7 @@ test.describe('Autenticação — registo', () => {
     await expect(page.getByText(/não coincidem/i)).toBeVisible()
   })
 
-  test('cria nova conta com sucesso', async ({ page }) => {
+  test('cria nova conta com sucesso @destructive', async ({ page }) => {
     test.skip(
       !!process.env.E2E_SKIP_DESTRUCTIVE,
       'Skipped em stage para não criar contas reais na BD',
@@ -155,7 +159,7 @@ test.describe('Autenticação — registo', () => {
   })
 })
 
-test.describe('Rotas protegidas', () => {
+test.describe('Rotas protegidas @prod-safe', () => {
   test('/area-pessoal redireciona para /entrar', async ({ page }) => {
     await page.goto('/area-pessoal')
     await expect(page).toHaveURL(/\/entrar/)

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test'
 
 /**
  * Simulador de raça — quiz multi-step.
@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
  * pergunta; ao responder à última, dispara POST /api/breed-matcher/match
  * e mostra o top 5 de raças.
  */
-test.describe('Simulador de raça', () => {
+test.describe('Simulador de raça @prod-safe', () => {
   test('carrega quiz com 11 perguntas', async ({ page }) => {
     await page.goto('/simulador-raca')
 
