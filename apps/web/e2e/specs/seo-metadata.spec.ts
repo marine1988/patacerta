@@ -286,6 +286,69 @@ test.describe('SEO / metadata @prod-safe', () => {
       expect(body, `robots.txt devia bloquear ${disallowed}`).toContain(disallowed)
     }
     expect(body).toMatch(/Sitemap:\s*https?:\/\//i)
+
+    // O host do `Sitemap:` TEM de ser o deste ambiente (PATA-BUG-9): o
+    // ficheiro é estático e é copiado para a imagem de todos os ambientes,
+    // por isso um host literal fazia o stage anunciar a sitemap de produção
+    // (exactamente a classe do PATA-BUG-7). O assert de forma acima sozinho
+    // não apanha isso — foi o que deixou o defeito invisível.
+    //
+    // O `__PUBLIC_URL__` do template é resolvido no build/dev pelo plugin
+    // `patacerta:public-url` (`apps/web/vite.config.ts`), que trata também do
+    // `llms.txt`; se ele escapar para o que é servido, o crawl aponta para um
+    // caminho literal inválido.
+    expect(body, 'robots.txt com o placeholder por resolver').not.toContain('__PUBLIC_URL__')
+
+    const sitemapLine = body.match(/^[ \t]*Sitemap:[ \t]*(\S+)[ \t]*$/im)
+    expect(sitemapLine, 'robots.txt sem linha `Sitemap:`').not.toBeNull()
+    const sitemapUrl = sitemapLine![1]!
+    expect(sitemapUrl.endsWith('/sitemap.xml'), `sitemap inesperada: ${sitemapUrl}`).toBe(true)
+    if (EXPECTED_PUBLIC_URL) {
+      expect(
+        sitemapUrl.startsWith(`${EXPECTED_PUBLIC_URL}/`),
+        `robots.txt aponta a sitemap de outro domínio: ${sitemapUrl} (esperado ${EXPECTED_PUBLIC_URL})`,
+      ).toBe(true)
+    }
+  })
+
+  test('llms.txt aponta ao domínio deste ambiente', async ({ request }) => {
+    const res = await request.get(`${EXPECTED_PUBLIC_URL ?? ''}/llms.txt`)
+    expect(res.status()).toBe(200)
+    expect((res.headers()['content-type'] ?? '').toLowerCase()).toContain('text/plain')
+
+    const body = await res.text()
+    // Forma mínima do `llms.txt` (llmstxt.org): H1 com o nome do projecto.
+    expect(body, 'llms.txt sem o H1 do projecto').toMatch(/^#\s+PataCerta/m)
+
+    // PATA-BUG-10: `public/llms.txt` é estático e é copiado tal-e-qual para a
+    // imagem de TODOS os ambientes. Com URLs absolutas literais lá dentro, o
+    // `llms.txt` servido em stage anunciava o domínio de PRODUÇÃO — mesma
+    // classe do PATA-BUG-7 (`<loc>` do sitemap) e do PATA-BUG-9 (robots.txt),
+    // num artefacto que a suite não cobria de todo.
+    //
+    // O `__PUBLIC_URL__` do template é resolvido no build/dev pelo plugin
+    // `patacerta:public-url` (`apps/web/vite.config.ts`); se escapar para o que
+    // é servido, os LLMs ficam a citar um caminho literal inválido.
+    expect(body, 'llms.txt com o placeholder por resolver').not.toContain('__PUBLIC_URL__')
+
+    const urls = [...body.matchAll(/https?:\/\/[^\s<>()[\]"'`]+/g)].map((m) => m[0])
+    expect(urls.length, 'llms.txt sem nenhuma URL absoluta').toBeGreaterThan(0)
+
+    if (EXPECTED_PUBLIC_URL) {
+      for (const url of urls) {
+        expect(
+          url.startsWith(EXPECTED_PUBLIC_URL),
+          `llms.txt com URL de outro domínio: ${url} (esperado ${EXPECTED_PUBLIC_URL})`,
+        ).toBe(true)
+      }
+    } else {
+      // Em local o alvo é `localhost` e o `VITE_PUBLIC_URL` aponta a produção
+      // de propósito (fallback de `src/lib/seo.ts`), logo não se assere o host
+      // — assere-se que o ficheiro não MISTURA domínios (um link de outro
+      // ambiente no meio seria defeito mesmo sem saber qual é o esperado).
+      const origins = new Set(urls.map((url) => new URL(url).origin))
+      expect(origins.size, `llms.txt mistura domínios: ${[...origins].join(', ')}`).toBe(1)
+    }
   })
 
   test('sitemap.xml é XML válido e só contém URLs do domínio canónico', async ({ request }) => {

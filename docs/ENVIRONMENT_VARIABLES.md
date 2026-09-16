@@ -19,14 +19,14 @@
 
 ## 1. Núcleo (Core)
 
-| Variável        | Obrigatória?     | Ambiente   | Serviço | Default                 | Descrição                                                                                         |
-| --------------- | ---------------- | ---------- | ------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`      | Sim              | todos      | api     | `development`           | `production` ativa fail-safes de segurança                                                        |
-| `PORT`          | Não              | todos      | api     | `3001`                  | Porta do servidor Express                                                                         |
-| `VOLUME_PREFIX` | Sim (prod/stage) | prod/stage | —       | `stage_patacerta`       | Prefixo dos volumes Docker. **Definir ANTES do 1º deploy** — mudar depois exige migração de dados |
-| `FRONTEND_URL`  | Sim              | todos      | api     | `http://localhost:5173` | URL público do site. Também usado como fallback de CORS                                           |
-| `CORS_ORIGIN`   | Não              | todos      | api     | `FRONTEND_URL`          | Lista separada por vírgulas de origens permitidas                                                 |
-| `PUBLIC_URL`    | Não              | todos      | api     | = FRONTEND_URL          | URL canónico p/ sitemap.xml (sem trailing slash)                                                  |
+| Variável        | Obrigatória?     | Ambiente   | Serviço | Default                 | Descrição                                                                                                                                                                                                                                                                     |
+| --------------- | ---------------- | ---------- | ------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`      | Sim              | todos      | api     | `development`           | `production` ativa fail-safes de segurança                                                                                                                                                                                                                                    |
+| `PORT`          | Não              | todos      | api     | `3001`                  | Porta do servidor Express                                                                                                                                                                                                                                                     |
+| `VOLUME_PREFIX` | Sim (prod/stage) | prod/stage | —       | `stage_patacerta`       | Prefixo dos volumes Docker. **Definir ANTES do 1º deploy** — mudar depois exige migração de dados                                                                                                                                                                             |
+| `FRONTEND_URL`  | Sim              | todos      | api     | `http://localhost:5173` | URL público do site. Também usado como fallback de CORS                                                                                                                                                                                                                       |
+| `CORS_ORIGIN`   | Não              | todos      | api     | `FRONTEND_URL`          | Lista separada por vírgulas de origens permitidas                                                                                                                                                                                                                             |
+| `PUBLIC_URL`    | Não              | todos      | api     | `FRONTEND_URL`          | Origem canónica dos `<loc>` do sitemap.xml (sem trailing slash). Sem ela a API usa a 1.ª entrada de `FRONTEND_URL`; em prod/stage, sem nenhuma das duas, o `/sitemap.xml` responde 500 em vez de inventar um host. Tem de estar no `environment:` do serviço `api` no compose |
 
 ## 2. Base de Dados
 
@@ -117,9 +117,10 @@
 
 ## 12. SEO
 
-| Variável        | Obrigatória? | Ambiente | Serviço | Default | Descrição                                                            |
-| --------------- | ------------ | -------- | ------- | ------- | -------------------------------------------------------------------- |
-| `ROBOTS_HEADER` | Não          | stage    | web     | vazio   | Em stage: `noindex, nofollow` (impede indexação). Em prod: **vazio** |
+| Variável          | Obrigatória? | Ambiente | Serviço | Default                | Descrição                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | ------------ | -------- | ------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_PUBLIC_URL` | Sim          | todos    | web     | `https://patacerta.pt` | Domínio canónico **build-time** do frontend: `canonical`, `og:url`, JSON-LD, a linha `Sitemap:` do `robots.txt` e as URLs do `llms.txt` (placeholder `__PUBLIC_URL__`, resolvido no build pelo plugin `patacerta:public-url`). Em stage tem de ser `https://stage.patacerta.pt`, senão o stage publica URLs de produção (PATA-BUG-7/9/10) |
+| `ROBOTS_HEADER`   | Não          | stage    | web     | vazio                  | Em stage: `noindex, nofollow` (impede indexação). Em prod: **vazio**                                                                                                                                                                                                                                                                      |
 
 ---
 

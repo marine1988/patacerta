@@ -72,6 +72,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
       CORS_ORIGIN: '*'
       FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.pt}
+      # Origem canónica dos <loc> do sitemap (ver apps/api/src/lib/env.ts).
+      # Listada aqui de propósito: as vars do painel só interpolam este
+      # compose, não são injectadas nos contentores por si só.
+      PUBLIC_URL: ${PUBLIC_URL:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     restart: unless-stopped

@@ -40,3 +40,28 @@ export function getFrontendBaseUrl(): string {
   }
   return 'http://localhost:5173'
 }
+
+/**
+ * Origem canónica dos URLs absolutos que a API publica em nome do site —
+ * hoje os `<loc>` do sitemap.xml.
+ *
+ * Ordem de resolução: `PUBLIC_URL` → `getFrontendBaseUrl()`.
+ *
+ * NÃO existe default de produção. Antes, a ausência de `PUBLIC_URL` fazia o
+ * sitemap cair em `https://patacerta.pt` e o stage publicava `<loc>` de
+ * produção (PATA-BUG-7: uma sitemap nunca pode anunciar outro host que não o
+ * que a serve). Em produção/stage, `getFrontendBaseUrl()` falha alto quando
+ * `FRONTEND_URL` também falta (500 no endpoint, com log) em vez de anunciar o
+ * host errado em silêncio; em desenvolvimento cai em `http://localhost:5173`.
+ *
+ * Passa pela semântica de `FRONTEND_URL` (lista separada por vírgulas, ver
+ * `getFrontendBaseUrl`): ler a env crua metia a lista inteira dentro de um
+ * `<loc>` e produzia uma URL inválida.
+ *
+ * Devolve sempre sem trailing slash.
+ */
+export function getPublicBaseUrl(): string {
+  const raw = process.env.PUBLIC_URL?.trim()
+  const base = raw && raw.length > 0 ? raw : getFrontendBaseUrl()
+  return base.replace(/\/+$/, '')
+}

@@ -348,6 +348,74 @@ O log do run fica com a evidência que justifica o skip:
   o runtime no `/`, logo não serviam para detectar hidratação). Não abrir bug de app sem
   reproduzir o DOM **já hidratado**.
 
+## `robots.txt` / `llms.txt` e o domínio do ambiente (PATA-BUG-9/10)
+
+`apps/web/public/robots.txt` e `apps/web/public/llms.txt` são **estáticos**: são
+copiados `public/` → `dist/` → imagem nginx de todos os ambientes. Com um host
+literal lá dentro, o `robots.txt`/`llms.txt` de stage (ou de qualquer preview/fork)
+anunciavam a sitemap/o domínio de **produção** — a mesma classe de defeito do
+PATA-BUG-7, num caminho que `PUBLIC_URL` (runtime, API) não toca.
+
+Decisão: as URLs vivem no placeholder `__PUBLIC_URL__` e são resolvidas a partir de
+`VITE_PUBLIC_URL` — a mesma fonte do `canonical`/`og:url`/`<loc>` — pelo plugin
+`patacerta:public-url` em `apps/web/vite.config.ts` (o PATA-BUG-9 criou-o para o
+`robots.txt`; o PATA-BUG-10 generalizou-o para uma lista de ficheiros):
+
+- **build** — reescreve os `dist/*.txt` depois da cópia de `public/` e **falha o
+  build** se o resultado não tiver `Sitemap: <VITE_PUBLIC_URL>/sitemap.xml`
+  (`robots.txt`), nem `Domínio canónico: \`<VITE_PUBLIC_URL>\`` (`llms.txt`), se ficar
+  com o placeholder por resolver, ou se anunciar **outro** domínio;
+- **dev** — middleware próprio, antes do middleware da public dir (que serviria o
+  template cru com o placeholder);
+- **preview** — serve o **artefacto** de `dist/` (é isso que o nginx publica), com o
+  template como fallback se ainda não houver build.
+
+Porque não `sed` no `Dockerfile` do web nem `envsubst` no nginx (as duas alternativas
+equacionadas no card): o `dist/` não nasce só na imagem. O job `E2E` do CI corre
+`pnpm --filter @patacerta/web build` + `vite preview` (`.github/workflows/e2e.yml`) e
+em dev o Vite serve `public/` cru — qualquer das rotas só-contentor deixaria o CI e o
+QA local a servir o placeholder. Resolver no build do Vite cobre os três caminhos com
+uma única fonte de verdade.
+
+### `llms.txt` — placeholder dentro de prosa (PATA-BUG-10)
+
+`llms.txt` é Markdown para LLMs: o host aparecia em 11 sítios de **prosa** (a linha
+`Domínio canónico:`, links `[Pesquisar](__PUBLIC_URL__/pesquisar)`, pares
+`<__PUBLIC_URL__/sitemap.xml>` e código inline `` `__PUBLIC_URL__/...` ``). Decisão
+explícita, porque as alternativas eram piores:
+
+| Alternativa                                  | Porque não                                                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Templatar só a linha do domínio canónico     | Deixava 9 URLs absolutas a apontar a produção — o defeito de que o card fala continua lá, só que mais discreto.                           |
+| Passar tudo a paths relativos (`/pesquisar`) | Num documento cujo fim é ser **citado** por LLMs, uma referência sem origem perde a canonicalidade (o LLM não sabe de que site é o path). |
+| Deixar o host literal e não testar           | É o estado actual (PATA-BUG-10).                                                                                                          |
+
+Consequência para quem edita: o ficheiro **fonte** mostra `__PUBLIC_URL__`, e é
+esperado — o que é servido é que tem de ter o domínio do ambiente. Não "corrigir" o
+placeholder escrevendo lá `https://patacerta.pt` (o build falha se o domínio do `dist/`
+não for o do ambiente, mas um host literal _de produção_ num build _de produção_ passa
+despercebido — quem apanha isso é o spec).
+
+Consequências para os testes:
+
+- o assert do `seo-metadata.spec.ts` compara o **host** da linha `Sitemap:` com
+  `EXPECTED_PUBLIC_URL` (não só a forma `Sitemap: https://…`) e falha se o placeholder
+  escapar para o que é servido — o assert fraco era o que deixava o defeito invisível;
+- o spec novo (`llms.txt aponta ao domínio deste ambiente`) faz o mesmo para as **URLs
+  absolutas** do `/llms.txt`: nenhuma pode ter outro domínio que não
+  `EXPECTED_PUBLIC_URL`, nem pode sobrar `__PUBLIC_URL__`. Antes do PATA-BUG-10 o
+  `llms.txt` não tinha cobertura nenhuma na suite;
+- em **local** `EXPECTED_PUBLIC_URL` é `null` (o alvo é `localhost`), logo o host não é
+  assertado: local serve `Sitemap: https://patacerta.pt/sitemap.xml` e um `llms.txt`
+  todo em `https://patacerta.pt`, o fallback de `src/lib/seo.ts` (igual ao do
+  `canonical`), como antes. O `llms.txt` é assertado na mesma quanto a coerência:
+  todas as URLs têm de partilhar o mesmo `origin` (um ficheiro que mistura domínios é
+  defeito mesmo em local);
+- em **stage/produção** o assert é real: um `VITE_PUBLIC_URL`/build-arg mal definido
+  passa a falhar o spec em vez de passar despercebido. Sem
+  `E2E_HTTP_USER`/`E2E_HTTP_PASS` o pedido morre no 401 do Traefik antes de chegar ao
+  assert — o run diz isso, não inventa.
+
 ## Rate-limit do ambiente (`apiRateLimit`) — o que bloqueia runs longos
 
 A API aplica **200 pedidos / 15 min / IP** (`apps/api/src/middleware/rate-limit.ts`).

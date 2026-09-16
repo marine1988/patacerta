@@ -60,6 +60,26 @@ router de prioridade superior, ou retirar o middleware do domínio de stage.
 Trade-off: o stage fica indexável/acessível a terceiros — daí ser decisão de
 infra, não de CI.
 
+## Impacto na SPA (PATA-BUG-8) — o 401 do Traefik não é uma sessão expirada
+
+Enquanto `/api/*` estiver atrás do middleware, **qualquer** pedido autenticado da
+SPA bate no challenge: o axios acrescenta `Authorization: Bearer <accessToken>`,
+o Traefik valida esse header como credencial de basic auth, responde 401 com
+`WWW-Authenticate: Basic realm="traefik"` e o pedido nunca chega à API. O browser
+não consegue satisfazer o challenge porque o `Authorization` já vem definido pela
+aplicação.
+
+O interceptor de `apps/web/src/lib/api.ts` tratava esse 401 como sessão expirada
+(e o `/auth/refresh` **passa**, porque vai sem `Authorization`, o que confirmava o
+diagnóstico errado) e entrava em ciclo: refresh → repetir → 401 → refresh → …
+A partir de agora falha rápido: um 401 com challenge `Basic` é tratado como
+credenciais de infra — não refresca, não toca na sessão (ver `isBasicAuthChallenge`
+e os testes em `apps/web/src/lib/api.test.ts`).
+
+Isto torna a app **determinística** em stage (sem tempestade de pedidos nem
+página em branco em ciclo), mas **não** resolve o acesso autenticado em stage:
+isso continua a depender da Opção A/B acima (card PATA-BUG-1).
+
 ## Como o workflow reporta o problema (PATA-BUG-1)
 
 `e2e-stage.yml` tem agora três barreiras explícitas, todas com `::error`:

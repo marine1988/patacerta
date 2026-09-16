@@ -1,5 +1,8 @@
 # PataCerta — robots.txt
-# https://patacerta.pt (produção) / https://stage.patacerta.pt (staging)
+# Produção: patacerta.pt | Staging: stage.patacerta.pt
+# (sem esquema de propósito: este ficheiro vai para a imagem de todos os
+#  ambientes e o guard do build falha se encontrar um host do produto que não
+#  seja o do ambiente — ver plugin `patacerta:public-url` no vite.config.ts)
 # Documentação: https://www.robotstxt.org/
 
 # ============================================================
@@ -103,4 +106,15 @@ Disallow: /
 # ============================================================
 # Sitemap
 # ============================================================
-Sitemap: https://patacerta.pt/sitemap.xml
+#
+# O dominio abaixo NAO e' literal: e' resolvido no build pelo ambiente onde
+# corre (build-arg `VITE_PUBLIC_URL` — a mesma fonte do `<link rel=canonical>`
+# e das `<loc>` do sitemap; ver src/lib/seo.ts). Em dev/preview quem resolve
+# e' o plugin `patacerta:public-url` (vite.config.ts), que trata tambem do
+# `llms.txt` (mesma classe de defeito — PATA-BUG-9 aqui, PATA-BUG-10 la).
+#
+# NUNCA escrever aqui um host literal: este ficheiro e' estatico, e' copiado
+# tal-e-qual para a imagem de TODOS os ambientes, logo um host fixo faz o
+# stage anunciar a sitemap de producao (defeito PATA-BUG-9).
+#
+Sitemap: __PUBLIC_URL__/sitemap.xml

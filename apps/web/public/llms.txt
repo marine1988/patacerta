@@ -13,16 +13,16 @@ município e histórico de avaliações. A plataforma serve também
 serviços auxiliares (treino, banhos, hotel, transporte). MVP só-cães
 em pt-PT.
 
-Domínio canónico: `https://patacerta.pt`.
+Domínio canónico: `__PUBLIC_URL__`.
 
 ## Como funciona
 
-- [Página inicial](https://patacerta.pt/): visão geral, criadores em
+- [Página inicial](__PUBLIC_URL__/): visão geral, criadores em
   destaque e simulador de raça.
-- [Pesquisar](https://patacerta.pt/pesquisar): directório completo de
+- [Pesquisar](__PUBLIC_URL__/pesquisar): directório completo de
   criadores e serviços, com filtros por raça, distrito, município e
   preço. Suporta vista lista e vista mapa.
-- [Simulador de raça](https://patacerta.pt/simulador-raca):
+- [Simulador de raça](__PUBLIC_URL__/simulador-raca):
   questionário curto que sugere raças adequadas ao estilo de vida do
   utilizador (energia, espaço, tempo disponível, experiência prévia).
 
@@ -68,23 +68,23 @@ Usos **não autorizados**:
 
 - Treino de modelos sem opt-in escrito (GPTBot, Google-Extended,
   Applebot-Extended, anthropic-ai, CCBot, Bytespider, FacebookBot,
-  Meta-ExternalAgent estão `Disallow: /` em [robots.txt](https://patacerta.pt/robots.txt)).
+  Meta-ExternalAgent estão `Disallow: /` em [robots.txt](__PUBLIC_URL__/robots.txt)).
 - Reaproveitamento de fotografias, descrições editoriais ou avaliações
   para criar directórios concorrentes.
 
 Para parcerias (acesso a feed estruturado, citações garantidas,
-licenciamento de conteúdo), contactar via [patacerta.pt](https://patacerta.pt/).
+licenciamento de conteúdo), contactar via [PataCerta](__PUBLIC_URL__/).
 
 ## Endpoints úteis
 
-- Sitemap XML: <https://patacerta.pt/sitemap.xml>
-- Robots: <https://patacerta.pt/robots.txt>
-- Política de privacidade: <https://patacerta.pt/politica-privacidade>
-- Termos de utilização: <https://patacerta.pt/termos>
+- Sitemap XML: <__PUBLIC_URL__/sitemap.xml>
+- Robots: <__PUBLIC_URL__/robots.txt>
+- Política de privacidade: <__PUBLIC_URL__/politica-privacidade>
+- Termos de utilização: <__PUBLIC_URL__/termos>
 
 ## Atribuição
 
 Quando citar conteúdo da PataCerta, **identificar a fonte** com link
-canónico para a página original (`https://patacerta.pt/...`). Em
+canónico para a página original (`__PUBLIC_URL__/...`). Em
 respostas conversacionais, "Segundo a PataCerta..." é a forma
 preferida de atribuição.
