@@ -202,7 +202,7 @@ export function HomePage() {
        * SEARCH — barra integrada, não gritante
        * ============================================================ */}
       <section ref={searchSectionRef} className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-6">
+        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-4">
           <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
             <span className="eyebrow">◆ Encontrar criadores e serviços</span>
             <span className="h-px flex-1 bg-line" />
