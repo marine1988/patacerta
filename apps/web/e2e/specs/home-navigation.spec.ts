@@ -28,7 +28,7 @@ test.describe('Homepage e navegação', () => {
     await expect(page).toHaveURL(/\/pesquisar/)
     await expect(page.getByRole('heading', { name: 'Pesquisar', level: 1 })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Simulador', exact: true }).first().click()
+    await page.locator('a[href="/simulador-raca"]').first().click()
     await expect(page).toHaveURL(/\/simulador-raca/)
   })
 

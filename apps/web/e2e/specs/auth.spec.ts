@@ -18,7 +18,7 @@ test.describe('Autenticação — login', () => {
     const emailInput = page.getByLabel('Email')
     await emailInput.waitFor({ state: 'visible' })
     await emailInput.fill('nao-existe@example.pt')
-    await page.getByLabel('Palavra-passe').fill('SenhaErrada123')
+    await page.getByLabel('Palavra-passe', { exact: true }).fill('SenhaErrada123')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     // Banner de erro tem texto vindo do backend ("Email ou palavra-passe
@@ -32,7 +32,7 @@ test.describe('Autenticação — login', () => {
     await page.goto('/entrar')
 
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[0])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
@@ -53,7 +53,7 @@ test.describe('Autenticação — login', () => {
     await expect(page).toHaveURL(/\/entrar/)
 
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[1])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/area-pessoal/, { timeout: 15_000 })
@@ -76,7 +76,7 @@ test.describe('Autenticação — login', () => {
 
     await page.goto('/entrar')
     await page.getByLabel('Email').fill(DEMO_CLIENT_EMAILS[2])
-    await page.getByLabel('Palavra-passe').fill(DEMO_PASSWORD)
+    await page.getByLabel('Palavra-passe', { exact: true }).fill(DEMO_PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 })
