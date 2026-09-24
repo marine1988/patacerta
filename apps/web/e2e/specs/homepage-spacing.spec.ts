@@ -1,84 +1,157 @@
 import { test, expect, type Page } from '../fixtures/test'
+import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-UI-1: o research mantém um respiro compacto em relação ao bloco
- * anterior, sem confundir esse intervalo com o hero que precede a homepage.
+ * PATA-UI-2: o topo da homepage é estruturalmente compacto.
+ *
+ * A ordem intentional é header → bloco compacto do simulador → pesquisa →
+ * nota legal. O hero editorial e os destaques continuam abaixo, nunca entre
+ * esses três pontos. A janela de 80–180 px mede o intervalo entre o fim do
+ * header e o início da pesquisa incluindo o CTA; o layout anterior (≈693 px
+ * desktop / ≈399 px mobile) falha automaticamente.
  */
 
 type ViewportCase = {
   label: 'desktop' | 'mobile'
   viewport: { width: number; height: number }
-  expectedPadding: number
 }
 
 const VIEWPORTS: readonly ViewportCase[] = [
-  { label: 'desktop', viewport: { width: 1280, height: 900 }, expectedPadding: 16 },
-  { label: 'mobile', viewport: { width: 390, height: 844 }, expectedPadding: 16 },
+  { label: 'desktop', viewport: { width: 1280, height: 900 } },
+  { label: 'mobile', viewport: { width: 390, height: 844 } },
 ]
 
-type ResearchMeasurement = {
-  previousSectionBottom: number
-  searchSectionTop: number
-  sectionGap: number
-  contentTop: number
-  contentGap: number
-  paddingTop: number
-  paddingBottom: number
+type TopMeasurement = {
+  headerBottom: number
+  ctaTop: number
+  ctaBottom: number
+  searchTop: number
+  searchBottom: number
+  noteTop: number
+  searchGapFromHeader: number
+  noteOverflow: number
+  topLevelOrder: string[]
+  adBlocksBeforeSearch: number
 }
 
-async function measureResearchGap(page: Page): Promise<ResearchMeasurement> {
+async function measureTop(page: Page): Promise<TopMeasurement> {
   return page.evaluate(() => {
+    const header = document.querySelector('header')
+    const cta = document.querySelector('[data-testid="home-simulator-cta"]')
+    const search = document.querySelector('[data-testid="home-search"]')
+    const note = document.querySelector('[data-testid="home-simulator-note"]')
     const root = document.querySelector('main')?.firstElementChild
-    const sections = root ? Array.from(root.querySelectorAll(':scope > section')) : []
-    const search = sections.find((section) =>
-      (section.textContent || '').includes('Encontrar criadores e serviços'),
-    )
-    const previous = search?.previousElementSibling
-    const content = search?.querySelector('.eyebrow')
-    if (!search || !previous || !content) {
-      throw new Error('Homepage sem secção anterior/conteúdo de pesquisa')
+    const topLevelElements = root ? Array.from(root.children) : []
+
+    if (!header || !cta || !search || !note) {
+      throw new Error('Homepage sem header, CTA do simulador, pesquisa ou nota legal no topo')
     }
 
-    const previousRect = previous.getBoundingClientRect()
+    const headerRect = header.getBoundingClientRect()
+    const ctaRect = cta.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
-    const contentRect = content.getBoundingClientRect()
-    const inner = search.firstElementChild
-    const styles = inner ? getComputedStyle(inner) : null
+    const noteRect = note.getBoundingClientRect()
+    const topLevelOrder = topLevelElements.map((element) => {
+      if (element === cta) return 'cta'
+      if (element === search) return 'search'
+      if (element === note) return 'note'
+      if (element.querySelector('[data-ad-placement="homepage-mid"]')) return 'ad'
+      if ((element.textContent || '').includes('O portal dos')) return 'hero'
+      return 'other'
+    })
+    const searchIndex = topLevelElements.indexOf(search)
+    const adBlocksBeforeSearch = topLevelElements
+      .slice(0, searchIndex)
+      .filter((element) => element.querySelector('[data-ad-placement="homepage-mid"]')).length
+
+    const viewportWidth = document.documentElement.clientWidth
+    const noteOverflow = Math.max(
+      0,
+      noteRect.left < 0 ? -noteRect.left : 0,
+      noteRect.right > viewportWidth ? noteRect.right - viewportWidth : 0,
+    )
 
     return {
-      previousSectionBottom: previousRect.bottom,
-      searchSectionTop: searchRect.top,
-      sectionGap: searchRect.top - previousRect.bottom,
-      contentTop: contentRect.top,
-      contentGap: contentRect.top - previousRect.bottom,
-      paddingTop: styles ? Number.parseFloat(styles.paddingTop) : 0,
-      paddingBottom: styles ? Number.parseFloat(styles.paddingBottom) : 0,
+      headerBottom: headerRect.bottom,
+      ctaTop: ctaRect.top,
+      ctaBottom: ctaRect.bottom,
+      searchTop: searchRect.top,
+      searchBottom: searchRect.bottom,
+      noteTop: noteRect.top,
+      searchGapFromHeader: searchRect.top - headerRect.bottom,
+      noteOverflow,
+      topLevelOrder,
+      adBlocksBeforeSearch,
     }
   })
 }
 
-test.describe('Homepage research spacing @prod-safe', () => {
-  for (const { label, viewport, expectedPadding } of VIEWPORTS) {
-    test(`mantém o respiro da pesquisa compacto no ${label}`, async ({ page }) => {
+async function assertNoHorizontalOverflow(page: Page, label: string): Promise<void> {
+  const widths = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    document: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+  }))
+  expect(widths.document, `${label}: overflow horizontal`).toBeLessThanOrEqual(widths.viewport + 1)
+}
+
+test.describe('Homepage top structure @prod-safe', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissConsentBanner(page)
+  })
+
+  for (const { label, viewport } of VIEWPORTS) {
+    test(`mantém header, CTA, pesquisa e nota compactos no ${label}`, async ({ page }) => {
       await page.setViewportSize(viewport)
       await page.goto('/')
-      await expect(page.getByText('Encontrar criadores e serviços', { exact: false })).toBeVisible()
 
-      const measurement = await measureResearchGap(page)
-      const context = { label, expectedPadding, ...measurement }
+      const ctaLink = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
+      const search = page.locator('[data-testid="home-search"]')
+      const note = page.locator('[data-testid="home-simulator-note"]')
+      await expect(ctaLink).toBeVisible()
+      await expect(search).toBeVisible()
+      await expect(note).toBeVisible()
 
-      // A secção é adjacente à anterior; qualquer respiro vem do padding
-      // interno, não de uma quebra vertical do layout.
-      expect(measurement.sectionGap, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
-      expect(measurement.sectionGap, JSON.stringify(context)).toBeLessThanOrEqual(2)
-      expect(measurement.paddingTop, JSON.stringify(context)).toBeCloseTo(expectedPadding, 0)
-      expect(measurement.paddingBottom, JSON.stringify(context)).toBeCloseTo(expectedPadding, 0)
-      expect(measurement.contentGap, JSON.stringify(context)).toBeGreaterThanOrEqual(
-        expectedPadding,
+      const measurement = await measureTop(page)
+      const context = { label, ...measurement }
+      expect(measurement.topLevelOrder.slice(0, 3), JSON.stringify(context)).toEqual([
+        'cta',
+        'search',
+        'note',
+      ])
+      expect(measurement.adBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
+      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(80)
+      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(180)
+      expect(measurement.ctaTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.headerBottom,
       )
-      expect(measurement.contentGap, JSON.stringify(context)).toBeLessThanOrEqual(
-        expectedPadding + 4,
+      expect(measurement.ctaBottom, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.searchTop + 1,
       )
+      expect(measurement.noteOverflow, JSON.stringify(context)).toBeLessThanOrEqual(1)
+      expect(measurement.searchBottom, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.noteTop + 1,
+      )
+      await assertNoHorizontalOverflow(page, label)
     })
   }
+
+  test('o CTA do simulador navega para /simulador-raca', async ({ page }) => {
+    await page.goto('/')
+    const cta = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
+    await expect(cta).toHaveText('Começar simulador')
+    await cta.click()
+    await expect(page).toHaveURL(/\/simulador-raca$/)
+  })
+
+  test('a pesquisa normal dá origem à pesquisa sticky depois do scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/')
+    const search = page.locator('[data-testid="home-search"]')
+    await expect(search).toBeVisible()
+    await search.scrollIntoViewIfNeeded()
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    const sticky = page.locator('[data-testid="sticky-search"]')
+    await expect(sticky).toBeVisible()
+    await expect(sticky).not.toHaveCSS('top', '0px')
+  })
 })
