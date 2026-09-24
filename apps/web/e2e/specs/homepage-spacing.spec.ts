@@ -2,13 +2,11 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-UI-2: o topo da homepage é estruturalmente compacto.
+ * PATA-UI-3: a pesquisa é o primeiro conteúdo depois do header.
  *
- * A ordem intentional é header → bloco compacto do simulador → pesquisa →
- * nota legal. O hero editorial e os destaques continuam abaixo, nunca entre
- * esses três pontos. A janela de 80–180 px mede o intervalo entre o fim do
- * header e o início da pesquisa incluindo o CTA; o layout anterior (≈693 px
- * desktop / ≈399 px mobile) falha automaticamente.
+ * Não pode existir um bloco CTA, hero, anúncio ou outro spacer entre o
+ * limite inferior do header e a secção de pesquisa. A barra pode manter o
+ * seu respiro interno, mas a secção que a contém começa colada ao header.
  */
 
 type ViewportCase = {
@@ -23,15 +21,16 @@ const VIEWPORTS: readonly ViewportCase[] = [
 
 type TopMeasurement = {
   headerBottom: number
-  ctaTop: number
-  ctaBottom: number
   searchTop: number
   searchBottom: number
+  ctaTop: number
+  ctaBottom: number
   noteTop: number
   searchGapFromHeader: number
   noteOverflow: number
   topLevelOrder: string[]
   adBlocksBeforeSearch: number
+  heroBlocksBeforeSearch: number
 }
 
 async function measureTop(page: Page): Promise<TopMeasurement> {
@@ -52,8 +51,8 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const searchRect = search.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
-      if (element === cta) return 'cta'
       if (element === search) return 'search'
+      if (element === cta) return 'cta'
       if (element === note) return 'note'
       if (element.querySelector('[data-ad-placement="homepage-mid"]')) return 'ad'
       if ((element.textContent || '').includes('O portal dos')) return 'hero'
@@ -73,15 +72,18 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
 
     return {
       headerBottom: headerRect.bottom,
-      ctaTop: ctaRect.top,
-      ctaBottom: ctaRect.bottom,
       searchTop: searchRect.top,
       searchBottom: searchRect.bottom,
+      ctaTop: ctaRect.top,
+      ctaBottom: ctaRect.bottom,
       noteTop: noteRect.top,
       searchGapFromHeader: searchRect.top - headerRect.bottom,
       noteOverflow,
       topLevelOrder,
       adBlocksBeforeSearch,
+      heroBlocksBeforeSearch: topLevelElements
+        .slice(0, searchIndex)
+        .filter((element) => (element.textContent || '').includes('O portal dos')).length,
     }
   })
 }
@@ -114,22 +116,25 @@ test.describe('Homepage top structure @prod-safe', () => {
       const measurement = await measureTop(page)
       const context = { label, ...measurement }
       expect(measurement.topLevelOrder.slice(0, 3), JSON.stringify(context)).toEqual([
-        'cta',
         'search',
+        'cta',
         'note',
       ])
       expect(measurement.adBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
-      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(80)
-      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(180)
-      expect(measurement.ctaTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
-        measurement.headerBottom,
+      expect(measurement.heroBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
+      // A secção de pesquisa é a primeira após o header: só toleramos a
+      // eventual linha de 1px da border, nunca um gap vertical real.
+      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
+      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(1)
+      expect(measurement.ctaTop, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.searchBottom + 1,
       )
       expect(measurement.ctaBottom, JSON.stringify(context)).toBeLessThanOrEqual(
-        measurement.searchTop + 1,
+        measurement.noteTop + 1,
       )
       expect(measurement.noteOverflow, JSON.stringify(context)).toBeLessThanOrEqual(1)
       expect(measurement.searchBottom, JSON.stringify(context)).toBeLessThanOrEqual(
-        measurement.noteTop + 1,
+        measurement.ctaTop + 1,
       )
       await assertNoHorizontalOverflow(page, label)
     })

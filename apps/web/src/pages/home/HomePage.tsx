@@ -87,10 +87,24 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * SIMULADOR — CTA compacto antes da pesquisa.
-       * O bloco mantém o acesso ao quiz, indicação de custo e nota legal
-       * num único ponto da página; o conteúdo editorial completo continua
-       * depois das listagens.
+       * SEARCH — a pesquisa começa imediatamente abaixo do header.
+       * A barra fica no topo da homepage para não introduzir um bloco
+       * intermédio entre o limite superior e o primeiro controlo.
+       * ============================================================ */}
+      <section ref={searchSectionRef} data-testid="home-search" className="border-y border-line">
+        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-4">
+          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
+            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <SearchBar showSearchType idPrefix="home-search" />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SIMULADOR — CTA compacto depois da pesquisa.
+       * Mantém o acesso ao quiz e a indicação de custo sem bloquear a
+       * primeira interação da página.
        * ============================================================ */}
       <section
         aria-labelledby="home-simulator-title"
@@ -112,19 +126,6 @@ export function HomePage() {
               </span>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SEARCH — barra integrada, não gritante
-       * ============================================================ */}
-      <section ref={searchSectionRef} data-testid="home-search" className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-4">
-          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
-            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
-            <span className="h-px flex-1 bg-line" />
-          </div>
-          <SearchBar showSearchType idPrefix="home-search" />
         </div>
       </section>
 
