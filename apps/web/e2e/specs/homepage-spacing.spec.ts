@@ -2,19 +2,25 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-UI-3: a pesquisa é o primeiro conteúdo depois do header.
+ * PATA-UI-3 / PATA-UI-4: a pesquisa é o primeiro conteúdo depois do header e
+ * o formulário branco VISÍVEL começa colado a esse header.
  *
  * Não pode existir um bloco CTA, hero, anúncio ou outro spacer entre o
- * limite inferior do header e a secção de pesquisa. A barra pode manter o
- * seu respiro interno, mas a secção que a contém começa colada ao header.
+ * limite inferior do header e a secção de pesquisa. Mas medir só a secção
+ * deu um falso verde (PATA-UI-4): a secção começava a 0 px do header e o
+ * `<form>` branco que o utilizador vê começava 48 px abaixo, por causa do
+ * padding superior do wrapper e do cabeçalho/eyebrow "Encontrar criadores e
+ * serviços". Por isso a medição assenta no formulário visível, não no
+ * contentor exterior.
  */
 
 type ViewportCase = {
-  label: 'desktop' | 'mobile'
+  label: 'desktop-1920' | 'desktop' | 'mobile'
   viewport: { width: number; height: number }
 }
 
 const VIEWPORTS: readonly ViewportCase[] = [
+  { label: 'desktop-1920', viewport: { width: 1920, height: 900 } },
   { label: 'desktop', viewport: { width: 1280, height: 900 } },
   { label: 'mobile', viewport: { width: 390, height: 844 } },
 ]
@@ -23,10 +29,14 @@ type TopMeasurement = {
   headerBottom: number
   searchTop: number
   searchBottom: number
+  formTop: number
+  formBottom: number
   ctaTop: number
   ctaBottom: number
   noteTop: number
   searchGapFromHeader: number
+  /** O que o utilizador vê: barra branca menos limite inferior do header. */
+  formGapFromHeader: number
   noteOverflow: number
   topLevelOrder: string[]
   adBlocksBeforeSearch: number
@@ -38,17 +48,21 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const header = document.querySelector('header')
     const cta = document.querySelector('[data-testid="home-simulator-cta"]')
     const search = document.querySelector('[data-testid="home-search"]')
+    const form = search?.querySelector('form')
     const note = document.querySelector('[data-testid="home-simulator-note"]')
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (!header || !cta || !search || !note) {
-      throw new Error('Homepage sem header, CTA do simulador, pesquisa ou nota legal no topo')
+    if (!header || !cta || !search || !form || !note) {
+      throw new Error(
+        'Homepage sem header, CTA do simulador, secção de pesquisa, formulário visível ou nota legal no topo',
+      )
     }
 
     const headerRect = header.getBoundingClientRect()
     const ctaRect = cta.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
+    const formRect = form.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
       if (element === search) return 'search'
@@ -74,10 +88,13 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
       headerBottom: headerRect.bottom,
       searchTop: searchRect.top,
       searchBottom: searchRect.bottom,
+      formTop: formRect.top,
+      formBottom: formRect.bottom,
       ctaTop: ctaRect.top,
       ctaBottom: ctaRect.bottom,
       noteTop: noteRect.top,
       searchGapFromHeader: searchRect.top - headerRect.bottom,
+      formGapFromHeader: formRect.top - headerRect.bottom,
       noteOverflow,
       topLevelOrder,
       adBlocksBeforeSearch,
@@ -201,6 +218,11 @@ test.describe('Homepage top structure @prod-safe', () => {
       // eventual linha de 1px da border, nunca um gap vertical real.
       expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
       expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(1)
+      // PATA-UI-4: o contentor exterior colado ao header não chega — é o
+      // formulário branco visível que tem de começar colado a ele. Medir só
+      // a secção foi o falso verde que abriu este card.
+      expect(measurement.formGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
+      expect(measurement.formGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(1)
       expect(measurement.ctaTop, JSON.stringify(context)).toBeLessThanOrEqual(
         measurement.searchBottom + 1,
       )

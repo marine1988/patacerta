@@ -104,13 +104,19 @@ export function HomePage() {
        * SEARCH — a pesquisa começa imediatamente abaixo do header.
        * A barra fica no topo da homepage para não introduzir um bloco
        * intermédio entre o limite superior e o primeiro controlo.
+       *
+       * O formulário branco é colado ao limite inferior do header: sem
+       * padding superior e sem cabeçalho/eyebrow próprio (PATA-UI-4). O
+       * `border-b` da secção basta — o header já traz o seu `border-b` e
+       * manter também o `border-t` aqui desenhava uma linha dupla.
        * ============================================================ */}
-      <section ref={searchSectionRef} data-testid="home-search" className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-4">
-          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
-            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
-            <span className="h-px flex-1 bg-line" />
-          </div>
+      <section
+        ref={searchSectionRef}
+        aria-label="Pesquisar criadores e serviços"
+        data-testid="home-search"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
           <SearchBar showSearchType idPrefix="home-search" />
         </div>
       </section>
