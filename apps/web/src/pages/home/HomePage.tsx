@@ -45,19 +45,33 @@ interface FeaturedResponse {
 
 export function HomePage() {
   const [showStickySearch, setShowStickySearch] = useState(false)
+  const [stickySearchTop, setStickySearchTop] = useState<number | null>(null)
   const searchSectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    const section = searchSectionRef.current
+    const header = document.querySelector('header')
+    if (!section || !header) return
+    const measuredHeader: HTMLElement = header
+
     function updateStickySearch() {
-      const section = searchSectionRef.current
-      if (!section) return
-      setShowStickySearch(section.getBoundingClientRect().bottom <= 80)
+      const headerRect = measuredHeader.getBoundingClientRect()
+      // O header é sticky e muda de altura com o breakpoint. Medir a
+      // geometria real evita a faixa entre a barra fixa e o header.
+      setStickySearchTop(headerRect.bottom)
+      const currentSection = searchSectionRef.current
+      if (currentSection) {
+        setShowStickySearch(currentSection.getBoundingClientRect().bottom <= headerRect.bottom)
+      }
     }
 
     updateStickySearch()
+    const resizeObserver = new ResizeObserver(updateStickySearch)
+    resizeObserver.observe(measuredHeader)
     window.addEventListener('scroll', updateStickySearch, { passive: true })
     window.addEventListener('resize', updateStickySearch)
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('scroll', updateStickySearch)
       window.removeEventListener('resize', updateStickySearch)
     }
@@ -185,10 +199,11 @@ export function HomePage() {
         </div>
       </section>
 
-      {showStickySearch && (
+      {showStickySearch && stickySearchTop !== null && (
         <div
           data-testid="sticky-search"
-          className="fixed inset-x-0 top-[80px] z-30 border-b border-line bg-bg/95 backdrop-blur-md"
+          className="fixed inset-x-0 z-30 border-b border-line bg-bg/95 backdrop-blur-md"
+          style={{ top: stickySearchTop }}
         >
           <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
             <SearchBar compact showSearchType idPrefix="sticky-search" />

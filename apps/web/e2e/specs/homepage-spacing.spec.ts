@@ -96,12 +96,87 @@ async function assertNoHorizontalOverflow(page: Page, label: string): Promise<vo
   expect(widths.document, `${label}: overflow horizontal`).toBeLessThanOrEqual(widths.viewport + 1)
 }
 
+type StickyMeasurement = {
+  headerBottom: number
+  stickyTop: number
+  formTop: number
+  inputTop: number
+  cssTop: string
+}
+
+async function measureStickySearch(page: Page): Promise<StickyMeasurement> {
+  return page.evaluate(() => {
+    const header = document.querySelector('header')
+    const sticky = document.querySelector('[data-testid="sticky-search"]')
+    const form = sticky?.querySelector('form')
+    const input = sticky?.querySelector('input[type="text"]')
+
+    if (!header || !sticky || !form || !input) {
+      throw new Error('Homepage sem header, sticky search, formulário ou input visível')
+    }
+
+    return {
+      headerBottom: header.getBoundingClientRect().bottom,
+      stickyTop: sticky.getBoundingClientRect().top,
+      formTop: form.getBoundingClientRect().top,
+      inputTop: input.getBoundingClientRect().top,
+      cssTop: getComputedStyle(sticky).top,
+    }
+  })
+}
+
 test.describe('Homepage top structure @prod-safe', () => {
   test.beforeEach(async ({ page }) => {
     await dismissConsentBanner(page)
   })
 
   for (const { label, viewport } of VIEWPORTS) {
+    test(`a pesquisa sticky fica colada ao header depois do scroll no ${label}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport)
+      await page.goto('/')
+
+      const originalSearch = page.locator('[data-testid="home-search"]')
+      await expect(originalSearch).toBeVisible()
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+      await expect
+        .poll(
+          async () =>
+            originalSearch.evaluate((element) => element.getBoundingClientRect().bottom <= 0),
+        )
+        .toBe(true)
+
+      const sticky = page.locator('[data-testid="sticky-search"]')
+      const stickyInput = sticky.locator('input[type="text"]')
+      await expect(sticky).toBeVisible()
+      await expect(stickyInput).toBeVisible()
+      await page.waitForFunction(() => {
+        const header = document.querySelector('header')
+        const sticky = document.querySelector('[data-testid="sticky-search"]')
+        if (!header || !sticky) return false
+        const gap = sticky.getBoundingClientRect().top - header.getBoundingClientRect().bottom
+        return gap >= 0 && gap <= 1
+      })
+
+      const measurement = await measureStickySearch(page)
+      const context = { label, ...measurement }
+      const gap = measurement.stickyTop - measurement.headerBottom
+      expect(gap, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
+      expect(gap, JSON.stringify(context)).toBeLessThanOrEqual(1)
+      expect(measurement.formTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.headerBottom,
+      )
+      expect(measurement.inputTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.headerBottom,
+      )
+      expect(measurement.cssTop, `${label}: top CSS não pode ser fixo a 80px`).not.toBe('80px')
+
+      await stickyInput.fill('Golden Retriever')
+      await expect(stickyInput).toHaveValue('Golden Retriever')
+      await assertNoHorizontalOverflow(page, label)
+    })
+
     test(`mantém header, CTA, pesquisa e nota compactos no ${label}`, async ({ page }) => {
       await page.setViewportSize(viewport)
       await page.goto('/')
