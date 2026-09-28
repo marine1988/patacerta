@@ -6,21 +6,7 @@ import { SearchBar } from '../../components/shared/SearchBar'
 import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
 import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
-import { AdContainer, AD_SLOTS } from '../../components/ads'
 import { usePageMeta } from '../../hooks/usePageMeta'
-
-// Estatísticas públicas ocultas no arranque: com 0 criadores/serviços/avaliações
-// os números não ajudam à imagem. Reativar (SHOW_HOME_STATS = true) quando
-// houver dados que valha a pena mostrar.
-const SHOW_HOME_STATS = false
-
-interface PublicStats {
-  breederCount: number
-  breedCount: number
-  districtCount: number
-  reviewCount: number
-  serviceCount: number
-}
 
 interface FeaturedService {
   id: number
@@ -59,19 +45,33 @@ interface FeaturedResponse {
 
 export function HomePage() {
   const [showStickySearch, setShowStickySearch] = useState(false)
+  const [stickySearchTop, setStickySearchTop] = useState<number | null>(null)
   const searchSectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    const section = searchSectionRef.current
+    const header = document.querySelector('header')
+    if (!section || !header) return
+    const measuredHeader: HTMLElement = header
+
     function updateStickySearch() {
-      const section = searchSectionRef.current
-      if (!section) return
-      setShowStickySearch(section.getBoundingClientRect().bottom <= 80)
+      const headerRect = measuredHeader.getBoundingClientRect()
+      // O header é sticky e muda de altura com o breakpoint. Medir a
+      // geometria real evita a faixa entre a barra fixa e o header.
+      setStickySearchTop(headerRect.bottom)
+      const currentSection = searchSectionRef.current
+      if (currentSection) {
+        setShowStickySearch(currentSection.getBoundingClientRect().bottom <= headerRect.bottom)
+      }
     }
 
     updateStickySearch()
+    const resizeObserver = new ResizeObserver(updateStickySearch)
+    resizeObserver.observe(measuredHeader)
     window.addEventListener('scroll', updateStickySearch, { passive: true })
     window.addEventListener('resize', updateStickySearch)
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('scroll', updateStickySearch)
       window.removeEventListener('resize', updateStickySearch)
     }
@@ -84,18 +84,6 @@ export function HomePage() {
     canonicalPath: '/',
     // Organization + WebSite JSON-LD são injectados globalmente em <SiteJsonLd />
     // (App.tsx). Não duplicar aqui.
-  })
-
-  const {
-    data: stats,
-    isLoading: statsLoading,
-    isError: statsError,
-    refetch: refetchStats,
-  } = useQuery<PublicStats>({
-    queryKey: ['public-stats'],
-    queryFn: () => api.get('/search/stats').then((r) => r.data),
-    staleTime: 3600_000,
-    enabled: SHOW_HOME_STATS,
   })
 
   const {
@@ -113,9 +101,68 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * HERO — editorial, agora unificado (criadores + serviços)
+       * SEARCH — a pesquisa começa imediatamente abaixo do header.
+       * A barra fica no topo da homepage para não introduzir um bloco
+       * intermédio entre o limite superior e o primeiro controlo.
+       *
+       * O formulário branco é colado ao limite inferior do header: sem
+       * padding superior e sem cabeçalho/eyebrow próprio (PATA-UI-4). O
+       * `border-b` da secção basta — o header já traz o seu `border-b` e
+       * manter também o `border-t` aqui desenhava uma linha dupla.
        * ============================================================ */}
-      <section className="relative overflow-hidden">
+      <section
+        ref={searchSectionRef}
+        aria-label="Pesquisar criadores e serviços"
+        data-testid="home-search"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
+          <SearchBar showSearchType idPrefix="home-search" />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SIMULADOR — CTA compacto depois da pesquisa.
+       * Mantém o acesso ao quiz e a indicação de custo sem bloquear a
+       * primeira interação da página.
+       * ============================================================ */}
+      <section
+        aria-labelledby="home-simulator-title"
+        aria-describedby="home-simulator-note"
+        data-testid="home-simulator-cta"
+        className="border-b border-line bg-caramel-100/40 dark:bg-surface-alt"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <h2 id="home-simulator-title" className="sr-only">
+                Simulador de raça
+              </h2>
+              <Link to="/simulador-raca" className="btn-primary btn-sm">
+                Começar simulador
+              </Link>
+              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                Gratuito · sem registo
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p
+        id="home-simulator-note"
+        data-testid="home-simulator-note"
+        className="mx-auto max-w-[72rem] px-4 py-3 text-xs leading-relaxed text-muted sm:px-6 sm:py-4 lg:px-8"
+      >
+        <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma ferramenta de
+        orientação. Cada cão é único e a escolha final deve ser feita em conjunto com criadores,
+        veterinários ou associações de adopção.
+      </p>
+
+      {/* ============================================================
+       * HERO EDITORIAL — mantido abaixo da pesquisa, fora do topo
+       * ============================================================ */}
+      <section className="relative overflow-hidden border-t border-line">
         <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
           <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
@@ -155,64 +202,15 @@ export function HomePage() {
               </p>
             </aside>
           </div>
-
-          {/* Stats editoriais — ocultas no arranque (ver SHOW_HOME_STATS no topo) */}
-          {SHOW_HOME_STATS && (
-            <>
-              <dl className="mt-20 grid grid-cols-2 gap-10 border-t border-line pt-10 sm:grid-cols-3 lg:grid-cols-5">
-                <Stat value={stats?.breederCount} label="Criadores" loading={statsLoading} />
-                <Stat value={stats?.serviceCount} label="Serviços" loading={statsLoading} />
-                <Stat value={stats?.breedCount} label="Raças" loading={statsLoading} />
-                <Stat value={stats?.districtCount} label="Distritos" loading={statsLoading} />
-                <Stat value={stats?.reviewCount} label="Avaliações" loading={statsLoading} />
-              </dl>
-              {statsError && (
-                <div
-                  role="alert"
-                  aria-live="polite"
-                  className="mt-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4"
-                >
-                  <p className="text-sm text-red-700">Não foi possível carregar as estatísticas.</p>
-                  <button
-                    type="button"
-                    onClick={() => refetchStats()}
-                    className="text-xs font-medium uppercase tracking-caps text-caramel-700 underline-offset-4 hover:underline"
-                  >
-                    Tentar novamente
-                  </button>
-                </div>
-              )}
-            </>
-          )}
         </div>
       </section>
 
-      {/* ============================================================
-       * AD — Banner mid-page, entre hero e listagens.
-       * Renderiza apenas quando VITE_ADSENSE_ENABLED=true e o slot
-       * estiver configurado em components/ads/slots.ts.
-       * ============================================================ */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-6 lg:px-8">
-          <AdContainer slot={AD_SLOTS.homepageMid} placement="homepage-mid" />
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SEARCH — barra integrada, não gritante
-       * ============================================================ */}
-      <section ref={searchSectionRef} className="border-y border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-6">
-          <div className="mb-4 flex items-baseline gap-3 lg:mb-4">
-            <span className="eyebrow">◆ Encontrar criadores e serviços</span>
-            <span className="h-px flex-1 bg-line" />
-          </div>
-          <SearchBar showSearchType idPrefix="home-search" />
-        </div>
-      </section>
-
-      {showStickySearch && (
-        <div className="fixed inset-x-0 top-[80px] z-30 border-b border-line bg-bg/95 backdrop-blur-md">
+      {showStickySearch && stickySearchTop !== null && (
+        <div
+          data-testid="sticky-search"
+          className="fixed inset-x-0 z-30 border-b border-line bg-bg/95 backdrop-blur-md"
+          style={{ top: stickySearchTop }}
+        >
           <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
             <SearchBar compact showSearchType idPrefix="sticky-search" />
           </div>
@@ -255,62 +253,6 @@ export function HomePage() {
               <FeaturedBreederItem key={b.id} breeder={b} />
             ))}
           </FeaturedCarousel>
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SIMULADOR — banner editorial para o quiz de raça
-       * ============================================================ */}
-      <section className="border-t border-line bg-caramel-100/40 dark:bg-surface-alt">
-        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <div className="grid items-center gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-8">
-            <div>
-              <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
-              <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
-                Escolha o <em className="italic text-caramel-500">companheiro ideal</em> para si.
-              </h2>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
-                Onze perguntas, dois minutos. Indicamos as cinco raças que melhor se adaptam ao seu
-                espaço, ao seu ritmo e ao seu agregado familiar — para começar a procurar com mais
-                confiança.
-              </p>
-              <div className="mt-7 flex flex-wrap items-center gap-4 sm:mt-10 sm:gap-6">
-                <Link to="/simulador-raca" className="btn-primary btn-lg">
-                  Começar simulador
-                </Link>
-                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                  Gratuito · sem registo
-                </span>
-              </div>
-              <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted sm:mt-8">
-                <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma
-                ferramenta de orientação. Cada cão é único e a escolha final deve ser feita em
-                conjunto com criadores, veterinários ou associações de adopção.
-              </p>
-            </div>
-
-            {/* Aside editorial — 3 sinais visuais sobre o que o simulador avalia */}
-            <aside className="border-l border-line pl-5 sm:pl-10">
-              <p className="eyebrow-muted mb-4 sm:mb-6">— O que avaliamos</p>
-              <ul className="space-y-4 sm:space-y-5">
-                <SimuladorTopic
-                  number="01"
-                  title="Espaço e clima"
-                  description="Apartamento, casa com jardim, calor do Algarve ou serra fria."
-                />
-                <SimuladorTopic
-                  number="02"
-                  title="Ritmo e tempo"
-                  description="Quanto exercício faz e quanto tempo o cão fica sozinho."
-                />
-                <SimuladorTopic
-                  number="03"
-                  title="Casa e experiência"
-                  description="Crianças, outros cães, alergias, primeira vez como dono."
-                />
-              </ul>
-            </aside>
-          </div>
         </div>
       </section>
 
@@ -422,33 +364,6 @@ export function HomePage() {
   )
 }
 
-function Stat({
-  value,
-  label,
-  loading,
-}: {
-  value: number | undefined
-  label: string
-  loading?: boolean
-}) {
-  // <dt> antes de <dd> conforme spec; mantemos ordem visual (value primeiro,
-  // label depois) com flex-col-reverse para nao quebrar leitura visual.
-  return (
-    <div className="flex flex-col-reverse">
-      <dt className="mt-3 text-[10px] font-medium uppercase tracking-caps text-muted">{label}</dt>
-      {loading && value == null ? (
-        <dd className="block h-10 w-16 animate-pulse bg-surface-alt sm:h-12">
-          <span className="sr-only">{label}: a carregar</span>
-        </dd>
-      ) : (
-        <dd className="font-serif text-4xl font-normal leading-none text-ink sm:text-5xl">
-          {value ?? '—'}
-        </dd>
-      )}
-    </div>
-  )
-}
-
 function Pillar({
   number,
   title,
@@ -465,26 +380,6 @@ function Pillar({
       <p className="mt-3 text-sm leading-relaxed text-muted sm:mt-4">{description}</p>
       <div className="mt-4 h-px w-12 bg-caramel-500 transition-all duration-300 group-hover:w-24 sm:mt-6" />
     </article>
-  )
-}
-
-function SimuladorTopic({
-  number,
-  title,
-  description,
-}: {
-  number: string
-  title: string
-  description: string
-}) {
-  return (
-    <li className="flex gap-4">
-      <span className="font-serif text-2xl italic text-caramel-500">{number}</span>
-      <div>
-        <h3 className="font-serif text-base text-ink">{title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
-      </div>
-    </li>
   )
 }
 

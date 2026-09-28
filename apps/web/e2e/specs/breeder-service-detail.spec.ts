@@ -1,13 +1,15 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test'
 import { getFirstBreeder, getFirstService } from '../fixtures/api'
 import { dismissConsentBanner } from '../fixtures/auth'
+import { seedSkipReason } from '../fixtures/env'
 
 test.beforeEach(async ({ page }) => {
   await dismissConsentBanner(page)
 })
 
-test.describe('Detalhe de criador', () => {
-  test('abre perfil a partir da pesquisa', async ({ page }) => {
+test.describe('Detalhe de criador @prod-safe', () => {
+  test('abre perfil a partir da pesquisa', async ({ page, caps }) => {
+    test.skip(!caps.hasBreeders, seedSkipReason(caps, 'criadores publicados'))
     await page.goto('/pesquisar')
 
     const firstBreederLink = page.locator('a[href^="/criador/"]').first()
@@ -20,7 +22,8 @@ test.describe('Detalhe de criador', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
-  test('carrega perfil de criador via URL direto', async ({ request, page }) => {
+  test('carrega perfil de criador via URL direto', async ({ request, page, caps }) => {
+    test.skip(!caps.hasBreeders, seedSkipReason(caps, 'criadores publicados'))
     const breeder = await getFirstBreeder(request)
     await page.goto(`/criador/${breeder.id}`)
 
@@ -35,8 +38,9 @@ test.describe('Detalhe de criador', () => {
   })
 })
 
-test.describe('Detalhe de serviço', () => {
-  test('abre serviço a partir da pesquisa', async ({ page }) => {
+test.describe('Detalhe de serviço @prod-safe', () => {
+  test('abre serviço a partir da pesquisa', async ({ page, caps }) => {
+    test.skip(!caps.hasServices, seedSkipReason(caps, 'serviços publicados'))
     await page.goto('/pesquisar?tipo=servicos')
 
     const firstServiceLink = page.locator('a[href^="/servicos/"]').first()
@@ -50,7 +54,8 @@ test.describe('Detalhe de serviço', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 })
   })
 
-  test('carrega serviço via URL direto', async ({ request, page }) => {
+  test('carrega serviço via URL direto', async ({ request, page, caps }) => {
+    test.skip(!caps.hasServices, seedSkipReason(caps, 'serviços publicados'))
     const service = await getFirstService(request)
     await page.goto(`/servicos/${service.id}`)
 

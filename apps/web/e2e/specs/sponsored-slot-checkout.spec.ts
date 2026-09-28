@@ -30,10 +30,24 @@
  *      E2E_BREEDER_PASSWORD=DemoPass123
  *      E2E_ADMIN_EMAIL=admin@patacerta.pt          (default fornecido)
  *      E2E_ADMIN_PASSWORD=AdminPass123!            (default fornecido)
+ *
+ * Guard de "Stripe configurado" (PATA-CI-4):
+ *  O job `E2E` do CI (`.github/workflows/e2e.yml`) corre a stack local
+ *  efemera SEM `STRIPE_SECRET_KEY` — e a tag `@destructive` NAO o exclui ali
+ *  (`E2E_SKIP_DESTRUCTIVE` so' e' definido no workflow de stage; o bloqueio
+ *  automatico so' se aplica a producao). Sem chave, `POST
+ *  /payments/sponsored-slot/checkout` devolve 503 `STRIPE_NOT_CONFIGURED`,
+ *  nao ha Checkout Session nem redirect, e o `waitForURL(/checkout.stripe.com/)`
+ *  do passo 5 so' pode terminar em timeout (era 3 x 1.1 min de falha
+ *  deterministica, sem dizer nada sobre a app). O spec sonda o alvo no
+ *  inicio (`probeStripeOnTarget`) e faz skip com a causa explicita quando o
+ *  backend nao tem Stripe — a suite fica verde por ausencia de config, nao
+ *  por um falso negativo silencioso.
  */
 import { test, expect } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { API_BASE_URL } from '../fixtures/demo-data'
+import { probeStripeOnTarget, stripeSkipReason } from '../fixtures/env'
 
 const BREEDER_EMAIL = process.env.E2E_BREEDER_EMAIL || 'canil.alvalade@example.pt'
 const BREEDER_PASSWORD = process.env.E2E_BREEDER_PASSWORD || 'DemoPass123'
@@ -65,7 +79,6 @@ interface MySlot {
   paymentStatus: string
   stripeCheckoutSessionId?: string | null
 }
-
 test.describe.configure({ mode: 'serial' })
 
 // IMPORTANTE: este spec e o `sponsored-slot-webhook.spec.ts` mexem no MESMO
@@ -74,7 +87,7 @@ test.describe.configure({ mode: 'serial' })
 // rotation). Quando se corre os dois juntos, usar `--workers=1`:
 //   playwright test e2e/specs/sponsored-slot-*.spec.ts --workers=1
 
-test.describe('Sponsored Slot — checkout até Stripe', () => {
+test.describe('Sponsored Slot — checkout até Stripe @destructive', () => {
   test.skip(
     !!process.env.E2E_SKIP_DESTRUCTIVE,
     'Destrutivo: cria sessao Stripe (test mode) e slot PENDING.',
@@ -85,6 +98,17 @@ test.describe('Sponsored Slot — checkout até Stripe', () => {
     request,
   }) => {
     test.setTimeout(120_000)
+
+    // ── 0. Guard: o backend tem Stripe configurado? ───────────────────────
+    // Sem `STRIPE_SECRET_KEY` na API, `POST /payments/sponsored-slot/checkout`
+    // devolve 503 STRIPE_NOT_CONFIGURED e nao ha redirect — o waitForURL do
+    // passo 5 so' pode terminar em timeout (3 retries x 1.1 min). Skip com a
+    // evidencia da sonda, em vez de uma falha enganadora. Ver header do spec
+    // e `probeStripeOnTarget` em `fixtures/env.ts`.
+    const stripeProbe = await probeStripeOnTarget(request)
+    // eslint-disable-next-line no-console
+    console.log(`[E2E] Stripe no alvo: ${stripeProbe.detail}`)
+    test.skip(!stripeProbe.configured, stripeSkipReason(stripeProbe.detail))
 
     // ── 1. Login via API ──────────────────────────────────────────────────
     await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)

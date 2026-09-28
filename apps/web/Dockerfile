@@ -16,6 +16,14 @@ COPY apps/web/ apps/web/
 # expoe-se como ENV antes do `vite build`. Em prod esperamos
 # `https://patacerta.pt`; em stage `https://stage.patacerta.pt`. Ver
 # `apps/web/src/lib/seo.ts` (canonical, og:url, JSON-LD URLs).
+#
+# A MESMA var resolve o `__PUBLIC_URL__` de `public/robots.txt` e de
+# `public/llms.txt` (plugin `patacerta:public-url` no vite.config.ts): o
+# `dist/` sai daqui com o host do ambiente certo e o build FALHA se um dos
+# ficheiros ficar com o placeholder, sem a linha esperada, ou a anunciar
+# outro dominio. Nao ha' nada a substituir no stage `runner` (nem `sed` nem
+# `envsubst`) — o CI corre `pnpm build` + `vite preview` sem passar pelo
+# Dockerfile.
 ARG VITE_PUBLIC_URL=https://patacerta.pt
 ENV VITE_PUBLIC_URL=$VITE_PUBLIC_URL
 

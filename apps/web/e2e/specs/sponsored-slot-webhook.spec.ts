@@ -34,11 +34,15 @@
  *      E2E_STRIPE_WEBHOOK_SECRET=whsec_xxx       (test mode)
  *  - Sem este secret, o teste e' SKIPPED (porque nao consegue assinar
  *    o payload de forma que o backend aceite).
+ *  - Alem disso, o spec confirma que a API ALVO tem Stripe configurado
+ *    (`probeStripeOnTarget`) e faz skip se nao tiver (card PATA-CI-4): ter o
+ *    secret no runner nao garante que o backend deste alvo tenha chave.
  */
 import { test, expect } from '@playwright/test'
 import Stripe from 'stripe'
 import { loginViaApi } from '../fixtures/auth'
 import { API_BASE_URL } from '../fixtures/demo-data'
+import { probeStripeOnTarget, stripeSkipReason } from '../fixtures/env'
 
 const BREEDER_EMAIL = process.env.E2E_BREEDER_EMAIL || 'canil.alvalade@example.pt'
 const BREEDER_PASSWORD = process.env.E2E_BREEDER_PASSWORD || 'DemoPass123'
@@ -72,7 +76,7 @@ interface CheckoutResponse {
 
 test.describe.configure({ mode: 'serial' })
 
-test.describe('Sponsored Slot — webhook checkout.session.completed', () => {
+test.describe('Sponsored Slot — webhook checkout.session.completed @destructive', () => {
   test.skip(
     !WEBHOOK_SECRET,
     'E2E_STRIPE_WEBHOOK_SECRET em falta — sem isto nao podemos assinar payloads.',
@@ -84,6 +88,14 @@ test.describe('Sponsored Slot — webhook checkout.session.completed', () => {
 
   test('webhook assinado activa slot pendente para PAID/ACTIVE', async ({ page, request }) => {
     test.setTimeout(120_000)
+
+    // Guard PATA-CI-4: o `E2E_STRIPE_WEBHOOK_SECRET` do runner so' diz que
+    // TEMOS secret para assinar; nao diz que a API alvo tem Stripe. Ver
+    // `probeStripeOnTarget` (fixtures/env.ts).
+    const stripeProbe = await probeStripeOnTarget(request)
+    // eslint-disable-next-line no-console
+    console.log(`[E2E] Stripe no alvo: ${stripeProbe.detail}`)
+    test.skip(!stripeProbe.configured, stripeSkipReason(stripeProbe.detail))
 
     // ── 1. Login + descobrir raca ─────────────────────────────────────────
     await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)

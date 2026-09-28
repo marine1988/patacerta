@@ -27,6 +27,14 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
+      # Estes dois passos são OBRIGATÓRIOS antes do typecheck: sem eles o
+      # `tsc --noEmit` falha com dezenas de erros falsos em cascata
+      # ("Cannot find module '@patacerta/shared'" + TS7006 implicit any em
+      # tudo o que consome tipos do shared/Prisma). Os jobs `test-api` e
+      # `test-web` já os corriam; este não — e por isso o CI esteve vermelho.
+      # Ver docs/DEVELOPMENT.md e cards PATA-CI-1/PATA-CI-2.
+      - run: pnpm --filter @patacerta/shared build
+      - run: pnpm --filter @patacerta/api db:generate
       - run: pnpm typecheck
       - run: pnpm format:check
 
@@ -110,4 +118,13 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
+      # Mesmo requisito do job `lint-and-typecheck`: sem `shared build` +
+      # `db:generate` o `pnpm -r --filter "./apps/*" build` (que compila a API
+      # com `tsc`) falha com exactamente os mesmos erros falsos em cascata
+      # (TS2307 '@patacerta/shared', TS2305 '@prisma/client'.PrismaClient).
+      # Este job vinha a ser `skipped` (needs: lint-and-typecheck), por isso o
+      # defeito só apareceria depois de o primeiro ser corrigido.
+      # Verificado em PATA-CI-1: 135 erros TS sem prep / build verde com prep.
+      - run: pnpm --filter @patacerta/shared build
+      - run: pnpm --filter @patacerta/api db:generate
       - run: pnpm build

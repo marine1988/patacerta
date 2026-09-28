@@ -22,6 +22,11 @@
 #                     deixar vazio. Em stage definir:
 #                       add_header X-Robots-Tag "noindex, nofollow" always;
 #                     (impede o stage de aparecer em motores de pesquisa).
+#   PUBLIC_URL       — origem canónica em runtime (sitemap.xml da API).
+#                     prod:  https://patacerta.pt
+#                     stage: https://stage.patacerta.pt
+#                     Vazio → a API cai em FRONTEND_URL. Tem de estar listada
+#                     no `environment:` do serviço api (ver abaixo).
 #
 # Stripe (pagamentos):
 #   STRIPE_SECRET_KEY              — sk_test_... (stage) / sk_live_... (prod)
@@ -154,6 +159,12 @@ services:
       # (credentials enabled — ver apps/api/src/index.ts).
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       FRONTEND_URL: ${FRONTEND_URL:-https://patacerta.pt}
+      # Origem canónica dos <loc> do sitemap (ver apps/api/src/lib/env.ts).
+      # TEM de estar listada aqui: as vars do painel do Dokploy alimentam um
+      # `.env` usado na interpolação deste compose — não são injectadas nos
+      # contentores só por existirem. Sem esta linha, definir PUBLIC_URL no
+      # painel não chega ao processo da API e o sitemap cai em FRONTEND_URL.
+      PUBLIC_URL: ${PUBLIC_URL:-}
       # Lower-environment flags — do NOT enable in production
       RESET_DB_ON_BOOT: ${RESET_DB_ON_BOOT:-false}
       RUN_SEED_ON_BOOT: ${RUN_SEED_ON_BOOT:-false}

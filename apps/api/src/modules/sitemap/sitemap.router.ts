@@ -1,10 +1,19 @@
 import { Router } from 'express'
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
+import { getPublicBaseUrl } from '../../lib/env.js'
 
 export const sitemapRouter = Router()
 
-const SITE_URL = (process.env.PUBLIC_URL || 'https://patacerta.pt').replace(/\/$/, '')
+/*
+ * A origem canónica de todos os `<loc>` é resolvida por pedido com
+ * `getPublicBaseUrl()` (`PUBLIC_URL` → `FRONTEND_URL`, sem default de
+ * produção — ver `apps/api/src/lib/env.ts`).
+ *
+ * Uma sitemap nunca pode anunciar outro host que não o que a serve: era
+ * isso que acontecia em stage, onde faltava `PUBLIC_URL` e o código caía
+ * num default `https://patacerta.pt` (PATA-BUG-7).
+ */
 
 /**
  * Redirect 301 server-side: /criador/:id -> /criador/:slug.
@@ -95,27 +104,28 @@ sitemapRouter.get(
   '/sitemap.xml',
   asyncHandler(async (_req, res) => {
     try {
+      const siteUrl = getPublicBaseUrl()
       const now = new Date().toISOString()
 
       const staticEntries: SitemapEntry[] = [
-        { loc: `${SITE_URL}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
-        { loc: `${SITE_URL}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
+        { loc: `${siteUrl}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
+        { loc: `${siteUrl}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
         {
-          loc: `${SITE_URL}/pesquisar?tipo=servicos`,
+          loc: `${siteUrl}/pesquisar?tipo=servicos`,
           changefreq: 'daily',
           priority: 0.9,
           lastmod: now,
         },
-        { loc: `${SITE_URL}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
+        { loc: `${siteUrl}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
         {
-          loc: `${SITE_URL}/perguntas-frequentes`,
+          loc: `${siteUrl}/perguntas-frequentes`,
           changefreq: 'monthly',
           priority: 0.7,
           lastmod: now,
         },
-        { loc: `${SITE_URL}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
+        { loc: `${siteUrl}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
         {
-          loc: `${SITE_URL}/politica-privacidade`,
+          loc: `${siteUrl}/politica-privacidade`,
           changefreq: 'yearly',
           priority: 0.3,
           lastmod: now,
@@ -156,14 +166,14 @@ sitemapRouter.get(
       // período de backfill. Quando o backfill estiver completo, todos
       // têm slug e o fallback nunca é exercido.
       const breederEntries: SitemapEntry[] = breeders.map((b) => ({
-        loc: `${SITE_URL}/criador/${b.slug ?? b.id}`,
+        loc: `${siteUrl}/criador/${b.slug ?? b.id}`,
         lastmod: b.updatedAt.toISOString(),
         changefreq: 'weekly',
         priority: 0.8,
       }))
 
       const serviceEntries: SitemapEntry[] = services.map((s) => ({
-        loc: `${SITE_URL}/servicos/${s.slug ?? s.id}`,
+        loc: `${siteUrl}/servicos/${s.slug ?? s.id}`,
         lastmod: s.updatedAt.toISOString(),
         changefreq: 'weekly',
         priority: 0.7,
