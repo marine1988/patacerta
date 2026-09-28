@@ -158,9 +158,8 @@ test.describe('Homepage top structure @prod-safe', () => {
       await expect(originalSearch).toBeVisible()
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
       await expect
-        .poll(
-          async () =>
-            originalSearch.evaluate((element) => element.getBoundingClientRect().bottom <= 0),
+        .poll(async () =>
+          originalSearch.evaluate((element) => element.getBoundingClientRect().bottom <= 0),
         )
         .toBe(true)
 
