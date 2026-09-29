@@ -102,14 +102,20 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * SEARCH — a pesquisa começa imediatamente abaixo do header.
-       * A barra fica no topo da homepage para não introduzir um bloco
-       * intermédio entre o limite superior e o primeiro controlo.
-       *
-       * O formulário branco é colado ao limite inferior do header: sem
-       * padding superior e sem cabeçalho/eyebrow próprio (PATA-UI-4). O
-       * `border-b` da secção basta — o header já traz o seu `border-b` e
-       * manter também o `border-t` aqui desenhava uma linha dupla.
+       * SLIDER DO SIMULADOR — primeiro elemento, no topo.
+       * ============================================================ */}
+      <section
+        aria-label="Exemplos de raças compatíveis"
+        data-testid="home-breed-slider"
+        className="border-b border-line bg-surface-alt"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <BreedSlider />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SEARCH — segundo elemento, imediatamente abaixo do slider.
        * ============================================================ */}
       <section
         ref={searchSectionRef}
@@ -123,9 +129,34 @@ export function HomePage() {
       </section>
 
       {/* ============================================================
-       * SIMULADOR — secção dedicada depois da pesquisa.
-       * Comunica valor: o que é, quanto demora, o que recebe.
-       * Layout 2 colunas (desktop) / stack (mobile).
+       * CRIADORES EM FOCO — terceiro elemento.
+       * ============================================================ */}
+      <section
+        aria-label="Criadores em foco"
+        data-testid="home-featured-breeders"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Criadores"
+            title="Criadores em foco"
+            isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os criadores em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
+            emptyMessage="Sem criadores em destaque de momento."
+            skeleton={<FeaturedBreederSkeleton />}
+          >
+            {featured?.breeders.map((b) => (
+              <FeaturedBreederItem key={b.id} breeder={b} />
+            ))}
+          </FeaturedCarousel>
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SIMULADOR — quarto elemento, abaixo dos criadores em foco.
        * ============================================================ */}
       <section
         aria-labelledby="home-simulator-title"
@@ -133,39 +164,36 @@ export function HomePage() {
         className="border-b border-line bg-surface-alt"
       >
         <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
-            <div>
-              <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
-              <h2
-                id="home-simulator-title"
-                className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
-              >
-                Quer saber qual a raça{' '}
-                <em className="italic text-caramel-500">mais compatível consigo</em>?
-              </h2>
-              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
-                Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
-                de vida, espaço e rotina.
-              </p>
-              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
-                  Gratuito, sem registo
-                </li>
-              </ul>
-              <div className="mt-6 sm:mt-8">
-                <Link to="/simulador-raca" className="btn-primary">
-                  Começar simulador →
-                </Link>
-              </div>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
+            <h2
+              id="home-simulator-title"
+              className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
+            >
+              Quer saber qual a raça{' '}
+              <em className="italic text-caramel-500">mais compatível consigo</em>?
+            </h2>
+            <p className="mx-auto mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
+              Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+              de vida, espaço e rotina.
+            </p>
+            <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                Gratuito, sem registo
+              </li>
+            </ul>
+            <div className="mt-6 sm:mt-8">
+              <Link to="/simulador-raca" className="btn-primary">
+                Começar simulador →
+              </Link>
             </div>
-            <BreedSlider />
           </div>
         </div>
       </section>
@@ -181,7 +209,7 @@ export function HomePage() {
       </p>
 
       {/* ============================================================
-       * HERO EDITORIAL — mantido abaixo da pesquisa, fora do topo
+       * HERO EDITORIAL
        * ============================================================ */}
       <section className="relative overflow-hidden border-t border-line">
         <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
@@ -235,10 +263,10 @@ export function HomePage() {
       )}
 
       {/* ============================================================
-       * DESTAQUES — dois carrosseis horizontais (estilo OLX)
+       * SERVIÇOS EM FOCO — carousel de serviços
        * ============================================================ */}
       <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-8 lg:px-8 lg:py-8">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
             title="Serviços em foco"
@@ -252,22 +280,6 @@ export function HomePage() {
           >
             {featured?.services.map((s) => (
               <FeaturedServiceItem key={s.id} service={s} />
-            ))}
-          </FeaturedCarousel>
-
-          <FeaturedCarousel
-            eyebrow="◆ Destaques · Criadores"
-            title="Criadores em foco"
-            isLoading={featuredLoading}
-            errorMessage={
-              featuredError ? 'Não foi possível carregar os criadores em destaque.' : null
-            }
-            onRetry={() => refetchFeatured()}
-            emptyMessage="Sem criadores em destaque de momento."
-            skeleton={<FeaturedBreederSkeleton />}
-          >
-            {featured?.breeders.map((b) => (
-              <FeaturedBreederItem key={b.id} breeder={b} />
             ))}
           </FeaturedCarousel>
         </div>

@@ -2,16 +2,16 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-UI-3 / PATA-UI-4: a pesquisa é o primeiro conteúdo depois do header e
- * o formulário branco VISÍVEL começa colado a esse header.
+ * PATA-HOME-REORDER: a homepage tem a seguinte ordem de elementos:
+ *   1. Slider do simulador (breed-slider)
+ *   2. Pesquisa (home-search)
+ *   3. Criadores em foco (home-featured-breeders)
+ *   4. Simulador CTA (home-simulator-cta)
+ *   5. Nota legal (home-simulator-note)
  *
- * Não pode existir um bloco CTA, hero, anúncio ou outro spacer entre o
- * limite inferior do header e a secção de pesquisa. Mas medir só a secção
- * deu um falso verde (PATA-UI-4): a secção começava a 0 px do header e o
- * `<form>` branco que o utilizador vê começava 48 px abaixo, por causa do
- * padding superior do wrapper e do cabeçalho/eyebrow "Encontrar criadores e
- * serviços". Por isso a medição assenta no formulário visível, não no
- * contentor exterior.
+ * O slider é o primeiro elemento após o header. A pesquisa vem colada
+ * ao slider. Os criadores em foco vêm depois da pesquisa. O simulador
+ * CTA fica abaixo dos criadores em foco.
  */
 
 type ViewportCase = {
@@ -27,10 +27,14 @@ const VIEWPORTS: readonly ViewportCase[] = [
 
 type TopMeasurement = {
   headerBottom: number
+  sliderTop: number
+  sliderBottom: number
   searchTop: number
   searchBottom: number
   formTop: number
   formBottom: number
+  breedersTop: number
+  breedersBottom: number
   ctaTop: number
   ctaBottom: number
   noteTop: number
@@ -46,26 +50,32 @@ type TopMeasurement = {
 async function measureTop(page: Page): Promise<TopMeasurement> {
   return page.evaluate(() => {
     const header = document.querySelector('header')
-    const cta = document.querySelector('[data-testid="home-simulator-cta"]')
+    const slider = document.querySelector('[data-testid="home-breed-slider"]')
     const search = document.querySelector('[data-testid="home-search"]')
     const form = search?.querySelector('form')
+    const breeders = document.querySelector('[data-testid="home-featured-breeders"]')
+    const cta = document.querySelector('[data-testid="home-simulator-cta"]')
     const note = document.querySelector('[data-testid="home-simulator-note"]')
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (!header || !cta || !search || !form || !note) {
+    if (!header || !slider || !search || !form || !breeders || !cta || !note) {
       throw new Error(
-        'Homepage sem header, CTA do simulador, secção de pesquisa, formulário visível ou nota legal no topo',
+        'Homepage sem header, slider, pesquisa, criadores em foco, CTA do simulador ou nota legal',
       )
     }
 
     const headerRect = header.getBoundingClientRect()
-    const ctaRect = cta.getBoundingClientRect()
+    const sliderRect = slider.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
     const formRect = form.getBoundingClientRect()
+    const breedersRect = breeders.getBoundingClientRect()
+    const ctaRect = cta.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
+      if (element === slider) return 'slider'
       if (element === search) return 'search'
+      if (element === breeders) return 'breeders'
       if (element === cta) return 'cta'
       if (element === note) return 'note'
       if (element.querySelector('[data-ad-placement="homepage-mid"]')) return 'ad'
@@ -86,10 +96,14 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
 
     return {
       headerBottom: headerRect.bottom,
+      sliderTop: sliderRect.top,
+      sliderBottom: sliderRect.bottom,
       searchTop: searchRect.top,
       searchBottom: searchRect.bottom,
       formTop: formRect.top,
       formBottom: formRect.bottom,
+      breedersTop: breedersRect.top,
+      breedersBottom: breedersRect.bottom,
       ctaTop: ctaRect.top,
       ctaBottom: ctaRect.bottom,
       noteTop: noteRect.top,
@@ -193,45 +207,55 @@ test.describe('Homepage top structure @prod-safe', () => {
       await assertNoHorizontalOverflow(page, label)
     })
 
-    test(`mantém header, CTA, pesquisa e nota compactos no ${label}`, async ({ page }) => {
+    test(`mantém slider, pesquisa, criadores, CTA e nota na ordem correcta no ${label}`, async ({
+      page,
+    }) => {
       await page.setViewportSize(viewport)
       await page.goto('/')
 
-      const ctaLink = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
+      const slider = page.locator('[data-testid="home-breed-slider"]')
       const search = page.locator('[data-testid="home-search"]')
+      const breeders = page.locator('[data-testid="home-featured-breeders"]')
+      const ctaLink = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
       const note = page.locator('[data-testid="home-simulator-note"]')
-      await expect(ctaLink).toBeVisible()
+      await expect(slider).toBeVisible()
       await expect(search).toBeVisible()
+      await expect(breeders).toBeVisible()
+      await expect(ctaLink).toBeVisible()
       await expect(note).toBeVisible()
 
       const measurement = await measureTop(page)
       const context = { label, ...measurement }
-      expect(measurement.topLevelOrder.slice(0, 3), JSON.stringify(context)).toEqual([
+      expect(measurement.topLevelOrder.slice(0, 5), JSON.stringify(context)).toEqual([
+        'slider',
         'search',
+        'breeders',
         'cta',
         'note',
       ])
       expect(measurement.adBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
       expect(measurement.heroBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
-      // A secção de pesquisa é a primeira após o header: só toleramos a
-      // eventual linha de 1px da border, nunca um gap vertical real.
-      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
-      expect(measurement.searchGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(1)
-      // PATA-UI-4: o contentor exterior colado ao header não chega — é o
-      // formulário branco visível que tem de começar colado a ele. Medir só
-      // a secção foi o falso verde que abriu este card.
-      expect(measurement.formGapFromHeader, JSON.stringify(context)).toBeGreaterThanOrEqual(0)
-      expect(measurement.formGapFromHeader, JSON.stringify(context)).toBeLessThanOrEqual(1)
-      expect(measurement.ctaTop, JSON.stringify(context)).toBeLessThanOrEqual(
+      // O slider é o primeiro elemento após o header
+      expect(measurement.sliderTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.headerBottom,
+      )
+      // A pesquisa vem colada ao slider
+      expect(measurement.searchTop, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.sliderBottom + 1,
+      )
+      // Criadores em foco vêm depois da pesquisa
+      expect(measurement.breedersTop, JSON.stringify(context)).toBeLessThanOrEqual(
         measurement.searchBottom + 1,
       )
-      expect(measurement.ctaBottom, JSON.stringify(context)).toBeLessThanOrEqual(
-        measurement.noteTop + 1,
+      // CTA do simulador vem depois dos criadores
+      expect(measurement.ctaTop, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.breedersBottom + 1,
+      )
+      // Nota vem depois do CTA
+      expect(measurement.noteTop, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.ctaBottom + 1,
       )
       expect(measurement.noteOverflow, JSON.stringify(context)).toBeLessThanOrEqual(1)
-      expect(measurement.searchBottom, JSON.stringify(context)).toBeLessThanOrEqual(
-        measurement.ctaTop + 1,
-      )
       await assertNoHorizontalOverflow(page, label)
     })
   }
