@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
 import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
+import { BreedSlider } from '../../components/home/BreedSlider'
 import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { usePageMeta } from '../../hooks/usePageMeta'
@@ -164,21 +165,7 @@ export function HomePage() {
                 </Link>
               </div>
             </div>
-            <div className="relative">
-              <img
-                src="/breeds/cocker-spaniel-americano.jpg"
-                alt="Cocker Spaniel Americano"
-                className="w-full rounded-lg border border-line object-cover"
-              />
-              <div className="absolute -bottom-4 -left-4 hidden rounded-lg border border-line bg-bg px-4 py-3 shadow-sm sm:block">
-                <p className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                  Exemplo de resultado
-                </p>
-                <p className="mt-1 font-serif text-sm text-ink">
-                  Cocker Spaniel Americano · 94% match
-                </p>
-              </div>
-            </div>
+            <BreedSlider />
           </div>
         </div>
       </section>
