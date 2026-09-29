@@ -122,28 +122,64 @@ export function HomePage() {
       </section>
 
       {/* ============================================================
-       * SIMULADOR — CTA compacto depois da pesquisa.
-       * Mantém o acesso ao quiz e a indicação de custo sem bloquear a
-       * primeira interação da página.
+       * SIMULADOR — secção dedicada depois da pesquisa.
+       * Comunica valor: o que é, quanto demora, o que recebe.
+       * Layout 2 colunas (desktop) / stack (mobile).
        * ============================================================ */}
       <section
         aria-labelledby="home-simulator-title"
-        aria-describedby="home-simulator-note"
         data-testid="home-simulator-cta"
-        className="border-b border-line bg-caramel-100/40 dark:bg-surface-alt"
+        className="border-b border-line bg-surface-alt"
       >
-        <div className="mx-auto max-w-[72rem] px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
-              <h2 id="home-simulator-title" className="sr-only">
-                Simulador de raça
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
+            <div>
+              <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
+              <h2
+                id="home-simulator-title"
+                className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
+              >
+                Não sabe que raça{' '}
+                <em className="italic text-caramel-500">escolher</em>?
               </h2>
-              <Link to="/simulador-raca" className="btn-primary btn-sm">
-                Começar simulador
-              </Link>
-              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                Gratuito · sem registo
-              </span>
+              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
+                Responda a 5 perguntas rápidas e descubra as raças mais compatíveis com o seu
+                estilo de vida, espaço e rotina.
+              </p>
+              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                  5 perguntas simples
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                  2 minutos
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                  Gratuito, sem registo
+                </li>
+              </ul>
+              <div className="mt-6 sm:mt-8">
+                <Link to="/simulador-raca" className="btn-primary">
+                  Começar simulador →
+                </Link>
+              </div>
+            </div>
+            <div className="relative">
+              <img
+                src="/malinois-hero.png"
+                alt="Pastor Belga Malinois"
+                className="w-full rounded-lg border border-line object-cover"
+              />
+              <div className="absolute -bottom-4 -left-4 hidden rounded-lg border border-line bg-bg px-4 py-3 shadow-sm sm:block">
+                <p className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                  Exemplo de resultado
+                </p>
+                <p className="mt-1 font-serif text-sm text-ink">
+                  Golden Retriever · 94% match
+                </p>
+              </div>
             </div>
           </div>
         </div>

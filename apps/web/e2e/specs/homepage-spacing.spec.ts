@@ -239,7 +239,7 @@ test.describe('Homepage top structure @prod-safe', () => {
   test('o CTA do simulador navega para /simulador-raca', async ({ page }) => {
     await page.goto('/')
     const cta = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
-    await expect(cta).toHaveText('Começar simulador')
+    await expect(cta).toContainText('Começar simulador')
     await cta.click()
     await expect(page).toHaveURL(/\/simulador-raca$/)
   })
