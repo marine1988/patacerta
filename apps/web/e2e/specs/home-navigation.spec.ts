@@ -59,11 +59,11 @@ test.describe('Homepage e navegação @prod-safe', () => {
     await expect(title).not.toContainText(/Não sabe que raça/i)
   })
 
-  test('card de exemplo é coerente com a imagem (Pastor Belga Malinois)', async ({ page }) => {
+  test('card de exemplo é coerente com a imagem (Cocker Spaniel Americano)', async ({ page }) => {
     await page.goto('/')
     const card = page.locator('[data-testid="home-simulator-cta"]')
-    await expect(card).toContainText(/Pastor Belga Malinois/i)
-    await expect(card).not.toContainText(/Golden Retriever/i)
+    await expect(card).toContainText(/Cocker Spaniel Americano/i)
+    await expect(card).not.toContainText(/Pastor Belga Malinois/i)
   })
 
   test('navbar mostra Entrar / Juntar-me quando não autenticado', async ({ page }) => {

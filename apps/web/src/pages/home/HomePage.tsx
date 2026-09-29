@@ -166,8 +166,8 @@ export function HomePage() {
             </div>
             <div className="relative">
               <img
-                src="/malinois-hero.png"
-                alt="Pastor Belga Malinois"
+                src="/breeds/cocker-spaniel-americano.jpg"
+                alt="Cocker Spaniel Americano"
                 className="w-full rounded-lg border border-line object-cover"
               />
               <div className="absolute -bottom-4 -left-4 hidden rounded-lg border border-line bg-bg px-4 py-3 shadow-sm sm:block">
@@ -175,7 +175,7 @@ export function HomePage() {
                   Exemplo de resultado
                 </p>
                 <p className="mt-1 font-serif text-sm text-ink">
-                  Pastor Belga Malinois · 94% match
+                  Cocker Spaniel Americano · 94% match
                 </p>
               </div>
             </div>
