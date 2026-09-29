@@ -156,6 +156,41 @@ test.describe('Homepage e navegação @prod-safe', () => {
     )
   })
 
+  test('dark mode alterna e mantém a classe no <html>', async ({ page }) => {
+    await page.goto('/')
+    // Limpa qualquer preferência anterior
+    await page.evaluate(() => localStorage.removeItem('patacerta:theme'))
+    await page.reload()
+
+    // Inicialmente sem classe dark (light mode)
+    const hasDarkBefore = await page.evaluate(() =>
+      document.documentElement.classList.contains('dark'),
+    )
+    expect(hasDarkBefore).toBe(false)
+
+    // Clica no toggle de tema (botão no header)
+    const toggle = page.locator('button[aria-label*="modo" i]').first()
+    await toggle.click()
+
+    // A classe dark deve estar presente
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.documentElement.classList.contains('dark')),
+      )
+      .toBe(true)
+
+    // Slider e pesquisa devem estar visíveis em dark mode
+    await expect(page.locator('[data-testid="breed-slider"]')).toBeVisible()
+    await expect(page.locator('[data-testid="home-search"]')).toBeVisible()
+
+    // Recarregar mantém a preferência
+    await page.reload()
+    const hasDarkAfterReload = await page.evaluate(() =>
+      document.documentElement.classList.contains('dark'),
+    )
+    expect(hasDarkAfterReload).toBe(true)
+  })
+
   test('redirects legacy preservam query string', async ({ page }) => {
     await page.goto('/diretorio')
     await expect(page).toHaveURL(/\/pesquisar(\?|$)/)
