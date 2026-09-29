@@ -18,11 +18,16 @@ const BREED_SLIDES: BreedSlide[] = [
   { name: 'Bichon Frisé', image: '/breeds/bichon-frise.jpg', match: 71 },
 ]
 
+/** Tempo sem interacção manual após o qual o auto-play retoma. */
+const RESUME_DELAY_MS = 10_000
+
 // ─── Componente ────────────────────────────────────────────────────
 
 export function BreedSlider() {
   const [active, setActive] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
+  const [hoverPaused, setHoverPaused] = useState(false)
+  const [interactionPaused, setInteractionPaused] = useState(false)
+  const isPaused = hoverPaused || interactionPaused
   const total = BREED_SLIDES.length
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -36,7 +41,12 @@ export function BreedSlider() {
   const goNext = useCallback(() => goTo(active + 1), [active, goTo])
   const goPrev = useCallback(() => goTo(active - 1), [active, goTo])
 
-  // Auto-play: avança a cada 5s, pausado no hover/foco
+  // Regista interacção manual (clique em dots/setas) e pausa o auto-play.
+  const handleUserInteraction = useCallback(() => {
+    setInteractionPaused(true)
+  }, [])
+
+  // Auto-play: avança a cada 5s, pausado no hover/foco ou interacção manual.
   useEffect(() => {
     if (isPaused) return
     intervalRef.current = setInterval(() => {
@@ -47,6 +57,15 @@ export function BreedSlider() {
     }
   }, [isPaused, total])
 
+  // Retoma auto-play após 10s sem interacção manual.
+  useEffect(() => {
+    if (!interactionPaused) return
+    const timeout = setTimeout(() => {
+      setInteractionPaused(false)
+    }, RESUME_DELAY_MS)
+    return () => clearTimeout(timeout)
+  }, [interactionPaused])
+
   const current = BREED_SLIDES[active]
 
   return (
@@ -56,10 +75,10 @@ export function BreedSlider() {
       aria-label="Exemplos de raças compatíveis"
       data-testid="breed-slider"
       className="group relative"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onFocus={() => setIsPaused(true)}
-      onBlur={() => setIsPaused(false)}
+      onMouseEnter={() => setHoverPaused(true)}
+      onMouseLeave={() => setHoverPaused(false)}
+      onFocus={() => setHoverPaused(true)}
+      onBlur={() => setHoverPaused(false)}
     >
       {/* Slides — fade transition */}
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line">
@@ -94,7 +113,7 @@ export function BreedSlider() {
       {/* Setas de navegação */}
       <button
         type="button"
-        onClick={goPrev}
+        onClick={() => { handleUserInteraction(); goPrev() }}
         aria-label="Raça anterior"
         className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-line bg-bg/90 p-2 text-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:border-caramel-500 hover:text-caramel-500 focus-visible:opacity-100 group-hover:opacity-100"
       >
@@ -110,7 +129,7 @@ export function BreedSlider() {
       </button>
       <button
         type="button"
-        onClick={goNext}
+        onClick={() => { handleUserInteraction(); goNext() }}
         aria-label="Próxima raça"
         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-line bg-bg/90 p-2 text-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:border-caramel-500 hover:text-caramel-500 focus-visible:opacity-100 group-hover:opacity-100"
       >
@@ -138,7 +157,7 @@ export function BreedSlider() {
             role="tab"
             aria-selected={idx === active}
             aria-label={`Ver ${slide.name}`}
-            onClick={() => goTo(idx)}
+            onClick={() => { handleUserInteraction(); goTo(idx) }}
             className={`h-2 rounded-full transition-all duration-300 ${
               idx === active ? 'w-6 bg-caramel-500' : 'w-2 bg-line hover:bg-caramel-500/50'
             }`}

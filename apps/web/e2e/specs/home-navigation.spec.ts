@@ -70,6 +70,44 @@ test.describe('Homepage e navegação @prod-safe', () => {
     await expect(dots).toHaveCount(5)
   })
 
+  test('slider auto-play avança automaticamente após 5 segundos', async ({ page }) => {
+    await page.goto('/')
+    const slider = page.locator('[data-testid="breed-slider"]')
+    // Lê o nome da raça activa inicial
+    const initialBreed = await slider.locator('p.font-serif').first().textContent()
+    // Espera 6s (auto-play é 5s) — a raça deve ter mudado
+    await page.waitForTimeout(6000)
+    const newBreed = await slider.locator('p.font-serif').first().textContent()
+    expect(newBreed).not.toBe(initialBreed)
+  })
+
+  test('slider auto-play pausa quando utilizador interage manualmente', async ({ page }) => {
+    await page.goto('/')
+    const slider = page.locator('[data-testid="breed-slider"]')
+    // Clica na 3ª dot para interagir manualmente
+    const dots = slider.locator('button[role="tab"]')
+    await dots.nth(2).click()
+    // Lê a raça após o clique
+    const breedAfterClick = await slider.locator('p.font-serif').first().textContent()
+    // Espera 6s — o auto-play deve estar pausado, a raça não deve mudar
+    await page.waitForTimeout(6000)
+    const breedAfterWait = await slider.locator('p.font-serif').first().textContent()
+    expect(breedAfterWait).toBe(breedAfterClick)
+  })
+
+  test('slider auto-play retoma após 10 segundos sem interacção', async ({ page }) => {
+    await page.goto('/')
+    const slider = page.locator('[data-testid="breed-slider"]')
+    // Interage manualmente para pausar
+    const dots = slider.locator('button[role="tab"]')
+    await dots.nth(1).click()
+    const breedAfterClick = await slider.locator('p.font-serif').first().textContent()
+    // Espera 11s (resume delay é 10s) — o auto-play deve ter retomado
+    await page.waitForTimeout(11000)
+    const breedAfterResume = await slider.locator('p.font-serif').first().textContent()
+    expect(breedAfterResume).not.toBe(breedAfterClick)
+  })
+
   test('navbar mostra Entrar / Juntar-me quando não autenticado', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
