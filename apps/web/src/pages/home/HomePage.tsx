@@ -152,6 +152,11 @@ export function HomePage() {
               <FeaturedBreederItem key={b.id} breeder={b} />
             ))}
           </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar" className="btn-secondary">
+              Ver todos os criadores
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -265,7 +270,7 @@ export function HomePage() {
       {/* ============================================================
        * SERVIÇOS EM FOCO — carousel de serviços
        * ============================================================ */}
-      <section className="border-t border-line">
+      <section data-testid="home-featured-services" className="border-t border-line">
         <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Serviços"
@@ -282,6 +287,11 @@ export function HomePage() {
               <FeaturedServiceItem key={s.id} service={s} />
             ))}
           </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar?tipo=servicos" className="btn-secondary">
+              Ver todos os serviços
+            </Link>
+          </div>
         </div>
       </section>
 

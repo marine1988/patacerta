@@ -94,6 +94,30 @@ test.describe('Homepage e navegação @prod-safe', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
+  test('botão "Ver todos os criadores" leva à pesquisa de criadores', async ({ page }) => {
+    await page.goto('/')
+    const btn = page.getByRole('link', { name: 'Ver todos os criadores' })
+    await expect(btn).toBeVisible()
+    await btn.click()
+    await expect(page).toHaveURL(/\/pesquisar(\?|$)/)
+    await expect(page.getByRole('button', { name: 'Criadores', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  test('botão "Ver todos os serviços" leva à pesquisa de serviços', async ({ page }) => {
+    await page.goto('/')
+    const btn = page.getByRole('link', { name: 'Ver todos os serviços' })
+    await expect(btn).toBeVisible()
+    await btn.click()
+    await expect(page).toHaveURL(/\/pesquisar\?tipo=servicos/)
+    await expect(page.getByRole('button', { name: 'Serviços', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
   test('redirects legacy preservam query string', async ({ page }) => {
     await page.goto('/diretorio')
     await expect(page).toHaveURL(/\/pesquisar(\?|$)/)
