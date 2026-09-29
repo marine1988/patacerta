@@ -188,8 +188,8 @@ test.describe('Homepage top structure @prod-safe', () => {
       )
       expect(measurement.cssTop, `${label}: top CSS não pode ser fixo a 80px`).not.toBe('80px')
 
-      await stickyInput.fill('Golden Retriever')
-      await expect(stickyInput).toHaveValue('Golden Retriever')
+      await stickyInput.fill('Pastor Belga Malinois')
+      await expect(stickyInput).toHaveValue('Pastor Belga Malinois')
       await assertNoHorizontalOverflow(page, label)
     })
 

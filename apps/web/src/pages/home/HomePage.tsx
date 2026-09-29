@@ -139,21 +139,19 @@ export function HomePage() {
                 id="home-simulator-title"
                 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
               >
-                Não sabe que raça{' '}
-                <em className="italic text-caramel-500">escolher</em>?
+                Quer saber qual a raça{' '}
+                <em className="italic text-caramel-500">mais compatível consigo</em>?
               </h2>
               <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
-                Responda a 5 perguntas rápidas e descubra as raças mais compatíveis com o seu
-                estilo de vida, espaço e rotina.
+                Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+                de vida, espaço e rotina.
               </p>
               <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
                 <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
-                  5 perguntas simples
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
-                  2 minutos
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
@@ -177,7 +175,7 @@ export function HomePage() {
                   Exemplo de resultado
                 </p>
                 <p className="mt-1 font-serif text-sm text-ink">
-                  Golden Retriever · 94% match
+                  Pastor Belga Malinois · 94% match
                 </p>
               </div>
             </div>
@@ -226,11 +224,7 @@ export function HomePage() {
             </div>
 
             <aside className="hidden border-l border-line pl-8 lg:block">
-              <img
-                src="/malinois-hero.png"
-                alt="Pastor Belga Malinois sentado"
-                className="mb-4 w-full"
-              />
+              <img src="/malinois-hero.png" alt="Pastor Belga Malinois" className="mb-4 w-full" />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
                 "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem

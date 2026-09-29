@@ -52,6 +52,20 @@ test.describe('Homepage e navegação @prod-safe', () => {
     )
   })
 
+  test('título do simulador é apelativo e orientado ao benefício', async ({ page }) => {
+    await page.goto('/')
+    const title = page.locator('[data-testid="home-simulator-cta"] h2')
+    await expect(title).toContainText(/mais compatível consigo/i)
+    await expect(title).not.toContainText(/Não sabe que raça/i)
+  })
+
+  test('card de exemplo é coerente com a imagem (Pastor Belga Malinois)', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('[data-testid="home-simulator-cta"]')
+    await expect(card).toContainText(/Pastor Belga Malinois/i)
+    await expect(card).not.toContainText(/Golden Retriever/i)
+  })
+
   test('navbar mostra Entrar / Juntar-me quando não autenticado', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
