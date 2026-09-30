@@ -117,7 +117,10 @@ export function BreedSlider() {
       {/* Setas de navegação */}
       <button
         type="button"
-        onClick={() => { handleUserInteraction(); goPrev() }}
+        onClick={() => {
+          handleUserInteraction()
+          goPrev()
+        }}
         aria-label="Raça anterior"
         className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-line bg-bg/90 p-2 text-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:border-caramel-500 hover:text-caramel-500 focus-visible:opacity-100 group-hover:opacity-100"
       >
@@ -133,7 +136,10 @@ export function BreedSlider() {
       </button>
       <button
         type="button"
-        onClick={() => { handleUserInteraction(); goNext() }}
+        onClick={() => {
+          handleUserInteraction()
+          goNext()
+        }}
         aria-label="Próxima raça"
         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-line bg-bg/90 p-2 text-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:border-caramel-500 hover:text-caramel-500 focus-visible:opacity-100 group-hover:opacity-100"
       >
@@ -161,7 +167,10 @@ export function BreedSlider() {
             role="tab"
             aria-selected={idx === active}
             aria-label={`Ver ${slide.name}`}
-            onClick={() => { handleUserInteraction(); goTo(idx) }}
+            onClick={() => {
+              handleUserInteraction()
+              goTo(idx)
+            }}
             className={`h-2 rounded-full transition-all duration-300 ${
               idx === active ? 'w-6 bg-caramel-500' : 'w-2 bg-line hover:bg-caramel-500/50'
             }`}

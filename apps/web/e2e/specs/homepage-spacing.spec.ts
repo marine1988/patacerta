@@ -2,14 +2,15 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-SIM-SLIDER-INTEGRADO: a homepage tem a seguinte ordem de elementos:
- *   1. Pesquisa (home-search)
- *   2. Criadores em foco (home-featured-breeders)
- *   3. Simulador CTA (home-simulator-cta) — slider integrado como 4ª linha
- *   4. Nota legal (home-simulator-note)
+ * PATA-STAGE-FIX: a homepage tem a seguinte ordem de elementos:
+ *   1. Hero editorial (primeiro elemento após o header)
+ *   2. Slider do simulador (5 raças com percentagens)
+ *   3. Pesquisa (home-search)
+ *   4. Criadores em foco (home-featured-breeders)
+ *   5. Simulador CTA (home-simulator-cta) — secção completa sem slider
+ *   6. Nota legal (home-simulator-note)
  *
- * O slider do simulador está integrado dentro do CTA (não é uma secção
- * separada). A pesquisa é o primeiro elemento após o header.
+ * O slider do simulador é uma secção independente entre o hero e a pesquisa.
  */
 
 type ViewportCase = {
@@ -25,6 +26,10 @@ const VIEWPORTS: readonly ViewportCase[] = [
 
 type TopMeasurement = {
   headerBottom: number
+  heroTop: number
+  heroBottom: number
+  sliderTop: number
+  sliderBottom: number
   searchTop: number
   searchBottom: number
   formTop: number
@@ -40,42 +45,56 @@ type TopMeasurement = {
   noteOverflow: number
   topLevelOrder: string[]
   adBlocksBeforeSearch: number
-  heroBlocksBeforeSearch: number
-  /** Slider está integrado dentro do CTA (não é secção separada). */
+  /** Slider é uma secção independente (não está dentro do CTA). */
   sliderInsideCta: boolean
 }
 
 async function measureTop(page: Page): Promise<TopMeasurement> {
   return page.evaluate(() => {
     const header = document.querySelector('header')
+    const hero = document.querySelector('section') // primeiro section = hero
+    const slider = document.querySelector('[data-testid="home-breed-slider"]')
     const search = document.querySelector('[data-testid="home-search"]')
     const form = search?.querySelector('form')
     const breeders = document.querySelector('[data-testid="home-featured-breeders"]')
     const cta = document.querySelector('[data-testid="home-simulator-cta"]')
     const note = document.querySelector('[data-testid="home-simulator-note"]')
-    const slider = document.querySelector('[data-testid="breed-slider"]')
+    const breedSlider = document.querySelector('[data-testid="breed-slider"]')
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (!header || !search || !form || !breeders || !cta || !note || !slider) {
+    if (
+      !header ||
+      !hero ||
+      !slider ||
+      !search ||
+      !form ||
+      !breeders ||
+      !cta ||
+      !note ||
+      !breedSlider
+    ) {
       throw new Error(
-        'Homepage sem header, pesquisa, criadores em foco, CTA do simulador, slider ou nota legal',
+        'Homepage sem header, hero, slider, pesquisa, criadores em foco, CTA do simulador ou nota legal',
       )
     }
 
     const headerRect = header.getBoundingClientRect()
+    const heroRect = hero.getBoundingClientRect()
+    const sliderRect = slider.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
     const formRect = form.getBoundingClientRect()
     const breedersRect = breeders.getBoundingClientRect()
     const ctaRect = cta.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
+      if (element === hero) return 'hero'
+      if (element === slider) return 'slider'
       if (element === search) return 'search'
       if (element === breeders) return 'breeders'
       if (element === cta) return 'cta'
       if (element === note) return 'note'
       if (element.querySelector('[data-ad-placement="homepage-mid"]')) return 'ad'
-      if ((element.textContent || '').includes('O portal dos')) return 'hero'
       return 'other'
     })
     const searchIndex = topLevelElements.indexOf(search)
@@ -92,6 +111,10 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
 
     return {
       headerBottom: headerRect.bottom,
+      heroTop: heroRect.top,
+      heroBottom: heroRect.bottom,
+      sliderTop: sliderRect.top,
+      sliderBottom: sliderRect.bottom,
       searchTop: searchRect.top,
       searchBottom: searchRect.bottom,
       formTop: formRect.top,
@@ -106,10 +129,7 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
       noteOverflow,
       topLevelOrder,
       adBlocksBeforeSearch,
-      heroBlocksBeforeSearch: topLevelElements
-        .slice(0, searchIndex)
-        .filter((element) => (element.textContent || '').includes('O portal dos')).length,
-      sliderInsideCta: cta.contains(slider),
+      sliderInsideCta: cta.contains(breedSlider),
     }
   })
 }
@@ -202,19 +222,23 @@ test.describe('Homepage top structure @prod-safe', () => {
       await assertNoHorizontalOverflow(page, label)
     })
 
-    test(`mantém pesquisa, criadores, CTA (com slider integrado) e nota na ordem correcta no ${label}`, async ({
+    test(`mantém hero, slider, pesquisa, criadores, CTA e nota na ordem correcta no ${label}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport)
       await page.goto('/')
 
-      const slider = page.locator('[data-testid="breed-slider"]')
+      const hero = page.locator('section').first()
+      const slider = page.locator('[data-testid="home-breed-slider"]')
+      const breedSlider = page.locator('[data-testid="breed-slider"]')
       const search = page.locator('[data-testid="home-search"]')
       const breeders = page.locator('[data-testid="home-featured-breeders"]')
       const cta = page.locator('[data-testid="home-simulator-cta"]')
       const ctaLink = cta.locator('a[href="/simulador-raca"]')
       const note = page.locator('[data-testid="home-simulator-note"]')
+      await expect(hero).toBeVisible()
       await expect(slider).toBeVisible()
+      await expect(breedSlider).toBeVisible()
       await expect(search).toBeVisible()
       await expect(breeders).toBeVisible()
       await expect(ctaLink).toBeVisible()
@@ -222,19 +246,29 @@ test.describe('Homepage top structure @prod-safe', () => {
 
       const measurement = await measureTop(page)
       const context = { label, ...measurement }
-      expect(measurement.topLevelOrder.slice(0, 4), JSON.stringify(context)).toEqual([
+      expect(measurement.topLevelOrder.slice(0, 7), JSON.stringify(context)).toEqual([
+        'hero',
+        'slider',
         'search',
         'breeders',
         'cta',
         'note',
+        'other',
       ])
       expect(measurement.adBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
-      expect(measurement.heroBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
-      // O slider está integrado dentro do CTA (não é secção separada)
-      expect(measurement.sliderInsideCta, JSON.stringify(context)).toBe(true)
-      // A pesquisa é o primeiro elemento após o header
-      expect(measurement.searchTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+      // O slider é uma secção independente (não está dentro do CTA)
+      expect(measurement.sliderInsideCta, JSON.stringify(context)).toBe(false)
+      // O hero é o primeiro elemento após o header
+      expect(measurement.heroTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
         measurement.headerBottom,
+      )
+      // Slider vem depois do hero
+      expect(measurement.sliderTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.heroBottom - 1,
+      )
+      // Pesquisa vem depois do slider
+      expect(measurement.searchTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+        measurement.sliderBottom - 1,
       )
       // Criadores em foco vêm depois da pesquisa
       expect(measurement.breedersTop, JSON.stringify(context)).toBeLessThanOrEqual(

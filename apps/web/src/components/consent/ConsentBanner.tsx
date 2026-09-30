@@ -34,6 +34,19 @@ export function ConsentBanner() {
     }
   }, [])
 
+  // Adiciona padding-bottom ao body quando o banner está visível para
+  // evitar que se sobreponha ao conteúdo (ex.: hero no topo da página).
+  useEffect(() => {
+    if (visible) {
+      document.body.style.paddingBottom = '120px'
+    } else {
+      document.body.style.paddingBottom = ''
+    }
+    return () => {
+      document.body.style.paddingBottom = ''
+    }
+  }, [visible])
+
   if (!visible) {
     return <ConsentSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
   }

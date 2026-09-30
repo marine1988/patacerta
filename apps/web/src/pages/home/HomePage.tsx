@@ -102,113 +102,9 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * SEARCH — primeiro elemento após o header.
+       * HERO EDITORIAL — primeiro elemento do site.
        * ============================================================ */}
-      <section
-        ref={searchSectionRef}
-        aria-label="Pesquisar criadores e serviços"
-        data-testid="home-search"
-        className="border-b border-line"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
-          <SearchBar showSearchType idPrefix="home-search" />
-        </div>
-      </section>
-
-      {/* ============================================================
-       * CRIADORES EM FOCO — terceiro elemento.
-       * ============================================================ */}
-      <section
-        aria-label="Criadores em foco"
-        data-testid="home-featured-breeders"
-        className="border-b border-line"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <FeaturedCarousel
-            eyebrow="◆ Destaques · Criadores"
-            title="Criadores em foco"
-            isLoading={featuredLoading}
-            errorMessage={
-              featuredError ? 'Não foi possível carregar os criadores em destaque.' : null
-            }
-            onRetry={() => refetchFeatured()}
-            emptyMessage="Sem criadores em destaque de momento."
-            skeleton={<FeaturedBreederSkeleton />}
-          >
-            {featured?.breeders.map((b) => (
-              <FeaturedBreederItem key={b.id} breeder={b} />
-            ))}
-          </FeaturedCarousel>
-          <div className="mt-6 text-center sm:mt-8">
-            <Link to="/pesquisar" className="btn-secondary">
-              Ver todos os criadores
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SIMULADOR — quarto elemento, abaixo dos criadores em foco.
-       * Layout 2 colunas (desktop): texto à esquerda, slider à direita.
-       * No mobile: stack (texto em cima, slider abaixo).
-       * ============================================================ */}
-      <section
-        aria-labelledby="home-simulator-title"
-        data-testid="home-simulator-cta"
-        className="border-b border-line bg-surface-alt"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
-            <div>
-              <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
-              <h2
-                id="home-simulator-title"
-                className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
-              >
-                Quer saber qual a raça{' '}
-                <em className="italic text-caramel-500">mais compatível consigo</em>?
-              </h2>
-              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
-                Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
-                de vida, espaço e rotina.
-              </p>
-              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
-                  Gratuito, sem registo
-                </li>
-              </ul>
-              <div className="mt-6 sm:mt-8">
-                <Link to="/simulador-raca" className="btn-primary">
-                  Começar simulador →
-                </Link>
-              </div>
-            </div>
-            <BreedSlider />
-          </div>
-        </div>
-      </section>
-
-      <p
-        id="home-simulator-note"
-        data-testid="home-simulator-note"
-        className="mx-auto max-w-[72rem] px-4 py-3 text-xs leading-relaxed text-muted sm:px-6 sm:py-4 lg:px-8"
-      >
-        <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma ferramenta de
-        orientação. Cada cão é único e a escolha final deve ser feita em conjunto com criadores,
-        veterinários ou associações de adopção.
-      </p>
-
-      {/* ============================================================
-       * HERO EDITORIAL
-       * ============================================================ */}
-      <section className="relative overflow-hidden border-t border-line">
+      <section className="relative overflow-hidden border-b border-line">
         <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
           <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
@@ -246,6 +142,131 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ============================================================
+       * SLIDER DO SIMULADOR — segundo elemento.
+       * 5 raças diferentes com percentagens de compatibilidade.
+       * ============================================================ */}
+      <section
+        aria-label="Exemplos de raças compatíveis"
+        data-testid="home-breed-slider"
+        className="border-b border-line bg-surface-alt"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <div className="mb-6 max-w-2xl sm:mb-8">
+            <p className="eyebrow mb-4 sm:mb-6">◆ Simulador de raça</p>
+            <h2 className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
+              Quer saber qual a raça{' '}
+              <em className="italic text-caramel-500">mais compatível consigo</em>?
+            </h2>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
+              Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+              de vida, espaço e rotina.
+            </p>
+          </div>
+          <BreedSlider />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SEARCH — terceiro elemento.
+       * ============================================================ */}
+      <section
+        ref={searchSectionRef}
+        aria-label="Pesquisar criadores e serviços"
+        data-testid="home-search"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
+          <SearchBar showSearchType idPrefix="home-search" />
+        </div>
+      </section>
+
+      {/* ============================================================
+       * CRIADORES EM FOCO — quarto elemento.
+       * ============================================================ */}
+      <section
+        aria-label="Criadores em foco"
+        data-testid="home-featured-breeders"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Criadores"
+            title="Criadores em foco"
+            isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os criadores em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
+            emptyMessage="Sem criadores em destaque de momento."
+            skeleton={<FeaturedBreederSkeleton />}
+          >
+            {featured?.breeders.map((b) => (
+              <FeaturedBreederItem key={b.id} breeder={b} />
+            ))}
+          </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar" className="btn-secondary">
+              Ver todos os criadores
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SIMULADOR — quinto elemento, abaixo dos criadores em foco.
+       * Secção completa com texto e CTA (sem BreedSlider).
+       * ============================================================ */}
+      <section
+        aria-labelledby="home-simulator-title"
+        data-testid="home-simulator-cta"
+        className="border-b border-line bg-surface-alt"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
+            <h2
+              id="home-simulator-title"
+              className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
+            >
+              Quer saber qual a raça{' '}
+              <em className="italic text-caramel-500">mais compatível consigo</em>?
+            </h2>
+            <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
+              Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+              de vida, espaço e rotina.
+            </p>
+            <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                Gratuito, sem registo
+              </li>
+            </ul>
+            <div className="mt-6 sm:mt-8">
+              <Link to="/simulador-raca" className="btn-primary">
+                Começar simulador →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p
+        id="home-simulator-note"
+        data-testid="home-simulator-note"
+        className="mx-auto max-w-[72rem] px-4 py-3 text-xs leading-relaxed text-muted sm:px-6 sm:py-4 lg:px-8"
+      >
+        <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma ferramenta de
+        orientação. Cada cão é único e a escolha final deve ser feita em conjunto com criadores,
+        veterinários ou associações de adopção.
+      </p>
 
       {showStickySearch && stickySearchTop !== null && (
         <div
@@ -446,7 +467,6 @@ function ServiceCategoryCard({
 /* ============================================================
  * Cards horizontais para os carrosseis de destaques
  * ============================================================ */
-
 const ITEM_CLASSES = 'relative w-72 flex-shrink-0 snap-start sm:w-80'
 
 /** Coage avgRating (Decimal Prisma vem como string) e arredonda a 1 casa. */
