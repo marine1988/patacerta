@@ -116,8 +116,15 @@ export interface Capabilities {
    */
   authBlocked: boolean
   /**
-   * `GET /api/health` devolveu 429 — o balde de rate-limit do IP
-   * (`apiRateLimit`: 200 pedidos / 15 min) está esgotado.
+   * Alguma sonda a um endpoint **não isento** do `apiRateLimit` devolveu 429 —
+   * o balde de rate-limit do IP (`apiRateLimit`: 200 pedidos / 15 min) está
+   * esgotado. As sondas usadas para isto são `/search/breeders`, `/services` e
+   * os logins (`/auth/login`), com paragem imediata na primeira que apanhar
+   * 429.
+   *
+   * Detectar por `GET /api/health` deixou de ser possível com o PATA-BUG-3
+   * (aquele endpoint passou a ser isento do limiter, logo nunca devolve 429) —
+   * daí a detecção ser independente do endpoint isento (PATA-E2E-BUG-3).
    *
    * Isto NÃO é um problema da app: é o ambiente a recusar servir a suite.
    * Se não for detectado, todas as sondas seguintes devolvem 0/401 e os
@@ -126,7 +133,11 @@ export interface Capabilities {
    * quando isto acontece (ver `fixtures/test.ts`).
    */
   rateLimited: boolean
-  /** Instante de reset do balde (ISO), quando `rateLimited` é true. */
+  /**
+   * Instante de reset do balde (ISO), quando `rateLimited` é true — lido do
+   * header `x-ratelimit-reset` **da resposta que devolveu 429** (a do login
+   * se foi o limiter de autenticação a recusar).
+   */
   rateLimitResetAt: string | null
   /** Total de criadores publicados (`meta.total` de /api/search/breeders). */
   breedersTotal: number
@@ -142,32 +153,135 @@ export interface Capabilities {
   hasDemoBreeder: boolean
   /** As credenciais admin autenticam neste ambiente. */
   hasAdmin: boolean
+  /**
+   * PATA-BUG-8: o login funciona mas os pedidos **autenticados** da SPA são
+   * bloqueados pelo middleware de basic auth do Traefik (422/401 com
+   * `WWW-Authenticate: Basic realm="traefik"` quando o axios envia
+   * `Authorization: Bearer <token>`). O pedido nunca chega à API — o browser
+   * não consegue satisfazer o challenge porque o header já vem definido pela
+   * aplicação. Isto é uma limitação de INFRA do stage (não da app): os testes
+   * que dependem de dados autenticados (painel admin, área pessoal com dados)
+   * fazem skip com razão explícita em vez de falharem com "Erro ao carregar".
+   */
+  authedApiBlocked: boolean
   /** As seeds demo estão aplicadas (utilizadores + dados). */
   seeded: boolean
+}
+
+/**
+ * Instante (ISO) de renovação do balde, lido do header `x-ratelimit-reset`
+ * (segundos epoch). `null` quando o header não vem ou não é numérico — dizer
+ * "desconhecido" é melhor do que rebentar com um `Invalid Date`.
+ */
+function rateLimitResetAt(res: { headers(): Record<string, string> }): string | null {
+  const raw = res.headers()['x-ratelimit-reset']
+  if (!raw) return null
+  const seconds = Number(raw)
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null
+}
+
+/**
+ * Resultado de uma sonda: o valor pedido e, quando o ambiente recusou o
+ * pedido com 429, a marca de rate-limit (`value` fica `null`: um 0/`false`
+ * produzido por 429 é lixo, não é informação sobre o ambiente).
+ */
+interface Probe<T> {
+  value: T | null
+  rateLimited: boolean
+  rateLimitResetAt: string | null
+}
+
+function probeOk<T>(value: T): Probe<T> {
+  return { value, rateLimited: false, rateLimitResetAt: null }
+}
+
+function probeLimited<T>(resetAt: string | null): Probe<T> {
+  return { value: null, rateLimited: true, rateLimitResetAt: resetAt }
+}
+
+/** Primeira sonda recusada com 429, se alguma. */
+function firstRateLimited<T>(probes: Probe<T>[]): Probe<T> | undefined {
+  return probes.find((p) => p.rateLimited)
+}
+
+/**
+ * Totais de listagem conhecidos até agora, na forma que o `Capabilities`
+ * espera. Uma sonda recusada (429) ou não feita fica a 0; os valores válidos
+ * das outras sondas não se perdem.
+ */
+function totalsOf(
+  breeders: Probe<number>,
+  services: Probe<number>,
+): Pick<Capabilities, 'breedersTotal' | 'servicesTotal' | 'hasBreeders' | 'hasServices'> {
+  const breedersTotal = breeders.value ?? 0
+  const servicesTotal = services.value ?? 0
+  return {
+    breedersTotal,
+    servicesTotal,
+    hasBreeders: breedersTotal > 0,
+    hasServices: servicesTotal > 0,
+  }
 }
 
 async function tryLogin(
   request: APIRequestContext,
   email: string,
   password: string,
-): Promise<boolean> {
+): Promise<Probe<boolean>> {
   try {
     const res = await request.post(`${API_BASE_URL}/auth/login`, { data: { email, password } })
-    return res.ok()
+    if (res.status() === 429) return probeLimited(rateLimitResetAt(res))
+    return probeOk(res.ok())
+  } catch {
+    return probeOk(false)
+  }
+}
+
+/**
+ * PATA-BUG-8: depois de um login válido, tenta um pedido **autenticado** à
+ * API (com `Authorization: Bearer <token>`, como o axios da SPA faz). Em
+ * stage o middleware de basic auth do Traefik responde 401 com challenge
+ * `Basic` ANTES de o pedido chegar à API — o que significa que a app
+ * autenticada não consegue carregar dados privados naquele ambiente.
+ *
+ * `true` = bloqueado (pedido autenticado nunca chega à API).
+ * `false` = funciona (como em local e em produção).
+ */
+async function probeAuthedApiBlocked(
+  request: APIRequestContext,
+  email: string,
+  password: string,
+): Promise<boolean> {
+  try {
+    const login = await request.post(`${API_BASE_URL}/auth/login`, { data: { email, password } })
+    if (!login.ok()) return false
+    const body = (await login.json()) as { accessToken?: string }
+    if (!body.accessToken) return false
+
+    const res = await request.get(`${API_BASE_URL}/users/me`, {
+      headers: { Authorization: `Bearer ${body.accessToken}` },
+    })
+    if (res.status() !== 401 && res.status() !== 403) return false
+
+    const challenge = res.headers()['www-authenticate'] ?? ''
+    // 401 com challenge Basic = middleware do Traefik (infra), não a API.
+    // A API devolve sempre JSON; o Traefik devolve text/plain + challenge.
+    return /^\s*basic\b/i.test(challenge)
   } catch {
     return false
   }
 }
 
-async function totalOf(request: APIRequestContext, path: string): Promise<number> {
+async function totalOf(request: APIRequestContext, path: string): Promise<Probe<number>> {
   try {
     const res = await request.get(`${API_BASE_URL}${path}`)
-    if (!res.ok()) return 0
+    if (res.status() === 429) return probeLimited(rateLimitResetAt(res))
+    if (!res.ok()) return probeOk(0)
     const json = (await res.json()) as { meta?: { total?: number }; data?: unknown[] }
-    if (typeof json.meta?.total === 'number') return json.meta.total
-    return Array.isArray(json.data) ? json.data.length : 0
+    if (typeof json.meta?.total === 'number') return probeOk(json.meta.total)
+    return probeOk(Array.isArray(json.data) ? json.data.length : 0)
   } catch {
-    return 0
+    return probeOk(0)
   }
 }
 
@@ -191,6 +305,7 @@ export async function probeCapabilities(request: APIRequestContext): Promise<Cap
     hasDemoClient: false,
     hasDemoBreeder: false,
     hasAdmin: false,
+    authedApiBlocked: false,
     seeded: false,
   } satisfies Capabilities
 
@@ -198,11 +313,11 @@ export async function probeCapabilities(request: APIRequestContext): Promise<Cap
   try {
     const res = await request.get(`${API_BASE_URL}/health`)
     if (res.status() === 429) {
-      const resetHeader = res.headers()['x-ratelimit-reset']
-      const resetAt = resetHeader ? new Date(Number(resetHeader) * 1000).toISOString() : null
-      // Balde esgotado: parar já. Qualquer sonda seguinte é lixo (429) e
-      // qualquer skip/falha a partir daqui seria mentira.
-      return { ...empty, rateLimited: true, rateLimitResetAt: resetAt }
+      // Alvo a correr um build **anterior** ao PATA-BUG-3 (que isentou
+      // `/api/health` do `apiRateLimit`): mantém-se o diagnóstico em vez de o
+      // perder. Num alvo actualizado este ramo é inalcançável — a detecção
+      // normal faz-se nas sondas **não isentas**, abaixo.
+      return { ...empty, rateLimited: true, rateLimitResetAt: rateLimitResetAt(res) }
     }
     if (res.status() === 401 || res.status() === 403) {
       // Alvo fechado por basic auth (stage sem credenciais). Nenhuma sonda
@@ -218,29 +333,73 @@ export async function probeCapabilities(request: APIRequestContext): Promise<Cap
     apiHealthy = false
   }
 
-  const [breedersTotal, servicesTotal] = await Promise.all([
+  // Daqui para baixo as sondas são todas de endpoints **não isentos** do
+  // `apiRateLimit`, logo são eles que dizem se o balde do IP está esgotado
+  // (PATA-E2E-BUG-3). Paragem imediata na primeira que apanhar 429: as
+  // seguintes só gastariam pedidos e devolveriam 429, e uns `hasBreeders` /
+  // `seeded` a `false` seriam indistinguíveis de "ambiente sem seeds".
+  const [breeders, services] = await Promise.all([
     totalOf(request, '/search/breeders?limit=1'),
     totalOf(request, '/services?limit=1'),
   ])
 
-  const [hasDemoClient, hasDemoBreeder, hasAdmin] = PROBE_LOGINS
+  // Totais já conhecidos: uma sonda recusada fica a 0, mas o que respondeu bem
+  // preserva-se mesmo que uma sonda posterior apanhe 429.
+  const totals = totalsOf(breeders, services)
+
+  const listsLimited = firstRateLimited([breeders, services])
+  if (listsLimited) {
+    return {
+      ...empty,
+      apiHealthy,
+      ...totals,
+      rateLimited: true,
+      rateLimitResetAt: listsLimited.rateLimitResetAt,
+    }
+  }
+
+  const [demoClient, demoBreeder, admin] = PROBE_LOGINS
     ? await Promise.all([
         tryLogin(request, DEMO_CLIENT_EMAILS[0], DEMO_PASSWORD),
         tryLogin(request, DEMO_BREEDER_EMAILS[0], DEMO_PASSWORD),
         tryLogin(request, ADMIN_EMAIL, ADMIN_PASSWORD),
       ])
-    : [false, false, false]
+    : [probeOk(false), probeOk(false), probeOk(false)]
+
+  const loginsLimited = firstRateLimited([demoClient, demoBreeder, admin])
+  if (loginsLimited) {
+    // As listagens acima responderam: `hasBreeders`/`hasServices` são verdade e
+    // mantêm-se — senão um run forçado com `E2E_IGNORE_RATE_LIMIT=1` diria
+    // "ambiente sem seeds" quando as sondas provaram o contrário.
+    return {
+      ...empty,
+      apiHealthy,
+      ...totals,
+      rateLimited: true,
+      rateLimitResetAt: loginsLimited.rateLimitResetAt,
+    }
+  }
+
+  const hasDemoClient = demoClient.value ?? false
+  const hasDemoBreeder = demoBreeder.value ?? false
+  const hasAdmin = admin.value ?? false
+
+  // PATA-BUG-8: se os logins funcionam mas o pedido autenticado é bloqueado
+  // pelo middleware do Traefik (401 + challenge Basic), os testes que
+  // dependem de dados autenticados fazem skip com razão explícita. Sondar só
+  // quando os logins estão ligados (senão não há sequer token para testar).
+  const authedApiBlocked = PROBE_LOGINS
+    ? await probeAuthedApiBlocked(request, ADMIN_EMAIL, ADMIN_PASSWORD)
+    : false
 
   return {
     ...empty,
     apiHealthy,
-    breedersTotal,
-    servicesTotal,
-    hasBreeders: breedersTotal > 0,
-    hasServices: servicesTotal > 0,
+    ...totals,
     hasDemoClient,
     hasDemoBreeder,
     hasAdmin,
+    authedApiBlocked,
     seeded: hasDemoClient && hasDemoBreeder,
   }
 }
@@ -324,6 +483,7 @@ export function describeCapabilities(caps: Capabilities): string {
     `hasDemoClient=${caps.hasDemoClient}`,
     `hasDemoBreeder=${caps.hasDemoBreeder}`,
     `hasAdmin=${caps.hasAdmin}`,
+    `authedApiBlocked=${caps.authedApiBlocked}`,
   ].join(' ')
 }
 

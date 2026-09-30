@@ -146,7 +146,11 @@ test.describe('Homepage e navegação @prod-safe', () => {
 
   test('botão "Ver todos os serviços" leva à pesquisa de serviços', async ({ page }) => {
     await page.goto('/')
-    const btn = page.getByRole('link', { name: 'Ver todos os serviços' })
+    // Escopo à secção "Serviços em foco" (home-featured-services): a homepage
+    // tem um segundo link com o mesmo texto na secção editorial "Serviços
+    // para patudos" — ambos legítimos, mas o teste é sobre o botão do card.
+    const section = page.locator('[data-testid="home-featured-services"]')
+    const btn = section.getByRole('link', { name: 'Ver todos os serviços' })
     await expect(btn).toBeVisible()
     await btn.click()
     await expect(page).toHaveURL(/\/pesquisar\?tipo=servicos/)

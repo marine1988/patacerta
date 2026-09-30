@@ -58,13 +58,17 @@ export function BreedSlider() {
   }, [isPaused, total])
 
   // Retoma auto-play após 10s sem interacção manual.
+  // Avança logo no retoma (catch-up): o utilizador viu a mesma raça durante
+  // os 10s de pausa; ficar mais 5s parado até o primeiro tick do interval só
+  // fazia o retoma parecer morto (o teste E2E validava mudança aos ~11s).
   useEffect(() => {
     if (!interactionPaused) return
     const timeout = setTimeout(() => {
+      setActive((prev) => (prev + 1) % total)
       setInteractionPaused(false)
     }, RESUME_DELAY_MS)
     return () => clearTimeout(timeout)
-  }, [interactionPaused])
+  }, [interactionPaused, total])
 
   const current = BREED_SLIDES[active]
 

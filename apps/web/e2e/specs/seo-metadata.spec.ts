@@ -261,14 +261,21 @@ test.describe('SEO / metadata @prod-safe', () => {
     )
     await expect(pageScripts.first()).toBeAttached({ timeout: HEAD_TIMEOUT })
 
-    // Navegação client-side: o cleanup do usePageMeta remove os blocos da
-    // página anterior (senão acumulavam breadcrumbs de todas as visitas).
+    // Navegação client-side: o cleanup do usePageMeta limpa o conteúdo do
+    // bloco da página anterior (senão acumulavam breadcrumbs de todas as
+    // visitas). Desde o refactor do SEO o elemento é lazy-init e NUNCA é
+    // removido do DOM — apenas o `textContent` é limpo (elimina o bug
+    // "Failed to execute removeChild"). Por isso o assert é sobre o conteúdo
+    // ficar vazio, não sobre o elemento desaparecer.
     await page
       .getByRole('link', { name: /PataCerta/i })
       .first()
       .click()
     await expect(page).toHaveURL(/\/$/)
-    await expect(pageScripts).toHaveCount(0, { timeout: HEAD_TIMEOUT })
+    await expect(pageScripts).toHaveCount(1, { timeout: HEAD_TIMEOUT })
+    await expect
+      .poll(() => pageScripts.first().evaluate((el) => (el as HTMLScriptElement).textContent))
+      .toBe('')
 
     // E os globais continuam exatamente 2 (sem duplicar a cada navegação).
     await expect(

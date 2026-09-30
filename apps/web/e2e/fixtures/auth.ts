@@ -50,22 +50,15 @@ export async function loginViaApi(
   // IMPORTANTE: as chaves reais usadas pelo AuthContext sao `access_token` e
   // `user` (ver apps/web/src/contexts/AuthContext.tsx). NAO sao "accessToken"
   // / "refreshToken". O refresh token vive em cookie HTTPOnly definido pela
-  // API. Aqui so' precisamos de injectar o access token + user.
-  // Garantir que existe um document para correr addInitScript em qualquer URL
-  // do baseURL.
+  // API.
+  //
+  // Injectamos o token apenas via `page.evaluate` (localStorage persiste
+  // entre navegações do MESMO origin) e NÃO com `page.addInitScript`: um
+  // init script corre em CADA navegação seguinte e voltaria a injectar o
+  // token depois de um logout do próprio teste, anulando-o (observado em
+  // stage: "Sair limpa a sessão" ficava em /area-pessoal porque a sessão
+  // "renascia" no reload seguinte).
   await page.goto('/')
-  await page.addInitScript(
-    ({ accessToken, user }) => {
-      try {
-        window.localStorage.setItem('access_token', accessToken)
-        if (user) window.localStorage.setItem('user', JSON.stringify(user))
-      } catch {
-        // ignore
-      }
-    },
-    { accessToken: body.accessToken, user: body.user },
-  )
-  // Persistir já no contexto atual também (caso o caller não recarregue)
   await page.evaluate(
     ({ accessToken, user }) => {
       window.localStorage.setItem('access_token', accessToken)
