@@ -36,11 +36,16 @@ export function ConsentBanner() {
 
   // Adiciona padding-bottom ao body quando o banner está visível para
   // evitar que se sobreponha ao conteúdo (ex.: hero no topo da página).
+  // Mede a altura real do banner para cobrir todos os viewports.
   useEffect(() => {
-    if (visible) {
-      document.body.style.paddingBottom = '120px'
-    } else {
+    if (!visible) {
       document.body.style.paddingBottom = ''
+      return
+    }
+    const banner = document.querySelector('[role="dialog"][aria-labelledby="consent-banner-title"]')
+    if (banner) {
+      const height = banner.getBoundingClientRect().height
+      document.body.style.paddingBottom = `${height + 16}px`
     }
     return () => {
       document.body.style.paddingBottom = ''
