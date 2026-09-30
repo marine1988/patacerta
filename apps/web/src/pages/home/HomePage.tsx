@@ -102,20 +102,7 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * SLIDER DO SIMULADOR — primeiro elemento, no topo.
-       * ============================================================ */}
-      <section
-        aria-label="Exemplos de raças compatíveis"
-        data-testid="home-breed-slider"
-        className="border-b border-line bg-surface-alt"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-          <BreedSlider />
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SEARCH — segundo elemento, imediatamente abaixo do slider.
+       * SEARCH — primeiro elemento após o header.
        * ============================================================ */}
       <section
         ref={searchSectionRef}
@@ -162,6 +149,8 @@ export function HomePage() {
 
       {/* ============================================================
        * SIMULADOR — quarto elemento, abaixo dos criadores em foco.
+       * Layout 2 colunas (desktop): texto à esquerda, slider à direita.
+       * No mobile: stack (texto em cima, slider abaixo).
        * ============================================================ */}
       <section
         aria-labelledby="home-simulator-title"
@@ -169,36 +158,39 @@ export function HomePage() {
         className="border-b border-line bg-surface-alt"
       >
         <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
-            <h2
-              id="home-simulator-title"
-              className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
-            >
-              Quer saber qual a raça{' '}
-              <em className="italic text-caramel-500">mais compatível consigo</em>?
-            </h2>
-            <p className="mx-auto mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
-              Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
-              de vida, espaço e rotina.
-            </p>
-            <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
-                Gratuito, sem registo
-              </li>
-            </ul>
-            <div className="mt-6 sm:mt-8">
-              <Link to="/simulador-raca" className="btn-primary">
-                Começar simulador →
-              </Link>
+          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
+            <div>
+              <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
+              <h2
+                id="home-simulator-title"
+                className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
+              >
+                Quer saber qual a raça{' '}
+                <em className="italic text-caramel-500">mais compatível consigo</em>?
+              </h2>
+              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
+                Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+                de vida, espaço e rotina.
+              </p>
+              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                  Gratuito, sem registo
+                </li>
+              </ul>
+              <div className="mt-6 sm:mt-8">
+                <Link to="/simulador-raca" className="btn-primary">
+                  Começar simulador →
+                </Link>
+              </div>
             </div>
+            <BreedSlider />
           </div>
         </div>
       </section>

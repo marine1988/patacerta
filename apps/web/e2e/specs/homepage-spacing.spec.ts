@@ -2,16 +2,14 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-HOME-REORDER: a homepage tem a seguinte ordem de elementos:
- *   1. Slider do simulador (breed-slider)
- *   2. Pesquisa (home-search)
- *   3. Criadores em foco (home-featured-breeders)
- *   4. Simulador CTA (home-simulator-cta)
- *   5. Nota legal (home-simulator-note)
+ * PATA-SIM-SLIDER-INTEGRADO: a homepage tem a seguinte ordem de elementos:
+ *   1. Pesquisa (home-search)
+ *   2. Criadores em foco (home-featured-breeders)
+ *   3. Simulador CTA (home-simulator-cta) — slider integrado como 4ª linha
+ *   4. Nota legal (home-simulator-note)
  *
- * O slider é o primeiro elemento após o header. A pesquisa vem colada
- * ao slider. Os criadores em foco vêm depois da pesquisa. O simulador
- * CTA fica abaixo dos criadores em foco.
+ * O slider do simulador está integrado dentro do CTA (não é uma secção
+ * separada). A pesquisa é o primeiro elemento após o header.
  */
 
 type ViewportCase = {
@@ -27,8 +25,6 @@ const VIEWPORTS: readonly ViewportCase[] = [
 
 type TopMeasurement = {
   headerBottom: number
-  sliderTop: number
-  sliderBottom: number
   searchTop: number
   searchBottom: number
   formTop: number
@@ -45,35 +41,35 @@ type TopMeasurement = {
   topLevelOrder: string[]
   adBlocksBeforeSearch: number
   heroBlocksBeforeSearch: number
+  /** Slider está integrado dentro do CTA (não é secção separada). */
+  sliderInsideCta: boolean
 }
 
 async function measureTop(page: Page): Promise<TopMeasurement> {
   return page.evaluate(() => {
     const header = document.querySelector('header')
-    const slider = document.querySelector('[data-testid="home-breed-slider"]')
     const search = document.querySelector('[data-testid="home-search"]')
     const form = search?.querySelector('form')
     const breeders = document.querySelector('[data-testid="home-featured-breeders"]')
     const cta = document.querySelector('[data-testid="home-simulator-cta"]')
     const note = document.querySelector('[data-testid="home-simulator-note"]')
+    const slider = document.querySelector('[data-testid="breed-slider"]')
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (!header || !slider || !search || !form || !breeders || !cta || !note) {
+    if (!header || !search || !form || !breeders || !cta || !note || !slider) {
       throw new Error(
-        'Homepage sem header, slider, pesquisa, criadores em foco, CTA do simulador ou nota legal',
+        'Homepage sem header, pesquisa, criadores em foco, CTA do simulador, slider ou nota legal',
       )
     }
 
     const headerRect = header.getBoundingClientRect()
-    const sliderRect = slider.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
     const formRect = form.getBoundingClientRect()
     const breedersRect = breeders.getBoundingClientRect()
     const ctaRect = cta.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
-      if (element === slider) return 'slider'
       if (element === search) return 'search'
       if (element === breeders) return 'breeders'
       if (element === cta) return 'cta'
@@ -96,8 +92,6 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
 
     return {
       headerBottom: headerRect.bottom,
-      sliderTop: sliderRect.top,
-      sliderBottom: sliderRect.bottom,
       searchTop: searchRect.top,
       searchBottom: searchRect.bottom,
       formTop: formRect.top,
@@ -115,6 +109,7 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
       heroBlocksBeforeSearch: topLevelElements
         .slice(0, searchIndex)
         .filter((element) => (element.textContent || '').includes('O portal dos')).length,
+      sliderInsideCta: cta.contains(slider),
     }
   })
 }
@@ -207,16 +202,17 @@ test.describe('Homepage top structure @prod-safe', () => {
       await assertNoHorizontalOverflow(page, label)
     })
 
-    test(`mantém slider, pesquisa, criadores, CTA e nota na ordem correcta no ${label}`, async ({
+    test(`mantém pesquisa, criadores, CTA (com slider integrado) e nota na ordem correcta no ${label}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport)
       await page.goto('/')
 
-      const slider = page.locator('[data-testid="home-breed-slider"]')
+      const slider = page.locator('[data-testid="breed-slider"]')
       const search = page.locator('[data-testid="home-search"]')
       const breeders = page.locator('[data-testid="home-featured-breeders"]')
-      const ctaLink = page.locator('[data-testid="home-simulator-cta"] a[href="/simulador-raca"]')
+      const cta = page.locator('[data-testid="home-simulator-cta"]')
+      const ctaLink = cta.locator('a[href="/simulador-raca"]')
       const note = page.locator('[data-testid="home-simulator-note"]')
       await expect(slider).toBeVisible()
       await expect(search).toBeVisible()
@@ -226,8 +222,7 @@ test.describe('Homepage top structure @prod-safe', () => {
 
       const measurement = await measureTop(page)
       const context = { label, ...measurement }
-      expect(measurement.topLevelOrder.slice(0, 5), JSON.stringify(context)).toEqual([
-        'slider',
+      expect(measurement.topLevelOrder.slice(0, 4), JSON.stringify(context)).toEqual([
         'search',
         'breeders',
         'cta',
@@ -235,13 +230,11 @@ test.describe('Homepage top structure @prod-safe', () => {
       ])
       expect(measurement.adBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
       expect(measurement.heroBlocksBeforeSearch, JSON.stringify(context)).toBe(0)
-      // O slider é o primeiro elemento após o header
-      expect(measurement.sliderTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
+      // O slider está integrado dentro do CTA (não é secção separada)
+      expect(measurement.sliderInsideCta, JSON.stringify(context)).toBe(true)
+      // A pesquisa é o primeiro elemento após o header
+      expect(measurement.searchTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
         measurement.headerBottom,
-      )
-      // A pesquisa vem colada ao slider
-      expect(measurement.searchTop, JSON.stringify(context)).toBeLessThanOrEqual(
-        measurement.sliderBottom + 1,
       )
       // Criadores em foco vêm depois da pesquisa
       expect(measurement.breedersTop, JSON.stringify(context)).toBeLessThanOrEqual(
