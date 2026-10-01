@@ -158,6 +158,34 @@ export function HomePage() {
       </section>
 
       {/* ============================================================
+       * SERVIÇOS EM FOCO — carousel de serviços
+       * ============================================================ */}
+      <section data-testid="home-featured-services" className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Serviços"
+            title="Serviços em foco"
+            isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os serviços em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
+            emptyMessage="Sem serviços em destaque de momento."
+            skeleton={<FeaturedServiceSkeleton />}
+          >
+            {featured?.services.map((s) => (
+              <FeaturedServiceItem key={s.id} service={s} />
+            ))}
+          </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar?tipo=servicos" className="btn-secondary">
+              Ver todos os serviços
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
        * CRIADORES EM FOCO — quarto elemento.
        * ============================================================ */}
       <section
@@ -258,34 +286,6 @@ export function HomePage() {
           </div>
         </div>
       )}
-
-      {/* ============================================================
-       * SERVIÇOS EM FOCO — carousel de serviços
-       * ============================================================ */}
-      <section data-testid="home-featured-services" className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
-          <FeaturedCarousel
-            eyebrow="◆ Destaques · Serviços"
-            title="Serviços em foco"
-            isLoading={featuredLoading}
-            errorMessage={
-              featuredError ? 'Não foi possível carregar os serviços em destaque.' : null
-            }
-            onRetry={() => refetchFeatured()}
-            emptyMessage="Sem serviços em destaque de momento."
-            skeleton={<FeaturedServiceSkeleton />}
-          >
-            {featured?.services.map((s) => (
-              <FeaturedServiceItem key={s.id} service={s} />
-            ))}
-          </FeaturedCarousel>
-          <div className="mt-6 text-center sm:mt-8">
-            <Link to="/pesquisar?tipo=servicos" className="btn-secondary">
-              Ver todos os serviços
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* ============================================================
        * PILLARS — 3 features em grelha editorial

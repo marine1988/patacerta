@@ -2,12 +2,13 @@ import { test, expect, type Page } from '../fixtures/test'
 import { dismissConsentBanner } from '../fixtures/auth'
 
 /**
- * PATA-SIM-SLIDER-SIDE: a homepage tem a seguinte ordem de elementos:
+ * PATA-HOME-SWAP: a homepage tem a seguinte ordem de elementos:
  *   1. Hero editorial (primeiro elemento após o header)
  *   2. Pesquisa (home-search)
- *   3. Criadores em foco (home-featured-breeders)
- *   4. Simulador CTA (home-simulator-cta) — layout 2 colunas com slider do simulador
- *   5. Nota legal (home-simulator-note)
+ *   3. Serviços em foco (home-featured-services)
+ *   4. Criadores em foco (home-featured-breeders)
+ *   5. Simulador CTA (home-simulator-cta) — layout 2 colunas com slider do simulador
+ *   6. Nota legal (home-simulator-note)
  *
  * O slider do simulador está integrado no CTA (não é uma secção independente).
  */
@@ -31,6 +32,8 @@ type TopMeasurement = {
   searchBottom: number
   formTop: number
   formBottom: number
+  servicesTop: number
+  servicesBottom: number
   breedersTop: number
   breedersBottom: number
   ctaTop: number
@@ -52,6 +55,7 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const hero = document.querySelector('section') // primeiro section = hero
     const search = document.querySelector('[data-testid="home-search"]')
     const form = search?.querySelector('form')
+    const services = document.querySelector('[data-testid="home-featured-services"]')
     const breeders = document.querySelector('[data-testid="home-featured-breeders"]')
     const cta = document.querySelector('[data-testid="home-simulator-cta"]')
     const note = document.querySelector('[data-testid="home-simulator-note"]')
@@ -59,9 +63,19 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (!header || !hero || !search || !form || !breeders || !cta || !note || !breedSlider) {
+if (
+      !header ||
+      !hero ||
+      !search ||
+      !form ||
+      !services ||
+      !breeders ||
+      !cta ||
+      !note ||
+      !breedSlider
+    ) {
       throw new Error(
-        'Homepage sem header, hero, pesquisa, criadores em foco, CTA do simulador ou nota legal',
+        'Homepage sem header, hero, pesquisa, serviços em foco, criadores em foco, CTA do simulador ou nota legal',
       )
     }
 
@@ -69,12 +83,14 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const heroRect = hero.getBoundingClientRect()
     const searchRect = search.getBoundingClientRect()
     const formRect = form.getBoundingClientRect()
+    const servicesRect = services!.getBoundingClientRect()
     const breedersRect = breeders.getBoundingClientRect()
     const ctaRect = cta.getBoundingClientRect()
     const noteRect = note.getBoundingClientRect()
     const topLevelOrder = topLevelElements.map((element) => {
       if (element === hero) return 'hero'
       if (element === search) return 'search'
+      if (element === services) return 'services'
       if (element === breeders) return 'breeders'
       if (element === cta) return 'cta'
       if (element === note) return 'note'
@@ -101,6 +117,8 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
       searchBottom: searchRect.bottom,
       formTop: formRect.top,
       formBottom: formRect.bottom,
+      servicesTop: servicesRect.top,
+      servicesBottom: servicesRect.bottom,
       breedersTop: breedersRect.top,
       breedersBottom: breedersRect.bottom,
       ctaTop: ctaRect.top,
@@ -204,7 +222,7 @@ test.describe('Homepage top structure @prod-safe', () => {
       await assertNoHorizontalOverflow(page, label)
     })
 
-    test(`mantém hero, pesquisa, criadores, CTA com slider e nota na ordem correcta no ${label}`, async ({
+    test(`mantém hero, pesquisa, serviços, criadores, CTA com slider e nota na ordem correcta no ${label}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport)
@@ -213,6 +231,7 @@ test.describe('Homepage top structure @prod-safe', () => {
       const hero = page.locator('section').first()
       const breedSlider = page.locator('[data-testid="breed-slider"]')
       const search = page.locator('[data-testid="home-search"]')
+      const services = page.locator('[data-testid="home-featured-services"]')
       const breeders = page.locator('[data-testid="home-featured-breeders"]')
       const cta = page.locator('[data-testid="home-simulator-cta"]')
       const ctaLink = cta.locator('a[href="/simulador-raca"]')
@@ -220,15 +239,17 @@ test.describe('Homepage top structure @prod-safe', () => {
       await expect(hero).toBeVisible()
       await expect(breedSlider).toBeVisible()
       await expect(search).toBeVisible()
+      await expect(services).toBeVisible()
       await expect(breeders).toBeVisible()
       await expect(ctaLink).toBeVisible()
       await expect(note).toBeVisible()
 
       const measurement = await measureTop(page)
       const context = { label, ...measurement }
-      expect(measurement.topLevelOrder.slice(0, 6), JSON.stringify(context)).toEqual([
+      expect(measurement.topLevelOrder.slice(0, 7), JSON.stringify(context)).toEqual([
         'hero',
         'search',
+        'services',
         'breeders',
         'cta',
         'note',
@@ -245,9 +266,13 @@ test.describe('Homepage top structure @prod-safe', () => {
       expect(measurement.searchTop, JSON.stringify(context)).toBeGreaterThanOrEqual(
         measurement.heroBottom - 1,
       )
-      // Criadores em foco vêm depois da pesquisa
-      expect(measurement.breedersTop, JSON.stringify(context)).toBeLessThanOrEqual(
+      // Serviços em foco vêm depois da pesquisa
+      expect(measurement.servicesTop, JSON.stringify(context)).toBeLessThanOrEqual(
         measurement.searchBottom + 1,
+      )
+      // Criadores em foco vêm depois dos serviços
+      expect(measurement.breedersTop, JSON.stringify(context)).toBeLessThanOrEqual(
+        measurement.servicesBottom + 1,
       )
       // CTA do simulador vem depois dos criadores
       expect(measurement.ctaTop, JSON.stringify(context)).toBeLessThanOrEqual(
