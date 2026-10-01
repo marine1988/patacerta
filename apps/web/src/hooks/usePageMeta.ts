@@ -167,9 +167,15 @@ export function usePageMeta(options: PageMetaOptions): void {
     el.canonical!.setAttribute('href', finalCanonical)
 
     // JSON-LD
+    // O `textContent` é escrito mesmo quando `jsonLd` é undefined: um script
+    // `ld+json` vazio rebenta `JSON.parse` com "Unexpected end of JSON input",
+    // e o efeito pode re-correr com `jsonLd` a undefined depois de ter escrito
+    // conteúdo (ex.: rota sem structured data após uma rota com).
     if (jsonLd) {
       const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd]
       el.jsonLd!.textContent = JSON.stringify(items.length === 1 ? items[0] : items)
+    } else {
+      el.jsonLd!.textContent = ''
     }
 
     // Cleanup: restaurar valores anteriores (sem remover elementos do DOM)
