@@ -59,16 +59,7 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-    if (
-      !header ||
-      !hero ||
-      !search ||
-      !form ||
-      !breeders ||
-      !cta ||
-      !note ||
-      !breedSlider
-    ) {
+    if (!header || !hero || !search || !form || !breeders || !cta || !note || !breedSlider) {
       throw new Error(
         'Homepage sem header, hero, pesquisa, criadores em foco, CTA do simulador ou nota legal',
       )

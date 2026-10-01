@@ -178,9 +178,7 @@ test.describe('Homepage e navegação @prod-safe', () => {
 
     // A classe dark deve estar presente
     await expect
-      .poll(async () =>
-        page.evaluate(() => document.documentElement.classList.contains('dark')),
-      )
+      .poll(async () => page.evaluate(() => document.documentElement.classList.contains('dark')))
       .toBe(true)
 
     // Slider e pesquisa devem estar visíveis em dark mode

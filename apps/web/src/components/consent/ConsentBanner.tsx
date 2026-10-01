@@ -52,7 +52,7 @@ export function ConsentBanner() {
     }
 
     const banner = document.querySelector<HTMLElement>(
-      '[role="dialog"][aria-labelledby="consent-banner-title"]'
+      '[role="dialog"][aria-labelledby="consent-banner-title"]',
     )
     if (!banner) return
 

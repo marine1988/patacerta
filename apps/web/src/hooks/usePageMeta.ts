@@ -58,7 +58,7 @@ function ensureCanonical(): HTMLLinkElement {
 
 function ensureJsonLdScript(): HTMLScriptElement {
   let el = document.head.querySelector<HTMLScriptElement>(
-    'script[type="application/ld+json"][data-managed="patacerta-page"]'
+    'script[type="application/ld+json"][data-managed="patacerta-page"]',
   )
   if (!el) {
     el = document.createElement('script')
