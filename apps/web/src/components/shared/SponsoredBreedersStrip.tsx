@@ -50,7 +50,7 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
             <Link
               to={`/criador/${b.breederSlug ?? b.breederId}`}
               onClick={() => trackClick(b.slotId)}
-              className="group flex items-center gap-3 rounded border border-line bg-white p-3 transition-colors hover:border-caramel-300 hover:bg-cream-50"
+              className="group flex items-center gap-3 rounded border border-line bg-surface p-3 transition-colors hover:border-caramel-300 hover:bg-surface-alt"
               style={{ borderRadius: 2 }}
             >
               {b.coverPhotoUrl ? (
@@ -63,7 +63,7 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
                 />
               ) : (
                 <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center bg-cream-100 text-caramel-500"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center bg-surface-alt text-caramel-500"
                   style={{ borderRadius: 2 }}
                   aria-hidden="true"
                 >
@@ -75,7 +75,7 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="inline-block bg-caramel-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-caramel-700"
+                    className="inline-block bg-caramel-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-caramel-500"
                     style={{ borderRadius: 2 }}
                   >
                     Patrocinado

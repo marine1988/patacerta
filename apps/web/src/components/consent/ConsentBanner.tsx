@@ -34,6 +34,57 @@ export function ConsentBanner() {
     }
   }, [])
 
+  // Adiciona padding-bottom ao body quando o banner está visível para
+  // evitar que se sobreponha ao conteúdo (ex.: hero no topo da página).
+  // Mede a altura real do banner para cobrir todos os viewports.
+  //
+  // A medição TEM de reagir a alterações de tamanho, não ficar presa ao
+  // primeiro commit em que o banner aparece: no mobile o texto quebra em
+  // mais linhas (botões de 10px + wrap) e, sobretudo, as webfonts só chegam
+  // depois do primeiro paint — o banner cresce de ~183px para ~212px e o
+  // padding ficava 13px curto, com o rodapé parcialmente tapado. Sem
+  // ResizeObserver o efeito só voltava a correr se `visible` mudasse, o que
+  // nunca acontece enquanto o banner está aberto.
+  useEffect(() => {
+    if (!visible) {
+      document.body.style.paddingBottom = ''
+      return
+    }
+
+    const banner = document.querySelector<HTMLElement>(
+      '[role="dialog"][aria-labelledby="consent-banner-title"]',
+    )
+    if (!banner) return
+
+    const apply = () => {
+      const height = banner.getBoundingClientRect().height
+      // getBoundingClientRect devolve 0 enquanto o elemento ainda não foi
+      // pintado; aplicar 0 removeria o padding e o rodapé ficaria tapado.
+      if (height > 0) {
+        document.body.style.paddingBottom = `${height + 16}px`
+      }
+    }
+
+    apply()
+
+    // Reage a: fontes que chegam tarde, texto que reflowa com outro idioma,
+    // e resize/rotação do viewport.
+    const ro = new ResizeObserver(apply)
+    ro.observe(banner)
+    if (document.fonts?.ready) {
+      // `ready` resolve uma vez; descarta o retorno para o effect nao ficar
+      // pendurado no cleanup (o padding e limpo no fim, nao por aqui).
+      void document.fonts.ready.then(apply).catch(() => {})
+    }
+    window.addEventListener('resize', apply)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', apply)
+      document.body.style.paddingBottom = ''
+    }
+  }, [visible])
+
   if (!visible) {
     return <ConsentSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
   }

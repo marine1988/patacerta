@@ -124,6 +124,10 @@ test.describe('Painel de administração @prod-safe', () => {
 
   test('admin: pesquisa sem resultados mostra empty state em pt-PT', async ({ page, caps }) => {
     test.skip(!caps.hasAdmin, seedSkipReason(caps, 'conta de administrador'))
+    test.skip(
+      caps.authedApiBlocked,
+      'PATA-BUG-8: o middleware de basic auth do Traefik em stage bloqueia pedidos autenticados da SPA (Authorization: Bearer) — a lista de utilizadores não carrega, logo o empty state não é testável neste ambiente.',
+    )
     await dismissConsentBanner(page)
 
     await loginViaApi(page.context().request, page, ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -143,6 +147,10 @@ test.describe('Painel de administração @prod-safe', () => {
 
   test('admin: deep-link de utilizador obtido da lista abre o detalhe', async ({ page, caps }) => {
     test.skip(!caps.hasAdmin, seedSkipReason(caps, 'conta de administrador'))
+    test.skip(
+      caps.authedApiBlocked,
+      'PATA-BUG-8: o middleware de basic auth do Traefik em stage bloqueia pedidos autenticados da SPA (Authorization: Bearer) — a lista de utilizadores não carrega, logo o deep-link não é testável neste ambiente.',
+    )
     await dismissConsentBanner(page)
 
     await loginViaApi(page.context().request, page, ADMIN_EMAIL, ADMIN_PASSWORD)

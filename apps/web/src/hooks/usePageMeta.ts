@@ -1,38 +1,25 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { SITE_NAME, DEFAULT_OG_IMAGE, absoluteUrl, canonicalUrlFromPath } from '../lib/seo'
 
 /**
- * Hook completo de SEO/Open Graph/Twitter/canonical/JSON-LD que escreve
- * em `document.head` sem libs externas. Cada página pública deve chamá-lo
- * **uma vez** com os dados reais (não usar valores estáticos quando
- * os dados vierem de uma query — esperar pelo loaded state).
+ * Hook completo de SEO/Open Graph/Twitter/canonical/JSON-LD que gere
+ * `document.head` de forma segura com React. Cada página pública deve
+ * chamá-lo **uma vez** com os dados reais.
  *
- * Comportamento:
- * - `<title>`: substituído. Restaurado ao desmontar.
- * - `meta[name=description]`: substituído. Restaurado ao desmontar.
- * - `og:*` e `twitter:*`: substituídos. Restaurados ao desmontar.
- * - `<link rel="canonical">`: substituído. Restaurado ao desmontar.
- * - `meta[name=robots]`: actualizado se `noIndex=true`. Restaurado ao desmontar.
- * - `script[type="application/ld+json"][data-managed="patacerta-page"]`:
- *   removido ao desmontar (só vive enquanto a página está montada).
- *
- * Usar `usePageMeta({ ... })` em CADA página pública (incluindo NotFound
- * com `noIndex: true`) para evitar que o título/descrição estáticos do
- * `index.html` "vazem" para outras rotas.
+ * Estratégia: elementos são criados uma única vez (lazy init) e nunca
+ * removidos do DOM — apenas os seus atributos são actualizados. Nos
+ * cleanups, restauram-se os valores anteriores. Isto elimina o bug de
+ * "Failed to execute removeChild on Node" que ocorria quando o React
+ * desmontava/remontava componentes e o cleanup tentava remover elementos
+ * que já não estavam no DOM ou que o React já tinha removido.
  */
 export interface PageMetaOptions {
-  /** Título da página. O sufixo " — PataCerta" é adicionado automaticamente se não estiver presente. */
   title: string
   description?: string
-  /** Path absoluto do canónico (ex: `/criador/42`). Default: pathname actual. */
   canonicalPath?: string
-  /** Imagem para og:image / twitter:image. URL absoluta ou path. Default: og-image.svg. */
   imageUrl?: string
-  /** og:type. Default: 'website'. Usar 'article' para páginas de detalhe. */
   type?: string
-  /** Bloquear indexação (auth, 404, área pessoal). Default: false. */
   noIndex?: boolean
-  /** JSON-LD structured data. Pode ser um objecto ou array de objectos. */
   jsonLd?: object | object[]
 }
 
@@ -69,6 +56,19 @@ function ensureCanonical(): HTMLLinkElement {
   return el
 }
 
+function ensureJsonLdScript(): HTMLScriptElement {
+  let el = document.head.querySelector<HTMLScriptElement>(
+    'script[type="application/ld+json"][data-managed="patacerta-page"]',
+  )
+  if (!el) {
+    el = document.createElement('script')
+    el.type = 'application/ld+json'
+    el.setAttribute('data-managed', 'patacerta-page')
+    document.head.appendChild(el)
+  }
+  return el
+}
+
 function withSiteSuffix(title: string): string {
   if (title.includes(SITE_NAME)) return title
   return `${title} — ${SITE_NAME}`
@@ -77,83 +77,138 @@ function withSiteSuffix(title: string): string {
 export function usePageMeta(options: PageMetaOptions): void {
   const { title, description, canonicalPath, imageUrl, type = 'website', noIndex, jsonLd } = options
 
+  // Guardar referências estáveis para os elementos geridos
+  const elementsRef = useRef<{
+    description?: HTMLMetaElement
+    robots?: HTMLMetaElement
+    ogTitle?: HTMLMetaElement
+    ogDescription?: HTMLMetaElement
+    ogImage?: HTMLMetaElement
+    ogUrl?: HTMLMetaElement
+    ogType?: HTMLMetaElement
+    twitterTitle?: HTMLMetaElement
+    twitterDescription?: HTMLMetaElement
+    twitterImage?: HTMLMetaElement
+    canonical?: HTMLLinkElement
+    jsonLd?: HTMLScriptElement
+  } | null>(null)
+
   useEffect(() => {
     const finalTitle = withSiteSuffix(title)
     const finalImage = imageUrl ? absoluteUrl(imageUrl) : DEFAULT_OG_IMAGE
     const finalCanonical = canonicalUrlFromPath(canonicalPath ?? window.location.pathname)
 
     const previousTitle = document.title
-    const metaSnapshots = new Map<HTMLMetaElement, string | null>()
-    const linkSnapshots = new Map<HTMLLinkElement, string | null>()
 
-    function setMeta(el: HTMLMetaElement, value: string | undefined) {
-      if (!metaSnapshots.has(el)) metaSnapshots.set(el, el.getAttribute('content'))
-      el.setAttribute('content', value ?? '')
-    }
-    function setLink(el: HTMLLinkElement, value: string) {
-      if (!linkSnapshots.has(el)) linkSnapshots.set(el, el.getAttribute('href'))
-      el.setAttribute('href', value)
-    }
-
-    document.title = finalTitle
-
-    if (description !== undefined) {
-      setMeta(ensureMetaByName('description'), description)
-    }
-    if (noIndex) {
-      setMeta(ensureMetaByName('robots'), 'noindex,nofollow')
-    }
-
-    // Open Graph
-    setMeta(ensureMetaByProperty('og:title'), finalTitle)
-    if (description !== undefined) {
-      setMeta(ensureMetaByProperty('og:description'), description)
-    }
-    setMeta(ensureMetaByProperty('og:image'), finalImage)
-    setMeta(ensureMetaByProperty('og:url'), finalCanonical)
-    setMeta(ensureMetaByProperty('og:type'), type)
-
-    // Twitter
-    setMeta(ensureMetaByName('twitter:title'), finalTitle)
-    if (description !== undefined) {
-      setMeta(ensureMetaByName('twitter:description'), description)
-    }
-    setMeta(ensureMetaByName('twitter:image'), finalImage)
-
-    // Canonical
-    setLink(ensureCanonical(), finalCanonical)
-
-    // JSON-LD (managed: removido ao desmontar)
-    const jsonLdElements: HTMLScriptElement[] = []
-    if (jsonLd) {
-      const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd]
-      for (const item of items) {
-        const script = document.createElement('script')
-        script.type = 'application/ld+json'
-        script.setAttribute('data-managed', 'patacerta-page')
-        script.textContent = JSON.stringify(item)
-        document.head.appendChild(script)
-        jsonLdElements.push(script)
+    // Lazy init: criar elementos uma única vez
+    if (!elementsRef.current) {
+      elementsRef.current = {
+        description: ensureMetaByName('description'),
+        robots: ensureMetaByName('robots'),
+        ogTitle: ensureMetaByProperty('og:title'),
+        ogDescription: ensureMetaByProperty('og:description'),
+        ogImage: ensureMetaByProperty('og:image'),
+        ogUrl: ensureMetaByProperty('og:url'),
+        ogType: ensureMetaByProperty('og:type'),
+        twitterTitle: ensureMetaByName('twitter:title'),
+        twitterDescription: ensureMetaByName('twitter:description'),
+        twitterImage: ensureMetaByName('twitter:image'),
+        canonical: ensureCanonical(),
+        jsonLd: ensureJsonLdScript(),
       }
     }
 
+    const el = elementsRef.current
+
+    // Guardar valores anteriores para restaurar no cleanup
+    const prev = {
+      title: previousTitle,
+      description: el.description!.getAttribute('content'),
+      robots: el.robots!.getAttribute('content'),
+      ogTitle: el.ogTitle!.getAttribute('content'),
+      ogDescription: el.ogDescription!.getAttribute('content'),
+      ogImage: el.ogImage!.getAttribute('content'),
+      ogUrl: el.ogUrl!.getAttribute('content'),
+      ogType: el.ogType!.getAttribute('content'),
+      twitterTitle: el.twitterTitle!.getAttribute('content'),
+      twitterDescription: el.twitterDescription!.getAttribute('content'),
+      twitterImage: el.twitterImage!.getAttribute('content'),
+      canonical: el.canonical!.getAttribute('href'),
+      jsonLd: el.jsonLd!.textContent,
+    }
+
+    // Actualizar valores
+    document.title = finalTitle
+
+    if (description !== undefined) {
+      el.description!.setAttribute('content', description)
+    }
+    if (noIndex) {
+      el.robots!.setAttribute('content', 'noindex,nofollow')
+    }
+
+    // Open Graph
+    el.ogTitle!.setAttribute('content', finalTitle)
+    if (description !== undefined) {
+      el.ogDescription!.setAttribute('content', description)
+    }
+    el.ogImage!.setAttribute('content', finalImage)
+    el.ogUrl!.setAttribute('content', finalCanonical)
+    el.ogType!.setAttribute('content', type)
+
+    // Twitter
+    el.twitterTitle!.setAttribute('content', finalTitle)
+    if (description !== undefined) {
+      el.twitterDescription!.setAttribute('content', description)
+    }
+    el.twitterImage!.setAttribute('content', finalImage)
+
+    // Canonical
+    el.canonical!.setAttribute('href', finalCanonical)
+
+    // JSON-LD
+    // O `textContent` é escrito mesmo quando `jsonLd` é undefined: um script
+    // `ld+json` vazio rebenta `JSON.parse` com "Unexpected end of JSON input",
+    // e o efeito pode re-correr com `jsonLd` a undefined depois de ter escrito
+    // conteúdo (ex.: rota sem structured data após uma rota com).
+    if (jsonLd) {
+      const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd]
+      el.jsonLd!.textContent = JSON.stringify(items.length === 1 ? items[0] : items)
+    } else {
+      el.jsonLd!.textContent = ''
+    }
+
+    // Cleanup: restaurar valores anteriores (sem remover elementos do DOM)
     return () => {
-      document.title = previousTitle
-      metaSnapshots.forEach((prev, el) => {
-        if (prev === null) {
-          el.removeAttribute('content')
-        } else {
-          el.setAttribute('content', prev)
-        }
-      })
-      linkSnapshots.forEach((prev, el) => {
-        if (prev === null) {
-          el.removeAttribute('href')
-        } else {
-          el.setAttribute('href', prev)
-        }
-      })
-      for (const el of jsonLdElements) el.remove()
+      document.title = prev.title
+      if (prev.description === null) {
+        el.description!.removeAttribute('content')
+      } else {
+        el.description!.setAttribute('content', prev.description)
+      }
+      if (prev.robots === null) {
+        el.robots!.removeAttribute('content')
+      } else {
+        el.robots!.setAttribute('content', prev.robots)
+      }
+      el.ogTitle!.setAttribute('content', prev.ogTitle ?? '')
+      if (prev.ogDescription === null) {
+        el.ogDescription!.removeAttribute('content')
+      } else {
+        el.ogDescription!.setAttribute('content', prev.ogDescription)
+      }
+      el.ogImage!.setAttribute('content', prev.ogImage ?? '')
+      el.ogUrl!.setAttribute('content', prev.ogUrl ?? '')
+      el.ogType!.setAttribute('content', prev.ogType ?? '')
+      el.twitterTitle!.setAttribute('content', prev.twitterTitle ?? '')
+      if (prev.twitterDescription === null) {
+        el.twitterDescription!.removeAttribute('content')
+      } else {
+        el.twitterDescription!.setAttribute('content', prev.twitterDescription)
+      }
+      el.twitterImage!.setAttribute('content', prev.twitterImage ?? '')
+      el.canonical!.setAttribute('href', prev.canonical ?? '')
+      el.jsonLd!.textContent = prev.jsonLd ?? ''
     }
   }, [title, description, canonicalPath, imageUrl, type, noIndex, jsonLd])
 }

@@ -173,7 +173,7 @@ function ScoreBadge({ score }: { score: number }) {
     score >= 85
       ? 'bg-caramel-500 text-white'
       : score >= 70
-        ? 'bg-caramel-100 text-caramel-700'
+        ? 'bg-caramel-500/15 text-caramel-500'
         : 'bg-line text-muted'
   return (
     <span
@@ -603,9 +603,9 @@ function SponsorThisBreedCTA({ breedId, breedNamePt }: SponsorThisBreedCTAProps)
 
   const href = `/area-pessoal?tab=destaque&prefillBreedId=${breedId}`
   return (
-    <div className="mt-3 rounded-lg border border-dashed border-caramel-300 bg-caramel-50 px-4 py-3 text-sm">
+    <div className="mt-3 rounded-lg border border-dashed border-caramel-500/40 bg-caramel-500/10 px-4 py-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-caramel-900">
+        <p className="text-caramel-500">
           É criador de <strong>{breedNamePt}</strong>? Destaque-se aqui — 10 € por 30 dias.
         </p>
         <Link to={href} className="btn-primary btn-sm">

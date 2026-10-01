@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { SearchBar } from '../../components/shared/SearchBar'
 import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
+import { BreedSlider } from '../../components/home/BreedSlider'
 import { Badge } from '../../components/ui/Badge'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { usePageMeta } from '../../hooks/usePageMeta'
@@ -101,68 +102,9 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-       * SEARCH — a pesquisa começa imediatamente abaixo do header.
-       * A barra fica no topo da homepage para não introduzir um bloco
-       * intermédio entre o limite superior e o primeiro controlo.
-       *
-       * O formulário branco é colado ao limite inferior do header: sem
-       * padding superior e sem cabeçalho/eyebrow próprio (PATA-UI-4). O
-       * `border-b` da secção basta — o header já traz o seu `border-b` e
-       * manter também o `border-t` aqui desenhava uma linha dupla.
+       * HERO EDITORIAL — primeiro elemento do site.
        * ============================================================ */}
-      <section
-        ref={searchSectionRef}
-        aria-label="Pesquisar criadores e serviços"
-        data-testid="home-search"
-        className="border-b border-line"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
-          <SearchBar showSearchType idPrefix="home-search" />
-        </div>
-      </section>
-
-      {/* ============================================================
-       * SIMULADOR — CTA compacto depois da pesquisa.
-       * Mantém o acesso ao quiz e a indicação de custo sem bloquear a
-       * primeira interação da página.
-       * ============================================================ */}
-      <section
-        aria-labelledby="home-simulator-title"
-        aria-describedby="home-simulator-note"
-        data-testid="home-simulator-cta"
-        className="border-b border-line bg-caramel-100/40 dark:bg-surface-alt"
-      >
-        <div className="mx-auto max-w-[72rem] px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
-              <h2 id="home-simulator-title" className="sr-only">
-                Simulador de raça
-              </h2>
-              <Link to="/simulador-raca" className="btn-primary btn-sm">
-                Começar simulador
-              </Link>
-              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                Gratuito · sem registo
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <p
-        id="home-simulator-note"
-        data-testid="home-simulator-note"
-        className="mx-auto max-w-[72rem] px-4 py-3 text-xs leading-relaxed text-muted sm:px-6 sm:py-4 lg:px-8"
-      >
-        <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma ferramenta de
-        orientação. Cada cão é único e a escolha final deve ser feita em conjunto com criadores,
-        veterinários ou associações de adopção.
-      </p>
-
-      {/* ============================================================
-       * HERO EDITORIAL — mantido abaixo da pesquisa, fora do topo
-       * ============================================================ */}
-      <section className="relative overflow-hidden border-t border-line">
+      <section className="relative overflow-hidden border-b border-line">
         <div className="mx-auto max-w-[72rem] px-4 pb-6 pt-7 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
           <p className="eyebrow mb-3 sm:mb-4">◆ Criadores e Serviços · Portugal</p>
 
@@ -190,11 +132,7 @@ export function HomePage() {
             </div>
 
             <aside className="hidden border-l border-line pl-8 lg:block">
-              <img
-                src="/malinois-hero.png"
-                alt="Pastor Belga Malinois sentado"
-                className="mb-4 w-full"
-              />
+              <img src="/malinois-hero.png" alt="Pastor Belga Malinois" className="mb-4 w-full" />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
                 "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
@@ -205,39 +143,29 @@ export function HomePage() {
         </div>
       </section>
 
-      {showStickySearch && stickySearchTop !== null && (
-        <div
-          data-testid="sticky-search"
-          className="fixed inset-x-0 z-30 border-b border-line bg-bg/95 backdrop-blur-md"
-          style={{ top: stickySearchTop }}
-        >
-          <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
-            <SearchBar compact showSearchType idPrefix="sticky-search" />
-          </div>
+      {/* ============================================================
+       * SEARCH — segundo elemento.
+       * ============================================================ */}
+      <section
+        ref={searchSectionRef}
+        aria-label="Pesquisar criadores e serviços"
+        data-testid="home-search"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-4">
+          <SearchBar showSearchType idPrefix="home-search" />
         </div>
-      )}
+      </section>
 
       {/* ============================================================
-       * DESTAQUES — dois carrosseis horizontais (estilo OLX)
+       * CRIADORES EM FOCO — quarto elemento.
        * ============================================================ */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-[72rem] space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10 lg:space-y-8 lg:px-8 lg:py-8">
-          <FeaturedCarousel
-            eyebrow="◆ Destaques · Serviços"
-            title="Serviços em foco"
-            isLoading={featuredLoading}
-            errorMessage={
-              featuredError ? 'Não foi possível carregar os serviços em destaque.' : null
-            }
-            onRetry={() => refetchFeatured()}
-            emptyMessage="Sem serviços em destaque de momento."
-            skeleton={<FeaturedServiceSkeleton />}
-          >
-            {featured?.services.map((s) => (
-              <FeaturedServiceItem key={s.id} service={s} />
-            ))}
-          </FeaturedCarousel>
-
+      <section
+        aria-label="Criadores em foco"
+        data-testid="home-featured-breeders"
+        className="border-b border-line"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
           <FeaturedCarousel
             eyebrow="◆ Destaques · Criadores"
             title="Criadores em foco"
@@ -253,6 +181,109 @@ export function HomePage() {
               <FeaturedBreederItem key={b.id} breeder={b} />
             ))}
           </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar" className="btn-secondary">
+              Ver todos os criadores
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+       * SIMULADOR — quinto elemento, abaixo dos criadores em foco.
+       * Layout 2 colunas (desktop): texto à esquerda, slider à direita.
+       * No mobile: stack (texto em cima, slider abaixo).
+       * ============================================================ */}
+      <section
+        aria-labelledby="home-simulator-title"
+        data-testid="home-simulator-cta"
+        className="border-b border-line bg-surface-alt"
+      >
+        <div className="mx-auto max-w-[72rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
+            <div>
+              <p className="eyebrow mb-3 sm:mb-4">◆ Simulador de raça</p>
+              <h2
+                id="home-simulator-title"
+                className="font-serif text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl"
+              >
+                Quer saber qual a raça{' '}
+                <em className="italic text-caramel-500">mais compatível consigo</em>?
+              </h2>
+              <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4">
+                Responda a 5 perguntas rápidas e descubra as raças que melhor encaixam no seu estilo
+                de vida, espaço e rotina.
+              </p>
+              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted sm:mt-6">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />5 perguntas simples
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />2 minutos
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-caramel-500" />
+                  Gratuito, sem registo
+                </li>
+              </ul>
+              <div className="mt-6 sm:mt-8">
+                <Link to="/simulador-raca" className="btn-primary">
+                  Começar simulador →
+                </Link>
+              </div>
+            </div>
+            <BreedSlider />
+          </div>
+        </div>
+      </section>
+
+      <p
+        id="home-simulator-note"
+        data-testid="home-simulator-note"
+        className="mx-auto max-w-[72rem] px-4 py-3 text-xs leading-relaxed text-muted sm:px-6 sm:py-4 lg:px-8"
+      >
+        <em className="not-italic font-medium">Nota:</em> o simulador é apenas uma ferramenta de
+        orientação. Cada cão é único e a escolha final deve ser feita em conjunto com criadores,
+        veterinários ou associações de adopção.
+      </p>
+
+      {showStickySearch && stickySearchTop !== null && (
+        <div
+          data-testid="sticky-search"
+          className="fixed inset-x-0 z-30 border-b border-line bg-bg/95 backdrop-blur-md"
+          style={{ top: stickySearchTop }}
+        >
+          <div className="mx-auto max-w-[72rem] px-6 py-2 lg:px-8">
+            <SearchBar compact showSearchType idPrefix="sticky-search" />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+       * SERVIÇOS EM FOCO — carousel de serviços
+       * ============================================================ */}
+      <section data-testid="home-featured-services" className="border-t border-line">
+        <div className="mx-auto max-w-[72rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
+          <FeaturedCarousel
+            eyebrow="◆ Destaques · Serviços"
+            title="Serviços em foco"
+            isLoading={featuredLoading}
+            errorMessage={
+              featuredError ? 'Não foi possível carregar os serviços em destaque.' : null
+            }
+            onRetry={() => refetchFeatured()}
+            emptyMessage="Sem serviços em destaque de momento."
+            skeleton={<FeaturedServiceSkeleton />}
+          >
+            {featured?.services.map((s) => (
+              <FeaturedServiceItem key={s.id} service={s} />
+            ))}
+          </FeaturedCarousel>
+          <div className="mt-6 text-center sm:mt-8">
+            <Link to="/pesquisar?tipo=servicos" className="btn-secondary">
+              Ver todos os serviços
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -415,7 +446,6 @@ function ServiceCategoryCard({
 /* ============================================================
  * Cards horizontais para os carrosseis de destaques
  * ============================================================ */
-
 const ITEM_CLASSES = 'relative w-72 flex-shrink-0 snap-start sm:w-80'
 
 /** Coage avgRating (Decimal Prisma vem como string) e arredonda a 1 casa. */
