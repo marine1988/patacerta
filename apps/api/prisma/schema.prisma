@@ -103,6 +103,8 @@ model User {
   cookieConsentLogs      CookieConsentLog[]
   refreshTokens          RefreshToken[]
   sponsoredSlotsPaid     SponsoredBreedSlot[] @relation("sponsored_slot_payer")
+  feedbacks              Feedback[]
+  feedbackVotes          FeedbackVote[]
 
   @@map("users")
 }
@@ -820,4 +822,48 @@ model ServiceReport {
   @@index([reporterId])
   @@index([status])
   @@map("service_reports")
+}
+
+// ---- Feedback & Sugestões ----
+
+enum FeedbackCategory {
+  BUG
+  SUGESTAO
+  MELHORIA
+  OUTRO
+}
+
+model Feedback {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  category  FeedbackCategory
+  title     String           @db.VarChar(200)
+  body      String           @db.Text
+  votes     Int              @default(0) @map("votes")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voters FeedbackVote[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([votes(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("feedback")
+}
+
+model FeedbackVote {
+  id         Int      @id @default(autoincrement())
+  feedbackId Int      @map("feedback_id")
+  userId     Int      @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, userId])
+  @@index([feedbackId])
+  @@index([userId])
+  @@map("feedback_votes")
 }

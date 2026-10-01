@@ -23,6 +23,7 @@ import { breedMatcherRouter } from './modules/breed-matcher/breed-matcher.router
 import { breedsRouter } from './modules/breeds/breeds.router.js'
 import { sponsoredSlotsRouter } from './modules/sponsored-slots/sponsored-slots.router.js'
 import { consentRouter } from './modules/consent/consent.router.js'
+import { feedbackRouter } from './modules/feedback/feedback.router.js'
 import { sitemapRouter } from './modules/sitemap/sitemap.router.js'
 import { paymentsRouter } from './modules/payments/payments.router.js'
 import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
@@ -148,12 +149,25 @@ app.use('/api/breeds', breedsRouter)
 app.use('/api/sponsored-slots', sponsoredSlotsRouter)
 app.use('/api/payments', paymentsRouter)
 app.use('/api/consent', consentRouter)
+app.use('/api/feedback', feedbackRouter)
 app.use('/api/admin', adminRouter)
 
 // SEO: sitemap.xml em raiz (NÃO prefixado /api). O nginx do FE proxia
 // /sitemap.xml directamente para a API; alternativamente, motores de busca
 // podem aceder via api.patacerta.pt/sitemap.xml. Ver robots.txt do FE.
 app.use('/', sitemapRouter)
+
+// ---- Fallback JSON para rotas /api/* desconhecidas ----
+// Sem isto o Express responde com a sua pagina HTML por defeito
+// (<pre>Cannot GET /api/search/services</pre>, content-type text/html) e um
+// cliente que faca res.json() sob o prefixo /api/* rebenta com erro de parse
+// em vez de receber {error, code} — inconsistente com o resto da API, que usa
+// AppError + {error, code}. Tem de vir DEPOIS de todas as rotas montadas
+// (senao interceptava-as) e ANTES do errorHandler (que continua a ser o
+// ultimo middleware, para apanhar erros propagados por next(err)).
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Recurso não encontrado', code: 'NOT_FOUND' })
+})
 
 // ---- Error handler (must be last) ----
 app.use(errorHandler)
