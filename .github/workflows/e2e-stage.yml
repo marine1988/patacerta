@@ -89,7 +89,9 @@ jobs:
       # deploy do Dokploy começa quando o push chega ao Dokploy, e é isso que o
       # `Last-Modified` do alvo reflecte.
       - name: Registar âncora temporal
-        run: echo "RUN_ANCHOR_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+        run: |
+          echo "RUN_ANCHOR_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          echo "RUN_COMMIT_SHA=${GITHUB_SHA}" >> "$GITHUB_ENV"
         shell: bash
 
       - name: Pré-voo — credenciais do alvo
@@ -218,6 +220,11 @@ jobs:
             exit 0
           fi
 
+          commit_sha="${RUN_COMMIT_SHA:-${GITHUB_SHA:-}}"
+          if [ -z "$commit_sha" ]; then commit_sha='desconhecido'; fi
+          commit_short="${commit_sha:0:7}"
+          push_iso="$(date -u -d "@$anchor" +%FT%TZ)"
+
           url="${E2E_BASE_URL%/}/"
           timeout="$DEPLOY_TIMEOUT_SECONDS"
           fallback="$DEPLOY_FALLBACK_WAIT_SECONDS"
@@ -234,9 +241,13 @@ jobs:
 
           LAST_HTTP_CODE=''
           LM_EPOCH=''
+          LAST_LM_RAW=''
+          INITIAL_LM_RAW=''
+          INITIAL_LM_EPOCH=''
+          baseline_done=0
           # Sonda `/` e preenche LM_EPOCH (epoch do Last-Modified, vazio se
-          # indisponível/ilegível) + LAST_HTTP_CODE. Sem subshell: os globais
-          # têm de sobreviver à chamada.
+          # indisponível/ilegível) + LAST_HTTP_CODE + LAST_LM_RAW. Sem subshell:
+          # os globais têm de sobreviver à chamada.
           probe() {
             local lm
             LAST_HTTP_CODE="$(curl -sS -o /dev/null -w '%{http_code}' -D "$headers" "${req_auth[@]}" "$url" 2>/dev/null || true)"
@@ -244,6 +255,7 @@ jobs:
             # ausente) faria o assignment falhar e o `set -e` matava o step em
             # silêncio (bug apanhado no harness local, ver PATA-CI-3).
             lm="$(grep -i '^last-modified:' "$headers" 2>/dev/null | head -n1 | sed -E 's/^[^:]*:[[:space:]]*//' | tr -d '\r' || true)"
+            LAST_LM_RAW="$lm"
             LM_EPOCH=''
             if [ -n "$lm" ]; then
               LM_EPOCH="$(date -u -d "$lm" +%s 2>/dev/null || true)"
@@ -252,12 +264,31 @@ jobs:
 
           iso() { date -u -d "@$1" +%FT%TZ; }
 
-          echo "À espera do deploy de $url (âncora=$(iso "$anchor"), timeout=${timeout}s, fallback=${fallback}s)"
+          echo "À espera do deploy de $url"
+          echo "  commit (push): $commit_short ($commit_sha)"
+          echo "  instante do push (âncora): $push_iso"
+          echo "  timeout=${timeout}s, fallback=${fallback}s, poll=${poll}s"
+          echo "  deadline: $(iso "$deadline")"
+
           missing=0
+          attempt=0
           for _ in $(seq 1 1000); do
+            attempt=$((attempt + 1))
             probe
+            if [ "$baseline_done" = 0 ]; then
+              INITIAL_LM_RAW="$LAST_LM_RAW"
+              INITIAL_LM_EPOCH="$LM_EPOCH"
+              baseline_done=1
+              if [ -n "$INITIAL_LM_RAW" ]; then
+                echo "Last-Modified inicial: $INITIAL_LM_RAW$([ -n "$INITIAL_LM_EPOCH" ] && printf ' (%s)' "$(iso "$INITIAL_LM_EPOCH")" || true)"
+              else
+                echo "Last-Modified inicial: <ausente> (HTTP ${LAST_HTTP_CODE:-sem-resposta})"
+              fi
+            fi
+            echo "tentativa $attempt: HTTP ${LAST_HTTP_CODE:-sem-resposta}, Last-Modified=${LAST_LM_RAW:-<ausente>}$([ -n "$LM_EPOCH" ] && printf ' (%s)' "$(iso "$LM_EPOCH")" || true)"
+
             if [ -n "$LM_EPOCH" ] && [ "$LM_EPOCH" -ge "$anchor" ]; then
-              echo "Deploy detectado: Last-Modified=$(iso "$LM_EPOCH") >= âncora $(iso "$anchor") — a suite corre contra o build novo."
+              echo "Deploy detectado: Last-Modified=$(iso "$LM_EPOCH") >= âncora $(iso "$anchor") — a suite corre contra o build novo (commit $commit_short)."
               exit 0
             fi
             now="$(date +%s)"
@@ -282,7 +313,7 @@ jobs:
               fi
             else
               if [ "$now" -ge "$deadline" ]; then
-                echo "::error title=Deploy não detectado::$url não passou a servir um build >= $(iso "$anchor") em ${timeout}s (último Last-Modified=$(iso "$LM_EPOCH"), HTTP ${LAST_HTTP_CODE:-sem-resposta}). A suite correria contra o build antigo — falha de propósito em vez de dar verde falso."
+                echo "::error title=Deploy não publicou::o deploy NÃO publicou: o alvo continua a servir Last-Modified: ${LAST_LM_RAW} (anterior ao push de ${commit_short} em ${push_iso}). Causa provável: build do Dokploy falhou. Verificar os logs de build no painel do Dokploy (host 178.238.233.201)."
                 exit 1
               fi
               echo "Ainda a servir o build de $(iso "$LM_EPOCH") (deploy não chegou): $((deadline - now))s até ao timeout"
