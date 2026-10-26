@@ -27,6 +27,50 @@ server {
     # as variaveis substituidas e nao quebrar `$host`, `$remote_addr`, etc.
     ${ROBOTS_HEADER}
 
+    # ── Headers de seguranca do conteudo servido pelo proprio nginx ──────
+    #
+    # A API (Express + helmet) ja' envia o conjunto completo em /api/*.
+    # O que o nginx serve localmente — HTML do SPA, manifest, robots.txt /
+    # llms.txt, assets do build, uploads do MinIO — nao tinha um unico
+    # header de seguranca (card PATA-BUG-4). Sem
+    # `X-Frame-Options`/`frame-ancestors`, qualquer site podia embeber
+    # patacerta.pt num iframe e sobrepor os botoes de login/publicacao
+    # (clickjacking); sem `nosniff` o browser decide sozinho o tipo do
+    # ficheiro.
+    #
+    # ARMADILHA (ler antes de mexer): em nginx um `add_header` dentro de um
+    # bloco `location` SUBSTITUI todos os `add_header` herdados do `server`
+    # — nao ha' merge. Por isso este conjunto, e o `${ROBOTS_HEADER}` acima,
+    # tem de ser repetido em CADA location que sirva conteudo proprio e que
+    # declare os seus proprios headers:
+    #
+    #   - `location /`                     (SPA + HTML)
+    #   - `= /manifest.webmanifest`
+    #   - `~* \.(js|css|png|...)`          (assets; ja' tinha Cache-Control)
+    #   - `^~ /patacerta-uploads/`         (MinIO; ja' tinha Cache-Control)
+    #
+    # Esquecer a repeticao num location novo => esse conteudo volta a ser
+    # embutivel; em stage volta a ser indexavel (o `X-Robots-Tag` do
+    # `${ROBOTS_HEADER}` tambem e' substituido, nunca herdado). O teste
+    # `apps/web/src/nginx-security-headers.test.ts` falha se aparecer um
+    # location de conteudo sem isto.
+    #
+    # Os locations que fazem proxy para a API (`/api/`, `= /sitemap.xml`,
+    # `^/criador/:id`, `^/servicos/:id`) ficam de fora de proposito: quem
+    # responde e' a API com os headers dela, e repetir aqui o
+    # `Referrer-Policy`/`Permissions-Policy` punha dois valores
+    # contraditorios na mesma resposta (helmet manda `no-referrer`; aqui
+    # seria `strict-origin-when-cross-origin`).
+    #
+    # Nao inclui `Strict-Transport-Security`: o contentor so' fala HTTP e um
+    # max-age fixo no browser e' caro de reverter (a API ja' o envia em
+    # /api/*). Isso e' decisao do terminador TLS (Traefik/Dokploy).
+    #
+    # A CSP vai em `Report-Only` de proposito: em modo enforcing parte
+    # AdSense/Stripe. Promover para enforcing exige antes observar o
+    # relatorio sem violacoes inesperadas.
+    # ─────────────────────────────────────────────────────────────────────
+
     # Proxy API requests to the backend service.
     # IMPORTANTE: usar variavel `$api_upstream` (em vez de literal
     # `http://api:3001`) forca o nginx a re-resolver o hostname a cada
@@ -122,11 +166,34 @@ server {
         # so the URL changes whenever the file changes.
         expires 1y;
         add_header Cache-Control "public, immutable";
+
+        # Seguranca: repetido do `server` — esta location ja' define os seus
+        # `add_header`, logo nao herda nenhum (ver bloco no topo do ficheiro).
+        # Aqui importa mais do que nas imagens do build: o conteudo e'
+        # carregado por utilizadores (fotos, PDFs), servido da MESMA origem
+        # do site. Um ficheiro que o browser trate como documento (SVG, PDF)
+        # sem `nosniff` nem `frame-ancestors` e' um vector de XSS/clickjacking
+        # armazenado.
+        ${ROBOTS_HEADER}
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'" always;
     }
 
     # SPA routing - fallback to index.html
     location / {
         try_files $uri $uri/ /index.html;
+
+        # Seguranca: repetido do `server` (add_header de location substitui
+        # os herdados — ver bloco "Headers de seguranca" no topo).
+        ${ROBOTS_HEADER}
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'" always;
     }
 
     # SEO/PWA: forçar Content-Type correcto para o manifest. O mime.types
@@ -134,12 +201,32 @@ server {
     # o que faz o Lighthouse marcar o PWA como inválido.
     location = /manifest.webmanifest {
         default_type application/manifest+json;
+
+        # Seguranca: repetido do `server` (ver bloco no topo do ficheiro).
+        ${ROBOTS_HEADER}
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'" always;
     }
 
     # Cache static assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+
+        # Seguranca: repetido do `server` — esta location ja' define os seus
+        # `add_header`, logo nao herda nenhum (ver bloco no topo do ficheiro).
+        # `nosniff` conta a dobrar aqui: `og-image.svg` e' servido deste
+        # caminho e um SVG e' um documento (executa script) se o browser o
+        # tratar como tal.
+        ${ROBOTS_HEADER}
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'" always;
     }
 
     # Gzip
