@@ -63,7 +63,7 @@ async function measureTop(page: Page): Promise<TopMeasurement> {
     const root = document.querySelector('main')?.firstElementChild
     const topLevelElements = root ? Array.from(root.children) : []
 
-if (
+    if (
       !header ||
       !hero ||
       !search ||

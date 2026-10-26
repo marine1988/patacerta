@@ -11,7 +11,7 @@ import path from 'path'
 //
 // Pontos importantes:
 //
-//   - exclude `e2e/**`: o directorio `e2e/` contem specs Playwright
+//   - exclude `e2e/specs/**`: o directorio `e2e/` contem specs Playwright
 //     (ver playwright.config.ts e o script `test:e2e`). Sem esta
 //     exclusao, o Vitest tentava carrega-los, falhava em
 //     `test.describe.configure()` (API que existe em Playwright mas
@@ -19,6 +19,11 @@ import path from 'path'
 //     exit 1 mesmo sem nenhum teste real ter corrido. Os defaults do
 //     Vitest ja' excluem `node_modules`, `dist`, etc — so' adicionamos
 //     o que e' especifico deste projecto.
+//
+//     A exclusao e' aos *specs* do Playwright, nao a todo o `e2e/`: os
+//     unit tests do proprio fixture (`e2e/fixtures/**/*.test.ts`, incluidos
+//     abaixo) correm no Vitest. O `testMatch` do Playwright e'
+//     `*.spec.ts`, logo nunca colidem.
 //
 //   - passWithNoTests: ate' termos a primeira suite de unit tests do
 //     FE, queremos que `vitest run` saia 0 quando nao encontra
@@ -45,7 +50,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules/**', 'dist/**', 'e2e/**', '.idea/**', '.git/**'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'e2e/fixtures/**/*.test.ts'],
+    exclude: ['node_modules/**', 'dist/**', 'e2e/specs/**', '.idea/**', '.git/**'],
   },
 })

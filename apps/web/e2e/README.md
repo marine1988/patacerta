@@ -15,6 +15,7 @@ suite adapta-se a cada um:
 e2e/
   fixtures/
     env.ts                     # detecção de ambiente + capabilities (caps)
+    env.ratelimit.test.ts      # unit test (Vitest) da detecção de rate-limit do env.ts
     test.ts                    # test estendido com a fixture `caps`
     auth.ts                    # login programático via API + helpers de sessão
     api.ts                     # helpers para obter dados reais da API (breeder, service)
@@ -178,15 +179,16 @@ test('lista de criadores mostra resultados', async ({ page, caps }) => {
 
 O `caps` é resolvido **uma vez por worker** (fixture worker-scoped) e sonda:
 
-| Campo                                           | Como é obtido                                                                                                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `env` / `baseUrl` / `apiBaseUrl`                | derivados de `E2E_BASE_URL` / `E2E_API_URL`                                                                                                                       |
-| `apiHealthy`                                    | `GET /api/health` → `status=ok` + `services.database=connected`                                                                                                   |
-| `authBlocked`                                   | `GET /api/health` devolveu 401/403 ⇒ alvo fechado por basic auth (stage sem `E2E_HTTP_USER`/`E2E_HTTP_PASS`). Nesse caso a sonda para aqui e não gasta rate-limit |
-| `breedersTotal` / `hasBreeders`                 | `GET /api/search/breeders?limit=1` → `meta.total`                                                                                                                 |
-| `servicesTotal` / `hasServices`                 | `GET /api/services?limit=1` → `meta.total`                                                                                                                        |
-| `hasDemoClient` / `hasDemoBreeder` / `hasAdmin` | login real via API (só quando `PROBE_LOGINS` está on)                                                                                                             |
-| `seeded`                                        | `hasDemoClient && hasDemoBreeder`                                                                                                                                 |
+| Campo                                           | Como é obtido                                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `env` / `baseUrl` / `apiBaseUrl`                | derivados de `E2E_BASE_URL` / `E2E_API_URL`                                                                                                                                                                                                                                                                                  |
+| `apiHealthy`                                    | `GET /api/health` → `status=ok` + `services.database=connected`                                                                                                                                                                                                                                                              |
+| `authBlocked`                                   | `GET /api/health` devolveu 401/403 ⇒ alvo fechado por basic auth (stage sem `E2E_HTTP_USER`/`E2E_HTTP_PASS`). Nesse caso a sonda para aqui e não gasta rate-limit                                                                                                                                                            |
+| `rateLimited` / `rateLimitResetAt`              | 429 numa sonda **não isenta** do `apiRateLimit` (`/api/search/breeders`, `/api/services`, `/api/auth/login`) ⇒ balde do IP esgotado; a sonda para aí e o `caps` aborta a suite. `/api/health` **não** serve para isto desde o PATA-BUG-3 (é isento do limiter, nunca devolve 429) — ver `e2e/fixtures/env.ratelimit.test.ts` |
+| `breedersTotal` / `hasBreeders`                 | `GET /api/search/breeders?limit=1` → `meta.total`                                                                                                                                                                                                                                                                            |
+| `servicesTotal` / `hasServices`                 | `GET /api/services?limit=1` → `meta.total`                                                                                                                                                                                                                                                                                   |
+| `hasDemoClient` / `hasDemoBreeder` / `hasAdmin` | login real via API (só quando `PROBE_LOGINS` está on)                                                                                                                                                                                                                                                                        |
+| `seeded`                                        | `hasDemoClient && hasDemoBreeder`                                                                                                                                                                                                                                                                                            |
 
 Resultado típico por ambiente:
 
@@ -421,16 +423,22 @@ Consequências para os testes:
 A API aplica **200 pedidos / 15 min / IP** (`apps/api/src/middleware/rate-limit.ts`).
 Uma passagem completa da suite `@prod-safe` consome mais do que isso, pelo que:
 
-1. **Fail-fast**: a fixture `caps` sonda `/api/health`; se vier `429`, a suite **aborta**
-   com uma mensagem a dizer quando o balde renova, em vez de produzir skips e falhas
-   inventadas (com 429 todas as sondas devolvem 0 e `hasBreeders`/`hasServices` ficariam
-   a `false` sem ser verdade). Override consciente: `E2E_IGNORE_RATE_LIMIT=1`.
+1. **Fail-fast**: a fixture `caps` detecta o balde gasto por um **429 numa sonda não
+   isenta** (`/api/search/breeders`, `/api/services`, `/api/auth/login`) e **para aí
+   imediatamente**; a suite **aborta** com uma mensagem a dizer quando o balde renova,
+   em vez de produzir skips e falhas inventadas (com 429 todas as sondas devolvem 0 e
+   `hasBreeders`/`hasServices` ficariam a `false` sem ser verdade, e a suite diria
+   "ambiente sem seeds"). Override consciente: `E2E_IGNORE_RATE_LIMIT=1`.
+   Cobertura: `e2e/fixtures/env.ratelimit.test.ts` (Vitest, servidor `node:http` local,
+   sem rede nem credenciais — corre no `pnpm --filter @patacerta/web test`).
+   ⚠️ O `/api/health` **não** serve para isto desde o PATA-BUG-3: é isento do limiter,
+   logo nunca devolve 429 (a detecção deixou de poder depender dele — PATA-E2E-BUG-3).
 2. **Correr em chunks**: cada spec consome ~40-60 pedidos. O padrão que funciona é
    esperar pelo reset (header `x-ratelimit-reset`) e correr 2-3 specs por janela:
 
    ```bash
-   # 1) ver orçamento
-   curl -s -D - -o /dev/null https://patacerta.pt/api/health | grep -i x-ratelimit
+   # 1) ver orçamento — num endpoint LIMITADO (os isentos não devolvem X-RateLimit-*)
+   curl -s -D - -o /dev/null 'https://patacerta.pt/api/services?limit=1' | grep -i x-ratelimit
    # 2) correr um spec, esperar pelo reset, correr o seguinte
    for spec in api-contract seo-metadata a11y consent-cookies error-states \
                responsive-mobile home-navigation pesquisar breeder-service-detail \
@@ -441,5 +449,8 @@ Uma passagem completa da suite `@prod-safe` consome mais do que isso, pelo que:
    done
    ```
 
-3. `/api/health`, `/api/status` e `/sitemap.xml` **também** estão atrás do limiter — ver
-   card `PATA-BUG-3` (isentar os endpoints de saúde/SEO).
+3. `/api/health`, `/api/status`, `/sitemap.xml` e `/robots.txt` são **isentos** do
+   `apiRateLimit` desde o card `PATA-BUG-3` (opção `skip` em
+   `apps/api/src/middleware/rate-limit.ts`): não consomem orçamento nem devolvem
+   headers `X-RateLimit-*`. É por isso que a detecção de balde gasto da suite tem de
+   sair de um endpoint **limitado** (PATA-E2E-BUG-3).

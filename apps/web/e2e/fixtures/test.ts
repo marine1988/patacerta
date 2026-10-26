@@ -20,6 +20,12 @@
  *    (desligados em produção: `PROBE_LOGINS` — o rate-limit de login é 10
  *    tentativas/15 min/IP e em prod as contas demo nem existem).
  *
+ * Um 429 em qualquer sonda **não isenta** do `apiRateLimit` (as de listagem e
+ * os logins) marca `rateLimited` e a sonda pára aí: o balde do IP está gasto e
+ * tudo o que viesse depois seriam 0/`false` que não descrevem o ambiente. O
+ * `/api/health` está isento do limiter desde o PATA-BUG-3, logo não serve para
+ * detectar isto (PATA-E2E-BUG-3).
+ *
  * Resultado típico por ambiente:
  *  - local  → authBlocked=false, hasDemoClient=true, hasAdmin=true
  *  - prod   → authBlocked=false, hasDemoClient=false, hasAdmin=false (sem sondar logins)
@@ -55,10 +61,10 @@ export const test = base.extend<{}, { caps: Capabilities }>({
         if (caps.rateLimited && process.env.E2E_IGNORE_RATE_LIMIT !== '1') {
           throw new Error(
             [
-              `Ambiente '${caps.env}' está RATE-LIMITED (HTTP 429 em ${API_BASE_URL}/health).`,
+              `Ambiente '${caps.env}' está RATE-LIMITED (HTTP 429 na API ${API_BASE_URL} para um endpoint limitado).`,
               `A suite não pode ser avaliada agora — os resultados seriam falsos.`,
               caps.rateLimitResetAt ? `O balde renova em ${caps.rateLimitResetAt}.` : '',
-              `Correr em chunks pequenos e/ou esperar pelo reset (ver PATA-BUG-3).`,
+              `Correr em chunks pequenos e/ou esperar pelo reset (ver e2e/README.md § Rate-limit do ambiente).`,
               `Para forçar mesmo assim: E2E_IGNORE_RATE_LIMIT=1.`,
             ]
               .filter(Boolean)

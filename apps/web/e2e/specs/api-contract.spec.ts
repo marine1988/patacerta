@@ -169,4 +169,40 @@ test.describe('Contrato da API pública @prod-safe', () => {
     expect(typeof body.error).toBe('string')
     expect(body.error!.length).toBeGreaterThan(0)
   })
+
+  test('rota /api/* desconhecida devolve 404 em JSON (code NOT_FOUND, nunca HTML)', async ({
+    request,
+  }) => {
+    // O Express responde por defeito com uma pagina HTML — `<pre>Cannot GET
+    // /api/search/services</pre>`, content-type text/html, 404 — para qualquer
+    // rota nao montada. Sob o prefixo /api/* o contrato e' `{error, code}`
+    // (AppError): um cliente que faca `res.json()` tem de conseguir parsear a
+    // resposta de erro em vez de rebentar com "Unexpected token <".
+    //
+    // Casos cobertos: a rota exacta do relatorio (/api/search/services — nao
+    // existe, os servicos estao em /api/services), uma rota de primeiro nivel
+    // inexistente e um caminho profundo (garante que o fallback apanha
+    // sub-caminhos, e nao apenas o segmento imediato).
+    const unknownRoutes = [
+      '/search/services',
+      '/rota-que-nao-existe',
+      '/nao-existe/em/profundidade',
+    ]
+
+    for (const path of unknownRoutes) {
+      const res = await request.get(`${API_BASE_URL}${path}`)
+      expect(res.status(), `${path} devia responder 404`).toBe(404)
+
+      const contentType = (res.headers()['content-type'] ?? '').toLowerCase()
+      expect(contentType, `${path} respondeu '${contentType}' em vez de JSON`).toContain('json')
+
+      const body = JSON.parse(await res.text()) as { error?: string; code?: string }
+      expect(body.code, `${path} nao devolveu code NOT_FOUND`).toBe('NOT_FOUND')
+      expect(typeof body.error).toBe('string')
+      expect(body.error!.length).toBeGreaterThan(0)
+      // Mesmo envelope do AppError 404 do resto da API — nada de campos extra
+      // que um cliente estrito nao espere.
+      expect(Object.keys(body).sort()).toEqual(['code', 'error'])
+    }
+  })
 })
