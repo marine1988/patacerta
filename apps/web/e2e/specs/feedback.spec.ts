@@ -129,6 +129,6 @@ test.describe('Página de feedback — UI @prod-safe', () => {
 
     // O menu mobile tem o link de feedback.
     await page.getByRole('button', { name: /Abrir menu/i }).click()
-    await expect(page.locator('a[href="/feedback"]').first()).toBeVisible()
+    await expect(page.locator('a[href="/feedback"]:visible')).toBeVisible()
   })
 })
