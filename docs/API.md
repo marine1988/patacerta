@@ -263,6 +263,15 @@ validate(listServicesQuerySchema, 'query') // valida req.query
 
 Ver `apps/api/src/middleware/rate-limit.ts` para configuracao completa.
 
+O `apiRateLimit` global (200 pedidos / 15 min por IP) isenta os endpoints de
+infra/observabilidade e SEO — `/api/health`, `/api/status`, `/sitemap.xml` e
+`/robots.txt` — atraves da opcao `skip` do `rateLimit()` (PATA-BUG-3). Sao
+endpoints de sonda: um 429 ali nao se distingue de "servico em baixo" para um
+monitor de uptime (falsos alarmes, sobretudo atras de NAT) e a SPA deixaria de
+detectar manutencao, que le de `/api/status`. Um pedido isento nao incrementa o
+contador (nenhum balde e gasto, sem headers `X-RateLimit-*`). Os restantes
+limiters (auth, upload, mutacoes, etc.) nao sao afectados.
+
 ## Codigos de Erro
 
 | Codigo              | Significado                    |

@@ -175,6 +175,55 @@ age -d -i ~/patacerta-backup-key.txt backup.sql.age | \
   psql postgresql://patacerta:$PG_PASS@localhost/patacerta
 ```
 
+## Headers de Seguranca
+
+Duas camadas, com donos diferentes — nao duplicar uma na outra:
+
+| Quem responde                                                                        | Onde vive a config               | Headers                                                                                                                     |
+| ------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| API (`/api/*`, `/sitemap.xml`, redirects de `/criador/:id` e `/servicos/:id`)        | `apps/api/src/index.ts` (helmet) | CSP enforcada, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, ... |
+| Conteudo do nginx (HTML do SPA, manifest, robots/llms.txt, assets, uploads do MinIO) | `apps/web/nginx.conf.template`   | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP-Report-Only`                     |
+
+Antes do card PATA-BUG-4 o nginx nao enviava um unico header nestas
+respostas: o HTML era embutivel num iframe de terceiros (clickjacking em
+botoes de login/publicacao) e o tipo dos ficheiros ficava a criterio do
+browser.
+
+### Armadilha do `add_header` (nginx)
+
+Um `add_header` dentro de um bloco `location` **substitui** todos os
+`add_header` herdados do `server` — nao ha' merge. Consequencias praticas:
+
+- O conjunto dos 5 headers, e o `${ROBOTS_HEADER}` (X-Robots-Tag do stage),
+  esta' repetido em cada `location` que serve conteudo proprio.
+- Se acrescentares um `location` novo que sirva conteudo, copia o bloco
+  "Headers de seguranca" — e actualiza `LOCATION_COUNT` em
+  `apps/web/src/nginx-security-headers.test.ts`, que falha se algum location
+  de conteudo ficar sem eles.
+- Os locations que fazem proxy para o API ficam de fora de proposito: quem
+  envia os headers e' a API, e repetir aqui o `Referrer-Policy`/
+  `Permissions-Policy` metia dois valores contraditorios na mesma resposta.
+- O `X-Robots-Tag` do stage (`ROBOTS_HEADER`, ver Variaveis de Ambiente) e'
+  um `add_header` do `server`: sem a repeticao ele desaparecia nos assets e
+  nos uploads (era o comportamento antes deste fix) e o stage voltava a ser
+  indexavel.
+
+### Verificar depois de um deploy
+
+```bash
+curl -sI https://patacerta.pt/ | grep -iE 'x-frame-options|x-content-type-options'
+# x-frame-options: SAMEORIGIN
+# x-content-type-options: nosniff
+
+curl -sI https://patacerta.pt/api/health | grep -ic x-frame-options
+# 1  <- nao 2: quem responde e' a API, o nginx nao acrescenta nada
+```
+
+Nao incluido de proposito: `Strict-Transport-Security` no nginx (o
+container so' fala HTTP e um `max-age` errado fica fixo no browser; a API ja'
+o envia em `/api/*`) e CSP em modo enforcing (parte AdSense/Stripe — ver
+`docs/ADSENSE_SETUP.md`).
+
 ## Modo Manutencao
 
 Para activar manutencao sem downtime:
