@@ -171,6 +171,14 @@ export function Navbar() {
             <span className="block">Companheiro</span>
             <span className="block">ideal</span>
           </Link>
+          <Link
+            to="/feedback"
+            className={`text-[11px] font-medium uppercase tracking-caps transition-colors ${
+              isActive('/feedback') ? 'text-caramel-500' : 'text-muted hover:text-ink'
+            }`}
+          >
+            Feedback
+          </Link>
 
           {isAuthenticated ? (
             <div className="flex items-center gap-6">
@@ -369,6 +377,13 @@ export function Navbar() {
             >
               <span className="block">Companheiro</span>
               <span className="block">ideal</span>
+            </Link>
+            <Link
+              to="/feedback"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-3 text-[11px] font-medium uppercase tracking-caps text-ink"
+            >
+              Feedback
             </Link>
 
             {isAuthenticated ? (

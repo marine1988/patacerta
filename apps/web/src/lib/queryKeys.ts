@@ -132,6 +132,13 @@ export const queryKeys = {
     featured: () => ['home-featured'] as const,
   },
 
+  // ── Feedback ──────────────────────────────────────────────────────
+  feedback: {
+    all: () => ['feedback'] as const,
+    list: (page: number, sort: string, category: string | null) =>
+      ['feedback', 'list', page, sort, category] as const,
+  },
+
   // ── Payments / Sponsored Slots (lado criador) ──────────────────────
   // O lado público (fetch de slots activos para o simulador) vive em
   // `home.featured` / `breeder-matcher`. Aqui ficam só as queries do

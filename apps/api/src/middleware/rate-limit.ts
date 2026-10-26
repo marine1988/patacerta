@@ -30,6 +30,12 @@ interface RateLimitOptions {
    * distinct name per limiter so different policies don't share counters.
    */
   bucket?: string
+  /**
+   * Predicado de isenção. Quando devolve `true` o pedido passa sem tocar no
+   * contador — não incrementa Redis nem o store em memória, e por isso não
+   * consome orçamento do balde nem devolve `X-RateLimit-*` (PATA-BUG-3).
+   */
+  skip?: (req: Request) => boolean
 }
 
 /**
@@ -107,9 +113,17 @@ export function rateLimit(options: RateLimitOptions = {}) {
     message = 'Demasiados pedidos. Tente novamente mais tarde.',
     keyGenerator = (req: Request) => req.ip || 'unknown',
     bucket = 'default',
+    skip,
   } = options
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Isenção explícita (ex.: endpoints de saúde/SEO): sai antes de tocar no
+    // contador — sem hit, sem headers, sem consumir orçamento do balde.
+    if (skip?.(req)) {
+      next()
+      return
+    }
+
     if (rateLimitsDisabled()) {
       next()
       return
@@ -188,10 +202,46 @@ export const passwordResetRateLimit = rateLimit({
   bucket: 'auth-pw-reset',
 })
 
+/**
+ * Caminhos isentos do `apiRateLimit` global (PATA-BUG-3).
+ *
+ * São endpoints de **infra/observabilidade**, não de produto:
+ * - `/api/health`: sondas de uptime, healthcheck do contentor e o fixture
+ *   `caps` da suite E2E. Um 429 aqui é indistinguível de "serviço em baixo"
+ *   para quem monitoriza, e gera falsos alarmes quando o monitor partilha IP
+ *   (NAT/empresa) com outro tráfego.
+ * - `/api/status`: a SPA decide manutenção a partir deste endpoint; com 429 o
+ *   `MaintenanceContext` deixa de detectar manutenção real durante a janela.
+ * - `/sitemap.xml` e `/robots.txt`: SEO. Um crawler bloqueado por rate-limit
+ *   não tem como reagir ao `Retry-After` e a sitemap fica por indexar.
+ *
+ * Custo de abuso destes endpoints é nulo ou desprezável (sem BD pesada,
+ * resposta estática/curta), por isso a isenção não abre superfície nova.
+ */
+const NO_RATE_LIMIT_PATHS: ReadonlySet<string> = new Set([
+  '/api/health',
+  '/api/status',
+  '/sitemap.xml',
+  '/robots.txt',
+])
+
+/**
+ * Compara o caminho normalizado (sem trailing slash, minúsculas) com a lista
+ * de isenções. O Express liga rotas sem distinguir maiúsculas/minúsculas nem
+ * o trailing slash, por isso `req.path === '/api/health'` só não bastava: um
+ * monitor a pedir `/api/health/` continuaria a apanhar 429 (e um `/API/Health`
+ * é servido pelo mesmo router).
+ */
+function isRateLimitExemptPath(path: string): boolean {
+  const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
+  return NO_RATE_LIMIT_PATHS.has(normalized.toLowerCase())
+}
+
 export const apiRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
   bucket: 'api',
+  skip: (req) => isRateLimitExemptPath(req.path),
 })
 
 export const uploadRateLimit = rateLimit({
@@ -265,6 +315,14 @@ export const serviceReportRateLimit = rateLimit({
   message: 'Demasiadas denúncias. Tente novamente mais tarde.',
   keyGenerator: userKey,
   bucket: 'service-report',
+})
+
+export const feedbackCreateRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  message: 'Limite diário de feedback atingido. Tente novamente amanhã.',
+  keyGenerator: userKey,
+  bucket: 'feedback-create',
 })
 
 // Protege as mutacoes owner-side de servicos (PATCH/DELETE/publish/pause)

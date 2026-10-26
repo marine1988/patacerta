@@ -76,6 +76,9 @@ const SimuladorRacaPage = lazy(() =>
     default: m.SimuladorRacaPage,
   })),
 )
+const FeedbackPage = lazy(() =>
+  import('./pages/feedback/FeedbackPage').then((m) => ({ default: m.FeedbackPage })),
+)
 function PageFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -158,6 +161,7 @@ export function App() {
             <Route path="/termos" element={<TermsPage />} />
             <Route path="/termos-pagamento" element={<PaymentTermsPage />} />
             <Route path="/perguntas-frequentes" element={<FaqPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
 
             {/* Protected — any authenticated user */}
             <Route
