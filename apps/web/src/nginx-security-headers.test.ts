@@ -29,7 +29,7 @@ const SECURITY_HEADERS = [
   'add_header X-Frame-Options "SAMEORIGIN" always;',
   'add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
   'add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;',
-  "add_header Content-Security-Policy-Report-Only \"default-src 'self'; img-src 'self' data: https:; frame-ancestors 'self'\" always;",
+  "add_header Content-Security-Policy-Report-Only \"default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'\" always;",
 ]
 
 /**
