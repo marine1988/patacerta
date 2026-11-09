@@ -74,6 +74,17 @@ Deploy via Dokploy (Docker Compose).
 | `RESET_DB_ON_BOOT`             | Apaga DB ao iniciar      |
 | `RUN_SEED_ON_BOOT`             | Corre seed ao iniciar    |
 
+Com `NODE_ENV=production`, a API **recusa arrancar** (`process.exit(1)`) se
+`AUTH_SKIP_EMAIL_VERIFICATION` ou `DISABLE_RATE_LIMITS` estiverem activas, ou se
+`RESEND_API_KEY` faltar.
+
+Os escape hatches `ALLOW_INSECURE_FLAGS_IN_PROD` e `ALLOW_NO_SMTP_IN_PROD` existem para
+situacoes temporarias de setup, mas o **default do compose e' `0`** (desde o C1): so'
+funcionam se forem definidos explicitamente com `1` no painel. Se um deploy de producao
+falhar com `FATAL: ... cannot be enabled when NODE_ENV=production`, isso significa que o
+ambiente tem uma flag insegura ligada — remove-a no painel, **nao** voltes a por o default
+a `1`.
+
 ## Processo de Deploy
 
 ### 1. Configurar Dokploy
@@ -285,3 +296,24 @@ dokploy deploy patacerta
 | `redis_data`    | Cache Redis (persistente) |
 
 > **IMPORTANTE:** Definir `VOLUME_PREFIX` ANTES do primeiro deploy. Mudar depois requer migracao manual de dados.
+
+## Processos: `api` non-root, `cron` root
+
+A imagem da API tem dois targets no `apps/api/Dockerfile`:
+
+| Target   | Servico | Utilizador       | Porque                                                                                      |
+| -------- | ------- | ---------------- | ------------------------------------------------------------------------------------------- |
+| `api`    | `api`   | `app` (non-root) | Superficie de ataque reduzida: um RCE fica sem root no contentor                            |
+| `runner` | `cron`  | `root`           | O busybox `crond` escreve em `/var/spool/cron/crontabs/root` e arranca jobs com privilegios |
+
+O `docker-compose.dokploy.yml` / `docker-compose.coolify.yml` fixam `build.target`
+por servico. **Nao** remover esses `target:` — sem eles o `cron` herda o target
+`api` e falha com `Permission denied` ao escrever a crontab.
+
+O `/app` e' `chown`-ado para `app` no build, e `HOME=/home/app`, porque o
+`entrypoint.sh` corre `npx prisma migrate deploy` e `npx tsx` em runtime. Se
+adicionares um passo ao entrypoint que escreva fora de `/app` e de `/tmp`, tens de
+garantir a permissao no Dockerfile.
+
+Sinal de regressao: o deploy de stage passa mas o contentor `cron` morre em ciclo
+com `Permission denied` nos logs — nesse caso o target do cron ficou errado.
