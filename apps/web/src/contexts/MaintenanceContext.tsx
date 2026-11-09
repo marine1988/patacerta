@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import { api } from '../lib/api'
 import { AxiosError } from 'axios'
+import { Spinner } from '../components/ui/Spinner'
 
 interface MaintenanceContextType {
   isInMaintenance: boolean
@@ -35,18 +36,24 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     // Verificar estado de manutenção usando /api/status (não tem bypass)
     // Este endpoint retorna 503 se MAINTENANCE_MODE=1
     api
-      .get('/status')
+      .get('/status', { timeout: 5000 })
       .then(() => setIsInMaintenance(false))
       .catch((error: AxiosError) => {
         if (error.response?.status === 503) {
           const data = error.response.data as { code?: string } | undefined
           if (data?.code === 'MAINTENANCE_MODE') {
             setIsInMaintenance(true)
+            return
           }
-        } else {
-          // Outro erro - assumir que não está em manutenção
-          setIsInMaintenance(false)
         }
+        if (!error.response) {
+          console.warn(
+            'Não foi possível determinar o estado de manutenção (timeout/rede); a assumir modo normal.',
+            error,
+          )
+        }
+        // Outro erro - assumir que não está em manutenção
+        setIsInMaintenance(false)
       })
 
     return () => {
@@ -54,9 +61,13 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Enquanto não sabe o estado, não renderizar nada (evita flash)
+  // Enquanto não sabe o estado, mostrar spinner em ecrã inteiro (evita flash branco)
   if (isInMaintenance === null) {
-    return null
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <Spinner size="lg" />
+      </div>
+    )
   }
 
   return (
