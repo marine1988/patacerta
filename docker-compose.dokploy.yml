@@ -126,7 +126,6 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      target: api
     depends_on:
       postgres:
         condition: service_healthy
@@ -231,7 +230,6 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      target: runner
     depends_on:
       postgres:
         condition: service_healthy
