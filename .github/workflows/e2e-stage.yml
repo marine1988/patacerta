@@ -244,7 +244,11 @@ jobs:
           LAST_LM_RAW=''
           INITIAL_LM_RAW=''
           INITIAL_LM_EPOCH=''
+          API_HTTP_CODE=''
+          API_UPTIME=''
           baseline_done=0
+          api_body_file="$(mktemp)"
+          trap 'rm -f "$headers" "$api_body_file"' EXIT
           # Sonda `/` e preenche LM_EPOCH (epoch do Last-Modified, vazio se
           # indisponível/ilegível) + LAST_HTTP_CODE + LAST_LM_RAW. Sem subshell:
           # os globais têm de sobreviver à chamada.
@@ -260,6 +264,12 @@ jobs:
             if [ -n "$lm" ]; then
               LM_EPOCH="$(date -u -d "$lm" +%s 2>/dev/null || true)"
             fi
+            # Sonda também /api/status — âncora independente para deploys que
+            # não tocam no web (PATA-CI-7). uptimeSeconds < (now - anchor) + 60
+            # só é verdade se o processo da API arrancou depois do push.
+            api_status_url="${E2E_BASE_URL%/}/api/status"
+            API_HTTP_CODE="$(curl -sS -o "$api_body_file" -w '%{http_code}' "${req_auth[@]}" "$api_status_url" 2>/dev/null || true)"
+            API_UPTIME="$(grep -o '"uptimeSeconds"[[:space:]]*:[[:space:]]*[0-9]*' "$api_body_file" 2>/dev/null | grep -o '[0-9]*$' | head -n1 || true)"
           }
 
           iso() { date -u -d "@$1" +%FT%TZ; }
@@ -285,13 +295,27 @@ jobs:
                 echo "Last-Modified inicial: <ausente> (HTTP ${LAST_HTTP_CODE:-sem-resposta})"
               fi
             fi
-            echo "tentativa $attempt: HTTP ${LAST_HTTP_CODE:-sem-resposta}, Last-Modified=${LAST_LM_RAW:-<ausente>}$([ -n "$LM_EPOCH" ] && printf ' (%s)' "$(iso "$LM_EPOCH")" || true)"
+            now="$(date +%s)"
+            echo "tentativa $attempt: HTTP ${LAST_HTTP_CODE:-sem-resposta}, Last-Modified=${LAST_LM_RAW:-<ausente>}$([ -n "$LM_EPOCH" ] && printf ' (%s)' "$(iso "$LM_EPOCH")" || true), API HTTP ${API_HTTP_CODE:-sem-resposta}, uptimeSeconds=${API_UPTIME:-<ausente>}"
+
+            # Âncora API (PATA-CI-7): aceitar deploy se o processo da API
+            # arrancou depois do push. uptimeSeconds (monotónico) < (now - anchor) + 60s.
+            # Se o uptime vier maior que a âncora + margem, cair para o critério do web.
+            api_deploy=0
+            if [ -n "$API_UPTIME" ] && [ "${API_HTTP_CODE:-}" = '200' ]; then
+              if [ "$API_UPTIME" -lt $(( now - anchor + 60 )) ]; then
+                api_deploy=1
+              fi
+            fi
+            if [ "$api_deploy" = 1 ]; then
+              echo "Deploy detectado via API: uptimeSeconds=${API_UPTIME} < (agora - âncora) + 60s — a suite corre contra o build novo (commit $commit_short)."
+              exit 0
+            fi
 
             if [ -n "$LM_EPOCH" ] && [ "$LM_EPOCH" -ge "$anchor" ]; then
               echo "Deploy detectado: Last-Modified=$(iso "$LM_EPOCH") >= âncora $(iso "$anchor") — a suite corre contra o build novo (commit $commit_short)."
               exit 0
             fi
-            now="$(date +%s)"
             if [ -z "$LM_EPOCH" ]; then
               missing=$((missing + 1))
               # 1ª falha de leitura pode ser o Traefik a meio do rolling deploy;

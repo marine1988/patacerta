@@ -37,5 +37,6 @@ statusRouter.get('/', (_req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
   })
 })
