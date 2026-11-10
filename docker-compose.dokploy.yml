@@ -53,7 +53,7 @@
 #
 #   Em prod, SMTP_HOST e' obrigatorio (fail-fast em apps/api/src/index.ts).
 #   Escape hatch: ALLOW_NO_SMTP_IN_PROD=1 (nao recomendado, emails apenas
-#   logados em consola).
+#   logados em consola). Default seguro e' 0 — opt-in explicito temporario.
 #
 # Backups (Postgres + MinIO uploads, encriptados com age):
 #   AGE_RECIPIENT             — chave publica age (age1...). Encripta backups.
@@ -192,9 +192,10 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-Patacerta <noreply@mail.patacerta.pt>}
       # Escape hatches para arrancar prod sem email e com flags debug (NAO recomendado em uso normal).
-      # Defaults a '1' para permitir primeiro deploy. Remover depois de configurar email.
-      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-1}
-      ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-1}
+      # Defaults a '0' (seguro): a API recusa arrancar se as condicoes se verificarem, a menos que
+      # o operador defina explicitamente ALLOW_*_IN_PROD=1 no painel (temporario, remover apos setup).
+      ALLOW_NO_SMTP_IN_PROD: ${ALLOW_NO_SMTP_IN_PROD:-0}
+      ALLOW_INSECURE_FLAGS_IN_PROD: ${ALLOW_INSECURE_FLAGS_IN_PROD:-0}
       # Maintenance mode — set MAINTENANCE_MODE=1 in Dokploy to return 503 for all requests.
       # Use MAINTENANCE_BYPASS_KEY for admin access via X-Maintenance-Bypass header.
       MAINTENANCE_MODE: ${MAINTENANCE_MODE:-0}
