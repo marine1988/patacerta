@@ -66,6 +66,31 @@ COPY apps/api/cron-entrypoint.sh /app/cron-entrypoint.sh
 COPY apps/api/scripts/ /app/scripts/
 RUN chmod +x /app/entrypoint.sh /app/cron-entrypoint.sh /app/scripts/*.sh
 
+# ──────────────────────────────────────────────────────────────────────
+# Utilizador non-root para o serviço `api`.
+#
+# O mesmo stage (`runner`) continua a ser a base do serviço `cron`, que
+# PRECISA de root (busybox crond escreve em /var/spool/cron/crontabs/root
+# e arranca jobs com privilégios). Por isso o `USER app` NÃO fica aqui:
+# fica apenas no target `api` abaixo. O runner em si corre como root.
+#
+# O user `app` é criado aqui (para que o target api o herde) e o /app é
+# chowned para que a API (migrate deploy, tsx, caches do npx) possa
+# escrever em runtime. HOME=/home/app é necessário porque o npx usa
+# $HOME/.npm e sem home gravável falha de forma obscura.
+# ──────────────────────────────────────────────────────────────────────
+RUN addgroup -S app && adduser -S -G app -h /home/app app \
+  && mkdir -p /home/app && chown app:app /home/app
+RUN chown -R app:app /app
+ENV HOME=/home/app
+
 EXPOSE 3001
 ENV NODE_ENV=production
+
+# ──────────────────────────────────────────────────────────────────────
+# Target `api`: imagem usada pelo serviço `api` no compose. Corre como
+# non-root (app). O serviço `cron` usa o target `runner` (root).
+# ──────────────────────────────────────────────────────────────────────
+FROM runner AS api
+USER app
 ENTRYPOINT ["/app/entrypoint.sh"]
