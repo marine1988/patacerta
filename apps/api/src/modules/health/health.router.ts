@@ -29,6 +29,7 @@ healthRouter.get(
 )
 
 // Endpoint para frontend verificar estado de manutenção.
+// PATA-CI-7: uptimeSeconds é âncora de deploy para commits API-only.
 // Este endpoint NÃO tem bypass - retorna 503 se MAINTENANCE_MODE=1.
 // Registado DEPOIS do middleware de manutenção no index.ts.
 export const statusRouter = Router()
