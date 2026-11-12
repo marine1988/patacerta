@@ -30,23 +30,24 @@ interface SendMailParams {
 }
 
 async function sendMail({ to, subject, html, text }: SendMailParams): Promise<void> {
+  const safeSubject = sanitizeSubject(subject)
   const client = getClient()
   if (!client) {
     const env = process.env.NODE_ENV
     if (env === 'production' || env === 'stage') {
       console.error(
-        `[Email] RESEND_API_KEY nao configurada em ${env}. Email para ${maskEmail(to)} (assunto: ${subject}) NAO foi enviado. Configurar RESEND_API_KEY imediatamente.`,
+        `[Email] RESEND_API_KEY nao configurada em ${env}. Email para ${maskEmail(to)} (assunto: ${safeSubject}) NAO foi enviado. Configurar RESEND_API_KEY imediatamente.`,
       )
       return
     }
-    console.log(`[Email] (dev) To: ${to} | Subject: ${subject}\n${text}`)
+    console.log(`[Email] (dev) To: ${to} | Subject: ${safeSubject}\n${text}`)
     return
   }
   try {
     await client.emails.send({
       from: FROM_EMAIL,
       to,
-      subject,
+      subject: safeSubject,
       html,
       text,
     })
@@ -73,20 +74,43 @@ const BRAND = {
 const SERIF = "Georgia,'Times New Roman',serif"
 const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
+/**
+ * Escapa caracteres especiais de HTML para evitar injeção de HTML em
+ * valores interpolados em templates de email. Usar em TODOS os valores
+ * dinâmicos que são inseridos em markup HTML (nomes, URLs, etc.).
+ */
+export function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/** Remove CRLF/newlines de um assunto de email (previne header injection). */
+function sanitizeSubject(subject: string): string {
+  return subject.replace(/[\r\n]+/g, ' ').trim()
+}
+
 /** Botão de acção "bulletproof" (tabela) na cor da marca. */
 function ctaButton(url: string, label: string): string {
+  const safeUrl = escapeHtml(url)
+  const safeLabel = escapeHtml(label)
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
     <tr><td align="center" style="border-radius:10px;background:${BRAND.caramel};">
-      <a href="${url}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:${SANS};font-size:15px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:10px;">${label}</a>
+      <a href="${safeUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:${SANS};font-size:15px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:10px;">${safeLabel}</a>
     </td></tr>
   </table>`
 }
 
 /** Link de recurso quando o botão não funciona. */
 function fallbackLink(url: string): string {
+  const safeUrl = escapeHtml(url)
   return `<p style="font-family:${SANS};font-size:13px;line-height:1.6;color:${BRAND.subtle};margin:0;">
     Se o botão não funcionar, copie este endereço para o navegador:<br>
-    <a href="${url}" target="_blank" style="color:${BRAND.caramelDeep};word-break:break-all;">${url}</a>
+    <a href="${safeUrl}" target="_blank" style="color:${BRAND.caramelDeep};word-break:break-all;">${safeUrl}</a>
   </p>`
 }
 
@@ -99,6 +123,9 @@ function baseLayout(title: string, bodyHtml: string): string {
   const base = getFrontendBaseUrl()
   const logoUrl = `${base}/email-logo.png`
   const year = new Date().getFullYear()
+  const safeTitle = escapeHtml(title)
+  const safeBase = escapeHtml(base)
+  const safeLogoUrl = escapeHtml(logoUrl)
   return `<!DOCTYPE html>
 <html lang="pt-PT">
 <head>
@@ -106,7 +133,7 @@ function baseLayout(title: string, bodyHtml: string): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light">
-<title>${title}</title>
+<title>${safeTitle}</title>
 </head>
 <body style="margin:0;padding:0;background:${BRAND.cream};-webkit-text-size-adjust:100%;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BRAND.cream};">
@@ -115,7 +142,7 @@ function baseLayout(title: string, bodyHtml: string): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${BRAND.surface};border:1px solid ${BRAND.line};border-radius:16px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:36px 32px 18px;">
-              <img src="${logoUrl}" width="64" height="64" alt="PataCerta" style="display:block;width:64px;height:64px;border:0;outline:none;text-decoration:none;margin:0 auto 12px;">
+              <img src="${safeLogoUrl}" width="64" height="64" alt="PataCerta" style="display:block;width:64px;height:64px;border:0;outline:none;text-decoration:none;margin:0 auto 12px;">
               <div style="font-family:${SERIF};font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:0.3px;">PataCerta</div>
               <div style="font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${BRAND.caramel};margin-top:7px;">◆ Criadores verificados · Portugal</div>
             </td>
@@ -133,7 +160,7 @@ function baseLayout(title: string, bodyHtml: string): string {
                 Recebeu este email porque tem uma conta na <strong style="color:${BRAND.muted};">PataCerta</strong>. Se não solicitou este pedido, ignore esta mensagem.
               </p>
               <p style="font-family:${SANS};font-size:11px;letter-spacing:1px;color:${BRAND.caramel};margin:12px 0 0;">
-                ◆ PATACERTA · <a href="${base}" target="_blank" style="color:${BRAND.subtle};text-decoration:none;">patacerta.pt</a>
+                ◆ PATACERTA · <a href="${safeBase}" target="_blank" style="color:${BRAND.subtle};text-decoration:none;">patacerta.pt</a>
               </p>
             </td>
           </tr>
@@ -219,6 +246,8 @@ export async function sendSponsoredSlotPaidEmail(
   })
   const cleanBreedName = breedName.replace(/[\r\n]+/g, ' ').trim()
   const cleanBreederName = breederName.replace(/[\r\n]+/g, ' ').trim()
+  const safeBreedName = escapeHtml(cleanBreedName)
+  const safeBreederName = escapeHtml(cleanBreederName)
   const subject = `Destaque activado — ${cleanBreedName} | PataCerta`
   const text = `Olá,
 
@@ -236,8 +265,8 @@ Equipa PataCerta`
 
   const row = (labelTxt: string, valueTxt: string) =>
     `<tr>
-      <td style="padding:6px 14px 6px 0;font-family:${SANS};font-size:14px;color:${BRAND.subtle};">${labelTxt}</td>
-      <td style="padding:6px 0;font-family:${SANS};font-size:14px;font-weight:600;color:${BRAND.ink};">${valueTxt}</td>
+      <td style="padding:6px 14px 6px 0;font-family:${SANS};font-size:14px;color:${BRAND.subtle};">${escapeHtml(labelTxt)}</td>
+      <td style="padding:6px 0;font-family:${SANS};font-size:14px;font-weight:600;color:${BRAND.ink};">${escapeHtml(valueTxt)}</td>
     </tr>`
 
   const html = baseLayout(
@@ -245,13 +274,13 @@ Equipa PataCerta`
     `${heading('Destaque activado 🎉')}
      ${paragraph('O seu destaque no simulador de raça foi <strong style="color:' + BRAND.ink + '">activado</strong>.')}
      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;border-collapse:collapse;">
-       ${row('Criador', cleanBreederName)}
-       ${row('Raça', cleanBreedName)}
+       ${row('Criador', safeBreederName)}
+       ${row('Raça', safeBreedName)}
        ${row('Activo até', endsAtFmt)}
        ${row('Valor pago', formattedPrice)}
      </table>
      ${receiptUrl ? ctaButton(receiptUrl, 'Ver recibo') : ''}
-     ${paragraph('A sua ficha aparece agora como criador recomendado para <strong style="color:' + BRAND.ink + '">' + cleanBreedName + '</strong> no simulador da PataCerta. Pode acompanhar impressões e cliques na sua área pessoal.')}
+     ${paragraph('A sua ficha aparece agora como criador recomendado para <strong style="color:' + BRAND.ink + '">' + safeBreedName + '</strong> no simulador da PataCerta. Pode acompanhar impressões e cliques na sua área pessoal.')}
      ${paragraph('Obrigado pelo apoio!<br>Equipa PataCerta')}`,
   )
   await sendMail({ to, subject, html, text })
