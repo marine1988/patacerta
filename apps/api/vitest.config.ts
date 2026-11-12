@@ -19,11 +19,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     // Prisma engine + ESM — forks evita problemas de re-import do binding.
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    maxWorkers: 1,
     // Sem coverage por defeito; activar com `vitest run --coverage`.
     coverage: {
       provider: 'v8',
