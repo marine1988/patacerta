@@ -69,9 +69,11 @@ server {
     # a submissao em hstspreload.org para efeito real de preload. Reverter
     # e' caro (max-age 1 ano) — decisao consciente de seguranca.
     #
-    # A CSP vai em `Report-Only` de proposito: em modo enforcing parte
-    # AdSense/Stripe. Promover para enforcing exige antes observar o
-    # relatorio sem violacoes inesperadas.
+    # A CSP em enforcing (promovida de Report-Only no M-02): bloqueia XSS e
+    # scripts/estilos/fontes fora de 'self' + Google Fonts. AdSense (inativo)
+    # e Stripe checkout (redirect, nao embed) nao sao afectados. Se no futuro
+    # o AdSense for ligado, alargar script-src para pagead2.googlesyndication.com
+    # e googleads.g.doubleclick.net antes de activar.
     # ─────────────────────────────────────────────────────────────────────
 
     # Proxy API requests to the backend service.
@@ -182,7 +184,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -197,7 +199,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -213,7 +215,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -232,7 +234,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
