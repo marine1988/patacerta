@@ -26,7 +26,7 @@ export async function createSafeSharp(buffer: Buffer): Promise<Sharp> {
   // `limitInputPixels` no construtor faz o sharp rejeitar metadados >
   // limite, mas a mensagem de erro e' pouco util. Lemos a metadata
   // primeiro com cap conservador, e o caller continua o pipeline.
-  const probe = sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS })
+  const probe = sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS, sequentialRead: true })
   let meta
   try {
     meta = await probe.metadata()
@@ -47,5 +47,5 @@ export async function createSafeSharp(buffer: Buffer): Promise<Sharp> {
   }
   // Devolvemos um sharp novo (probe.metadata() pode consumir o stream
   // interno) com o mesmo limite.
-  return sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS })
+  return sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS, sequentialRead: true })
 }

@@ -17,7 +17,9 @@ ARG BUILD_DATE=2026-06-30T14:35
 RUN echo "Build date: $BUILD_DATE" && pnpm --filter @patacerta/shared build
 RUN pnpm --filter @patacerta/api db:generate
 RUN pnpm --filter @patacerta/api build
-
+# Smoke: garantir que o sharp instalado traz libvips patchado (>= 8.18.1)
+# contra CVE-2026-33327/328/35590/35591. Falha o build se a versao for antiga.
+RUN node -e "const s=require('/app/node_modules/sharp'); console.log('sharp',s.versions.sharp,'libvips',s.versions.vips); if(!s.versions.vips||s.versions.vips<'8.18.1'){console.error('libvips too old:',s.versions.vips);process.exit(1);}"
 FROM node:20-alpine AS runner
 # Ferramentas runtime:
 #   openssl              — usado pelo Prisma client (requirido em alpine)
