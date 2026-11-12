@@ -53,7 +53,7 @@ export function BreederCard({
         )}
         {status === 'PENDING_VERIFICATION' && (
           <span className="absolute left-2 top-2">
-            <Badge variant="yellow">Pendente</Badge>
+            <Badge variant="yellow">Em verificação</Badge>
           </span>
         )}
       </div>

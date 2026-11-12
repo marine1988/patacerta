@@ -98,7 +98,10 @@ export function CriadoresTab() {
       )}
 
       {!data || data.data.length === 0 ? (
-        <EmptyState title="Sem criadores" description="Nenhum criador encontrado." />
+        <EmptyState
+          title="Sem criadores"
+          description="Nenhum criador corresponde ao estado seleccionado."
+        />
       ) : (
         <>
           {/* Mobile: lista de cards */}
@@ -143,7 +146,7 @@ export function CriadoresTab() {
                     <dd className="text-ink">
                       {breeder._count.verificationDocs} / {breeder._count.reviews}
                     </dd>
-                    <dt className="text-muted">Data</dt>
+                    <dt className="text-muted">Registo</dt>
                     <dd className="text-ink">{formatDateShort(breeder.createdAt)}</dd>
                   </dl>
                   <div onClick={(e) => e.stopPropagation()}>
@@ -220,7 +223,7 @@ export function CriadoresTab() {
                   <th className="px-3 py-2">DGAV</th>
                   <th className="px-3 py-2">Estado</th>
                   <th className="px-3 py-2">Docs/Aval.</th>
-                  <th className="px-3 py-2">Data</th>
+                  <th className="px-3 py-2">Registo</th>
                   <th className="px-3 py-2">Destaque</th>
                 </tr>
               </thead>

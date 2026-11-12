@@ -6,7 +6,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY
 // O remetente TEM de usar um dominio verificado no Resend. O dominio
 // verificado e' 'mail.patacerta.pt' (o raiz 'patacerta.pt' NAO esta'
 // verificado, pelo que enviar a partir dele devolve 403).
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Patacerta <noreply@mail.patacerta.pt>'
+const FROM_EMAIL = process.env.FROM_EMAIL || 'PataCerta <noreply@mail.patacerta.pt>'
 
 let resendClient: Resend | null = null
 
@@ -130,7 +130,7 @@ function baseLayout(title: string, bodyHtml: string): string {
             <td style="padding:8px 32px 30px;">
               <div style="height:1px;line-height:1px;font-size:0;background:${BRAND.line};margin:18px 0;">&nbsp;</div>
               <p style="font-family:${SANS};font-size:12px;line-height:1.6;color:${BRAND.subtle};margin:0;">
-                Recebeu este email porque tem uma conta em <strong style="color:${BRAND.muted};">PataCerta</strong>. Se não foi você, ignore esta mensagem.
+                Recebeu este email porque tem uma conta na <strong style="color:${BRAND.muted};">PataCerta</strong>. Se não solicitou este pedido, ignore esta mensagem.
               </p>
               <p style="font-family:${SANS};font-size:11px;letter-spacing:1px;color:${BRAND.caramel};margin:12px 0 0;">
                 ◆ PATACERTA · <a href="${base}" target="_blank" style="color:${BRAND.subtle};text-decoration:none;">patacerta.pt</a>
@@ -155,17 +155,17 @@ function paragraph(text: string): string {
 }
 
 export async function sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
-  const subject = 'Confirme o seu email — Patacerta'
-  const text = `Bem-vindo à Patacerta!
+  const subject = 'Confirme o seu email — PataCerta'
+  const text = `Bem-vindo à PataCerta!
 
-Para ativar a sua conta, abra o seguinte link (válido por 24 horas):
+Para activar a sua conta, abra o link seguinte (válido por 24 horas):
 ${verificationUrl}
 
 Se não criou esta conta, ignore este email.`
   const html = baseLayout(
     subject,
     `${heading('Bem-vindo à PataCerta!')}
-     ${paragraph('Falta só um passo: confirme o seu email para ativar a sua conta e começar a explorar criadores verificados e serviços de confiança.')}
+     ${paragraph('Falta só um passo: confirme o seu email para activar a conta e começar a explorar criadores verificados e serviços de confiança.')}
      ${paragraph('O link é válido por <strong style="color:' + BRAND.ink + '">24 horas</strong>.')}
      ${ctaButton(verificationUrl, 'Confirmar email')}
      ${fallbackLink(verificationUrl)}`,
@@ -174,13 +174,13 @@ Se não criou esta conta, ignore este email.`
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  const subject = 'Reposição da palavra-passe — Patacerta'
+  const subject = 'Reposição da palavra-passe — PataCerta'
   const text = `Recebemos um pedido para repor a palavra-passe da sua conta.
 
-Para definir uma nova palavra-passe, abra o seguinte link (válido por 1 hora):
+Para definir uma nova palavra-passe, abra o link seguinte (válido por 1 hora):
 ${resetUrl}
 
-Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.`
+Se não solicitou este pedido, ignore este email — a sua palavra-passe permanece inalterada.`
   const html = baseLayout(
     subject,
     `${heading('Repor a sua palavra-passe')}
@@ -188,7 +188,7 @@ Se não foi você, ignore este email — a sua palavra-passe permanece inalterad
      ${paragraph('O link é válido por <strong style="color:' + BRAND.ink + '">1 hora</strong>.')}
      ${ctaButton(resetUrl, 'Repor palavra-passe')}
      ${fallbackLink(resetUrl)}
-     ${paragraph('Se não foi você, ignore este email — a sua palavra-passe permanece inalterada.')}`,
+     ${paragraph('Se não solicitou este pedido, ignore este email — a sua palavra-passe permanece inalterada.')}`,
   )
   await sendMail({ to, subject, html, text })
 }
@@ -208,7 +208,10 @@ export async function sendSponsoredSlotPaidEmail(
   params: SponsoredSlotPaidParams,
 ): Promise<void> {
   const { breederName, breedName, endsAt, priceCents, currency, receiptUrl } = params
-  const formattedPrice = `${(priceCents / 100).toFixed(2)} ${currency.toUpperCase()}`
+  const formattedPrice = new Intl.NumberFormat('pt-PT', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(priceCents / 100)
   const endsAtFmt = endsAt.toLocaleDateString('pt-PT', {
     day: '2-digit',
     month: 'long',
@@ -216,7 +219,7 @@ export async function sendSponsoredSlotPaidEmail(
   })
   const cleanBreedName = breedName.replace(/[\r\n]+/g, ' ').trim()
   const cleanBreederName = breederName.replace(/[\r\n]+/g, ' ').trim()
-  const subject = `Destaque activado — ${cleanBreedName} | Patacerta`
+  const subject = `Destaque activado — ${cleanBreedName} | PataCerta`
   const text = `Olá,
 
 O seu destaque no simulador de raça foi activado.
@@ -226,10 +229,10 @@ O seu destaque no simulador de raça foi activado.
   Activo até: ${endsAtFmt}
   Valor pago: ${formattedPrice}
 ${receiptUrl ? `\nRecibo: ${receiptUrl}\n` : ''}
-A sua ficha aparece agora como criador recomendado para "${cleanBreedName}" no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.
+A sua ficha aparece agora como criador recomendado para "${cleanBreedName}" no simulador da PataCerta. Pode acompanhar impressões e cliques na sua área pessoal.
 
 Obrigado pelo apoio!
-Equipa Patacerta`
+Equipa PataCerta`
 
   const row = (labelTxt: string, valueTxt: string) =>
     `<tr>
@@ -248,7 +251,7 @@ Equipa Patacerta`
        ${row('Valor pago', formattedPrice)}
      </table>
      ${receiptUrl ? ctaButton(receiptUrl, 'Ver recibo') : ''}
-     ${paragraph('A sua ficha aparece agora como criador recomendado para <strong style="color:' + BRAND.ink + '">' + cleanBreedName + '</strong> no simulador da Patacerta. Pode acompanhar impressões e cliques na sua área pessoal.')}
+     ${paragraph('A sua ficha aparece agora como criador recomendado para <strong style="color:' + BRAND.ink + '">' + cleanBreedName + '</strong> no simulador da PataCerta. Pode acompanhar impressões e cliques na sua área pessoal.')}
      ${paragraph('Obrigado pelo apoio!<br>Equipa PataCerta')}`,
   )
   await sendMail({ to, subject, html, text })

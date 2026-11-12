@@ -104,8 +104,8 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
         <div className="text-sm text-gray-600">
           {meta ? (
             <p>
-              <span className="font-semibold text-gray-900">{meta.total}</span> criadores
-              encontrados
+              <span className="font-semibold text-gray-900">{meta.total}</span>{' '}
+              {meta.total === 1 ? 'criador encontrado' : 'criadores encontrados'}
             </p>
           ) : (
             <Skeleton height="h-4" width="w-40" />
@@ -153,10 +153,10 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
       ) : isError ? (
         <EmptyState
           title="Erro ao carregar criadores"
-          description="Ocorreu um erro ao pesquisar. Verifique a sua ligação e tente novamente."
+          description="Verifique a sua ligação e tente novamente."
           action={
             <Button variant="primary" onClick={() => refetch()}>
-              Tentar de novo
+              Tentar novamente
             </Button>
           }
         />
@@ -180,7 +180,7 @@ export function BreedersListView({ searchParams, setSearchParams }: Props) {
         ) : (
           <EmptyState
             title="Ainda não há criadores verificados"
-            description="Por agora não há criadores listados. Se é criador, registe-se e candidate-se a verificação."
+            description="Se é criador, crie a sua conta e candidate-se à verificação."
             action={
               <Link to="/registar" className="btn-primary">
                 Sou criador

@@ -11,7 +11,7 @@ export function TermsPage() {
   usePageMeta({
     title: 'Termos e Condições',
     description:
-      'Termos e condições de utilização da PataCerta — directório de criadores verificados e serviços para cães em Portugal.',
+      'Termos e condições de utilização da PataCerta — directório de criadores verificados e de serviços para cães em Portugal, com as regras de conta, conteúdo e avaliações.',
     canonicalPath: '/termos',
     jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
@@ -21,22 +21,23 @@ export function TermsPage() {
       <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="mx-auto max-w-3xl p-5 sm:p-8">
         <h1 className="mb-6 font-serif text-2xl font-bold text-ink">Termos e Condições</h1>
-        <p className="mb-8 text-sm text-subtle">Última atualização: janeiro de 2025</p>
+        <p className="mb-8 text-sm text-subtle">Última actualização: janeiro de 2025</p>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-ink">1. Objeto</h2>
           <p className="leading-relaxed text-muted">
             A PataCerta é uma plataforma online que liga tutores de animais a criadores verificados
-            em Portugal. Estes termos regulam o acesso e utilização da plataforma.
+            e a prestadores de serviços para cães em Portugal. Estes termos regulam o acesso e a
+            utilização da plataforma por criadores, prestadores de serviços e tutores.
           </p>
         </section>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-ink">2. Registo e conta</h2>
           <ul className="list-disc space-y-1 pl-6 text-muted">
-            <li>O registo é gratuito e requer informações verdadeiras</li>
+            <li>O registo é gratuito e exige informações verdadeiras e actualizadas</li>
             <li>Cada utilizador pode ter apenas uma conta</li>
-            <li>É responsável pela segurança das suas credenciais</li>
+            <li>O utilizador é responsável por manter as suas credenciais seguras</li>
             <li>Criadores devem fornecer NIF válido e documentação DGAV quando aplicável</li>
           </ul>
         </section>
@@ -58,16 +59,16 @@ export function TermsPage() {
             <li>
               A PataCerta reserva-se o direito de moderar ou remover conteúdo que viole estas regras
             </li>
-            <li>Criadores podem responder a avaliações de forma profissional</li>
+            <li>Criadores e prestadores de serviços podem responder a avaliações</li>
           </ul>
         </section>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-ink">5. Responsabilidade</h2>
           <p className="leading-relaxed text-muted">
-            A PataCerta atua como intermediário e não é parte em qualquer transação entre
-            utilizadores e criadores. Não somos responsáveis por disputas, danos ou perdas
-            resultantes de interações entre utilizadores.
+            A PataCerta disponibiliza a plataforma e não é parte em qualquer transacção entre
+            tutores, criadores e prestadores de serviços. Não somos responsáveis por disputas, danos
+            ou perdas resultantes de interacções entre utilizadores.
           </p>
         </section>
 
@@ -75,7 +76,7 @@ export function TermsPage() {
           <h2 className="mb-3 text-lg font-semibold text-ink">6. Suspensão e eliminação</h2>
           <p className="leading-relaxed text-muted">
             Reservamo-nos o direito de suspender ou eliminar contas que violem estes termos. Pode
-            solicitar a eliminação da sua conta a qualquer momento através da sua área pessoal.
+            pedir a eliminação da sua conta a qualquer momento, na sua área pessoal.
           </p>
         </section>
 

@@ -82,7 +82,7 @@ export const youtubeVideoIdSchema = z
     return null as unknown as string
   })
   .refine((v) => v === '' || /^[A-Za-z0-9_-]{11}$/.test(v), {
-    message: 'URL/ID YouTube invalido',
+    message: 'URL ou ID do YouTube inválido',
   })
 
 export const breederProfileSchema = z
@@ -185,7 +185,7 @@ export const reorderBreederPhotosSchema = z.object({
   photoIds: z
     .array(z.number().int().positive())
     .min(1, 'Indique pelo menos uma foto')
-    .max(10, 'Maximo 10 fotos'),
+    .max(10, 'Máximo de 10 fotos'),
 })
 
 export const verificationDocUploadSchema = z.object({

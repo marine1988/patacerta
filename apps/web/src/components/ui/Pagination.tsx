@@ -117,7 +117,7 @@ function PaginationSummary({ page, meta, onChange, disabled = false }: SummaryPr
           disabled={disabled || page >= meta.totalPages}
           onClick={() => onChange(page + 1)}
         >
-          Próximo
+          Seguinte
         </Button>
       </div>
     </div>

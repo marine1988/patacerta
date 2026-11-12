@@ -28,7 +28,7 @@ function safeRedirect(target: string | null | undefined): string {
 export function LoginPage() {
   usePageMeta({
     title: 'Entrar',
-    description: 'Aceda à sua conta PataCerta.',
+    description: 'Entre na sua conta PataCerta para gerir o perfil, os anúncios e as mensagens.',
     canonicalPath: '/entrar',
     noIndex: true,
   })
@@ -87,7 +87,7 @@ export function LoginPage() {
           <p className="mt-2 text-sm text-gray-600">
             Ainda não tem conta?{' '}
             <Link to="/registar" className="font-medium text-caramel-600 hover:text-caramel-500">
-              Registar
+              Criar conta
             </Link>
           </p>
         </div>

@@ -58,7 +58,7 @@ export function Tabs({ tabs, defaultTab, onChange }: TabsProps) {
         <div
           ref={listRef}
           role="tablist"
-          aria-label="Tabs"
+          aria-label="Separadores"
           className="-mb-px flex gap-6 overflow-x-auto scroll-smooth pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {tabs.map((tab) => {

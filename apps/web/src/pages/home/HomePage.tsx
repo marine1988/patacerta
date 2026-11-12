@@ -81,7 +81,7 @@ export function HomePage() {
   usePageMeta({
     title: 'Criadores Verificados e Serviços para Cães em Portugal',
     description:
-      'PataCerta: directório de criadores verificados (DGAV/LOP) e serviços para cães em Portugal. Adopção responsável, perfis transparentes, simulador de raça e avaliações reais.',
+      'Directório de criadores de cães verificados (DGAV/LOP) e serviços para cães em Portugal. Simulador de raça, perfis transparentes e avaliações reais de tutores.',
     canonicalPath: '/',
     // Organization + WebSite JSON-LD são injectados globalmente em <SiteJsonLd />
     // (App.tsx). Não duplicar aqui.
@@ -116,9 +116,9 @@ export function HomePage() {
                 <em className="text-caramel-500">patudos</em> em Portugal.
               </h1>
               <p className="mt-3 max-w-lg text-base leading-relaxed text-muted sm:mt-4 lg:mt-5 lg:text-lg">
-                Encontre criadores éticos verificados ou serviços de confiança para o seu animal —
-                passeios, pet-sitting e mais. Curadoria rigorosa, comunicação direta, decisões
-                informadas.
+                Encontre criadores verificados ou serviços de confiança para o seu cão — passeios,
+                pet-sitting, treino e muito mais. Curadoria rigorosa, contacto directo e informação
+                clara para decidir bem.
               </p>
 
               <div className="mt-5 flex flex-wrap items-center gap-3 lg:mt-6 lg:gap-4">
@@ -135,8 +135,8 @@ export function HomePage() {
               <img src="/malinois-hero.png" alt="Pastor Belga Malinois" className="mb-4 w-full" />
               <p className="eyebrow-muted mb-4">— Manifesto</p>
               <p className="font-serif text-xl italic leading-snug text-ink">
-                "Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
-                o passeia, quem o acompanha. Rigor, transparência e cuidado em cada passo."
+                «Acreditamos que cuidar bem de um patudo começa em escolher bem — quem o cria, quem
+                o passeia, quem o acompanha. Rigor, transparência e cuidado em cada passo.»
               </p>
             </aside>
           </div>
@@ -309,11 +309,11 @@ export function HomePage() {
             <Pillar
               number="02"
               title="Transparência de linhagem"
-              description="Progenitores identificados, histórico de ninhadas e testes de saúde visíveis para cada interessado."
+              description="Progenitores identificados, histórico de ninhadas e testes de saúde visíveis para quem está interessado."
             />
             <Pillar
               number="03"
-              title="Comunicação direta"
+              title="Comunicação directa"
               description="Mensagens privadas entre famílias e criadores, com moderação e respeito pelo bem-estar animal."
             />
           </div>
@@ -331,7 +331,7 @@ export function HomePage() {
               Profissionais de confiança, <em className="italic text-caramel-500">perto de si</em>.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
-              Anúncios verificados de prestadores em Portugal. Procure por categoria, distrito ou
+              Anúncios de prestadores verificados em Portugal. Pesquise por categoria, distrito ou
               proximidade — e fale directamente com quem vai cuidar do seu animal.
             </p>
           </div>
@@ -346,7 +346,7 @@ export function HomePage() {
             <ServiceCategoryCard
               eyebrow="02"
               title="Pet-sitting"
-              description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem stress de canil."
+              description="Acompanhamento ao domicílio enquanto está fora. Alimentação, medicação, companhia — sem o stress de um canil."
               href="/pesquisar?tipo=servicos&categoria=pet-sitting"
             />
             <ServiceCategoryCard
@@ -373,13 +373,13 @@ export function HomePage() {
        * ============================================================ */}
       <section className="border-t border-line bg-surface-alt">
         <div className="mx-auto max-w-[72rem] px-6 py-10 text-center sm:py-14 lg:px-8 lg:py-14">
-          <p className="eyebrow mb-4 sm:mb-6">◆ Criador ou prestador certificado</p>
+          <p className="eyebrow mb-4 sm:mb-6">◆ Criadores e prestadores de serviços</p>
           <h2 className="font-serif mx-auto max-w-2xl text-2xl leading-tight text-ink sm:text-3xl lg:text-4xl">
-            Faça parte de uma rede <em className="italic text-caramel-500">selecta</em> de
+            Faça parte de uma rede <em className="italic text-caramel-500">criteriosa</em> de
             profissionais portugueses.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:mt-6">
-            Visibilidade junto de famílias que procuram rigor. Perfil curado. Processo gratuito.
+            Visibilidade junto de famílias que procuram rigor, perfil curado e adesão gratuita.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-5 sm:mt-10 sm:flex-row sm:gap-6">
             <Link to="/registar" className="btn-primary btn-lg">
@@ -471,7 +471,7 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
           <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs italic text-muted">
-            sem foto
+            Sem foto
           </div>
         )}
         {isPromoted && <FeaturedBadge />}
@@ -530,7 +530,7 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
           <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs italic text-muted">
-            sem foto
+            Sem foto
           </div>
         )}
         {isPromoted && <FeaturedBadge />}

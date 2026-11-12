@@ -8,7 +8,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       type="button"
       onClick={toggleTheme}
       className={`btn-icon ${className}`}
-      aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+      aria-label={isDark ? 'Activar modo claro' : 'Activar modo escuro'}
       title={isDark ? 'Modo claro' : 'Modo escuro'}
     >
       {isDark ? (

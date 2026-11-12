@@ -65,7 +65,7 @@ function formatDate(dateStr: string): string {
 export function FeedbackPage() {
   usePageMeta({
     title: 'Feedback & Sugestões',
-    description: 'Dá feedback e vota nas sugestões da comunidade PataCerta.',
+    description: 'Dê feedback e vote nas sugestões da comunidade PataCerta.',
     canonicalPath: '/feedback',
   })
 
@@ -159,7 +159,7 @@ export function FeedbackPage() {
       <div className="mb-8 text-center">
         <h1 className="font-serif text-3xl font-bold text-ink sm:text-4xl">Feedback & Sugestões</h1>
         <p className="mt-2 text-muted">
-          Dá a tua opinião e vota nas sugestões da comunidade. O teu feedback ajuda-nos a melhorar o
+          Dê a sua opinião e vote nas sugestões da comunidade. O seu feedback ajuda-nos a melhorar o
           PataCerta.
         </p>
       </div>
@@ -214,7 +214,7 @@ export function FeedbackPage() {
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
                 maxLength={200}
-                placeholder="Resumo do teu feedback"
+                placeholder="Resumo do seu feedback"
                 className="w-full rounded border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted"
               />
             </div>
@@ -229,7 +229,7 @@ export function FeedbackPage() {
                 onChange={(e) => setFormBody(e.target.value)}
                 rows={5}
                 maxLength={5000}
-                placeholder="Explica o que gostavas de ver melhorado, corrigido ou adicionado..."
+                placeholder="Explique o que gostaria de ver melhorado, corrigido ou adicionado..."
                 className="w-full rounded border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted"
               />
               <p className="mt-1 text-xs text-muted">{formBody.length}/5000</p>

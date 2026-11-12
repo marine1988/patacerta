@@ -47,7 +47,7 @@ export function FeatureToggle({
             onClick={async () => {
               const ok = await confirm({
                 title: 'Remover destaque',
-                message: 'Remover destaque agora?',
+                message: 'Remover o destaque agora?',
                 confirmLabel: 'Remover',
                 variant: 'danger',
               })

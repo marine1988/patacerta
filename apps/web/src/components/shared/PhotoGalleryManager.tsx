@@ -183,7 +183,7 @@ export function PhotoGalleryManager({
 
       {photos.length < max && (
         <div>
-          <label className="label">Adicionar fotos (máx. 2MB cada)</label>
+          <label className="label">Adicionar fotos (máx. 2 MB cada)</label>
           <input
             ref={uploadInputRef}
             type="file"

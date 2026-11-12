@@ -20,12 +20,12 @@ export function Footer() {
             className="card card-hover group mb-6 flex flex-col gap-4 p-5 no-underline sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-8 md:p-6"
           >
             <div className="min-w-0">
-              <span className="eyebrow">◆ A tua opinião</span>
+              <span className="eyebrow">◆ A sua opinião</span>
               <h3 className="mt-2 font-serif text-xl leading-snug text-ink sm:text-2xl">
                 Feedback &amp; <em className="italic text-caramel-500">sugestões</em>
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-                Reporta problemas, sugere melhorias e vota nas ideias da comunidade. Cada sugestão
+                Reporte problemas, sugira melhorias e vote nas ideias da comunidade. Cada sugestão
                 ajuda a construir o PataCerta.
               </p>
             </div>

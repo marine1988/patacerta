@@ -93,8 +93,8 @@ export function PesquisarPage() {
         : 'Pesquisar Criadores Verificados em Portugal',
     description:
       tipo === 'servicos'
-        ? 'Procure serviços para cães em Portugal: treino, banhos e tosquia, hotel, transporte, passeios. Filtre por distrito, município e preço.'
-        : 'Procure criadores de cães verificados em Portugal. Filtre por raça, distrito e município. Perfis com NIF, número DGAV e avaliações reais.',
+        ? 'Pesquise serviços para cães em Portugal: passeios, pet-sitting, treino, banhos e tosquia. Filtre por distrito, concelho e preço.'
+        : 'Pesquise criadores de cães verificados em Portugal. Filtre por raça, distrito e concelho. Perfis com NIF, número DGAV e avaliações reais.',
     canonicalPath: '/pesquisar',
     jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
@@ -139,7 +139,7 @@ export function PesquisarPage() {
 
       {/* Barra de controlos: tipo (esquerda) + vista (direita) */}
       <div className="mt-4 flex flex-col gap-3 border-b border-line sm:flex-row sm:items-end sm:justify-between">
-        <nav className="-mb-px flex gap-6" aria-label="Tipo">
+        <nav className="-mb-px flex gap-6" aria-label="Tipo de pesquisa">
           <button
             type="button"
             onClick={() => setTipo('criadores')}
@@ -252,7 +252,7 @@ function CrossPromoBanner({ currentTipo }: { currentTipo: PesquisarTipo }) {
     ? 'Precisa de quem cuide do seu patudo?'
     : 'À procura de um patudo para a sua família?'
   const description = isCriadores
-    ? 'Passeadores, pet-sitters e mais profissionais verificados em Portugal.'
+    ? 'Passeadores, pet-sitters e outros profissionais verificados em Portugal.'
     : 'Criadores éticos verificados, com linhagem rastreável e documentação confirmada.'
   const linkTo = isCriadores ? '/pesquisar?tipo=servicos' : '/pesquisar'
   const linkLabel = isCriadores ? 'Ver serviços' : 'Ver criadores'

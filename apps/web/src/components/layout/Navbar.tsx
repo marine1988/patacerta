@@ -28,11 +28,16 @@ function UnreadBadge({ className = '' }: { className?: string }) {
   return (
     <span
       className={`inline-flex min-w-[1rem] items-center justify-center bg-caramel-500 px-1 text-[9px] font-semibold leading-none text-white ${className}`}
-      aria-label={`${count} mensagens não lidas`}
+      aria-label={count === 1 ? '1 mensagem não lida' : `${count} mensagens não lidas`}
     >
       {count > 99 ? '99+' : count}
     </span>
   )
+}
+
+/** Pluraliza uma etiqueta: `1 documento` / `3 documentos`. */
+function plural(n: number, singular: string, pluralForm: string): string {
+  return `${n} ${n === 1 ? singular : pluralForm}`
 }
 
 function AdminPendingBadge({ className = '' }: { className?: string }) {
@@ -54,7 +59,13 @@ function AdminPendingBadge({ className = '' }: { className?: string }) {
   const count = data?.total ?? 0
   if (count <= 0) return null
   const title = data
-    ? `${data.pendingDocs} documento(s), ${data.pendingBreeders} criador(es), ${data.flaggedReviews} avaliação(ões), ${data.pendingMessageReports} denúncia(s) de mensagem e ${data.pendingServiceReports} denúncia(s) de serviço a rever`
+    ? [
+        plural(data.pendingDocs, 'documento', 'documentos'),
+        plural(data.pendingBreeders, 'criador', 'criadores'),
+        plural(data.flaggedReviews, 'avaliação', 'avaliações'),
+        plural(data.pendingMessageReports, 'denúncia de mensagem', 'denúncias de mensagens'),
+        plural(data.pendingServiceReports, 'denúncia de anúncio', 'denúncias de anúncios'),
+      ].join(', ') + ' por rever'
     : undefined
   return (
     <span
@@ -102,7 +113,7 @@ function UserMenuAggregateBadge({
   return (
     <span
       className={`inline-flex min-w-[1rem] items-center justify-center bg-caramel-500 px-1 text-[9px] font-semibold leading-none text-white ${className}`}
-      aria-label={`${total} item(s) por tratar`}
+      aria-label={total === 1 ? '1 item por tratar' : `${total} itens por tratar`}
     >
       {total > 99 ? '99+' : total}
     </span>

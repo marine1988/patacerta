@@ -169,7 +169,7 @@ export function ServicosReportsView() {
                         {serviceStatusLabel[r.service.status] ?? r.service.status}
                       </Badge>
                       <span className="text-xs text-gray-500">
-                        Por {r.reporter.firstName} {r.reporter.lastName} &middot;{' '}
+                        Denunciada por {r.reporter.firstName} {r.reporter.lastName} &middot;{' '}
                         {formatDateShort(r.createdAt)}
                       </span>
                     </div>
@@ -193,7 +193,7 @@ export function ServicosReportsView() {
                         setActionError(null)
                       }}
                     >
-                      Ver / Resolver
+                      Ver e resolver
                     </Button>
                     {r.status === 'PENDING' && r.service.status !== 'SUSPENDED' && (
                       <Button
@@ -234,7 +234,7 @@ export function ServicosReportsView() {
               <p className="text-xs font-medium text-gray-500">Motivo</p>
               <p className="mt-1 text-sm text-gray-900">{openReport.reason}</p>
               <p className="mt-1 text-xs text-gray-400">
-                Por {openReport.reporter.firstName} {openReport.reporter.lastName} (
+                Denunciada por {openReport.reporter.firstName} {openReport.reporter.lastName} (
                 {openReport.reporter.email}) &middot; {formatDateShort(openReport.createdAt)}
               </p>
             </div>
@@ -257,7 +257,7 @@ export function ServicosReportsView() {
             {openReport.status === 'PENDING' ? (
               <div className="space-y-3 border-t border-gray-200 pt-4">
                 <div>
-                  <label className="label">Nota de resolução (mín. 15)</label>
+                  <label className="label">Nota de resolução (mín. 15, máx. 500)</label>
                   <textarea
                     className="input min-h-[60px]"
                     value={resolution}
@@ -326,7 +326,8 @@ export function ServicosReportsView() {
       >
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            O anúncio deixará de estar visível ao público. O motivo é registado no histórico.
+            O anúncio deixa de estar visível ao público e só pode ser reactivado por um
+            administrador. O motivo fica registado no histórico de auditoria.
           </p>
           <div>
             <label className="label">Motivo (mín. 15, máx. 500)</label>

@@ -98,7 +98,7 @@ export function NewThreadModal({
             className="input min-h-[140px]"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={bodyPlaceholder ?? 'Escreva a sua mensagem...'}
+            placeholder={bodyPlaceholder ?? 'Escreva a sua mensagem…'}
             maxLength={5000}
             required
           />

@@ -236,7 +236,11 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
-              <Input name="query" defaultValue={query} placeholder="Título ou descrição..." />
+              <Input
+                name="query"
+                defaultValue={query}
+                placeholder="Ex.: passeios ao fim de semana"
+              />
             </div>
             <div className="md:w-56">
               <label className="mb-1 block text-xs font-medium text-gray-700">Categoria</label>
@@ -258,8 +262,8 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
                 onChange={(e) => updateFilter({ sort: e.target.value })}
                 options={[
                   { value: 'recent', label: 'Mais recentes' },
-                  { value: 'price_asc', label: 'Preço ↑' },
-                  { value: 'price_desc', label: 'Preço ↓' },
+                  { value: 'price_asc', label: 'Preço: mais baixo' },
+                  { value: 'price_desc', label: 'Preço: mais alto' },
                   ...(geo.coords && radiusKm ? [{ value: 'distance', label: 'Mais perto' }] : []),
                 ]}
               />
@@ -293,7 +297,9 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
               />
             </div>
             <div className="md:w-32">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Preço min (€)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Preço mínimo (€)
+              </label>
               <Input
                 name="priceMin"
                 defaultValue={priceMin}
@@ -305,7 +311,9 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
               />
             </div>
             <div className="md:w-32">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Preço máx (€)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Preço máximo (€)
+              </label>
               <Input
                 name="priceMax"
                 defaultValue={priceMax}
@@ -378,7 +386,8 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
         <div className="text-sm text-gray-600">
           {meta ? (
             <p>
-              <span className="font-semibold text-gray-900">{meta.total}</span> anúncios encontrados
+              <span className="font-semibold text-gray-900">{meta.total}</span>{' '}
+              {meta.total === 1 ? 'anúncio encontrado' : 'anúncios encontrados'}
             </p>
           ) : (
             <Skeleton height="h-4" width="w-40" />
@@ -395,10 +404,10 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
       ) : isError && accumulated.length === 0 ? (
         <EmptyState
           title="Erro ao carregar anúncios"
-          description="Ocorreu um erro ao pesquisar. Tente novamente."
+          description="Verifique a sua ligação e tente novamente."
           action={
             <Button variant="primary" onClick={() => refetch()}>
-              Tentar de novo
+              Tentar novamente
             </Button>
           }
         />
@@ -406,7 +415,7 @@ export function ServicesListView({ searchParams, setSearchParams }: Props) {
         hasFilters ? (
           <EmptyState
             title="Nenhum anúncio encontrado"
-            description="Tente alargar os filtros ou ver no mapa."
+            description="Alargue os filtros ou veja os resultados no mapa."
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Limpar filtros

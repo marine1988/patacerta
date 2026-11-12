@@ -150,7 +150,7 @@ function SetNewPasswordForm({ token }: { token: string }) {
     setError('')
 
     if (password !== confirmPassword) {
-      setError('As palavras-passe não coincidem')
+      setError('As palavras-passe não coincidem.')
       return
     }
 
@@ -203,13 +203,13 @@ function SetNewPasswordForm({ token }: { token: string }) {
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Palavra-passe atualizada</h1>
               <p className="text-sm text-gray-600 mb-4">
-                A sua palavra-passe foi reposta com sucesso. Pode agora iniciar sessão.
+                A sua palavra-passe foi alterada com sucesso. Já pode iniciar sessão.
               </p>
               <Link
                 to="/entrar"
                 className="inline-flex items-center rounded-lg bg-caramel-600 px-4 py-2 text-sm font-medium text-white hover:bg-caramel-700"
               >
-                Ir para o login
+                Ir para login
               </Link>
             </div>
           </Card>
@@ -223,7 +223,9 @@ function SetNewPasswordForm({ token }: { token: string }) {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Nova palavra-passe</h1>
-          <p className="mt-2 text-sm text-gray-600">Introduza a sua nova palavra-passe.</p>
+          <p className="mt-2 text-sm text-gray-600">
+            Escolha uma palavra-passe diferente da anterior e confirme-a abaixo.
+          </p>
         </div>
 
         <Card>

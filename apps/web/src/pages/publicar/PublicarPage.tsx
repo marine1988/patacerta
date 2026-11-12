@@ -6,7 +6,7 @@ import { usePageMeta } from '../../hooks/usePageMeta'
 /**
  * Publicar — landing onde o utilizador escolhe o tipo de anuncio.
  *
- * Toda a gente comeca como OWNER no registo. Aqui ramifica-se em duas
+ * Todos começam como OWNER no registo. Aqui ramifica-se em duas
  * vias:
  *  - "Criador": cria perfil de criador (auto-promove para BREEDER no
  *    servidor).

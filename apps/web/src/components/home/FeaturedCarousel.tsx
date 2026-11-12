@@ -28,7 +28,7 @@ interface FeaturedCarouselProps {
 export function FeaturedCarousel({
   eyebrow,
   title,
-  emptyMessage = 'Nada por aqui de momento.',
+  emptyMessage = 'Sem destaques de momento.',
   isLoading,
   errorMessage,
   onRetry,

@@ -166,7 +166,7 @@ export function AvaliacoesReportsView() {
         <TypeFilterTabs typeFilter={typeFilter} setTypeFilter={setTypeFilter} setPage={setPage} />
         <EmptyState
           title="Sem avaliações sinalizadas"
-          description="Não existem avaliações sinalizadas para moderar."
+          description="Não há avaliações sinalizadas para moderar."
         />
       </div>
     )
@@ -277,7 +277,7 @@ export function AvaliacoesReportsView() {
               <th className="px-3 py-2">Nota</th>
               <th className="px-3 py-2">Estado</th>
               <th className="px-3 py-2">Data</th>
-              <th className="px-3 py-2">Ações</th>
+              <th className="px-3 py-2">Acções</th>
             </tr>
           </thead>
           <tbody>
@@ -461,8 +461,8 @@ export function AvaliacoesReportsView() {
         {deleteTarget && (
           <div className="space-y-4">
             <p className="text-sm text-ink">
-              Tem a certeza que pretende eliminar permanentemente esta avaliação? Esta ação não pode
-              ser revertida.
+              Tem a certeza que pretende eliminar permanentemente esta avaliação? Esta acção não
+              pode ser revertida.
             </p>
             <div className="rounded-lg bg-surface-alt/40 p-3 text-sm">
               <div className="font-medium text-ink">{deleteTarget.title}</div>

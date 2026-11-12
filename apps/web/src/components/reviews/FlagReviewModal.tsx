@@ -34,7 +34,7 @@ export function FlagReviewModal({
     e.preventDefault()
     setLocalError(null)
     if (!category) {
-      setLocalError('Selecione um motivo.')
+      setLocalError('Seleccione um motivo.')
       return
     }
     const trimmedDetails = details.trim()
@@ -67,7 +67,7 @@ export function FlagReviewModal({
             className="input min-h-[100px]"
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Explique brevemente o motivo da denúncia..."
+            placeholder="Explique brevemente o motivo da denúncia…"
             maxLength={400}
           />
           <p className="mt-1 text-xs text-gray-400">{details.length}/400 caracteres</p>

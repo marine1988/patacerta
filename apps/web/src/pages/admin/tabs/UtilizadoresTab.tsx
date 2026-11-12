@@ -119,7 +119,10 @@ export function UtilizadoresTab() {
       </div>
 
       {!data || data.data.length === 0 ? (
-        <EmptyState title="Sem utilizadores" description="Nenhum utilizador encontrado." />
+        <EmptyState
+          title="Sem utilizadores"
+          description="Nenhum utilizador corresponde à pesquisa ou ao papel seleccionado."
+        />
       ) : (
         <>
           {/* Mobile: lista de cards. Tabela em <md> ficava cortada/scrollavel
@@ -194,7 +197,7 @@ export function UtilizadoresTab() {
                   <th className="px-3 py-2">Papel</th>
                   <th className="px-3 py-2">Criador</th>
                   <th className="px-3 py-2">Data de registo</th>
-                  <th className="px-3 py-2">Ações</th>
+                  <th className="px-3 py-2">Acções</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,8 +274,8 @@ export function UtilizadoresTab() {
       >
         <div className="space-y-3">
           <p className="text-sm text-muted">
-            A conta deixa de poder iniciar sessão. Se for criador, o perfil também é suspenso. O
-            motivo é registado no histórico.
+            A conta deixa de poder iniciar sessão e, se for criador, o perfil também fica suspenso.
+            O motivo fica registado no histórico de auditoria.
           </p>
           <div>
             <label className="label">Motivo (mín. 15, máx. 500)</label>

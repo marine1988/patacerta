@@ -462,7 +462,7 @@ export function BreederProfilePage() {
   async function handleDeleteReview(reviewId: number) {
     const ok = await confirm({
       title: 'Eliminar avaliação',
-      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.',
+      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta acção é irreversível.',
       confirmLabel: 'Eliminar',
       variant: 'danger',
     })
@@ -479,7 +479,9 @@ export function BreederProfilePage() {
     return (
       <div className="page-container text-center">
         <h1 className="text-2xl font-bold text-gray-900">Criador não encontrado</h1>
-        <p className="mt-2 text-gray-600">O criador com ID {id} não existe ou foi removido.</p>
+        <p className="mt-2 text-gray-600">
+          O criador que procura não existe ou já não está disponível na PataCerta.
+        </p>
         <Link to="/pesquisar" className="btn-primary mt-6 inline-block">
           Voltar ao diretório
         </Link>
@@ -510,7 +512,7 @@ export function BreederProfilePage() {
                   <span>
                     {breeder.municipality.namePt}, {breeder.district.namePt}
                   </span>
-                  <span>Membro desde {formatDate(breeder.createdAt)}</span>
+                  <span>Na PataCerta desde {formatDate(breeder.createdAt)}</span>
                   {breeder.avgRating != null && (
                     <span className="flex items-center gap-1">
                       <StarRating rating={Math.round(breeder.avgRating)} size="sm" />
@@ -611,7 +613,7 @@ export function BreederProfilePage() {
           {/* Racas */}
           {((breeder.breeds && breeder.breeds.length > 0) || breeder.otherBreedsNote) && (
             <Card>
-              <h2 className="text-lg font-semibold text-gray-900">Raças que cria</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Raças</h2>
               {breeder.breeds && breeder.breeds.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {breeder.breeds.map((b) => (
@@ -654,7 +656,7 @@ export function BreederProfilePage() {
                 {breeder.cpcMember && (
                   <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                      Membro CPC
+                      Membro do CPC
                     </p>
                     <p className="mt-1 text-sm text-blue-900">Clube Português de Canicultura</p>
                   </div>
@@ -662,7 +664,7 @@ export function BreederProfilePage() {
                 {breeder.fciAffiliated && (
                   <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
-                      Filiado FCI
+                      Filiado na FCI
                     </p>
                     <p className="mt-1 text-sm text-purple-900">
                       Fédération Cynologique Internationale
@@ -696,7 +698,7 @@ export function BreederProfilePage() {
             return (
               <Card>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  O que está incluído com cada cachorro
+                  O que está incluído em cada cachorro
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-3">
                   {Object.entries(groups).map(([key, g]) =>
@@ -834,8 +836,8 @@ export function BreederProfilePage() {
                     options={[
                       { value: 'recent', label: 'Mais recentes' },
                       { value: 'oldest', label: 'Mais antigas' },
-                      { value: 'highest', label: 'Melhor avaliação' },
-                      { value: 'lowest', label: 'Pior avaliação' },
+                      { value: 'highest', label: 'Melhor avaliadas' },
+                      { value: 'lowest', label: 'Pior avaliadas' },
                     ]}
                     value={sort}
                     onChange={(e) => {
@@ -850,10 +852,10 @@ export function BreederProfilePage() {
             {reviews.length === 0 ? (
               <div className="py-8">
                 <EmptyState
-                  title="Sem avaliações ainda"
+                  title="Ainda sem avaliações"
                   description={
                     canWriteReview
-                      ? 'Seja o primeiro a avaliar este criador.'
+                      ? 'Seja a primeira pessoa a avaliar este criador.'
                       : 'Este criador ainda não tem avaliações.'
                   }
                 />
@@ -930,7 +932,7 @@ export function BreederProfilePage() {
                 className="w-full"
                 onClick={handleSendMessageClick}
                 disabled={isSelf}
-                title={isSelf ? 'Não pode enviar mensagem a si próprio' : undefined}
+                title={isSelf ? 'Não pode enviar uma mensagem a si próprio' : undefined}
               >
                 Enviar mensagem
               </Button>
@@ -951,7 +953,7 @@ export function BreederProfilePage() {
                   rel="noopener noreferrer nofollow ugc"
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
-                  Website
+                  Website do criador
                 </a>
               )}
             </div>
@@ -984,7 +986,7 @@ export function BreederProfilePage() {
               </div>
             ) : (
               <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
-                Sem coordenadas disponíveis
+                Localização não disponível
               </div>
             )}
             <p className="mt-2 text-sm text-gray-500">

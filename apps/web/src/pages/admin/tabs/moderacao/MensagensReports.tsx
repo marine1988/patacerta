@@ -235,15 +235,15 @@ export function MensagensReportsView() {
           <div className="space-y-4">
             <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
               <strong>Atenção:</strong> está a ver conteúdo privado por motivo de moderação. Esta
-              acção foi registada no log de auditoria.
+              acção fica no histórico de auditoria.
             </div>
 
             <div>
               <p className="text-xs font-medium text-gray-500">Motivo da denúncia</p>
               <p className="mt-1 text-sm text-gray-900">{detail.reason}</p>
               <p className="mt-1 text-xs text-gray-400">
-                Por {detail.reporter.firstName} {detail.reporter.lastName} ({detail.reporter.email})
-                &middot; {formatDateShort(detail.createdAt)}
+                Denunciada por {detail.reporter.firstName} {detail.reporter.lastName} (
+                {detail.reporter.email}) &middot; {formatDateShort(detail.createdAt)}
               </p>
             </div>
 

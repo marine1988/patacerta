@@ -282,7 +282,7 @@ export const createSponsoredSlotCheckout = asyncHandler(async (req, res) => {
       console.error(`[Payments] Stripe API error em checkout:`, err)
       throw new AppError(
         502,
-        'Nao foi possivel iniciar o pagamento. Tente novamente.',
+        'Não foi possível iniciar o pagamento. Tente novamente.',
         'STRIPE_API_ERROR',
       )
     }

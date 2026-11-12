@@ -46,13 +46,14 @@ export const updateMe = asyncHandler(async (req, res) => {
 
   if (newPassword) {
     if (!currentPassword)
-      throw new AppError(400, 'Palavra-passe atual é obrigatória', 'MISSING_CURRENT_PASSWORD')
+      throw new AppError(400, 'Indique a palavra-passe actual', 'MISSING_CURRENT_PASSWORD')
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
     if (!user) throw new AppError(404, 'Utilizador não encontrado', 'USER_NOT_FOUND')
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash)
-    if (!valid) throw new AppError(400, 'Palavra-passe atual incorreta', 'INVALID_CURRENT_PASSWORD')
+    if (!valid)
+      throw new AppError(400, 'Palavra-passe actual incorreta', 'INVALID_CURRENT_PASSWORD')
 
     updateData.passwordHash = await bcrypt.hash(newPassword, 12)
     passwordChanged = true
@@ -590,7 +591,7 @@ function runAvatarMulter(req: Request, res: Response): Promise<void> {
     avatarUpload(req, res, (err) => {
       if (err) {
         if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-          return reject(new AppError(400, 'Avatar pode ter no máximo 2MB', 'FILE_TOO_LARGE'))
+          return reject(new AppError(400, 'Avatar pode ter no máximo 2 MB', 'FILE_TOO_LARGE'))
         }
         return reject(err)
       }

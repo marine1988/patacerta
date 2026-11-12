@@ -78,9 +78,7 @@ export function SearchBar({
         <input
           type="text"
           className="h-11 min-w-0 flex-1 border border-line bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:border-caramel-500 focus:outline-none"
-          placeholder={
-            searchType === 'servicos' ? 'Pesquisar serviços...' : 'Pesquisar criadores...'
-          }
+          placeholder={searchType === 'servicos' ? 'Pesquisar serviços…' : 'Pesquisar criadores…'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -224,15 +222,13 @@ export function SearchBar({
 
         <div>
           <label className="label" htmlFor={`${idPrefix}-query`}>
-            Pesquisa
+            O que procura
           </label>
           <input
             id={`${idPrefix}-query`}
             type="text"
             className="input searchbar-control"
-            placeholder={
-              searchType === 'servicos' ? 'Serviço ou profissional...' : 'Nome do criador...'
-            }
+            placeholder={searchType === 'servicos' ? 'Serviço ou prestador…' : 'Nome do criador…'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

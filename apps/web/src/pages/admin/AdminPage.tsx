@@ -319,7 +319,7 @@ export function AdminPage() {
       <div className="page-header">
         <h1 className="page-title">Painel de administração</h1>
         <p className="page-subtitle">
-          Gerir utilizadores, criadores, verificações e conteúdo da plataforma.
+          Acompanhe utilizadores, criadores, verificações e conteúdo da plataforma.
         </p>
       </div>
 
@@ -414,8 +414,8 @@ export function AdminPage() {
                         className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-caramel-500 px-1.5 text-[10px] font-semibold leading-none text-white ${
                           sidebarCollapsed ? 'absolute -mt-4 ml-4' : 'ml-auto'
                         }`}
-                        aria-label={`${tab.badge} pendente(s)`}
-                        title={`${tab.badge} pendente(s)`}
+                        aria-label={`${tab.badge} ${tab.badge === 1 ? 'pendente' : 'pendentes'}`}
+                        title={`${tab.badge} ${tab.badge === 1 ? 'pendente' : 'pendentes'}`}
                       >
                         {tab.badge > 99 ? '99+' : tab.badge}
                       </span>

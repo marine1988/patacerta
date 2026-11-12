@@ -255,7 +255,7 @@ export function BreederTab() {
         type: 'success',
         text: breeder
           ? 'Perfil de criador actualizado com sucesso.'
-          : 'Perfil de criador criado com sucesso. Adicione documentos para verificacao.',
+          : 'Perfil de criador criado com sucesso. Adicione documentos para verificação.',
       })
     },
     onError: (err) => {
@@ -563,7 +563,7 @@ export function BreederTab() {
     setUploadMsg(null)
     const file = fileInputRef.current?.files?.[0]
     if (!file) {
-      setUploadMsg({ type: 'error', text: 'Selecione um ficheiro.' })
+      setUploadMsg({ type: 'error', text: 'Seleccione um ficheiro.' })
       return
     }
     if (file.size > MAX_DGAV_BYTES) {
@@ -710,7 +710,7 @@ export function BreederTab() {
         </div>
       ) : (
         <p className="mb-6 text-sm text-gray-500">
-          Nenhum documento enviado. É obrigatório enviar o certificado DGAV.
+          Ainda não enviou documentos. O certificado DGAV é obrigatório para a verificação.
         </p>
       )}
 
@@ -738,12 +738,12 @@ export function BreederTab() {
         </form>
       ) : dgavLocked ? (
         <p className="text-xs text-muted">
-          O certificado DGAV está trancado após verificação do perfil. Para o substituir contacte o
-          suporte.
+          O certificado DGAV fica bloqueado depois da verificação do perfil. Para o substituir,
+          contacte o suporte.
         </p>
       ) : (
         <p className="text-xs text-muted">
-          Para enviar um novo certificado DGAV, elimine primeiro o atual (apenas possível enquanto
+          Para enviar um novo certificado DGAV, elimine primeiro o actual (apenas possível enquanto
           estiver pendente).
         </p>
       )}
@@ -771,7 +771,7 @@ export function BreederTab() {
         </Button>
         {!hasDgavDoc && (
           <p className="text-xs text-red-600">
-            É necessário enviar o certificado DGAV antes de submeter.
+            Envie o certificado DGAV antes de submeter para verificação.
           </p>
         )}
       </div>
@@ -805,7 +805,7 @@ export function BreederTab() {
           <AccordionSection title="Fotos do canil" eyebrow="Apresentação visual *" defaultOpen>
             <p className="mb-3 text-xs text-gray-600">
               Comece por escolher pelo menos uma foto — pode continuar a preencher o formulário
-              enquanto o browser processa as miniaturas. Pode adicionar até {MAX_BREEDER_PHOTOS}{' '}
+              enquanto o navegador processa as miniaturas. Pode adicionar até {MAX_BREEDER_PHOTOS}{' '}
               fotos. Formatos aceites: JPG, PNG, WebP.
             </p>
             <input
@@ -1020,7 +1020,7 @@ export function BreederTab() {
             <Select
               label="Distrito"
               options={(districts ?? []).map((d) => ({ value: String(d.id), label: d.namePt }))}
-              placeholder="Selecionar distrito"
+              placeholder="Seleccionar distrito"
               value={form.districtId}
               onChange={(e) =>
                 setForm((p) => ({ ...p, districtId: e.target.value, municipalityId: '' }))
@@ -1033,7 +1033,7 @@ export function BreederTab() {
                 value: String(m.id),
                 label: m.namePt,
               }))}
-              placeholder="Selecionar concelho"
+              placeholder="Seleccionar concelho"
               value={form.municipalityId}
               onChange={(e) => setForm((p) => ({ ...p, municipalityId: e.target.value }))}
               disabled={!form.districtId}
@@ -1324,8 +1324,7 @@ export function BreederTab() {
             <li>Avaliações recebidas</li>
           </ul>
           <p className="text-xs text-muted">
-            A sua conta de utilizador é mantida — pode voltar a criar um perfil de criador no
-            futuro.
+            A sua conta é mantida — pode voltar a criar um perfil de criador no futuro.
           </p>
           {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
           <div className="flex justify-end gap-2">

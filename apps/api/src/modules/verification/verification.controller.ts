@@ -33,7 +33,7 @@ import { Prisma } from '@prisma/client'
 function resolveDocStorage(fileUrl: string): { isPrivate: boolean; objectName: string } {
   const parsed = parseStorageRef(fileUrl)
   if (!parsed) {
-    throw new AppError(500, 'Referencia de ficheiro invalida', 'INVALID_FILE_REF')
+    throw new AppError(500, 'Referência de ficheiro inválida', 'INVALID_FILE_REF')
   }
   return { isPrivate: parsed.bucket === 'private', objectName: parsed.objectName }
 }
@@ -96,7 +96,7 @@ function runMulter(req: Request, res: Response): Promise<void> {
     multerUpload(req, res, (err) => {
       if (err) {
         if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-          reject(new AppError(400, 'Ficheiro excede o limite de 5MB', 'FILE_TOO_LARGE'))
+          reject(new AppError(400, 'Ficheiro excede o limite de 5 MB', 'FILE_TOO_LARGE'))
         } else {
           reject(err)
         }
@@ -145,7 +145,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     if (breeder.status === 'VERIFIED') {
       throw new AppError(
         403,
-        'O certificado DGAV nao pode ser alterado apos verificacao do perfil. Contacte o suporte.',
+        'O certificado DGAV não pode ser alterado após a verificação do perfil. Contacte o suporte.',
         'DGAV_LOCKED',
       )
     }
@@ -160,7 +160,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     if (existingDgav) {
       throw new AppError(
         409,
-        'Ja existe um certificado DGAV submetido. Elimine o atual antes de enviar outro.',
+        'Já existe um certificado DGAV submetido. Elimine o actual antes de enviar outro.',
         'DGAV_ALREADY_EXISTS',
       )
     }
@@ -220,7 +220,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       throw new AppError(
         409,
-        'Ja existe um certificado DGAV submetido. Elimine o atual antes de enviar outro.',
+        'Já existe um certificado DGAV submetido. Elimine o actual antes de enviar outro.',
         'DGAV_ALREADY_EXISTS',
       )
     }
@@ -285,7 +285,7 @@ export const deleteDocument = asyncHandler(async (req, res) => {
   if (doc.docType === 'DGAV' && doc.breeder.status === 'VERIFIED') {
     throw new AppError(
       403,
-      'O certificado DGAV nao pode ser eliminado apos verificacao do perfil.',
+      'O certificado DGAV não pode ser eliminado após a verificação do perfil.',
       'DGAV_LOCKED',
     )
   }

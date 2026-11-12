@@ -75,7 +75,7 @@ export function BreedSlider() {
   return (
     <div
       role="region"
-      aria-roledescription="carousel"
+      aria-roledescription="carrossel"
       aria-label="Exemplos de raças compatíveis"
       data-testid="breed-slider"
       className="group relative"
@@ -109,7 +109,7 @@ export function BreedSlider() {
             Exemplo de resultado
           </p>
           <p className="mt-1 font-serif text-sm text-ink">
-            {current.name} · {current.match}% match
+            {current.name} · {current.match}% de compatibilidade
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function BreedSlider() {
           handleUserInteraction()
           goNext()
         }}
-        aria-label="Próxima raça"
+        aria-label="Raça seguinte"
         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-line bg-bg/90 p-2 text-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:border-caramel-500 hover:text-caramel-500 focus-visible:opacity-100 group-hover:opacity-100"
       >
         <svg
@@ -158,7 +158,7 @@ export function BreedSlider() {
       <div
         className="mt-3 flex items-center justify-center gap-2"
         role="tablist"
-        aria-label="Selecionar raça"
+        aria-label="Seleccionar raça"
       >
         {BREED_SLIDES.map((slide, idx) => (
           <button

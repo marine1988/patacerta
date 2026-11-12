@@ -58,7 +58,7 @@ export const updateUserSchema = z
       return true
     },
     {
-      message: 'Palavra-passe atual é obrigatória para alterar a palavra-passe',
+      message: 'Indique a palavra-passe actual para a alterar',
       path: ['currentPassword'],
     },
   )

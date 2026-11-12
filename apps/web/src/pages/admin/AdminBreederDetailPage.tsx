@@ -7,7 +7,7 @@ import { formatDateShort } from '../../lib/dates'
 import { extractApiError } from '../../lib/errors'
 import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
-import { statusBadgeVariant, statusLabel } from './_shared'
+import { statusBadgeVariant, statusLabel, roleLabel } from './_shared'
 
 // DocumentViewer puxa pdf.js (~400KB gzipped). Lazy para nao penalizar
 // quem nunca abre a pagina de detalhe (e mesmo aqui so renderiza quando
@@ -302,7 +302,7 @@ export function AdminBreederDetailPage() {
         />
         <div className="mt-4 flex justify-center">
           <Button variant="secondary" onClick={() => navigate('/admin?tab=criadores')}>
-            ← Voltar a Criadores
+            ← Voltar aos criadores
           </Button>
         </div>
       </div>
@@ -319,7 +319,7 @@ export function AdminBreederDetailPage() {
           to="/admin?tab=criadores"
           className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"
         >
-          ← Voltar a Criadores
+          ← Voltar aos criadores
         </Link>
       </div>
 
@@ -437,7 +437,7 @@ export function AdminBreederDetailPage() {
                         variant="secondary"
                         onClick={() => setViewingDocId(isViewing ? null : doc.id)}
                       >
-                        {isViewing ? 'Esconder pré-visualização' : 'Ver documento'}
+                        {isViewing ? 'Ocultar pré-visualização' : 'Ver documento'}
                       </Button>
                       {canApprove && (
                         <Button
@@ -445,7 +445,7 @@ export function AdminBreederDetailPage() {
                           onClick={() => handleApprove(doc)}
                           disabled={approveMutation.isPending}
                         >
-                          {doc.status === 'REJECTED' ? 'Reverter — Aprovar' : 'Aprovar'}
+                          {doc.status === 'REJECTED' ? 'Reverter rejeição' : 'Aprovar'}
                         </Button>
                       )}
                       {canReject && (
@@ -455,7 +455,7 @@ export function AdminBreederDetailPage() {
                           onClick={() => openReject(doc.id)}
                           disabled={rejectMutation.isPending}
                         >
-                          {doc.status === 'APPROVED' ? 'Reverter — Rejeitar' : 'Rejeitar'}
+                          {doc.status === 'APPROVED' ? 'Reverter aprovação' : 'Rejeitar'}
                         </Button>
                       )}
                     </div>
@@ -496,7 +496,7 @@ export function AdminBreederDetailPage() {
             <Field label="Nome" value={ownerName} />
             <Field label="Email" value={breeder.user.email} />
             <Field label="Telefone" value={breeder.user.phone ?? '—'} />
-            <Field label="Papel" value={breeder.user.role} />
+            <Field label="Papel" value={roleLabel[breeder.user.role] ?? breeder.user.role} />
             <Field label="Conta activa" value={breeder.user.isActive ? 'Sim' : 'Não'} />
             <Field label="Email verificado" value={breeder.user.emailVerified ? 'Sim' : 'Não'} />
             <Field label="Registado em" value={formatDateShort(breeder.user.createdAt)} />
@@ -582,8 +582,8 @@ export function AdminBreederDetailPage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-ink">
-            O perfil deixará de aparecer em pesquisas e listas. O motivo é registado no histórico de
-            auditoria.
+            O perfil deixa de aparecer em pesquisas e listas. O motivo fica registado no histórico
+            de auditoria.
           </p>
           <textarea
             value={suspendReason}
@@ -626,8 +626,8 @@ export function AdminBreederDetailPage() {
         <div className="space-y-4">
           <p className="text-sm text-ink">
             Indique o motivo da rejeição. Se o criador estava <strong>Verificado</strong>, esta
-            acção despromove-o para <strong>Rascunho</strong> e ele tera de submeter um novo
-            certificado DGAV.
+            acção fá-lo voltar a <strong>Rascunho</strong> e terá de submeter um novo documento de
+            verificação.
           </p>
           <textarea
             value={rejectNotes}

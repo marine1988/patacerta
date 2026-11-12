@@ -25,8 +25,8 @@ const actionLabel: Record<string, string> = {
   THREAD_CREATED: 'Conversa criada',
   VERIFICATION_DOC_APPROVED: 'DGAV aprovado',
   VERIFICATION_DOC_REJECTED: 'DGAV rejeitado',
-  VERIFICATION_DOC_APPROVED_CHANGED: 'DGAV reaprovado',
-  VERIFICATION_DOC_REJECTED_CHANGED: 'DGAV re-rejeitado',
+  VERIFICATION_DOC_APPROVED_CHANGED: 'DGAV aprovado novamente',
+  VERIFICATION_DOC_REJECTED_CHANGED: 'DGAV rejeitado novamente',
   'breeder.delete': 'Criador eliminado',
   'breeder.photos.delete': 'Foto de criador eliminada',
   'breeder.photos.reorder': 'Fotos de criador reordenadas',
@@ -172,7 +172,7 @@ export function AuditoriaTab() {
         triggerDownload(csv, 'text/csv;charset=utf-8', `auditoria-${stamp}.csv`)
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Falha ao exportar'
+      const msg = err instanceof Error ? err.message : 'Não foi possível exportar os registos.'
       setExportError(msg)
     } finally {
       setExporting(null)
@@ -225,7 +225,7 @@ export function AuditoriaTab() {
            * "service" apanha service.create, service.update, SERVICE.UPDATE.
            */}
           <Select
-            label="Ação"
+            label="Acção"
             name="actionFilter"
             value={actionFilter}
             onChange={(e) => {
@@ -352,7 +352,10 @@ export function AuditoriaTab() {
       )}
 
       {!data || data.data.length === 0 ? (
-        <EmptyState title="Sem registos" description="Nenhum registo de auditoria encontrado." />
+        <EmptyState
+          title="Sem registos"
+          description="Nenhum registo de auditoria corresponde aos filtros aplicados."
+        />
       ) : (
         <>
           {/* Mobile: lista de cards */}
@@ -431,7 +434,7 @@ export function AuditoriaTab() {
                 <tr className="border-b border-line text-left text-muted">
                   <th className="px-3 py-2">Data</th>
                   <th className="px-3 py-2">Utilizador</th>
-                  <th className="px-3 py-2">Ação</th>
+                  <th className="px-3 py-2">Acção</th>
                   <th className="px-3 py-2">Entidade</th>
                   <th className="px-3 py-2">ID da entidade</th>
                   <th className="px-3 py-2">IP</th>

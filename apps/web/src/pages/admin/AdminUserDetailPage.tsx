@@ -169,7 +169,7 @@ export function AdminUserDetailPage() {
   async function handleReactivate() {
     const ok = await confirm({
       title: 'Reactivar conta',
-      message: 'Tem a certeza que pretende reactivar esta conta?',
+      message: 'Confirma que pretende reactivar esta conta?',
       confirmLabel: 'Reactivar',
     })
     if (!ok) return
@@ -205,7 +205,7 @@ export function AdminUserDetailPage() {
       invalidateAfterMutation()
     },
     onError: (err: unknown) => {
-      setActionError(extractApiError(err, 'Falha ao suspender utilizador'))
+      setActionError(extractApiError(err, 'Erro ao suspender utilizador.'))
     },
   })
 
@@ -216,7 +216,7 @@ export function AdminUserDetailPage() {
       invalidateAfterMutation()
     },
     onError: (err: unknown) => {
-      setActionError(extractApiError(err, 'Falha ao reactivar utilizador'))
+      setActionError(extractApiError(err, 'Erro ao reactivar utilizador.'))
     },
   })
 
@@ -372,10 +372,10 @@ export function AdminUserDetailPage() {
           <Field label="Denúncias de mensagens" value={String(user._count.messageReportsFiled)} />
           <Field label="Denúncias de serviços" value={String(user._count.serviceReportsFiled)} />
           <Field
-            label="Sessões activas (refresh tokens)"
+            label="Sessões activas (tokens de sessão)"
             value={String(user._count.refreshTokens)}
           />
-          <Field label="Acções de auditoria como actor" value={String(user._count.auditLogs)} />
+          <Field label="Acções de auditoria registadas" value={String(user._count.auditLogs)} />
         </SectionCard>
 
         {user.breeder && (
@@ -483,7 +483,7 @@ export function AdminUserDetailPage() {
           title={`Denúncias feitas (${reportsFiled.messages.length + reportsFiled.services.length})`}
         >
           {reportsFiled.messages.length === 0 && reportsFiled.services.length === 0 ? (
-            <p className="text-sm text-muted">Não submeteu denúncias.</p>
+            <p className="text-sm text-muted">Sem denúncias submetidas.</p>
           ) : (
             <ul className="space-y-2">
               {reportsFiled.messages.map((r) => (
@@ -602,8 +602,8 @@ export function AdminUserDetailPage() {
       >
         <div className="space-y-3">
           <p className="text-sm text-muted">
-            Vai suspender <strong>{fullName}</strong>. O utilizador deixa de poder iniciar sessão.
-            Indique um motivo (mínimo 15 caracteres).
+            Vai suspender <strong>{fullName}</strong>. A conta deixa de poder iniciar sessão.
+            Indique um motivo com pelo menos 15 caracteres.
           </p>
           <textarea
             className="input min-h-[100px]"

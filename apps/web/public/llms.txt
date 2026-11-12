@@ -1,17 +1,17 @@
 # PataCerta
 
 > PataCerta é o directório de **criadores de cães verificados** e **serviços
-> para animais de estimação** em Portugal. Foco em adopção responsável,
-> transparência (NIF + número DGAV exibidos) e avaliações reais por
-> compradores que provadamente contactaram o criador através da
-> plataforma.
+> para animais** em Portugal. Foco em adopção responsável, transparência
+> (NIF e número DGAV visíveis) e avaliações reais de quem contactou o
+> criador através da plataforma.
 
-PataCerta verifica cada criador antes de o publicar (registo DGAV,
-empresa em Portugal, fotografia do espaço). Os perfis incluem raças
-criadas, certificações oficiais (LOP/CPC, DGAV), localização ao
-município e histórico de avaliações. A plataforma serve também
-serviços auxiliares (treino, banhos, hotel, transporte). MVP só-cães
-em pt-PT.
+A PataCerta verifica cada criador antes de o publicar (registo DGAV,
+empresa em Portugal, fotografias do espaço). Os perfis incluem as raças
+criadas, certificações oficiais (LOP/CPC, DGAV), localização por
+município e histórico de avaliações. A plataforma reúne também serviços
+complementares (treino, banhos, alojamento, transporte). Neste momento,
+está dedicada exclusivamente a cães e disponível apenas em português de
+Portugal.
 
 Domínio canónico: `__PUBLIC_URL__`.
 
@@ -33,54 +33,55 @@ Domínio canónico: `__PUBLIC_URL__`.
 Cada criador tem uma página `/criador/:id` com:
 
 - Nome do canil e morada (distrito + município).
-- Status de verificação (DGAV, NIF, comprovativos).
+- Estado de verificação (DGAV, NIF e comprovativos).
 - Raças criadas e descrição editorial.
 - Vídeo de apresentação (quando disponível).
-- Galeria de fotos.
+- Galeria de fotografias.
 - Reconhecimentos oficiais (LOP/CPC, clubes de raça).
-- Política de entrega ("levar para casa") e certificação dos cachorros.
-- Avaliações de adoptantes verificados.
+- Política de entrega («levar para casa») e certificação dos cachorros.
+- Avaliações de tutores que contactaram o criador pela plataforma.
 
 ### Serviços
 
 Cada serviço tem uma página `/servicos/:id` com:
 
-- Tipo de serviço (treino, banho, hotel, transporte, ...).
+- Tipo de serviço (treino, banhos, alojamento, transporte, ...).
 - Preço, área servida, descrição detalhada.
 - Anunciante (criador ou particular verificado).
-- Avaliações de clientes verificados.
+- Avaliações de clientes que contactaram o prestador pela plataforma.
 
 ### Catálogo de raças
 
-`/simulador-raca` apresenta o catálogo completo de raças de cão
+`/simulador-raca` apresenta o catálogo completo de raças de cães
 com perfis: temperamento, nível de energia, tamanho, esperança média
-de vida, indicação para crianças/apartamento, necessidades de
+de vida, indicação para crianças e apartamentos, necessidades de
 exercício e cuidados.
 
 ## Política sobre uso por LLMs
 
-A PataCerta **autoriza explicitamente** crawlers de retrieval em
+A PataCerta **autoriza explicitamente** os crawlers de pesquisa em
 tempo real (ChatGPT-User, OAI-SearchBot, ClaudeBot, PerplexityBot)
 a indexar e citar conteúdo público (`/`, `/pesquisar`, `/criador/*`,
 `/servicos/*`, `/simulador-raca`, `/politica-privacidade`, `/termos`).
 
 Usos **não autorizados**:
 
-- Treino de modelos sem opt-in escrito (GPTBot, Google-Extended,
+- Treino de modelos sem autorização escrita (GPTBot, Google-Extended,
   Applebot-Extended, anthropic-ai, CCBot, Bytespider, FacebookBot,
   Meta-ExternalAgent estão `Disallow: /` em [robots.txt](__PUBLIC_URL__/robots.txt)).
 - Reaproveitamento de fotografias, descrições editoriais ou avaliações
   para criar directórios concorrentes.
 
-Para parcerias (acesso a feed estruturado, citações garantidas,
-licenciamento de conteúdo), contactar via [PataCerta](__PUBLIC_URL__/).
+Para parcerias (acesso a um feed estruturado, citações garantidas,
+licenciamento de conteúdo), contacte-nos através do site da
+[PataCerta](__PUBLIC_URL__/).
 
 ## Endpoints úteis
 
 - Sitemap XML: <__PUBLIC_URL__/sitemap.xml>
 - Robots: <__PUBLIC_URL__/robots.txt>
 - Política de privacidade: <__PUBLIC_URL__/politica-privacidade>
-- Termos de utilização: <__PUBLIC_URL__/termos>
+- Termos e Condições: <__PUBLIC_URL__/termos>
 
 ## Atribuição
 

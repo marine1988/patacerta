@@ -707,7 +707,8 @@ export function MessagesTab() {
                             void (async () => {
                               const ok = await confirm({
                                 title: 'Eliminar mensagem',
-                                message: 'Eliminar esta mensagem? Esta ação não pode ser desfeita.',
+                                message:
+                                  'Eliminar esta mensagem? Esta acção não pode ser desfeita.',
                                 confirmLabel: 'Eliminar',
                                 variant: 'danger',
                               })
@@ -754,7 +755,7 @@ export function MessagesTab() {
                             onClick={() => {
                               const trimmed = editText.trim()
                               if (!trimmed) {
-                                setEditError('Mensagem não pode estar vazia.')
+                                setEditError('A mensagem não pode estar vazia.')
                                 return
                               }
                               editMessageMutation.mutate({
@@ -803,7 +804,7 @@ export function MessagesTab() {
                 id="reply-body"
                 aria-label="Texto da resposta"
                 className="input min-h-[60px] flex-1"
-                placeholder="Escrever resposta... (Enter para enviar, Shift+Enter para nova linha)"
+                placeholder="Escreva a sua resposta... (Enter para enviar, Shift+Enter para mudar de linha)"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => {
@@ -977,11 +978,11 @@ export function MessagesTab() {
         )
       ) : threads.length === 0 ? (
         <EmptyState
-          title={showArchived ? 'Sem conversas arquivadas' : 'Sem mensagens'}
+          title={showArchived ? 'Sem conversas arquivadas' : 'Ainda não tem conversas'}
           description={
             showArchived
-              ? 'As conversas que arquivar aparecerão aqui.'
-              : 'Quando contactar ou for contactado por criadores, as mensagens aparecerão aqui.'
+              ? 'As conversas que arquivar ficam guardadas aqui.'
+              : 'Quando contactar um criador ou um prestador de serviços, a conversa aparece aqui.'
           }
           titleAs="h2"
         />

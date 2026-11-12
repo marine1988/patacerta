@@ -64,8 +64,8 @@ export function SettingsTab() {
       <Card hover={false}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Notificações</h3>
         <p className="text-sm text-gray-600">
-          As preferências de notificações ainda não estão disponíveis. Por agora, as notificações
-          importantes da plataforma são enviadas para o email registado na sua conta.
+          Em breve poderá escolher que notificações recebe. Para já, os avisos importantes da
+          plataforma chegam ao email associado à sua conta.
         </p>
       </Card>
 

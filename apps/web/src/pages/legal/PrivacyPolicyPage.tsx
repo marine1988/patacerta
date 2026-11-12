@@ -11,7 +11,7 @@ export function PrivacyPolicyPage() {
   usePageMeta({
     title: 'Política de Privacidade',
     description:
-      'Política de privacidade da PataCerta. Como recolhemos, usamos e protegemos os seus dados pessoais ao abrigo do RGPD.',
+      'Política de privacidade da PataCerta: como recolhemos, utilizamos e protegemos os seus dados pessoais ao abrigo do RGPD, e como exercer os seus direitos.',
     canonicalPath: '/politica-privacidade',
     jsonLd: breadcrumbListJsonLd(breadcrumbs),
   })
@@ -21,7 +21,7 @@ export function PrivacyPolicyPage() {
       <Breadcrumbs items={breadcrumbs} className="mx-auto mb-6 max-w-3xl" />
       <Card className="mx-auto max-w-3xl p-5 sm:p-8">
         <h1 className="mb-6 font-serif text-2xl font-bold text-ink">Política de Privacidade</h1>
-        <p className="mb-8 text-sm text-subtle">Última atualização: 30 de Abril de 2026</p>
+        <p className="mb-8 text-sm text-subtle">Última actualização: 30 de abril de 2026</p>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-ink">1. Responsável pelo tratamento</h2>
@@ -36,7 +36,7 @@ export function PrivacyPolicyPage() {
           <h2 className="mb-3 text-lg font-semibold text-ink">2. Dados recolhidos</h2>
           <p className="mb-2 leading-relaxed text-muted">Recolhemos os seguintes dados pessoais:</p>
           <ul className="list-disc space-y-1 pl-6 text-muted">
-            <li>Nome, e-mail e telefone (no registo)</li>
+            <li>Nome, email e telefone (no registo)</li>
             <li>NIF e número DGAV (para criadores)</li>
             <li>Documentos de verificação (licenças, certificados)</li>
             <li>Avaliações e mensagens enviadas na plataforma</li>
@@ -54,18 +54,20 @@ export function PrivacyPolicyPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold text-ink">4. Direitos dos titulares</h2>
+          <h2 className="mb-3 text-lg font-semibold text-ink">
+            4. Direitos dos titulares dos dados
+          </h2>
           <p className="mb-2 leading-relaxed text-muted">Nos termos do RGPD, tem direito a:</p>
           <ul className="list-disc space-y-1 pl-6 text-muted">
             <li>Aceder aos seus dados pessoais</li>
-            <li>Solicitar a retificação de dados incorretos</li>
+            <li>Solicitar a rectificação de dados incorretos</li>
             <li>Solicitar a eliminação dos seus dados</li>
             <li>Solicitar a portabilidade dos dados</li>
             <li>Retirar o consentimento a qualquer momento</li>
             <li>Apresentar reclamação à CNPD</li>
           </ul>
           <p className="mt-2 leading-relaxed text-muted">
-            Pode exercer estes direitos através da sua área pessoal ou contactando-nos diretamente.
+            Pode exercer estes direitos através da sua área pessoal ou contactando-nos directamente.
           </p>
         </section>
 
@@ -76,7 +78,7 @@ export function PrivacyPolicyPage() {
           <p className="mb-2 leading-relaxed text-muted">
             Utilizamos cookies e tecnologias equivalentes (localStorage) para o funcionamento do
             site e, com o seu consentimento expresso, para estatísticas e publicidade. Antes de
-            qualquer cookie não essencial ser activado, pedimos-lhe consentimento através do banner
+            qualquer cookie não essencial ser activado, pedimos-lhe consentimento através do aviso
             que aparece na primeira visita.
           </p>
           <p className="mb-2 leading-relaxed text-muted">
@@ -89,7 +91,7 @@ export function PrivacyPolicyPage() {
             </li>
             <li>
               <strong className="text-ink">Estatísticas</strong> — ajudam-nos a perceber como o site
-              é usado, de forma agregada e anónima.
+              é utilizado, de forma agregada e anónima.
             </li>
             <li>
               <strong className="text-ink">Marketing e publicidade</strong> — permitem mostrar
@@ -118,8 +120,8 @@ export function PrivacyPolicyPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-ink">6. Conservação dos dados</h2>
           <p className="leading-relaxed text-muted">
-            Os dados pessoais são conservados enquanto a conta estiver ativa. Após a eliminação da
-            conta, os dados são pseudonimizados conforme exigido por lei, mantendo registos de
+            Os dados pessoais são conservados enquanto a conta estiver activa. Após a eliminação da
+            conta, os dados são pseudonimizados conforme exigido por lei, mantendo-se registos de
             auditoria por um período máximo de 5 anos. Os registos de consentimento de cookies são
             conservados pelo mesmo período, para prova de cumprimento perante a CNPD.
           </p>

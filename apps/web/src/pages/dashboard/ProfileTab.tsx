@@ -52,10 +52,10 @@ export function ProfileTab() {
     onSuccess: (res) => {
       updateUser(res.data)
       setEditing(false)
-      setProfileMsg({ type: 'success', text: 'Perfil atualizado com sucesso.' })
+      setProfileMsg({ type: 'success', text: 'Perfil actualizado com sucesso.' })
     },
     onError: (err) => {
-      setProfileMsg({ type: 'error', text: extractApiError(err, 'Erro ao atualizar perfil.') })
+      setProfileMsg({ type: 'error', text: extractApiError(err, 'Erro ao actualizar perfil.') })
     },
   })
 
@@ -73,7 +73,7 @@ export function ProfileTab() {
         type: 'error',
         text: extractApiError(
           err,
-          'Erro ao alterar palavra-passe. Verifique a palavra-passe atual.',
+          'Erro ao alterar palavra-passe. Verifique a palavra-passe actual.',
         ),
       })
     },
@@ -90,7 +90,7 @@ export function ProfileTab() {
     },
     onSuccess: (data) => {
       updateUser(data)
-      setAvatarMsg({ type: 'success', text: 'Avatar atualizado.' })
+      setAvatarMsg({ type: 'success', text: 'Avatar actualizado.' })
     },
     onError: (err) => {
       setAvatarMsg({ type: 'error', text: extractApiError(err, 'Erro ao carregar avatar.') })
@@ -116,7 +116,7 @@ export function ProfileTab() {
     setAvatarMsg(null)
     // Validacao client-side (defesa em profundidade; backend valida tambem)
     if (file.size > 2 * 1024 * 1024) {
-      setAvatarMsg({ type: 'error', text: 'O ficheiro excede 2MB.' })
+      setAvatarMsg({ type: 'error', text: 'O ficheiro não pode exceder 2 MB.' })
       return
     }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -291,7 +291,7 @@ export function ProfileTab() {
         <h3 className="text-lg font-semibold text-gray-900">Alterar palavra-passe</h3>
         <form onSubmit={handlePasswordSave} className="mt-4 space-y-4">
           <PasswordInput
-            label="Palavra-passe atual"
+            label="Palavra-passe actual"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required

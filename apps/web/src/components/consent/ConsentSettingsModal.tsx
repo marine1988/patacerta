@@ -53,7 +53,7 @@ export function ConsentSettingsModal({ isOpen, onClose }: ConsentSettingsModalPr
 
         <CategoryRow
           title="Estritamente necessárias"
-          description="Cookies essenciais para o funcionamento do site (sessão, segurança, preferências de idioma). Não podem ser desativadas."
+          description="Cookies essenciais para o funcionamento do site (sessão, segurança, preferências de idioma). Não podem ser desactivadas."
           checked
           locked
         />

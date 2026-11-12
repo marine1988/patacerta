@@ -24,7 +24,8 @@ function validatePassword(pw: string): string | null {
 export function RegisterPage() {
   usePageMeta({
     title: 'Criar conta',
-    description: 'Crie a sua conta PataCerta para contactar criadores e publicar serviços.',
+    description:
+      'Crie a sua conta PataCerta para contactar criadores verificados e publicar serviços para cães em Portugal.',
     canonicalPath: '/registar',
     noIndex: true,
   })
@@ -156,12 +157,12 @@ export function RegisterPage() {
               {successVerificationSent ? (
                 <>
                   <p className="mt-3 text-sm text-gray-600">
-                    Enviámos um email de verificação para <strong>{successEmail}</strong>. Clique no
-                    link no email para ativar a sua conta antes de iniciar sessão.
+                    Enviámos um email de verificação para <strong>{successEmail}</strong>. Abra o
+                    link desse email para ativar a conta e poder iniciar sessão.
                   </p>
                   <p className="mt-2 text-xs text-gray-500">
-                    Não recebeu o email? Verifique a pasta de spam ou solicite novo envio na página
-                    de login.
+                    Não recebeu o email? Verifique a pasta de spam ou peça um novo envio na página
+                    de entrada.
                   </p>
                 </>
               ) : (
@@ -266,8 +267,8 @@ export function RegisterPage() {
             />
 
             <p className="rounded-lg border border-line bg-surface-alt p-3 text-xs text-muted">
-              Crie a sua conta agora. Mais tarde, se quiser anunciar como criador ou prestador de
-              serviços, basta publicar o seu primeiro anúncio a partir da área pessoal.
+              Uma só conta dá acesso a tudo. Comece como família e, quando quiser, publique o
+              primeiro anúncio como criador ou prestador de serviços a partir da área pessoal.
             </p>
 
             <label className="flex items-start gap-2 text-sm text-gray-700">

@@ -64,7 +64,7 @@ test.describe('Homepage e navegação @prod-safe', () => {
     const slider = page.locator('[data-testid="breed-slider"]')
     await expect(slider).toBeVisible()
     // O card de exemplo mostra uma raça e uma percentagem
-    await expect(slider).toContainText(/% match/)
+    await expect(slider).toContainText(/% de compatibilidade/)
     // Navegação por dots existe
     const dots = slider.locator('button[role="tab"]')
     await expect(dots).toHaveCount(5)

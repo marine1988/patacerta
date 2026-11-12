@@ -117,7 +117,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
         >
           <div className="flex-1">
             <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
-            <Input name="query" defaultValue={query} placeholder="Nome ou descrição..." />
+            <Input name="query" defaultValue={query} placeholder="Ex.: nome do criador" />
           </div>
           <div className="md:w-56">
             <label className="mb-1 block text-xs font-medium text-gray-700">Distrito</label>
@@ -162,8 +162,8 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
             <Skeleton height="h-4" width="w-40" />
           ) : (
             <p>
-              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> criadores no
-              mapa
+              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span>{' '}
+              {(data?.total ?? 0) === 1 ? 'criador no mapa' : 'criadores no mapa'}
             </p>
           )}
         </div>
@@ -174,7 +174,7 @@ export function BreedersMapView({ searchParams, setSearchParams }: Props) {
           <div className="flex h-[500px] items-center justify-center">
             <EmptyState
               title="Erro ao carregar mapa"
-              description="Não foi possível carregar os criadores. Tente recarregar a página."
+              description="Não foi possível carregar os criadores. Verifique a sua ligação e tente novamente."
             />
           </div>
         ) : (

@@ -40,14 +40,14 @@ export function ResumoTab() {
       label: 'Verificações pendentes',
       value: stats.verifications.pending,
       tab: 'verificacoes',
-      hint: 'Documentos DGAV à espera de revisão',
+      hint: 'Documentos DGAV a aguardar revisão',
     },
     { label: 'Avaliações', value: stats.reviews.total, tab: 'avaliacoes' },
     {
       label: 'Avaliações sinalizadas',
       value: stats.reviews.flagged,
       tab: 'avaliacoes',
-      hint: 'Reviews marcadas para moderação',
+      hint: 'Avaliações sinalizadas a aguardar moderação',
     },
     { label: 'Mensagens', value: stats.messages.total },
   ]

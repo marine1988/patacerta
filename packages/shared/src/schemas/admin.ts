@@ -58,11 +58,11 @@ export type SuspendUserInput = z.infer<typeof suspendUserSchema>
 const FEATURED_DAYS_MAX = 365
 export const featuredPayloadSchema = z
   .object({
-    until: z.union([z.string().datetime({ message: 'Data ISO invalida' }), z.null()]).optional(),
+    until: z.union([z.string().datetime({ message: 'Data inválida' }), z.null()]).optional(),
     days: z.number().int().positive().max(FEATURED_DAYS_MAX).optional(),
   })
   .refine((v) => (v.until !== undefined) !== (v.days !== undefined), {
-    message: 'Forneca { until } ou { days } (mutuamente exclusivos)',
+    message: 'Indique { until } ou { days } (mutuamente exclusivos)',
   })
 export type FeaturedPayloadInput = z.infer<typeof featuredPayloadSchema>
 

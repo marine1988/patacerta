@@ -200,7 +200,11 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-gray-700">Pesquisar</label>
-              <Input name="query" defaultValue={query} placeholder="Título ou descrição..." />
+              <Input
+                name="query"
+                defaultValue={query}
+                placeholder="Ex.: passeios ao fim de semana"
+              />
             </div>
             <div className="md:w-56">
               <label className="mb-1 block text-xs font-medium text-gray-700">Categoria</label>
@@ -230,7 +234,9 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
 
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="md:w-32">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Preço min (€)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Preço mínimo (€)
+              </label>
               <Input
                 name="priceMin"
                 defaultValue={priceMin}
@@ -242,7 +248,9 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
               />
             </div>
             <div className="md:w-32">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Preço máx (€)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Preço máximo (€)
+              </label>
               <Input
                 name="priceMax"
                 defaultValue={priceMax}
@@ -272,7 +280,7 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
                     'A localizar...'
                   ) : (
                     <>
-                      <span aria-hidden>📍</span> A minha localização
+                      <span aria-hidden>📍</span> Usar a minha localização
                     </>
                   )}
                 </Button>
@@ -302,14 +310,14 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
             <Skeleton height="h-4" width="w-48" />
           ) : geo.coords ? (
             <p>
-              <span className="font-semibold text-gray-900">{markers.length}</span> anúncios num
-              raio de {radiusKm} km{' '}
+              <span className="font-semibold text-gray-900">{markers.length}</span>{' '}
+              {markers.length === 1 ? 'anúncio' : 'anúncios'} num raio de {radiusKm} km{' '}
               <span className="text-gray-400">(total nacional: {data?.total ?? 0})</span>
             </p>
           ) : (
             <p>
-              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span> anúncios no
-              mapa
+              <span className="font-semibold text-gray-900">{data?.total ?? 0}</span>{' '}
+              {(data?.total ?? 0) === 1 ? 'anúncio no mapa' : 'anúncios no mapa'}
             </p>
           )}
         </div>
@@ -323,7 +331,7 @@ export function ServicesMapView({ searchParams, setSearchParams }: Props) {
               description="Não foi possível carregar os anúncios. Verifique a sua ligação e tente novamente."
               action={
                 <Button onClick={() => refetch()} variant="primary">
-                  Tentar de novo
+                  Tentar novamente
                 </Button>
               }
             />

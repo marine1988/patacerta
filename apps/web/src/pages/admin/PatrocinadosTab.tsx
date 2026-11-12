@@ -98,7 +98,7 @@ const paymentLabel: Record<SlotPaymentStatus, string> = {
   PENDING: 'Pendente',
   FAILED: 'Falhou',
   REFUNDED: 'Reembolsado',
-  LEGACY: 'Legacy',
+  LEGACY: 'Legado',
 }
 
 function formatPrice(cents: number | null, currency: string | null): string {
@@ -253,7 +253,7 @@ export function PatrocinadosTab() {
                 { value: 'PENDING', label: 'Pendente' },
                 { value: 'FAILED', label: 'Falhou' },
                 { value: 'REFUNDED', label: 'Reembolsado' },
-                { value: 'LEGACY', label: 'Legacy' },
+                { value: 'LEGACY', label: 'Legado' },
               ]}
             />
           </div>
@@ -263,7 +263,7 @@ export function PatrocinadosTab() {
 
       <p className="mb-4 text-xs text-muted">
         ◆ <span className="italic text-caramel-500">Fase beta</span> — slots geridos manualmente.
-        Tracking de impressões/cliques activo; sem cobrança automática.
+        Registo de impressões e cliques activo; sem cobrança automática.
       </p>
 
       {!data || data.data.length === 0 ? (
@@ -279,10 +279,10 @@ export function PatrocinadosTab() {
                 <tr className="border-b border-gray-200 text-left text-gray-500">
                   <th className="px-3 py-2">Criador</th>
                   <th className="px-3 py-2">Raça</th>
-                  <th className="px-3 py-2">Janela</th>
+                  <th className="px-3 py-2">Período</th>
                   <th className="px-3 py-2">Estado</th>
                   <th className="px-3 py-2">Pagamento</th>
-                  <th className="px-3 py-2">Impr.</th>
+                  <th className="px-3 py-2">Impressões</th>
                   <th className="px-3 py-2">Cliques</th>
                   <th className="px-3 py-2">CTR</th>
                   <th className="px-3 py-2">Acções</th>
@@ -458,7 +458,7 @@ function SlotForm(props: SlotFormProps) {
       api.post('/admin/sponsored-slots', body).then((r) => r.data),
     onSuccess: () => props.onSuccess(),
     onError: (err: unknown) => {
-      setError(extractApiError(err, 'Erro ao criar slot'))
+      setError(extractApiError(err, 'Erro ao criar slot patrocinado.'))
     },
   })
 
@@ -467,7 +467,7 @@ function SlotForm(props: SlotFormProps) {
       api.patch(`/admin/sponsored-slots/${initialSlot!.id}`, body).then((r) => r.data),
     onSuccess: () => props.onSuccess(),
     onError: (err: unknown) => {
-      setError(extractApiError(err, 'Erro ao actualizar slot'))
+      setError(extractApiError(err, 'Erro ao actualizar slot patrocinado.'))
     },
   })
 
@@ -476,11 +476,11 @@ function SlotForm(props: SlotFormProps) {
     setError(null)
 
     if (!startsAt || !endsAt) {
-      setError('Indique a data de início e fim')
+      setError('Indique a data de início e a data de fim.')
       return
     }
     if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
-      setError('A data de fim tem de ser posterior à data de início')
+      setError('A data de fim tem de ser posterior à data de início.')
       return
     }
 
@@ -493,7 +493,7 @@ function SlotForm(props: SlotFormProps) {
       })
     } else {
       if (!breederId || !breedId) {
-        setError('Seleccione criador e raça')
+        setError('Seleccione o criador e a raça.')
         return
       }
       createMutation.mutate({

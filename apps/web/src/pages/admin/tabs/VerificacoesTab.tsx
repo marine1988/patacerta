@@ -45,7 +45,7 @@ export function VerificacoesTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      setActionError(extractApiError(err, 'Erro ao aprovar certificado.'))
+      setActionError(extractApiError(err, 'Erro ao aprovar o documento.'))
     },
   })
 
@@ -63,14 +63,14 @@ export function VerificacoesTab() {
       setActionError(null)
     },
     onError: (err: unknown) => {
-      setActionError(extractApiError(err, 'Erro ao rejeitar certificado.'))
+      setActionError(extractApiError(err, 'Erro ao rejeitar o documento.'))
     },
   })
 
   async function handleApprove(docId: number, businessName: string) {
     const ok = await confirm({
-      title: 'Aprovar DGAV',
-      message: `Aprovar DGAV de "${businessName}"? O criador ficará verificado.`,
+      title: 'Aprovar documento',
+      message: `Aprovar o documento de "${businessName}"? Se for o cartão DGAV, o criador fica verificado automaticamente.`,
       confirmLabel: 'Aprovar',
     })
     if (!ok) return
@@ -111,7 +111,9 @@ export function VerificacoesTab() {
       // Se o popup foi bloqueado, libertar a memoria imediatamente.
       if (!win) {
         URL.revokeObjectURL(blobUrl)
-        setActionError('O navegador bloqueou a janela. Permita pop-ups para este site.')
+        setActionError(
+          'O navegador bloqueou a janela. Autorize pop-ups para este site e tente novamente.',
+        )
         return
       }
       // Caso contrário, guardamos a URL para revogar no unmount. Não
@@ -141,7 +143,7 @@ export function VerificacoesTab() {
     return (
       <EmptyState
         title="Sem verificações pendentes"
-        description="Não existem certificados DGAV pendentes de revisão."
+        description="Não há documentos de verificação a aguardar revisão."
       />
     )
   }
@@ -170,7 +172,7 @@ export function VerificacoesTab() {
             <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <dt className="text-muted">NIF</dt>
               <dd className="text-ink">{doc.breeder.nif}</dd>
-              <dt className="text-muted">DGAV</dt>
+              <dt className="text-muted">Tipo</dt>
               <dd className="text-ink">{doc.docType}</dd>
               <dt className="text-muted">Ficheiro</dt>
               <dd>
@@ -213,10 +215,10 @@ export function VerificacoesTab() {
             <tr className="border-b border-line text-left text-muted">
               <th className="px-3 py-2">Criador</th>
               <th className="px-3 py-2">NIF</th>
-              <th className="px-3 py-2">DGAV</th>
+              <th className="px-3 py-2">Tipo de documento</th>
               <th className="px-3 py-2">Ficheiro</th>
               <th className="px-3 py-2">Data</th>
-              <th className="px-3 py-2">Ações</th>
+              <th className="px-3 py-2">Acções</th>
             </tr>
           </thead>
           <tbody>
@@ -273,7 +275,7 @@ export function VerificacoesTab() {
       <Modal
         isOpen={rejectingDocId !== null}
         onClose={() => setRejectingDocId(null)}
-        title="Rejeitar certificado DGAV"
+        title="Rejeitar documento"
       >
         {(() => {
           const rejectingDoc =
@@ -291,7 +293,7 @@ export function VerificacoesTab() {
               )}
               <p className="text-sm text-ink">
                 Indique o motivo da rejeição. O criador volta ao estado <strong>Rascunho</strong>{' '}
-                para poder enviar um novo certificado.
+                para poder enviar um novo documento.
               </p>
               <textarea
                 value={rejectNotes}

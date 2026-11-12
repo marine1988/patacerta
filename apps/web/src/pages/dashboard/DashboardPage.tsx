@@ -212,7 +212,7 @@ export default function DashboardPage() {
     },
     {
       id: 'avaliacoes',
-      label: 'Minhas avaliações',
+      label: 'As minhas avaliações',
       icon: (
         <svg
           className="h-4 w-4"
@@ -285,7 +285,7 @@ export default function DashboardPage() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Área pessoal</h1>
-        <p className="page-subtitle">Gerir o seu perfil, mensagens e definições.</p>
+        <p className="page-subtitle">Gerir o seu perfil, anúncios, mensagens e avaliações.</p>
       </div>
 
       <Tabs tabs={tabs} defaultTab={defaultTab} />

@@ -83,7 +83,7 @@ function runPhotoMulter(req: Request, res: Response): Promise<void> {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
-            return reject(new AppError(400, 'Cada foto pode ter no máximo 2MB', 'FILE_TOO_LARGE'))
+            return reject(new AppError(400, 'Cada foto pode ter no máximo 2 MB', 'FILE_TOO_LARGE'))
           }
           if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
             return reject(
@@ -209,7 +209,7 @@ export const createService = asyncHandler(async (req, res) => {
     select: { districtId: true },
   })
   if (!municipality || municipality.districtId !== input.districtId) {
-    throw new AppError(400, 'Concelho não pertence ao distrito indicado', 'MUNICIPALITY_MISMATCH')
+    throw new AppError(400, 'O concelho não pertence ao distrito indicado', 'MUNICIPALITY_MISMATCH')
   }
 
   // Validate coverage municipalities (if any)
@@ -303,7 +303,11 @@ export const updateService = asyncHandler(async (req, res) => {
       select: { districtId: true },
     })
     if (!municipality || municipality.districtId !== nextDistrictId) {
-      throw new AppError(400, 'Concelho não pertence ao distrito indicado', 'MUNICIPALITY_MISMATCH')
+      throw new AppError(
+        400,
+        'O concelho não pertence ao distrito indicado',
+        'MUNICIPALITY_MISMATCH',
+      )
     }
   }
 
@@ -704,7 +708,7 @@ export const reorderPhotos = asyncHandler(async (req, res) => {
   // Detectar duplicados antes de tocar na DB.
   const uniqueIds = new Set(photoIds)
   if (uniqueIds.size !== photoIds.length) {
-    throw new AppError(400, 'A lista de fotos contém duplicados.', 'PHOTOS_REORDER_DUPLICATES')
+    throw new AppError(400, 'A lista de fotos contém duplicados', 'PHOTOS_REORDER_DUPLICATES')
   }
 
   const existing = await prisma.servicePhoto.findMany({
@@ -1119,7 +1123,7 @@ export const contactService = asyncHandler(async (req, res) => {
     throw new AppError(400, 'Este anúncio não está activo', 'SERVICE_NOT_ACTIVE')
   }
   if (service.providerId === userId) {
-    throw new AppError(400, 'Não pode contactar o seu próprio anúncio', 'SELF_CONTACT')
+    throw new AppError(400, 'Não pode enviar mensagens para o seu próprio anúncio', 'SELF_CONTACT')
   }
   if (!service.provider || !service.provider.isActive || service.provider.suspendedAt) {
     throw new AppError(400, 'Este prestador não está a receber mensagens', 'PROVIDER_UNAVAILABLE')
@@ -1182,7 +1186,7 @@ export const reportService = asyncHandler(async (req, res) => {
   })
   if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
   if (service.providerId === userId) {
-    throw new AppError(400, 'Não pode denunciar o próprio anúncio', 'SELF_REPORT')
+    throw new AppError(400, 'Não pode denunciar o seu próprio anúncio', 'SELF_REPORT')
   }
 
   // Dedupe pending reports by this reporter.

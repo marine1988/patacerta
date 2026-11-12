@@ -328,7 +328,7 @@ export const login = asyncHandler(async (req, res) => {
       details: `reason=email_not_verified email=${maskEmail(email)}`,
       ipAddress: req.ip,
     })
-    throw new AppError(403, 'Verifique o seu email antes de iniciar sessão.', 'EMAIL_NOT_VERIFIED')
+    throw new AppError(403, 'Verifique o seu email antes de iniciar sessão', 'EMAIL_NOT_VERIFIED')
   }
 
   const payload = { userId: user.id, email: user.email, role: user.role }
@@ -655,5 +655,5 @@ export const resetPassword = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
-  res.json({ message: 'Palavra-passe atualizada com sucesso. Pode agora iniciar sessão.' })
+  res.json({ message: 'Palavra-passe actualizada com sucesso. Pode agora iniciar sessão.' })
 })

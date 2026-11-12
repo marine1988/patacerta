@@ -142,11 +142,14 @@ export function VerifyEmailPage() {
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">Verificação falhou</h1>
                 <p className="mt-2 text-sm text-gray-600">{message}</p>
+                <p className="mt-2 text-xs text-gray-500">
+                  O link pode ter expirado ou já ter sido usado. Peça um novo email abaixo.
+                </p>
               </div>
 
               <form onSubmit={handleResend} className="mt-6 space-y-3">
-                <p className="text-sm font-medium text-gray-700">Reenviar email de verificação:</p>
                 <Input
+                  label="Email"
                   type="email"
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
@@ -169,8 +172,8 @@ export function VerifyEmailPage() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 text-center">Verificar email</h1>
               <p className="mt-2 text-sm text-gray-600 text-center">
-                Não encontrou o seu email de verificação? Introduza o seu email abaixo para receber
-                um novo link.
+                Não encontrou o email de verificação? Indique o endereço da conta e enviamos-lhe um
+                novo link.
               </p>
 
               <form onSubmit={handleResend} className="mt-6 space-y-3">

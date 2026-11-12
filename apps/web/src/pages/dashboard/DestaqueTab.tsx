@@ -150,7 +150,7 @@ export function DestaqueTab() {
     if (checkout === 'success') {
       setMsg({
         type: 'success',
-        text: 'Pagamento recebido. Se pagou com cartão o destaque já está activo. Para Multibanco, ficará activo assim que pagarmos a referência (pode demorar alguns minutos a horas).',
+        text: 'Pagamento recebido. Se pagou com cartão, o destaque já está activo. Se escolheu Multibanco, fica activo assim que a referência for paga — pode levar alguns minutos a algumas horas.',
       })
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() })
       next.delete('checkout')
@@ -241,10 +241,9 @@ export function DestaqueTab() {
               Apareça como criador recomendado para uma raça
             </h2>
             <p className="mt-2 text-sm text-muted">
-              A sua ficha é mostrada aos utilizadores que terminam o simulador e recebem essa raça
-              como recomendação. Preço fixo:{' '}
-              <strong className="text-ink">10,00 € por 30 dias</strong> por raça. Máximo 3 criadores
-              destacados em simultâneo na mesma raça.
+              A sua ficha aparece a quem conclui o simulador e recebe essa raça como recomendação.
+              Preço fixo: <strong className="text-ink">10,00 € por 30 dias</strong> por raça. Máximo
+              3 criadores destacados em simultâneo na mesma raça.
             </p>
           </div>
           <div>
@@ -269,7 +268,7 @@ export function DestaqueTab() {
         ) : activeSlots.length === 0 ? (
           <Card>
             <p className="text-sm text-muted">
-              Ainda não tem destaques activos. Use o botão acima para comprar o primeiro.
+              Ainda não tem destaques activos. Compre o primeiro com o botão «Comprar destaque».
             </p>
           </Card>
         ) : (
@@ -439,7 +438,7 @@ function PurchaseModal({
     <Modal isOpen={open} onClose={onClose} title="Comprar destaque" size="md">
       <div className="flex flex-col gap-4">
         <p className="text-sm text-muted">
-          Escolha a raça onde quer ser destacado. Será cobrado{' '}
+          Escolha a raça em que quer aparecer em destaque. Será cobrado{' '}
           <strong className="text-ink">10,00 € por 30 dias</strong>. O pagamento é processado pela
           Stripe (cartão, Multibanco, MB Way, Google Pay).
         </p>

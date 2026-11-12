@@ -54,7 +54,7 @@ export function MessageActionsMenu({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label="Ações da mensagem"
+        aria-label="Acções da mensagem"
         onClick={() => setOpen((v) => !v)}
         className={`rounded p-1 transition-colors ${btnColor}`}
       >

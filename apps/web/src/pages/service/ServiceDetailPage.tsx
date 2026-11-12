@@ -140,9 +140,9 @@ function ShareLinks({ title, url }: { title: string; url: string }) {
         type="button"
         onClick={handleCopy}
         className="btn-secondary flex-1 text-xs"
-        aria-label="Copiar link"
+        aria-label="Copiar ligação"
       >
-        {copied ? 'Link copiado!' : 'Copiar link'}
+        {copied ? 'Ligação copiada' : 'Copiar ligação'}
       </button>
       <a
         href={`https://wa.me/?text=${encodedTitle}%20${encodedUrl}`}
@@ -463,7 +463,7 @@ export function ServiceDetailPage() {
   async function handleDeleteReview(reviewId: number) {
     const ok = await confirm({
       title: 'Eliminar avaliação',
-      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta ação é irreversível.',
+      message: 'Tem a certeza que deseja eliminar a sua avaliação? Esta acção é irreversível.',
       confirmLabel: 'Eliminar',
       variant: 'danger',
     })
@@ -648,7 +648,7 @@ export function ServiceDetailPage() {
                 </p>
                 {service.coverageAreas && service.coverageAreas.length > 0 && (
                   <p className="mt-1 text-sm text-gray-500">
-                    Também cobre:{' '}
+                    Também presta serviço em:{' '}
                     <span className="text-gray-700">
                       {service.coverageAreas.map((c) => c.municipality.namePt).join(', ')}
                     </span>
@@ -752,8 +752,8 @@ export function ServiceDetailPage() {
                     options={[
                       { value: 'recent', label: 'Mais recentes' },
                       { value: 'oldest', label: 'Mais antigas' },
-                      { value: 'highest', label: 'Melhor avaliação' },
-                      { value: 'lowest', label: 'Pior avaliação' },
+                      { value: 'highest', label: 'Melhor avaliadas' },
+                      { value: 'lowest', label: 'Pior avaliadas' },
                     ]}
                     value={reviewSort}
                     onChange={(e) => {
@@ -768,10 +768,10 @@ export function ServiceDetailPage() {
             {reviews.length === 0 ? (
               <div className="py-8">
                 <EmptyState
-                  title="Sem avaliações ainda"
+                  title="Ainda sem avaliações"
                   description={
                     canWriteReview
-                      ? 'Seja o primeiro a avaliar este serviço.'
+                      ? 'Seja a primeira pessoa a avaliar este serviço.'
                       : isSelf
                         ? 'O seu serviço ainda não tem avaliações.'
                         : !user
@@ -866,9 +866,7 @@ export function ServiceDetailPage() {
               />
               <div>
                 <p className="text-sm font-medium text-gray-900">{providerName || 'Anunciante'}</p>
-                <p className="text-xs text-gray-500">
-                  Membro desde {formatDate(service.createdAt)}
-                </p>
+                <p className="text-xs text-gray-500">Contacto pelas mensagens da PataCerta</p>
               </div>
             </div>
           </Card>
@@ -882,9 +880,11 @@ export function ServiceDetailPage() {
                 className="w-full"
                 onClick={handleSendMessageClick}
                 disabled={isSelf}
-                title={isSelf ? 'Não pode contactar o seu próprio anúncio' : undefined}
+                title={
+                  isSelf ? 'Não pode enviar uma mensagem sobre o seu próprio anúncio' : undefined
+                }
               >
-                {isSelf ? 'É o seu anúncio' : 'Enviar mensagem'}
+                {isSelf ? 'O seu anúncio' : 'Enviar mensagem'}
               </Button>
 
               {service.phone && (
@@ -903,14 +903,14 @@ export function ServiceDetailPage() {
                   rel="noopener noreferrer nofollow ugc"
                   className="btn-secondary flex w-full items-center justify-center gap-2"
                 >
-                  Website
+                  Website do anunciante
                 </a>
               )}
 
               {!hasContactDetails && !isSelf && (
                 <p className="text-center text-xs text-gray-500">
-                  O anunciante não disponibilizou contacto directo. Use a mensagem para falar com
-                  ele.
+                  O anunciante não indicou um contacto directo. Envie uma mensagem para esclarecer
+                  dúvidas.
                 </p>
               )}
 
@@ -967,7 +967,7 @@ export function ServiceDetailPage() {
               </div>
             ) : (
               <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
-                Sem coordenadas disponíveis
+                Localização não disponível
               </div>
             )}
             <p className="mt-2 text-sm text-gray-500">
@@ -991,8 +991,8 @@ export function ServiceDetailPage() {
         onSubmit={(values) => contactMutation.mutate(values)}
         title={`Contactar sobre: ${service.title}`}
         defaultSubject={`Interesse em: ${service.title}`}
-        subjectPlaceholder="Ex.: Disponibilidade e tarifa"
-        bodyPlaceholder="Olá, gostava de saber mais sobre este serviço..."
+        subjectPlaceholder="Ex.: disponibilidade e preço"
+        bodyPlaceholder="Olá, gostava de saber mais sobre este serviço…"
         isSubmitting={contactMutation.isPending}
         errorMessage={threadError}
       />
@@ -1002,8 +1002,8 @@ export function ServiceDetailPage() {
         onClose={() => setReportModalOpen(false)}
         onSubmit={(reason) => reportMutation.mutate(reason)}
         title="Denunciar anúncio"
-        description="Indique o motivo desta denúncia. A nossa equipa vai rever o anúncio o mais depressa possível."
-        placeholder="Ex.: anúncio enganador, conteúdo impróprio, suspeita de fraude..."
+        description="Indique o motivo da denúncia. A nossa equipa analisa o anúncio com a maior brevidade possível."
+        placeholder="Ex.: anúncio enganador, conteúdo impróprio, suspeita de fraude…"
         isSubmitting={reportMutation.isPending}
         errorMessage={reportError}
       />

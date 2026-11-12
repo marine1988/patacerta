@@ -24,52 +24,52 @@ const FAQS: FaqEntry[] = [
   {
     question: 'O que é a PataCerta?',
     answer:
-      'A PataCerta é um directório online de criadores de cães verificados e serviços relacionados (treino, banhos, hospedagem, transporte) em Portugal. Liga tutores a profissionais com documentação validada.',
+      'A PataCerta é um directório online que liga tutores a criadores de cães verificados e a prestadores de serviços para cães — treino, banhos, alojamento e transporte — em Portugal. Todos os profissionais apresentam documentação validada.',
   },
   {
     question: 'O que significa "criador verificado" na PataCerta?',
     answer:
-      'Um criador verificado submeteu documentação válida — NIF, número DGAV (Direcção-Geral de Alimentação e Veterinária) quando aplicável, e dados do canil — que foi revista pela equipa da PataCerta. A verificação confirma a documentação no momento de submissão; não é uma certificação de qualidade.',
+      'Um criador verificado apresentou documentação válida (NIF, número DGAV — Direção-Geral de Alimentação e Veterinária — quando aplicável, e dados do canil) que foi revista pela equipa da PataCerta. A verificação confirma a documentação no momento da submissão; não é uma certificação de qualidade.',
   },
   {
     question: 'Como verifico se um criador é legal em Portugal?',
     answer:
-      'Em Portugal, criadores que vendam ninhadas têm de estar registados na DGAV e ter NIF de actividade. Pode pedir o número DGAV ao criador e confirmar no portal oficial. Na PataCerta, o selo "verificado" indica que esses dados foram apresentados.',
+      'Em Portugal, os criadores que vendem ninhadas têm de estar registados na DGAV e ter NIF de actividade. Pode pedir o número DGAV ao criador e confirmá-lo no portal oficial. Na PataCerta, o selo «verificado» indica que esses dados foram apresentados.',
   },
   {
     question: 'A PataCerta cobra alguma comissão na compra de um cão?',
     answer:
-      'Não. A PataCerta é apenas um directório que liga tutores a criadores e prestadores de serviços. Toda a transacção é feita directamente entre as partes, sem intermediação financeira da plataforma.',
+      'Não. A PataCerta é apenas um directório que liga tutores a criadores e a prestadores de serviços. Toda a transacção é feita directamente entre as partes, sem intermediação financeira da plataforma.',
   },
   {
     question: 'Posso publicar um anúncio na PataCerta gratuitamente?',
     answer:
-      'Sim. Criar conta, publicar perfil de criador e publicar anúncios de serviços é gratuito. Funcionalidades premium poderão surgir no futuro mas serão sempre opcionais.',
+      'Sim. Criar conta, publicar o perfil de criador e anunciar serviços é gratuito. Os destaques pagos no simulador de raça são opcionais e servem apenas para dar mais visibilidade ao perfil.',
   },
   {
     question: 'Como avalio um criador ou um serviço?',
     answer:
-      'Após contactar um criador ou prestador através da PataCerta e trocarem mensagens (mínimo configurável de cada lado, dentro de uma janela temporal), fica elegível para deixar uma avaliação pública de 1 a 5 estrelas com comentário.',
+      'Depois de contactar um criador ou um prestador através da PataCerta e de trocarem algumas mensagens, passa a poder deixar uma avaliação pública de 1 a 5 estrelas, com comentário. Só é possível avaliar quem contactou, para que as avaliações correspondam a experiências reais.',
   },
   {
     question: 'O que é o CPC e a FCI?',
     answer:
-      'O CPC (Clube Português de Canicultura) é a entidade nacional reconhecida pela FCI (Fédération Cynologique Internationale) para registo de pedigrees em Portugal. Filiação a estas entidades é um indicador de seriedade na criação selectiva, mas não é obrigatória.',
+      'O CPC (Clube Português de Canicultura) é a entidade nacional reconhecida pela FCI (Fédération Cynologique Internationale) para o registo de pedigrees em Portugal. A filiação nestas entidades é um indicador de seriedade na criação selectiva, mas não é obrigatória.',
   },
   {
     question: 'A PataCerta apoia adopção?',
     answer:
-      'A PataCerta foca-se em criadores responsáveis e serviços para cães. Apoiamos a adopção responsável e recomendamos sempre considerar associações de protecção animal antes da compra. Estamos a estudar formas de integrar adopção numa fase futura.',
+      'A PataCerta centra-se em criadores responsáveis e em serviços para cães. Apoiamos a adopção responsável e recomendamos sempre considerar as associações de protecção animal antes de comprar. Estamos a estudar formas de integrar a adopção na plataforma numa fase futura.',
   },
   {
     question: 'Como contacto um criador ou anunciante?',
     answer:
-      'Cada perfil de criador e cada anúncio de serviço tem um botão "Enviar mensagem" que abre uma conversa interna na PataCerta. Não partilhamos contactos directos sem consentimento.',
+      'Cada perfil de criador e cada anúncio de serviço tem um botão «Enviar mensagem» que abre uma conversa interna na PataCerta. Não partilhamos contactos directos sem o seu consentimento.',
   },
   {
     question: 'Os meus dados pessoais estão seguros?',
     answer:
-      'Sim. A PataCerta cumpre o RGPD: pode consultar a nossa Política de Privacidade para detalhes sobre que dados recolhemos, com quem os partilhamos e como exercer os seus direitos (acesso, rectificação, eliminação).',
+      'Sim. A PataCerta cumpre o RGPD: consulte a nossa Política de Privacidade para saber que dados recolhemos, com quem os partilhamos e como exercer os seus direitos (acesso, rectificação, eliminação).',
   },
 ]
 
@@ -81,7 +81,7 @@ export function FaqPage() {
   usePageMeta({
     title: 'Perguntas Frequentes',
     description:
-      'Respostas às perguntas mais comuns sobre criadores verificados, serviços para cães, adopção, registo de pedigrees e como funciona a PataCerta.',
+      'Respostas às perguntas mais frequentes sobre criadores verificados, serviços para cães, adopção responsável, registo de pedigrees e o funcionamento da PataCerta.',
     canonicalPath: '/perguntas-frequentes',
     jsonLd: [faqPageJsonLd(FAQS), breadcrumbListJsonLd(breadcrumbs)],
   })

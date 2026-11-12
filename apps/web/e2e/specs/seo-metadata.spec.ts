@@ -67,7 +67,7 @@ const PUBLIC_ROUTES: RouteExpectation[] = [
   },
   {
     path: '/termos-pagamento',
-    title: 'Termos de Pagamento — Sponsored Slots',
+    title: 'Termos de Pagamento — Destaques no Simulador',
     canonicalPath: '/termos-pagamento',
   },
   {

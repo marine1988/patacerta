@@ -147,11 +147,11 @@ export const createServiceReview = asyncHandler(async (req, res) => {
   const authorId = req.user!.userId
 
   const service = await prisma.service.findUnique({ where: { id: data.serviceId } })
-  if (!service) throw new AppError(404, 'Serviço não encontrado', 'SERVICE_NOT_FOUND')
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
   if (service.providerId === authorId)
-    throw new AppError(400, 'Não pode avaliar o seu próprio serviço', 'SELF_REVIEW')
+    throw new AppError(400, 'Não pode avaliar o seu próprio anúncio', 'SELF_REVIEW')
   if (service.status !== 'ACTIVE')
-    throw new AppError(400, 'Só pode avaliar serviços activos', 'SERVICE_NOT_ACTIVE')
+    throw new AppError(400, 'Só pode avaliar anúncios activos', 'SERVICE_NOT_ACTIVE')
 
   // Anti-fraude: requerer interação real (admins ignoram).
   if (req.user!.role !== 'ADMIN') {
@@ -187,7 +187,7 @@ export const createServiceReview = asyncHandler(async (req, res) => {
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      throw new AppError(409, 'Já avaliou este serviço', 'REVIEW_EXISTS')
+      throw new AppError(409, 'Já avaliou este anúncio', 'REVIEW_EXISTS')
     }
     throw err
   }
@@ -452,7 +452,7 @@ export const getServiceReviewEligibility = asyncHandler(async (req, res) => {
   }
 
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
-  if (!service) throw new AppError(404, 'Serviço não encontrado', 'SERVICE_NOT_FOUND')
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
 
   // Auto-avaliação: também não elegível, mas razão diferente.
   if (service.providerId === authorId) {

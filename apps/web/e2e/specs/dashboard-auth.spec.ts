@@ -94,9 +94,9 @@ test.describe('Painel autenticado @prod-safe', () => {
       { timeout: 20_000 },
     )
 
-    // O tab de avaliações chama-se 'Minhas avaliações' (não 'Avaliações').
+    // O tab de avaliações chama-se 'As minhas avaliações' (não 'Avaliações').
     await page.goto('/area-pessoal?tab=avaliacoes')
-    await expect(page.getByRole('tab', { name: /^Minhas avaliações/ }).first()).toHaveAttribute(
+    await expect(page.getByRole('tab', { name: /^As minhas avaliações/ }).first()).toHaveAttribute(
       'aria-selected',
       'true',
       { timeout: 20_000 },

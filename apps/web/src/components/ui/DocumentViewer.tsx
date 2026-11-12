@@ -60,7 +60,7 @@ export function DocumentViewer({ url, fileName, maxWidth = 720 }: DocumentViewer
   return (
     <div className="rounded border border-line bg-surface-alt/40 p-4 text-sm">
       <p className="text-muted">
-        Pré-visualização não disponível para este tipo de ficheiro ({ext || 'desconhecido'}).
+        Não é possível pré-visualizar este tipo de ficheiro ({ext || 'formato desconhecido'}).
       </p>
       <a
         href={url}
@@ -87,7 +87,7 @@ function PdfViewer({ url, maxWidth }: PdfViewerProps) {
   if (error) {
     return (
       <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-        <p className="font-medium">Erro ao carregar o PDF</p>
+        <p className="font-medium">Não foi possível abrir o PDF</p>
         <p className="mt-1 text-xs">{error}</p>
         <a
           href={url}
@@ -95,7 +95,7 @@ function PdfViewer({ url, maxWidth }: PdfViewerProps) {
           rel="noopener noreferrer"
           className="mt-2 inline-block underline"
         >
-          Tentar abrir em nova janela
+          Abrir numa nova janela
         </a>
       </div>
     )
@@ -112,7 +112,7 @@ function PdfViewer({ url, maxWidth }: PdfViewerProps) {
         onLoadError={(err) => {
           // Mensagens de erro do pdf.js sao normalmente em ingles e
           // tecnicas. Damos uma versao curta + mantemos detalhe em xs.
-          setError(err.message || 'Falha desconhecida')
+          setError(err.message || 'Motivo desconhecido')
         }}
         loading={
           <div className="flex items-center justify-center py-12">
@@ -153,7 +153,7 @@ function PdfViewer({ url, maxWidth }: PdfViewerProps) {
             disabled={pageNumber >= numPages}
             className="rounded border border-line px-2 py-1 text-muted hover:bg-surface disabled:opacity-50"
           >
-            Próxima
+            Seguinte
           </button>
         </div>
       )}

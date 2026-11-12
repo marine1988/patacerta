@@ -151,7 +151,7 @@ async function getDogSpeciesId(): Promise<number> {
   if (dogSpeciesIdCache !== null) return dogSpeciesIdCache
   const dog = await prisma.species.findUnique({ where: { nameSlug: 'cao' }, select: { id: true } })
   if (!dog) {
-    throw new AppError(500, 'Espécie "cão" não configurada na base de dados', 'SPECIES_NOT_SEEDED')
+    throw new AppError(500, 'Configuração de espécies indisponível', 'SPECIES_NOT_SEEDED')
   }
   dogSpeciesIdCache = dog.id
   return dog.id
@@ -219,7 +219,7 @@ export const createBreederProfile = asyncHandler(async (req, res) => {
     where: { id: data.municipalityId, districtId: data.districtId },
   })
   if (!municipality)
-    throw new AppError(400, 'Concelho não pertence ao distrito', 'INVALID_MUNICIPALITY')
+    throw new AppError(400, 'O concelho não pertence ao distrito indicado', 'INVALID_MUNICIPALITY')
 
   // MVP: ignora speciesIds enviado pelo cliente; criadores são sempre de cães.
   const dogSpeciesId = await getDogSpeciesId()
@@ -382,7 +382,11 @@ export const updateMyBreederProfile = asyncHandler(async (req, res) => {
       where: { id: municipalityId, districtId },
     })
     if (!municipality)
-      throw new AppError(400, 'Concelho não pertence ao distrito', 'INVALID_MUNICIPALITY')
+      throw new AppError(
+        400,
+        'O concelho não pertence ao distrito indicado',
+        'INVALID_MUNICIPALITY',
+      )
     if (data.districtId !== undefined) updateData.districtId = data.districtId
     if (data.municipalityId !== undefined) updateData.municipalityId = data.municipalityId
   }
@@ -587,7 +591,7 @@ function runPhotoMulter(req: Request, res: Response): Promise<void> {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
-            return reject(new AppError(400, 'Cada foto pode ter no máximo 2MB', 'FILE_TOO_LARGE'))
+            return reject(new AppError(400, 'Cada foto pode ter no máximo 2 MB', 'FILE_TOO_LARGE'))
           }
           if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
             return reject(
@@ -760,7 +764,7 @@ export const reorderBreederPhotos = asyncHandler(async (req, res) => {
 
   const uniqueIds = new Set(photoIds)
   if (uniqueIds.size !== photoIds.length) {
-    throw new AppError(400, 'A lista de fotos contém duplicados.', 'PHOTOS_REORDER_DUPLICATES')
+    throw new AppError(400, 'A lista de fotos contém duplicados', 'PHOTOS_REORDER_DUPLICATES')
   }
 
   const existing = await prisma.breederPhoto.findMany({

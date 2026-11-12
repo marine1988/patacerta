@@ -36,7 +36,7 @@ export function ReviewForm({
     e.preventDefault()
     setLocalError(null)
     if (rating < 1 || rating > 5) {
-      setLocalError('Selecione uma classificação de 1 a 5 estrelas.')
+      setLocalError('Seleccione uma classificação de 1 a 5 estrelas.')
       return
     }
     if (title.trim().length < 3) {
@@ -82,7 +82,7 @@ export function ReviewForm({
           label="Título *"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Resume a sua experiência"
+          placeholder="Resuma a sua experiência"
           maxLength={200}
           required
         />

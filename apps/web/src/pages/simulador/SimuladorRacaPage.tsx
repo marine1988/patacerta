@@ -66,7 +66,7 @@ const STEPS: QuizStep[] = [
     options: [
       { value: 'low', label: 'Baixo', hint: 'Passeios curtos, vida tranquila' },
       { value: 'medium', label: 'Médio', hint: 'Caminhadas diárias de 30–60 min' },
-      { value: 'high', label: 'Alto', hint: 'Corro/pedalo várias vezes por semana' },
+      { value: 'high', label: 'Alto', hint: 'Corro ou pedalo várias vezes por semana' },
       { value: 'athlete', label: 'Atleta', hint: 'Treino intenso quase todos os dias' },
     ],
   },
@@ -77,7 +77,7 @@ const STEPS: QuizStep[] = [
       { value: 'rarely', label: 'Quase nunca' },
       { value: 'few_hours', label: 'Algumas horas' },
       { value: 'half_day', label: 'Metade do dia' },
-      { value: 'full_day', label: 'O dia inteiro' },
+      { value: 'full_day', label: 'O dia todo' },
     ],
   },
   {
@@ -85,7 +85,7 @@ const STEPS: QuizStep[] = [
     title: 'Já teve cão antes?',
     options: [
       { value: 'novice', label: 'É o meu primeiro cão' },
-      { value: 'some', label: 'Já tive cão, mas há tempos' },
+      { value: 'some', label: 'Já tive cão, mas há algum tempo' },
       { value: 'experienced', label: 'Sim, tenho bastante experiência' },
     ],
   },
@@ -115,7 +115,7 @@ const STEPS: QuizStep[] = [
     options: [
       { value: 'none', label: 'Nenhuma' },
       { value: 'mild', label: 'Ligeiras' },
-      { value: 'severe', label: 'Sérias — preciso de raça hipoalergénica' },
+      { value: 'severe', label: 'Sérias — preciso de uma raça hipoalergénica' },
     ],
   },
   {
@@ -133,7 +133,7 @@ const STEPS: QuizStep[] = [
     subtitle: 'Vizinhos próximos? Bebés a dormir?',
     options: [
       { value: 'quiet', label: 'Preciso de um cão sossegado' },
-      { value: 'medium', label: 'Algum latido tudo bem' },
+      { value: 'medium', label: 'Tolero alguns latidos' },
       { value: 'no_problem', label: 'Não me incomoda' },
     ],
   },
@@ -179,7 +179,7 @@ function ScoreBadge({ score }: { score: number }) {
     <span
       className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold ${tone}`}
     >
-      {score}% match
+      {score}% compatível
     </span>
   )
 }
@@ -211,14 +211,14 @@ export function SimuladorRacaPage() {
   usePageMeta({
     title: 'Simulador de Raça — Encontrar o cão ideal',
     description:
-      'Quiz curto que sugere as raças de cão mais adequadas ao seu estilo de vida: energia, espaço, tempo disponível e experiência com cães. Recomendações personalizadas em segundos.',
+      'Questionário curto que sugere as raças de cão mais adequadas ao seu estilo de vida: energia, espaço, tempo disponível e experiência com cães. Recomendações personalizadas em segundos.',
     canonicalPath: '/simulador-raca',
     jsonLd: [
       webApplicationJsonLd({
         path: '/simulador-raca',
         name: 'Simulador de Raça PataCerta',
         description:
-          'Ferramenta gratuita que recomenda raças de cão compatíveis com o estilo de vida do utilizador, com base em 11 perguntas sobre habitação, actividade, agregado familiar e preferências.',
+          'Ferramenta gratuita que recomenda raças de cão compatíveis com o estilo de vida de cada pessoa, com base em 11 perguntas sobre habitação, actividade, agregado familiar e preferências.',
         applicationCategory: 'LifestyleApplication',
       }),
       breadcrumbListJsonLd(breadcrumbs),
@@ -276,14 +276,14 @@ export function SimuladorRacaPage() {
             As raças mais compatíveis consigo
           </h1>
           <p className="mt-3 text-muted">
-            Baseado nas suas respostas, estas são as 5 raças que melhor encaixam no seu perfil.
+            Com base nas suas respostas, estas são as raças que melhor se adaptam ao seu perfil.
           </p>
         </header>
 
         {results.length === 0 ? (
           <Card>
             <p className="text-center text-muted">
-              Não encontrámos raças compatíveis. Tente ajustar as suas respostas.
+              Não encontrámos raças compatíveis com este perfil. Experimente ajustar as respostas.
             </p>
           </Card>
         ) : (
@@ -314,8 +314,8 @@ export function SimuladorRacaPage() {
                       </Badge>
                       <Badge>Energia {r.breed.energyLevel}/5</Badge>
                       {r.breed.hypoallergenic && <Badge>Hipoalergénica</Badge>}
-                      {r.breed.apartmentFriendly && <Badge>Boa em apartamento</Badge>}
-                      {r.breed.noviceFriendly && <Badge>Boa para iniciantes</Badge>}
+                      {r.breed.apartmentFriendly && <Badge>Adapta-se a apartamento</Badge>}
+                      {r.breed.noviceFriendly && <Badge>Adequada a iniciantes</Badge>}
                     </div>
 
                     {r.highlights.length > 0 && (
@@ -403,9 +403,7 @@ export function SimuladorRacaPage() {
     return (
       <div className="mx-auto max-w-[40rem] px-6 py-16 text-center">
         <h1 className="font-serif text-2xl text-ink">Algo correu mal</h1>
-        <p className="mt-3 text-muted">
-          Não foi possível calcular o resultado. Por favor tente novamente.
-        </p>
+        <p className="mt-3 text-muted">Não foi possível calcular o resultado. Tente novamente.</p>
         <div className="mt-6">
           <Button onClick={handleRestart}>Tentar novamente</Button>
         </div>
@@ -606,7 +604,8 @@ function SponsorThisBreedCTA({ breedId, breedNamePt }: SponsorThisBreedCTAProps)
     <div className="mt-3 rounded-lg border border-dashed border-caramel-500/40 bg-caramel-500/10 px-4 py-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-caramel-500">
-          É criador de <strong>{breedNamePt}</strong>? Destaque-se aqui — 10 € por 30 dias.
+          É criador de <strong>{breedNamePt}</strong>? Destaque o seu canil nesta raça — 10 € por 30
+          dias.
         </p>
         <Link to={href} className="btn-primary btn-sm">
           Comprar destaque

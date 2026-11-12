@@ -26,7 +26,7 @@ type ServiceReview = DashboardServiceReviewItem & {
 type UnifiedReview = (BreederReview & { kind: 'breeder' }) | (ServiceReview & { kind: 'service' })
 
 /**
- * Tab "Minhas avaliações" no painel — todas as avaliações que o utilizador
+ * Tab "As minhas avaliações" no painel — todas as avaliações que o utilizador
  * escreveu, sobre criadores E sobre serviços, intercaladas por data
  * descendente. Permite eliminar (chama o endpoint correto consoante o tipo).
  */
@@ -115,7 +115,7 @@ export function MyReviewsTab() {
     return (
       <EmptyState
         title="Ainda não escreveu avaliações"
-        description="Avalie criadores e serviços com quem teve contacto para ajudar a comunidade."
+        description="Partilhe a sua experiência com criadores e prestadores de serviços que contactou — ajuda outros donos de cães a decidir."
       />
     )
   }

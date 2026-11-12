@@ -120,7 +120,12 @@ export function ReceivedReviewsTab({ includeBreeder, includeServices }: Received
   )
 
   if (reviews.length === 0) {
-    return <EmptyState title="Sem avaliações" description="Ainda não recebeu avaliações." />
+    return (
+      <EmptyState
+        title="Ainda não recebeu avaliações"
+        description="Quando alguém avaliar o seu perfil de criador ou um dos seus serviços, a avaliação aparece aqui."
+      />
+    )
   }
 
   return (

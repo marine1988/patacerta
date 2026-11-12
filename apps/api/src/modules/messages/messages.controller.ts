@@ -196,18 +196,18 @@ export const createThread = asyncHandler(async (req, res) => {
   // ── Branch B: thread sobre serviço ──────────────────────────────────
   if (!data.serviceId) {
     // Defesa: o schema já o garante, mas mantemos contrato explícito.
-    throw new AppError(400, 'Destinatário em falta', 'INVALID_INPUT')
+    throw new AppError(400, 'Indique o destinatário', 'INVALID_INPUT')
   }
 
   const service = await prisma.service.findUnique({
     where: { id: data.serviceId },
     include: { provider: { select: { id: true, isActive: true, suspendedAt: true } } },
   })
-  if (!service) throw new AppError(404, 'Serviço não encontrado', 'SERVICE_NOT_FOUND')
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
   if (service.providerId === userId)
     throw new AppError(400, 'Não pode enviar mensagem a si próprio', 'SELF_MESSAGE')
   if (service.status !== 'ACTIVE' || !service.provider.isActive || service.provider.suspendedAt) {
-    throw new AppError(400, 'Este serviço não está a receber mensagens', 'SERVICE_UNAVAILABLE')
+    throw new AppError(400, 'Este anúncio não está a receber mensagens', 'SERVICE_UNAVAILABLE')
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -368,7 +368,11 @@ export const sendMessage = asyncHandler(async (req, res) => {
   if (req.user!.role === 'BREEDER') {
     const b = await prisma.breeder.findUnique({ where: { userId } })
     if (b?.status === 'SUSPENDED') {
-      throw new AppError(403, 'Conta suspensa. Não pode enviar mensagens.', 'BREEDER_SUSPENDED')
+      throw new AppError(
+        403,
+        'Conta suspensa — não é possível enviar mensagens',
+        'BREEDER_SUSPENDED',
+      )
     }
   }
   // Block message sending if the underlying service was suspended/removed.
@@ -378,7 +382,11 @@ export const sendMessage = asyncHandler(async (req, res) => {
       select: { status: true },
     })
     if (s?.status === 'SUSPENDED') {
-      throw new AppError(403, 'Serviço suspenso. Não pode enviar mensagens.', 'SERVICE_SUSPENDED')
+      throw new AppError(
+        403,
+        'Anúncio suspenso — não é possível enviar mensagens',
+        'SERVICE_SUSPENDED',
+      )
     }
   }
 
@@ -727,7 +735,7 @@ export const reportMessage = asyncHandler(async (req, res) => {
   }
 
   if (message.senderId === userId)
-    throw new AppError(400, 'Não pode denunciar a própria mensagem', 'SELF_REPORT')
+    throw new AppError(400, 'Não pode denunciar a sua própria mensagem', 'SELF_REPORT')
 
   // Dedupe atomico via unique constraint (message_id, reporter_id, status).
   // O findFirst + create anterior era racy: dois pedidos concorrentes do

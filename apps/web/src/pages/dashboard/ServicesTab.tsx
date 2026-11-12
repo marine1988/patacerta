@@ -84,7 +84,7 @@ const serviceStatusLabel: Record<ServiceStatusValue, string> = {
   DRAFT: 'Rascunho',
   ACTIVE: 'Publicado',
   PAUSED: 'Pausado',
-  SUSPENDED: 'Removido',
+  SUSPENDED: 'Suspenso',
 }
 
 interface ServiceFormState {
@@ -185,10 +185,10 @@ export function ServicesTab() {
       api.patch<ServiceItem>(`/services/${id}`, payload).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services', 'mine'] })
-      setMsg({ type: 'success', text: 'Anúncio atualizado com sucesso.' })
+      setMsg({ type: 'success', text: 'Anúncio actualizado com sucesso.' })
     },
     onError: (err) => {
-      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao atualizar anúncio.') })
+      setMsg({ type: 'error', text: extractApiError(err, 'Erro ao actualizar anúncio.') })
     },
   })
 
@@ -368,7 +368,7 @@ export function ServicesTab() {
     // Pré-checks que precisam de feedback orientado por secção (campos vazios
     // ou parsing de preço). O safeParse cobre depois min/max/regex/etc.
     if (!form.categoryId) {
-      setMsg({ type: 'error', text: 'Selecione uma categoria.' })
+      setMsg({ type: 'error', text: 'Seleccione uma categoria.' })
       setOpenSections((p) => ({ ...p, basics: true }))
       return
     }
@@ -379,7 +379,7 @@ export function ServicesTab() {
       return
     }
     if (!form.districtId || !form.municipalityId) {
-      setMsg({ type: 'error', text: 'Selecione distrito e concelho.' })
+      setMsg({ type: 'error', text: 'Seleccione distrito e concelho.' })
       setOpenSections((p) => ({ ...p, location: true }))
       return
     }
@@ -547,7 +547,7 @@ export function ServicesTab() {
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-gray-900">Os meus anúncios</h3>
           <p className="text-sm text-gray-500">
-            Crie e gira os seus anúncios de passeios, pet-sitting e treino.
+            Crie e faça a gestão dos seus anúncios de passeios, pet-sitting e treino.
           </p>
         </div>
         <Button className="shrink-0" onClick={startNew}>
@@ -591,7 +591,7 @@ export function ServicesTab() {
                 ['ACTIVE', 'Publicados'],
                 ['DRAFT', 'Rascunhos'],
                 ['PAUSED', 'Pausados'],
-                ['SUSPENDED', 'Removidos'],
+                ['SUSPENDED', 'Suspensos'],
               ] as const
             ).map(([key, label]) => {
               const count = counts[key]
@@ -616,7 +616,7 @@ export function ServicesTab() {
           </div>
 
           {filtered.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-500">Nenhum anúncio neste estado.</p>
+            <p className="py-6 text-center text-sm text-gray-500">Não tem anúncios neste estado.</p>
           ) : (
             <div className="space-y-3">
               {filtered.map((s) => {
@@ -637,7 +637,7 @@ export function ServicesTab() {
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
-                            sem foto
+                            Sem foto
                           </div>
                         )}
                       </div>
@@ -666,7 +666,7 @@ export function ServicesTab() {
                           </p>
                         )}
                         <p className="mt-1 text-xs text-gray-500">
-                          Atualizado {formatSmart(s.updatedAt)}
+                          Actualizado {formatSmart(s.updatedAt)}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end lg:shrink-0">
@@ -865,7 +865,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                 <Select
                   label="Categoria"
                   options={categories.map((c) => ({ value: String(c.id), label: c.namePt }))}
-                  placeholder="Selecionar categoria"
+                  placeholder="Seleccionar categoria"
                   value={form.categoryId}
                   onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
                 />
@@ -929,7 +929,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                   <Select
                     label="Distrito"
                     options={districts.map((d) => ({ value: String(d.id), label: d.namePt }))}
-                    placeholder="Selecionar distrito"
+                    placeholder="Seleccionar distrito"
                     value={form.districtId}
                     onChange={(e) =>
                       setForm((p) => ({
@@ -943,7 +943,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                   <Select
                     label="Concelho"
                     options={municipalities.map((m) => ({ value: String(m.id), label: m.namePt }))}
-                    placeholder="Selecionar concelho"
+                    placeholder="Seleccionar concelho"
                     value={form.municipalityId}
                     onChange={(e) => {
                       const next = e.target.value
@@ -985,12 +985,12 @@ function ServiceEditView(props: ServiceEditViewProps) {
                     Concelhos adicionais cobertos (opcional)
                   </label>
                   <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                    Selecione outros concelhos do mesmo distrito onde também presta este serviço.
+                    Seleccione outros concelhos do mesmo distrito onde também presta este serviço.
                     Máximo {COVERAGE_MAX}.
                   </p>
                   {!form.districtId ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Selecione primeiro o distrito.
+                      Seleccione primeiro o distrito.
                     </p>
                   ) : municipalities.length === 0 ? (
                     <div
@@ -1040,7 +1040,7 @@ function ServiceEditView(props: ServiceEditViewProps) {
                           })}
                       </div>
                       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        {form.coverageMunicipalityIds.length} de {COVERAGE_MAX} selecionados
+                        {form.coverageMunicipalityIds.length} de {COVERAGE_MAX} seleccionados
                       </p>
                     </>
                   )}

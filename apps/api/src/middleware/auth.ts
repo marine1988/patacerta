@@ -35,7 +35,7 @@ export function requireRole(...roles: string[]) {
       throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
     }
     if (!roles.includes(req.user.role)) {
-      throw new AppError(403, 'Sem permissões para esta ação', 'FORBIDDEN')
+      throw new AppError(403, 'Sem permissão para esta acção', 'FORBIDDEN')
     }
     next()
   }

@@ -34,7 +34,7 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
     <div className="mt-5 border-t border-line pt-5">
       <div className="mb-3 flex items-baseline justify-between">
         <p className="eyebrow-muted">
-          ◆ <span className="italic text-caramel-500">Criadores recomendados</span>
+          ◆ <span className="italic text-caramel-500">Criadores patrocinados</span>
         </p>
         <Link
           to={`/pesquisar?breedId=${breedId}`}

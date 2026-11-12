@@ -695,7 +695,7 @@ export const unsuspendBreeder = asyncHandler(async (req, res) => {
   })
   if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
   if (breeder.status !== 'SUSPENDED') {
-    throw new AppError(400, 'Criador nao esta suspenso', 'NOT_SUSPENDED')
+    throw new AppError(400, 'Criador não está suspenso', 'NOT_SUSPENDED')
   }
 
   // Ao reactivar, o status volta para o que faria sentido pelo estado
@@ -1390,7 +1390,7 @@ function parseFeaturedUntil(body: unknown): Date | null {
   if (typeof b.until === 'string') {
     const d = new Date(b.until)
     if (isNaN(d.getTime())) {
-      throw new AppError(400, 'Data invalida', 'INVALID_DATE')
+      throw new AppError(400, 'Data inválida', 'INVALID_DATE')
     }
     // Rejeitar datas no passado: equivaleria a um null mas confunde o
     // historial de auditoria ("Promoted until 2020-01-01") e contorna
@@ -1408,7 +1408,7 @@ function parseFeaturedUntil(body: unknown): Date | null {
   }
   if (typeof b.days === 'number') {
     if (b.days <= 0 || b.days > FEATURE_DURATION_DAYS_MAX) {
-      throw new AppError(400, 'Numero de dias invalido', 'INVALID_DAYS')
+      throw new AppError(400, 'Número de dias inválido', 'INVALID_DAYS')
     }
     const d = new Date()
     d.setDate(d.getDate() + b.days)
@@ -1425,7 +1425,7 @@ export const setServiceFeatured = asyncHandler(async (req, res) => {
     where: { id },
     select: { id: true, status: true },
   })
-  if (!service) throw new AppError(404, 'Servico nao encontrado', 'SERVICE_NOT_FOUND')
+  if (!service) throw new AppError(404, 'Anúncio não encontrado', 'SERVICE_NOT_FOUND')
   // Promover servicos nao-ACTIVE faria com que conteudo pausado/suspenso
   // aparecesse em homepage/listagens de destaque. Bloqueamos a promocao;
   // a remocao (featuredUntil=null) e' sempre permitida para limpar
@@ -1469,7 +1469,7 @@ export const setBreederFeatured = asyncHandler(async (req, res) => {
     where: { id },
     select: { id: true, status: true },
   })
-  if (!breeder) throw new AppError(404, 'Criador nao encontrado', 'BREEDER_NOT_FOUND')
+  if (!breeder) throw new AppError(404, 'Criador não encontrado', 'BREEDER_NOT_FOUND')
   if (featuredUntil !== null && breeder.status !== 'VERIFIED') {
     throw new AppError(
       400,
@@ -1515,7 +1515,11 @@ export const setBreederFeatured = asyncHandler(async (req, res) => {
  */
 export const runDemoSeed = asyncHandler(async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
-    throw new AppError(403, 'Demo seed nao pode correr em produccao', 'FORBIDDEN_IN_PRODUCTION')
+    throw new AppError(
+      403,
+      'O seed de demonstração não pode ser executado em produção',
+      'FORBIDDEN_IN_PRODUCTION',
+    )
   }
 
   const adminUserId = req.user!.userId
@@ -1565,7 +1569,7 @@ export const runDemoSeed = asyncHandler(async (req, res) => {
     const timeout = setTimeout(
       () => {
         child.kill('SIGTERM')
-        reject(new AppError(504, 'Demo seed excedeu 5 minutos', 'SEED_TIMEOUT'))
+        reject(new AppError(504, 'O seed de demonstração excedeu 5 minutos', 'SEED_TIMEOUT'))
       },
       5 * 60 * 1000,
     )
@@ -1594,7 +1598,11 @@ export const runDemoSeed = asyncHandler(async (req, res) => {
     })
   }).catch((err) => {
     if (err instanceof AppError) throw err
-    throw new AppError(500, `Demo seed falhou: ${(err as Error).message}`, 'SEED_SPAWN_ERROR')
+    throw new AppError(
+      500,
+      `O seed de demonstração falhou: ${(err as Error).message}`,
+      'SEED_SPAWN_ERROR',
+    )
   })
 
   const durationMs = Date.now() - started

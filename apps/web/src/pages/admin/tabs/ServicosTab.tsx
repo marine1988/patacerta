@@ -135,7 +135,9 @@ export function ServicosTab() {
   }
 
   if (isError) {
-    return <EmptyState title="Erro ao carregar anúncios" description="Tente novamente." />
+    return (
+      <EmptyState title="Erro ao carregar anúncios" description="Tente novamente mais tarde." />
+    )
   }
 
   return (
@@ -172,7 +174,10 @@ export function ServicosTab() {
       {actionError && <p className="mb-3 text-sm text-red-600">{actionError}</p>}
 
       {!data || data.data.length === 0 ? (
-        <EmptyState title="Sem anúncios" description="Nenhum anúncio corresponde aos filtros." />
+        <EmptyState
+          title="Sem anúncios"
+          description="Nenhum anúncio corresponde aos filtros aplicados."
+        />
       ) : (
         <>
           <div className="space-y-3">
@@ -195,7 +200,9 @@ export function ServicosTab() {
                       </Badge>
                       <Badge variant="gray">{s.category.namePt}</Badge>
                       {s._count.reports > 0 && (
-                        <Badge variant="red">{s._count.reports} denúncia(s)</Badge>
+                        <Badge variant="red">
+                          {s._count.reports} {s._count.reports === 1 ? 'denúncia' : 'denúncias'}
+                        </Badge>
                       )}
                     </div>
                     <a
@@ -285,6 +292,10 @@ export function ServicosTab() {
         size="md"
       >
         <div className="space-y-3">
+          <p className="text-sm text-muted">
+            O anúncio deixa de estar visível ao público e só pode ser reactivado por um
+            administrador. O motivo fica registado no histórico de auditoria.
+          </p>
           <div>
             <label className="label">Motivo (mín. 15, máx. 500)</label>
             <textarea
