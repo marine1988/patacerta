@@ -214,11 +214,21 @@ test.describe('Painel autenticado @prod-safe', () => {
     ).toBeGreaterThan(0)
 
     // M-03: o token de acesso nunca fica acessível a JavaScript persistente.
+    // Se isto falhar, a mensagem diz qual é o bundle servido: um `index-*.js`
+    // diferente do build actual significa que o alvo está a servir uma imagem
+    // ANTERIOR ao M-03 (aconteceu em stage: Last-Modified 02:05:44Z com M-03
+    // commitado às 02:22), não uma regressão da migração.
     const storage = await page.evaluate(() => ({
       accessToken: window.localStorage.getItem('access_token'),
       user: window.localStorage.getItem('user'),
+      bundle:
+        document.querySelector('script[type="module"]')?.getAttribute('src') ?? '<sem bundle>',
     }))
-    expect(storage.accessToken).toBeNull()
+    expect(
+      storage.accessToken,
+      `access_token em localStorage — bundle servido: ${storage.bundle}. ` +
+        'Ou o alvo serve um build anterior ao M-03, ou a migração regrediu.',
+    ).toBeNull()
     expect(storage.user, 'o perfil em cache é o que dispara o refresh no mount').toBeTruthy()
 
     // E a app está mesmo autenticada (navbar sem "Entrar").
