@@ -5,7 +5,7 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
-import { errorHandler } from './middleware/error-handler.js'
+import { errorHandler, AppError } from './middleware/error-handler.js'
 import { apiRateLimit } from './middleware/rate-limit.js'
 import { healthRouter, statusRouter } from './modules/health/health.router.js'
 import { authRouter } from './modules/auth/auth.router.js'
@@ -197,7 +197,9 @@ app.use(
       // Pedidos same-origin / curl / health checks nao tem origin: aceita-os.
       if (!origin) return cb(null, true)
       if (corsOrigins.includes(origin)) return cb(null, true)
-      cb(new Error(`CORS bloqueado: origem ${origin} nao autorizada`))
+      // Rejeicao CORS: 403 via error handler, sem stack trace em logs.
+      // (Antes: cb(new Error(...)) caia no handler generico -> 500 + stack.)
+      cb(new AppError(403, `CORS bloqueado: origem ${origin} nao autorizada`, 'CORS_BLOCKED'))
     },
     credentials: true,
   }),

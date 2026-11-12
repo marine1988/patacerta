@@ -60,6 +60,19 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return
   }
 
+  // Rejeicao CORS: devolve 403 sem log de stack (evita info disclosure / DoS
+  // por spam de origins invalidos). Detecta tanto AppError com code
+  // CORS_BLOCKED como erros genericos cuja mensagem mencione CORS.
+  const isCorsError =
+    (err as { code?: string }).code === 'CORS_BLOCKED' || /cors/i.test(err.message || '')
+  if (isCorsError) {
+    res.status(403).json({
+      error: 'Origem não autorizada',
+      code: 'CORS_BLOCKED',
+    })
+    return
+  }
+
   // Unknown errors
   console.error('[Unhandled Error]', err)
   res.status(500).json({
