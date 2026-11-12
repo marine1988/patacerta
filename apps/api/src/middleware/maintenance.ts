@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import crypto from 'node:crypto'
 
 /**
  * Maintenance mode middleware.
@@ -28,8 +29,13 @@ export function maintenanceMode(req: Request, res: Response, next: NextFunction)
   // Allow bypass with secret header (for admin access during maintenance)
   const bypassKey = process.env.MAINTENANCE_BYPASS_KEY
   const bypassHeader = req.get('X-Maintenance-Bypass')
-  if (bypassKey && bypassHeader === bypassKey) {
-    return next()
+  if (bypassKey && bypassHeader) {
+    const keyBuf = Buffer.from(bypassKey, 'utf8')
+    const headerBuf = Buffer.from(bypassHeader, 'utf8')
+    // crypto.timingSafeEqual throws if buffers differ in length, so check first.
+    if (keyBuf.length === headerBuf.length && crypto.timingSafeEqual(keyBuf, headerBuf)) {
+      return next()
+    }
   }
 
   // Return 503 with maintenance info
