@@ -31,11 +31,10 @@ import {
 
 export const authRouter = Router()
 
-// Logout accepts an optional refresh token so the client can always call it.
-// When present, the whole rotation chain is revoked.
-const logoutSchema = z.object({
-  refreshToken: z.string().min(1).optional(),
-})
+// Logout no longer reads a refresh token from the body: it comes only from
+// the httpOnly cookie (see auth.controller.ts `readRefreshToken`). Body is
+// expected to be empty.
+const logoutSchema = z.object({})
 
 // Cada endpoint tem o seu proprio bucket de rate-limit (ver rate-limit.ts).
 // Antes /api/auth/* partilhava um unico balde, e brute-force ao login podia

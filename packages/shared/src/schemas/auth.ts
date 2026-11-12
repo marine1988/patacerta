@@ -35,12 +35,10 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 })
 
-// Refresh token e lido preferencialmente do cookie httpOnly. O campo no
-// body so e aceite como fallback durante o rollout do FE; mantemo-lo
-// opcional para nao falhar a validacao quando o pedido vem so com cookie.
-export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1).optional(),
-})
+// Refresh token is read exclusively from the httpOnly cookie (see
+// auth.controller.ts `readRefreshToken`). The body is no longer accepted,
+// so the schema rejects any payload (empty body expected).
+export const refreshTokenSchema = z.object({})
 
 // B-12: Schema for user profile update (PATCH /users/me)
 export const updateUserSchema = z

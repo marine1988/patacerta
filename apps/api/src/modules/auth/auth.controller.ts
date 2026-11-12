@@ -61,15 +61,15 @@ function clearRefreshCookie(res: Response): void {
 }
 
 /**
- * Read refresh token from cookie first, then fall back to body for back-compat
- * during the FE rollout. Once the FE no longer sends the body field, the
- * fallback can be removed and the body schema tightened.
+ * Read refresh token exclusively from the httpOnly cookie. The previous
+ * body fallback (`refreshToken` field) was removed: the FE never sends the
+ * token in the body (it relies on the cookie set by /auth/login), and
+ * accepting it from the body widened the CSRF surface for cross-origin
+ * requests. Back-compat with old clients that still send the field is
+ * dropped on purpose — they must re-authenticate via cookie.
  */
 function readRefreshToken(req: Request): string | undefined {
-  const fromCookie = (req.cookies as { refresh_token?: string } | undefined)?.refresh_token
-  if (fromCookie) return fromCookie
-  const fromBody = (req.body as { refreshToken?: string } | undefined)?.refreshToken
-  return fromBody
+  return (req.cookies as { refresh_token?: string } | undefined)?.refresh_token
 }
 
 /**
