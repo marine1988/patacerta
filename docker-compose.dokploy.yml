@@ -122,6 +122,13 @@ services:
       start_period: 10s
 
   # ── Backend API ──
+  # SECURITY (L-05): the API is NEVER published to the host. It is reachable
+  # only inside the compose network (web/nginx reverse-proxies /api/* and
+  # Traefik terminates TLS). `expose` (not `ports`) keeps the container
+  # port internal, so X-Forwarded-For cannot be spoofed by direct access.
+  # Express `trust proxy` is a custom function (see apps/api/src/lib/trusted-proxy.ts)
+  # that only trusts the immediate proxy (loopback/RFC1918) and rejects
+  # IPv4-mapped IPv6 (::ffff:).
   api:
     build:
       context: .

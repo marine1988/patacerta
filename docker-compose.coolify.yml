@@ -45,6 +45,11 @@ services:
       retries: 3
 
   # ── Backend API ──
+  # SECURITY (L-05): the API is NEVER published to the host — no `ports`/`expose`
+  # needed; it is reachable only inside the compose network (web/nginx
+  # reverse-proxies /api/*). Express `trust proxy` is a custom function (see
+  # apps/api/src/lib/trusted-proxy.ts) that only trusts the immediate proxy
+  # (loopback/RFC1918) and rejects IPv4-mapped IPv6 (::ffff:).
   api:
     build:
       context: .

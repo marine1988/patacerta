@@ -29,6 +29,7 @@ import { paymentsRouter } from './modules/payments/payments.router.js'
 import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
 import { ensureBucket } from './lib/minio.js'
 import { isProd, isStage, isDev, isHttps } from './lib/env.js'
+import { isTrustedProxyAddress, normalizeClientIp } from './lib/trusted-proxy.js'
 import { maintenanceMode } from './middleware/maintenance.js'
 
 const app = express()
@@ -51,33 +52,8 @@ const PORT = parseInt(process.env.PORT || '3001', 10)
 //  3. Any client IP that still resolves to an IPv4-mapped IPv6 is normalised
 //     back to the socket address by the middleware below, so it can never be
 //     used as a rate-limit key or stored in audit/consent logs.
-function isTrustedProxyAddress(ip: string): boolean {
-  if (typeof ip !== 'string' || ip.length === 0) return false
-  const lower = ip.toLowerCase()
-  // Never trust IPv4-mapped IPv6 (CVE-2026-90711).
-  if (lower.startsWith('::ffff:')) return false
-
-  // Loopback.
-  if (ip === '127.0.0.1' || ip === '::1') return true
-
-  // IPv4 private / link-local ranges (Traefik runs inside Docker).
-  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
-  if (m) {
-    const a = Number(m[1])
-    const b = Number(m[2])
-    if (a === 10) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 192 && b === 168) return true
-    if (a === 127) return true
-    if (a === 169 && b === 254) return true
-  }
-
-  // IPv6 unique-local / link-local.
-  if (lower.startsWith('fc') || lower.startsWith('fd')) return true
-  if (lower.startsWith('fe80:')) return true
-
-  return false
-}
+// Trusted-proxy validation lives in ./lib/trusted-proxy.ts (L-05 / C-01)
+// and is covered by trusted-proxy.test.ts.
 
 app.set('trust proxy', (ip: string, i: number) => {
   // Only the immediate reverse proxy (1 hop) may be trusted.
@@ -88,11 +64,10 @@ app.set('trust proxy', (ip: string, i: number) => {
 // Strip any IPv4-mapped IPv6 that slipped through into req.ip so it can
 // never be used as a rate-limit key or persisted in audit/consent logs.
 app.use((req, _res, next) => {
-  const ip = req.ip
-  if (typeof ip === 'string' && ip.toLowerCase().startsWith('::ffff:')) {
-    const fallback = req.socket?.remoteAddress || ip
+  const normalized = normalizeClientIp(req.ip, req.socket?.remoteAddress)
+  if (normalized !== req.ip) {
     Object.defineProperty(req, 'ip', {
-      value: fallback,
+      value: normalized,
       writable: true,
       configurable: true,
     })
