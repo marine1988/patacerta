@@ -173,6 +173,13 @@ services:
       # contentores só por existirem. Sem esta linha, definir PUBLIC_URL no
       # painel não chega ao processo da API e o sitemap cai em FRONTEND_URL.
       PUBLIC_URL: ${PUBLIC_URL:-}
+      # Geocoding (Nominatim) — SSRF guard: a API valida esta URL no boot
+      # (apps/api/src/lib/nominatim-url.ts): só HTTPS, host na allowlist e
+      # nada de endereços internos. Listadas aqui pelo mesmo motivo do
+      # PUBLIC_URL — o painel do Dokploy só alimenta a interpolação.
+      NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL:-https://nominatim.openstreetmap.org}
+      NOMINATIM_ALLOWED_HOSTS: ${NOMINATIM_ALLOWED_HOSTS:-}
+      NOMINATIM_EMAIL: ${NOMINATIM_EMAIL:-}
       # Lower-environment flags — do NOT enable in production
       RESET_DB_ON_BOOT: ${RESET_DB_ON_BOOT:-false}
       RUN_SEED_ON_BOOT: ${RUN_SEED_ON_BOOT:-false}

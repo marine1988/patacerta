@@ -84,10 +84,31 @@
 
 ## 8. Geocoding (Nominatim)
 
-| Variável             | Obrigatória? | Ambiente | Serviço | Default                               | Descrição                                                                               |
-| -------------------- | ------------ | -------- | ------- | ------------------------------------- | --------------------------------------------------------------------------------------- |
-| `NOMINATIM_BASE_URL` | Não          | todos    | api     | `https://nominatim.openstreetmap.org` | Endpoint de geocoding                                                                   |
-| `NOMINATIM_EMAIL`    | Recomendada  | todos    | api     | —                                     | **Exigido pela policy do OSM** (enviado no User-Agent). Usar contacto real por ambiente |
+| Variável                  | Obrigatória? | Ambiente | Serviço | Default                               | Descrição                                                                               |
+| ------------------------- | ------------ | -------- | ------- | ------------------------------------- | --------------------------------------------------------------------------------------- |
+| `NOMINATIM_BASE_URL`      | Não          | todos    | api     | `https://nominatim.openstreetmap.org` | Endpoint de geocoding. **Validado no boot** — ver regras abaixo                         |
+| `NOMINATIM_ALLOWED_HOSTS` | Não          | todos    | api     | —                                     | CSV de hostnames extra autorizados (instância self-hosted do Nominatim)                 |
+| `NOMINATIM_EMAIL`         | Recomendada  | todos    | api     | —                                     | **Exigido pela policy do OSM** (enviado no User-Agent). Usar contacto real por ambiente |
+
+`NOMINATIM_BASE_URL` é controlada pelo operador, não pelo utilizador final, mas é o único
+sítio onde a API emite pedidos server-side para um host escolhido por configuração — logo é
+uma superfície de SSRF se a env for comprometida ou mal configurada. A validação vive em
+`apps/api/src/lib/nominatim-url.ts` e **falha no arranque da API** (não degrada em silêncio
+para o default):
+
+1. Apenas `https:` — `http:`, `file:`, `gopher:`, `data:` são recusados.
+2. Sem credenciais no URL (`https://host@evil.tld` é o truque clássico de parsing) e sem
+   query string/fragment.
+3. O host tem de estar na allowlist: `nominatim.openstreetmap.org` (builtin) + os hostnames
+   listados em `NOMINATIM_ALLOWED_HOSTS` (CSV, opt-in explícito para self-hosted).
+   Entradas malformadas nessa lista são ignoradas, não interpretadas por aproximação.
+4. Endereços literais privados/loopback/link-local (incl. `169.254.169.254`, `::1`,
+   `::ffff:10.0.0.1`) e `localhost`/`*.local`/`*.internal` são **sempre** recusados, mesmo
+   que apareçam na allowlist.
+
+Nota de deploy: tal como `PUBLIC_URL`, estas vars só chegam ao contentor se estiverem
+listadas em `services.api.environment` dos composes (`docker-compose.dokploy.yml`,
+`docker-compose.coolify.yml`) — defini-las no painel não é suficiente.
 
 ## 9. AdSense (Publicidade)
 

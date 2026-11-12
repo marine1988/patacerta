@@ -10,6 +10,11 @@
 //      to the district centroid stored in the `districts` table.
 //
 // Design notes:
+// - Nominatim's base URL is operator-controlled (never user input) but is
+//   still validated by `lib/nominatim-url.ts`: https only, host allowlisted
+//   (SSRF guard — see that file for the full rule set). Resolution happens
+//   at import time so a bad value fails the API boot loudly instead of
+//   silently degrading geocoding to the district centroid.
 // - Nominatim free tier requires a valid contact email in the User-Agent;
 //   see https://operations.osmfoundation.org/policies/nominatim/. The email
 //   is configured via NOMINATIM_EMAIL.
@@ -20,8 +25,12 @@
 // - Timeout is hard-capped at 5s to avoid slowing down POST/PATCH requests.
 
 import { prisma } from './prisma.js'
+import { resolveNominatimBaseUrl } from './nominatim-url.js'
 
-const DEFAULT_BASE_URL = 'https://nominatim.openstreetmap.org'
+const BASE_URL = resolveNominatimBaseUrl(
+  process.env.NOMINATIM_BASE_URL,
+  process.env.NOMINATIM_ALLOWED_HOSTS,
+)
 const TIMEOUT_MS = 5000
 
 export type GeocodeSource = 'nominatim' | 'district_centroid' | 'none'
@@ -43,17 +52,13 @@ interface NominatimHit {
   lon: string
 }
 
-function getBaseUrl(): string {
-  return process.env.NOMINATIM_BASE_URL?.replace(/\/+$/, '') || DEFAULT_BASE_URL
-}
-
 function getUserAgent(): string {
   const email = process.env.NOMINATIM_EMAIL || 'contact@patacerta.pt'
   return `PataCerta/1.0 (${email})`
 }
 
 async function queryNominatim(query: string): Promise<NominatimHit | null> {
-  const url = new URL(`${getBaseUrl()}/search`)
+  const url = new URL(`${BASE_URL}/search`)
   url.searchParams.set('q', query)
   url.searchParams.set('format', 'json')
   url.searchParams.set('limit', '1')
