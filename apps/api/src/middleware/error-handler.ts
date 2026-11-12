@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
+import { logger } from '../lib/logger.js'
 
 export class AppError extends Error {
   constructor(
@@ -74,7 +75,20 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   }
 
   // Unknown errors
-  console.error('[Unhandled Error]', err)
+  // Em produção logamos apenas a mensagem + código (sem stack trace nem
+  // objecto de erro completo, que podem conter PII/stacks). Em dev (NODE_ENV
+  // !== 'production') incluímos o stack para facilitar o debug. O logger
+  // estruturado aplica redact (paths sensíveis) em ambos os casos.
+  const isDev = process.env.NODE_ENV !== 'production'
+  const loggedError: { message?: string; code?: string; stack?: string } = {
+    message: err?.message,
+    code: (err as { code?: string } | null)?.code,
+  }
+  if (isDev) {
+    loggedError.stack = err?.stack
+  }
+  console.error('[Unhandled Error]', loggedError)
+  logger.error(loggedError, '[Unhandled Error]')
   res.status(500).json({
     error: 'Erro interno do servidor',
     code: 'INTERNAL_ERROR',
