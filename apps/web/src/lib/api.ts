@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { safeRedirect } from './redirect'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -131,10 +132,7 @@ function redirectToLogin(): void {
   // mas nao '//' (evita open-redirect via path-relative-scheme) e
   // sem backslash (alguns browsers normalizam '\\evil.com' como
   // host externo).
-  const safeNext =
-    currentPath.startsWith('/') && !currentPath.startsWith('//') && !currentPath.includes('\\')
-      ? currentPath
-      : '/'
+  const safeNext = safeRedirect(currentPath)
   const target = onAuthPage ? '/entrar' : `/entrar?next=${encodeURIComponent(safeNext)}`
   window.location.href = target
 }

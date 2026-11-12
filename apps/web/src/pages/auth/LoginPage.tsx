@@ -8,22 +8,7 @@ import { PasswordInput } from '../../components/ui/PasswordInput'
 import { Card } from '../../components/ui/Card'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { extractApiErrorInfo } from '../../lib/errors'
-
-/**
- * Valida um destino de redirect pos-login para evitar open-redirect.
- * Apenas paths relativos (comecam com `/`) e que NAO sejam protocol-relative
- * (`//evil.com`) sao aceites. Qualquer URL absoluta, protocol-relative ou
- * vazia cai no default `/`.
- */
-function safeRedirect(target: string | null | undefined): string {
-  if (!target) return '/'
-  if (typeof target !== 'string') return '/'
-  if (!target.startsWith('/')) return '/'
-  if (target.startsWith('//')) return '/'
-  // Evita backslash-tricks que alguns parsers tratam como esquema.
-  if (target.includes('\\')) return '/'
-  return target
-}
+import { safeRedirect } from '../../lib/redirect'
 
 export function LoginPage() {
   usePageMeta({
