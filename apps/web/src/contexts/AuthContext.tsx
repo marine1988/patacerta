@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, setAccessToken, getAccessToken } from '../lib/api'
 import type { RegisterInput, LoginInput } from '@patacerta/shared'
 
 // ---- Types ----
@@ -57,11 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const queryClient = useQueryClient()
 
-  // Hydrate from localStorage on mount. O refresh token vive em cookie
+  // Hydrate from in-memory token on mount. O refresh token vive em cookie
   // httpOnly e portanto nao e legivel daqui — quando o access token esta
-  // expirado pedimos refresh ao servidor que valida o cookie sozinho.
+  // expirado/ausente pedimos refresh ao servidor que valida o cookie sozinho.
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
+    const token = getAccessToken()
     const stored = localStorage.getItem('user')
 
     if (token && stored && !isTokenExpired(token)) {
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api
         .post('/auth/refresh', {})
         .then(({ data }) => {
-          localStorage.setItem('access_token', data.accessToken)
+          setAccessToken(data.accessToken)
           try {
             setUser(JSON.parse(stored))
           } catch {
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch(() => {
-          localStorage.removeItem('access_token')
+          setAccessToken(null)
           localStorage.removeItem('user')
           // Sessao morta — limpar cache da sessao anterior.
           queryClient.clear()
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // de login directo (sem logout previo) — ex: dois separadores onde
       // um faz logout e outro tenta autenticar com user diferente.
       queryClient.clear()
-      localStorage.setItem('access_token', accessToken)
+      setAccessToken(accessToken)
       localStorage.setItem('user', JSON.stringify(u))
       setUser(u)
       return u
@@ -136,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.post('/auth/logout', {}).catch(() => {
       /* swallowed: logout must not fail client-side */
     })
-    localStorage.removeItem('access_token')
     localStorage.removeItem('user')
+    setAccessToken(null)
     setUser(null)
     // Limpa toda a cache React Query. Sem isto, dados do user anterior
     // (ex: ['breeder-profile'], ['threads']) podiam aparecer brevemente

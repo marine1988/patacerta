@@ -165,7 +165,7 @@ describe('isBasicAuthChallenge', () => {
 describe('interceptor 401 — PATA-BUG-8', () => {
   it('401 do basic auth do Traefik NAO dispara refresh nem toca na sessao', async () => {
     state.mode = 'proxy-401'
-    const { api } = await loadApi()
+    const { api, getAccessToken } = await loadApi()
 
     await expect(api.get('/status')).rejects.toMatchObject({ response: { status: 401 } })
 
@@ -175,13 +175,13 @@ describe('interceptor 401 — PATA-BUG-8', () => {
     // que o Traefik o rejeita) e o token continua guardado — nao deslogamos
     // o utilizador por causa de um problema de infra.
     expect(state.seenAuthorization).toEqual(['Bearer token-antigo'])
-    expect(localStorage.getItem('access_token')).toBe('token-antigo')
+    expect(getAccessToken()).toBe('token-antigo')
     expect(currentLocationHref()).toBe('')
   })
 
   it('401 (JSON) da API refresca uma vez e repete o pedido com o token novo', async () => {
     state.mode = 'ok-after-refresh'
-    const { api } = await loadApi()
+    const { api, getAccessToken } = await loadApi()
 
     const res = await api.get('/status')
 
@@ -190,7 +190,7 @@ describe('interceptor 401 — PATA-BUG-8', () => {
     expect(state.refreshCalls).toBe(1)
     expect(state.statusCalls).toBe(2)
     expect(state.seenAuthorization).toEqual(['Bearer token-antigo', 'Bearer token-novo'])
-    expect(localStorage.getItem('access_token')).toBe('token-novo')
+    expect(getAccessToken()).toBe('token-novo')
     expect(currentLocationHref()).toBe('')
   })
 
@@ -198,20 +198,20 @@ describe('interceptor 401 — PATA-BUG-8', () => {
     // O refresh PASSa mas o recurso continua 401 (e' o padrao de stage:
     // credenciais de infra, nao sessao expirada).
     state.mode = 'api-401'
-    const { api } = await loadApi()
+    const { api, getAccessToken } = await loadApi()
 
     await expect(api.get('/status')).rejects.toMatchObject({ response: { status: 401 } })
 
     expect(state.refreshCalls, 'um unico refresh por pedido, nunca em ciclo').toBe(1)
     expect(state.statusCalls, '1 pedido original + 1 repeticao, e para').toBe(2)
-    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(getAccessToken()).toBeNull()
     expect(localStorage.getItem('user')).toBeNull()
     expect(currentLocationHref()).toBe('/entrar?next=%2Farea-pessoal')
   })
 
   it('N pedidos concorrentes com 401 fazem UM so refresh (sem tempestade)', async () => {
     state.mode = 'api-401'
-    const { api } = await loadApi()
+    const { api, getAccessToken } = await loadApi()
 
     const results = await Promise.allSettled([
       api.get('/status'),
@@ -237,21 +237,21 @@ describe('interceptor 401 — PATA-BUG-8', () => {
     // no maximo 1 pedido original + 1 repeticao por pedido, nunca um ciclo.
     expect(state.statusCalls).toBeGreaterThanOrEqual(5)
     expect(state.statusCalls).toBeLessThanOrEqual(10)
-    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(getAccessToken()).toBeNull()
     expect(currentLocationHref()).toBe('/entrar?next=%2Farea-pessoal')
   })
 
   it('refresh falhado limpa a sessao e manda para /entrar uma unica vez', async () => {
     state.mode = 'api-401'
     state.refreshFails = true
-    const { api } = await loadApi()
+    const { api, getAccessToken } = await loadApi()
 
     const results = await Promise.allSettled([api.get('/status'), api.get('/status')])
 
     expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
     expect(state.refreshCalls).toBe(1)
     expect(state.statusCalls).toBe(2)
-    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(getAccessToken()).toBeNull()
     expect(currentLocationHref()).toBe('/entrar?next=%2Farea-pessoal')
   })
 

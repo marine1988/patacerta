@@ -98,8 +98,7 @@ test.describe('Sponsored Slot — webhook checkout.session.completed @destructiv
     test.skip(!stripeProbe.configured, stripeSkipReason(stripeProbe.detail))
 
     // ── 1. Login + descobrir raca ─────────────────────────────────────────
-    await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)
-    const accessToken = await page.evaluate(() => window.localStorage.getItem('access_token'))
+    const { accessToken } = await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)
     expect(accessToken).toBeTruthy()
 
     const breedsRes = await request.get(`${API_BASE_URL}/breeds`)

@@ -47,24 +47,18 @@ export async function loginViaApi(
     user: unknown
   }
 
-  // IMPORTANTE: as chaves reais usadas pelo AuthContext sao `access_token` e
-  // `user` (ver apps/web/src/contexts/AuthContext.tsx). NAO sao "accessToken"
-  // / "refreshToken". O refresh token vive em cookie HTTPOnly definido pela
-  // API.
-  //
-  // Injectamos o token apenas via `page.evaluate` (localStorage persiste
-  // entre navegações do MESMO origin) e NÃO com `page.addInitScript`: um
-  // init script corre em CADA navegação seguinte e voltaria a injectar o
-  // token depois de um logout do próprio teste, anulando-o (observado em
-  // stage: "Sair limpa a sessão" ficava em /area-pessoal porque a sessão
-  // "renascia" no reload seguinte).
+  // Injectamos o user em localStorage (persiste entre navegações do MESMO
+  // origin) e NÃO o access_token: este vive agora apenas em memória (M-03)
+  // para mitigar exfiltração via XSS. O AuthContext recupera o access token
+  // via /auth/refresh (cookie httpOnly) no mount. NÃO usamos addInitScript:
+  // um init script corre em CADA navegação seguinte e voltaria a injectar
+  // o user depois de um logout do próprio teste, anulando-o.
   await page.goto('/')
   await page.evaluate(
-    ({ accessToken, user }) => {
-      window.localStorage.setItem('access_token', accessToken)
+    ({ user }) => {
       if (user) window.localStorage.setItem('user', JSON.stringify(user))
     },
-    { accessToken: body.accessToken, user: body.user },
+    { user: body.user },
   )
 
   return body
@@ -72,7 +66,6 @@ export async function loginViaApi(
 
 export async function logout(page: Page) {
   await page.evaluate(() => {
-    window.localStorage.removeItem('access_token')
     window.localStorage.removeItem('user')
   })
 }

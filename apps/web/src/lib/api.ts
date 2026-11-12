@@ -3,6 +3,31 @@ import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Access token vive apenas em MEMÓRIA (nunca em localStorage) para mitigar
+// exfiltração via XSS. O refresh token continua em cookie httpOnly.
+// Migração one-shot de clientes antigos que ainda tenham `access_token` em
+// localStorage: movemo-lo para memória e removemo-lo do storage.
+export let accessToken: string | null = null
+try {
+  if (typeof localStorage !== 'undefined') {
+    const legacy = localStorage.getItem('access_token')
+    if (legacy) {
+      accessToken = legacy
+      localStorage.removeItem('access_token')
+    }
+  }
+} catch {
+  // localStorage indisponível (SSR) — ignora.
+}
+
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token
+}
+
 // withCredentials: refresh_token vive em cookie httpOnly emitido pela API
 // (path /api/auth, SameSite=strict). Sem isto o browser nao envia o cookie
 // e /auth/refresh falha com 401.
@@ -18,7 +43,7 @@ export const api = axios.create({
 
 // Request interceptor — attach JWT
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
+  const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -76,7 +101,10 @@ function requestToken(config: RetriableConfig | undefined): string | null {
 }
 
 function clearSession(): void {
-  localStorage.removeItem('access_token')
+  setAccessToken(null)
+  try {
+    localStorage.removeItem('access_token')
+  } catch {}
   localStorage.removeItem('user')
 }
 
@@ -201,7 +229,7 @@ api.interceptors.response.use(
     //    refresh — sem isto, cada pedido que responde 401 depois de um
     //    refresh ter terminado dispara um refresh novo e roda outra vez o
     //    refresh token (rajadas de queries em voo => tempestade).
-    const currentToken = localStorage.getItem('access_token')
+    const currentToken = getAccessToken()
     if (currentToken && currentToken !== requestToken(originalRequest)) {
       originalRequest._retry = true
       originalRequest.headers.Authorization = `Bearer ${currentToken}`
@@ -237,7 +265,7 @@ api.interceptors.response.use(
         {},
         { withCredentials: true, maxRedirects: 0 },
       )
-      localStorage.setItem('access_token', data.accessToken)
+      setAccessToken(data.accessToken)
       sessionGaveUp = false
       originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
       processQueue(null, data.accessToken)

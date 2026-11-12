@@ -111,10 +111,7 @@ test.describe('Sponsored Slot — checkout até Stripe @destructive', () => {
     test.skip(!stripeProbe.configured, stripeSkipReason(stripeProbe.detail))
 
     // ── 1. Login via API ──────────────────────────────────────────────────
-    await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)
-
-    const accessToken = await page.evaluate(() => window.localStorage.getItem('access_token'))
-    expect(accessToken, 'access_token tem de estar em localStorage').toBeTruthy()
+    const { accessToken } = await loginViaApi(request, page, BREEDER_EMAIL, BREEDER_PASSWORD)
 
     // ── 2. Descobrir raca alvo ────────────────────────────────────────────
     const breedsRes = await request.get(`${API_BASE_URL}/breeds`)
