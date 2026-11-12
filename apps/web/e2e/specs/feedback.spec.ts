@@ -98,21 +98,31 @@ test.describe('Página de feedback — UI @prod-safe', () => {
     await expect(list).toBeVisible()
   })
 
-  test('navbar tem link para /feedback', async ({ page }) => {
+  test('footer tem card de destaque para /feedback', async ({ page }) => {
     await page.goto('/')
-    const link = page.locator('a[href="/feedback"]').first()
+    // O acesso ao feedback vive no footer, num card de destaque — não no menu.
+    const link = page.locator('footer a[href="/feedback"]')
     await expect(link).toBeVisible()
+    await expect(link).toContainText(/Dar feedback/i)
     await link.click()
     await expect(page).toHaveURL(/\/feedback/)
   })
 
+  test('feedback não está no menu principal', async ({ page }) => {
+    await page.goto('/')
+    // Regressão: o link saiu da navbar (desktop e menu mobile) a pedido do produto.
+    await expect(page.locator('header a[href="/feedback"]')).toHaveCount(0)
+  })
+
   test('feedback funciona em dark mode', async ({ page }) => {
     await page.goto('/feedback')
-    // Força dark mode via o tema persistido (ThemeContext).
-    await page.evaluate(() => {
-      window.localStorage.setItem('theme', 'dark')
-      document.documentElement.classList.add('dark')
-    })
+    // Força dark mode pelo mecanismo real do ThemeContext (chave `patacerta:theme`),
+    // e recarrega para o tema ser aplicado no arranque.
+    await page.evaluate(() => window.localStorage.setItem('patacerta:theme', 'dark'))
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
+      .toBe(true)
     await expect(
       page.getByRole('heading', { name: 'Feedback & Sugestões', level: 1 }),
     ).toBeVisible()
@@ -127,8 +137,9 @@ test.describe('Página de feedback — UI @prod-safe', () => {
       page.getByRole('heading', { name: 'Feedback & Sugestões', level: 1 }),
     ).toBeVisible()
 
-    // O menu mobile tem o link de feedback.
-    await page.getByRole('button', { name: /Abrir menu/i }).click()
-    await expect(page.locator('a[href="/feedback"]:visible')).toBeVisible()
+    // O card do footer está acessível em mobile sem abrir o menu.
+    const footerLink = page.locator('footer a[href="/feedback"]')
+    await footerLink.scrollIntoViewIfNeeded()
+    await expect(footerLink).toBeVisible()
   })
 })

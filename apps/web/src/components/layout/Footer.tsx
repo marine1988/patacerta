@@ -14,6 +14,26 @@ export function Footer() {
             <span className="eyebrow-muted">Est. 2025 · Portugal</span>
           </div>
 
+          {/* Card de destaque — feedback da comunidade */}
+          <Link
+            to="/feedback"
+            className="card card-hover group mb-6 flex flex-col gap-4 p-5 no-underline sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-8 md:p-6"
+          >
+            <div className="min-w-0">
+              <span className="eyebrow">◆ A tua opinião</span>
+              <h3 className="mt-2 font-serif text-xl leading-snug text-ink sm:text-2xl">
+                Feedback &amp; <em className="italic text-caramel-500">sugestões</em>
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+                Reporta problemas, sugere melhorias e vota nas ideias da comunidade. Cada sugestão
+                ajuda a construir o PataCerta.
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-2 self-start border border-caramel-500 px-4 py-2.5 text-[10px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:bg-caramel-500 group-hover:text-white sm:self-auto">
+              Dar feedback <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+
           <div className="grid gap-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-8">
             {/* Brand statement */}
             <div>
