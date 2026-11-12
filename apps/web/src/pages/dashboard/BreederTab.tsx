@@ -493,8 +493,8 @@ export function BreederTab() {
       // contrário o utilizador corrige um campo, faz Submit, vê outro
       // erro, corrige, etc. Frustrante. Truncamos a 5 para a mensagem
       // não explodir visualmente.
-      const messages = parsed.error.errors.slice(0, 5).map((e) => e.message)
-      const more = parsed.error.errors.length > 5 ? ` (+${parsed.error.errors.length - 5})` : ''
+      const messages = parsed.error.issues.slice(0, 5).map((e) => e.message)
+      const more = parsed.error.issues.length > 5 ? ` (+${parsed.error.issues.length - 5})` : ''
       setMsg({ type: 'error', text: messages.join(' • ') + more })
       return
     }

@@ -403,7 +403,7 @@ export function ServicesTab() {
     // Validação completa via schema partilhado (consistente com backend).
     const parsed = createServiceSchema.safeParse(payload)
     if (!parsed.success) {
-      const first = parsed.error.errors[0]
+      const first = parsed.error.issues[0]
       const path = String(first.path[0] ?? '')
       // Abre a secção certa para o utilizador ver o campo com erro.
       const sectionByField: Record<string, 'basics' | 'location' | 'contact'> = {

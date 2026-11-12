@@ -116,7 +116,7 @@ export function RegisterPage() {
     const input = { ...rest, phone: form.phone || undefined, acceptedTerms }
     const parsed = registerSchema.safeParse(input)
     if (!parsed.success) {
-      setError(parsed.error.errors[0].message)
+      setError(parsed.error.issues[0].message)
       return
     }
 

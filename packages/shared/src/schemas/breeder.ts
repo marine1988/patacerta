@@ -99,7 +99,7 @@ export const breederProfileSchema = z
     municipalityId: z.number().int().positive(),
     // MVP: campo deprecated — backend assume sempre 'cao'.
     // Mantido como opcional no schema para compatibilidade futura multi-espécie.
-    speciesIds: z.array(z.number().int().positive()).optional(),
+    speciesIds: z.array(z.number().int().positive()).max(50).optional(),
     // Raças que o criador trabalha (ids do catálogo Breed). Pode estar vazio
     // SE otherBreedsNote for preenchido (caso "só raças não listadas"). A
     // regra "pelo menos uma das duas" é validada via .superRefine() abaixo.
@@ -159,7 +159,7 @@ export const updateBreederProfileSchema = z.object({
     .optional(),
   districtId: z.number().int().positive().optional(),
   municipalityId: z.number().int().positive().optional(),
-  speciesIds: z.array(z.number().int().positive()).optional(),
+  speciesIds: z.array(z.number().int().positive()).max(50).optional(),
   breedIds: z.array(z.number().int().positive()).max(50).optional(),
   otherBreedsNote: z.string().trim().max(500).optional(),
   website: optionalUrlSchema.optional(),

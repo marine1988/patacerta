@@ -26,7 +26,7 @@ export const registerSchema = z.object({
   lastName: z.string().trim().min(1).max(100),
   phone: portuguesePhoneSchema.optional(),
   acceptedTerms: z.literal(true, {
-    errorMap: () => ({ message: 'Tem de aceitar os Termos e a Política de Privacidade' }),
+    message: 'Tem de aceitar os Termos e a Política de Privacidade',
   }),
 })
 
