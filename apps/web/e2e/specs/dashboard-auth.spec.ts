@@ -131,24 +131,98 @@ test.describe('Painel autenticado @prod-safe', () => {
     await expect(page).toHaveURL(/\/area-pessoal\?tab=criador/, { timeout: 20_000 })
   })
 
-  test('falha de rede não deixa o painel em branco', async ({ page, request }) => {
+  /**
+   * M-03: o access token vive em MEMÓRIA; o único estado que persiste é o
+   * `user` em localStorage. Um reload completo (`page.goto`) perde o token
+   * e a sessão só se repõe via `POST /api/auth/refresh` (cookie httpOnly).
+   *
+   * Logo, "API fora do ar durante o arranque" já não significa "continuar
+   * logado sem rede" (era a premissa antiga): significa sessão irrecuperável.
+   * O que este teste fixa é a *degradação*: cai no login de forma limpa —
+   * sem ecrã branco, sem ErrorBoundary e sem ciclo de refreshes.
+   */
+  test('falha de rede na restauração da sessão degrada para /entrar sem rebentar', async ({
+    page,
+    request,
+  }) => {
     await loginViaApi(request, page, CLIENT_EMAIL)
 
-    // Simula a API fora do ar *depois* do login: a sessão hidrata do
-    // localStorage (sem ida à rede quando o token é fresco), por isso o
-    // painel tem de continuar a renderizar a estrutura — as probes do
-    // DashboardPage degradam para null (catch) em vez de rebentar.
-    await page.route('**/api/**', (route) => route.abort())
+    // API indisponível a partir daqui (inclui /api/status e /api/auth/refresh).
+    let refreshRequests = 0
+    await page.route('**/api/**', (route) => {
+      if (route.request().url().includes('/auth/refresh')) refreshRequests += 1
+      return route.abort()
+    })
+
+    await page.goto('/area-pessoal')
+
+    // Sessão limpa → aterragem no login, não numa área privada a meio nem num
+    // spinner infinito.
+    await expect(page).toHaveURL(/\/entrar/, { timeout: 20_000 })
+    await expect(page.getByRole('heading', { name: 'Entrar na PataCerta' })).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByLabel('Email', { exact: true })).toBeVisible()
+
+    // Sem rebentar: nem ErrorBoundary global nem documento vazio.
+    await expect(page.getByText(/Algo correu mal/i)).toBeHidden()
+    expect((await page.locator('body').innerText()).trim().length).toBeGreaterThan(0)
+
+    // Sem tempestade de refreshes — a app desiste da sessão em vez de tentar
+    // N vezes — e o estado do cliente fica limpo (nem `user` nem o legado
+    // `access_token` que a migração do M-03 remove do storage).
+    expect(refreshRequests).toBeLessThanOrEqual(3)
+    const leftovers = await page.evaluate(() => ({
+      user: window.localStorage.getItem('user'),
+      accessToken: window.localStorage.getItem('access_token'),
+    }))
+    expect(leftovers).toEqual({ user: null, accessToken: null })
+
+    // Sem loop de redirect: passado o instante de estabilização continua no
+    // login, com o formulário utilizável.
+    await page.waitForTimeout(1_000)
+    await expect(page).toHaveURL(/\/entrar/)
+    await expect(page.getByRole('heading', { name: 'Entrar na PataCerta' })).toBeVisible()
+  })
+
+  /**
+   * Contraprova do cenário acima (e a razão pela qual ele degrada): com a API
+   * disponível, o reload repõe a sessão **por refresh token**. Se este teste
+   * falhar, o de cima passa a "passar por acidente" — nada estaria a repor a
+   * sessão e o logout deixaria de significar algo.
+   */
+  test('reload repõe a sessão via refresh token (access token só em memória)', async ({
+    page,
+    request,
+  }) => {
+    await loginViaApi(request, page, CLIENT_EMAIL)
+
+    const refreshCalls: string[] = []
+    page.on('request', (req) => {
+      if (req.url().includes('/api/auth/refresh')) refreshCalls.push(req.url())
+    })
+
+    // Reload completo: o módulo `lib/api.ts` recomeça com `accessToken = null`.
     await page.goto('/area-pessoal')
 
     await expect(page.getByRole('heading', { name: 'Área pessoal', level: 1 })).toBeVisible({
       timeout: 20_000,
     })
-    await expect(page.getByRole('tab', { name: /^Perfil/ }).first()).toBeVisible({
-      timeout: 20_000,
-    })
-    // O ErrorBoundary global não pode ter disparado.
-    await expect(page.getByText(/Algo correu mal/i)).toBeHidden()
+    expect(
+      refreshCalls.length,
+      'a sessão devia repor-se com POST /api/auth/refresh (cookie httpOnly)',
+    ).toBeGreaterThan(0)
+
+    // M-03: o token de acesso nunca fica acessível a JavaScript persistente.
+    const storage = await page.evaluate(() => ({
+      accessToken: window.localStorage.getItem('access_token'),
+      user: window.localStorage.getItem('user'),
+    }))
+    expect(storage.accessToken).toBeNull()
+    expect(storage.user, 'o perfil em cache é o que dispara o refresh no mount').toBeTruthy()
+
+    // E a app está mesmo autenticada (navbar sem "Entrar").
+    await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeHidden()
   })
 
   test('Sair limpa a sessão e repõe a navbar pública', async ({ page, request }) => {
