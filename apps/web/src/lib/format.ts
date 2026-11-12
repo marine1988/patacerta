@@ -38,3 +38,23 @@ export function parsePriceToCents(raw: string): number | null {
   if (!Number.isFinite(n) || n <= 0) return null
   return Math.round(n * 100)
 }
+
+/**
+ * Formata uma avaliação média que pode chegar como `number` **ou** como
+ * `string`: os campos `Decimal` do Prisma (`Service.avgRating`,
+ * `@db.Decimal(3,2)`) são serializados em JSON como string ("4.50"), e chamar
+ * `.toFixed()` directamente sobre eles rebenta o render com
+ * `s.avgRating.toFixed is not a function` (error boundary "Algo correu mal").
+ *
+ * Coage, valida (NaN/Infinity → `null`) e arredonda a `digits` casas.
+ */
+export function formatAvgRating(
+  value: number | string | null | undefined,
+  digits = 2,
+): string | null {
+  if (value == null) return null
+  if (typeof value === 'string' && value.trim() === '') return null
+  const n = typeof value === 'string' ? Number(value) : value
+  if (!Number.isFinite(n)) return null
+  return n.toFixed(digits)
+}

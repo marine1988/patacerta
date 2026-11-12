@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDateShort } from '../../lib/dates'
+import { formatAvgRating } from '../../lib/format'
 import { extractApiError } from '../../lib/errors'
 import { Badge, Button, EmptyState, Modal, Spinner, useConfirm } from '../../components/ui'
 import { usePageMeta } from '../../hooks/usePageMeta'
@@ -71,7 +72,7 @@ interface UserDetailUser {
     priceCents: number
     priceUnit: string
     currency: string
-    avgRating: number | null
+    avgRating: number | string | null
     reviewCount: number
     createdAt: string
     publishedAt: string | null
@@ -402,7 +403,7 @@ export function AdminUserDetailPage() {
                 label="Avaliação média"
                 value={
                   user.breeder.avgRating !== null
-                    ? `${user.breeder.avgRating.toFixed(2)} (${user.breeder.reviewCount})`
+                    ? `${formatAvgRating(user.breeder.avgRating) ?? '—'} (${user.breeder.reviewCount})`
                     : '—'
                 }
               />
@@ -456,9 +457,8 @@ export function AdminUserDetailPage() {
                         {formatPrice(s.priceCents, s.currency, s.priceUnit)}
                       </td>
                       <td className="px-2 py-1.5 text-ink">
-                        {s.avgRating !== null
-                          ? `${s.avgRating.toFixed(2)} (${s.reviewCount})`
-                          : '—'}
+                        {formatAvgRating(s.avgRating) ?? '—'}
+                        {s.avgRating != null ? ` (${s.reviewCount})` : ''}
                       </td>
                       <td className="px-2 py-1.5 text-muted">{formatDateShort(s.createdAt)}</td>
                       <td className="px-2 py-1.5">

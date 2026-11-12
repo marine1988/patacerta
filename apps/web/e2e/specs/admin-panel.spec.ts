@@ -180,11 +180,19 @@ test.describe('Painel de administração @prod-safe', () => {
 
     await page.goto(href!)
     await expect(page).toHaveURL(/\/admin\/utilizadores\/.+/, { timeout: 25_000 })
+    // O caminho de volta à lista, ancorado no `href` (não na copy): no
+    // happy-path é o breadcrumb `Link to="/admin?tab=utilizadores"` com o texto
+    // "← Utilizadores"; "← Voltar à lista" só existe no estado de erro
+    // (`AdminUserDetailPage.tsx`), logo assertá-lo aqui exigia um ecrã de erro
+    // para passar. Esperar por este link = esperar que os dados carregaram.
+    const backLink = page.locator('a[href="/admin?tab=utilizadores"]').first()
+    await expect(backLink).toBeVisible({ timeout: 25_000 })
+    await expect(backLink).toHaveAccessibleName(/Utilizadores/i)
+    // Só agora faz sentido exigir ausência de erro: antes do render dos dados o
+    // error boundary ainda não existe e o `toBeHidden()` passava por vacuidade
+    // (foi assim que `s.avgRating.toFixed is not a function` escapou).
     await expect(page.getByText(/Algo correu mal/i)).toBeHidden()
-    // Detalhe mostra o caminho de volta à lista (h1 = nome do utilizador).
-    await expect(page.getByRole('link', { name: /Voltar à lista/i })).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(page.locator('h1').first()).toBeVisible()
   })
 
   test('endpoints /api/admin/* exigem token de administrador', async ({ request, caps }) => {

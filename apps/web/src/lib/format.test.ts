@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatPrice, parsePriceToCents, priceUnitSuffix } from './format'
+import { formatAvgRating, formatPrice, parsePriceToCents, priceUnitSuffix } from './format'
 
 describe('formatPrice', () => {
   it('formata valor fixo em EUR pt-PT sem sufixo', () => {
@@ -52,5 +52,26 @@ describe('parsePriceToCents', () => {
   it('devolve null para zero ou negativos', () => {
     expect(parsePriceToCents('0')).toBeNull()
     expect(parsePriceToCents('-5')).toBeNull()
+  })
+})
+
+describe('formatAvgRating', () => {
+  it('formata um number com 2 casas por omissão', () => {
+    expect(formatAvgRating(4.5)).toBe('4.50')
+  })
+
+  it('coage a string que o Prisma Decimal serializa em JSON', () => {
+    // `Service.avgRating` é @db.Decimal(3,2) → chega como "4.50"; chamar
+    // `.toFixed()` directamente sobre ela rebentava o render do detalhe.
+    expect(formatAvgRating('4.50')).toBe('4.50')
+    expect(formatAvgRating('4.5', 1)).toBe('4.5')
+  })
+
+  it('devolve null para valores ausentes ou não numéricos', () => {
+    expect(formatAvgRating(null)).toBeNull()
+    expect(formatAvgRating(undefined)).toBeNull()
+    expect(formatAvgRating('')).toBeNull()
+    expect(formatAvgRating('n/d')).toBeNull()
+    expect(formatAvgRating(Number.NaN)).toBeNull()
   })
 })
