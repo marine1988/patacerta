@@ -1618,13 +1618,16 @@ export const runDemoSeed = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   })
 
+  // Nota de seguranca (L-07): o output bruto do seed (stdout/stderr) pode
+  // conter paths, configuracao e erros internos de infraestrutura. NAO o
+  // devolvemos na resposta — fica apenas nos logs do servidor (process
+  // stdout/stderr acima) e nas contagens do audit log. O admin confirma
+  // sucesso/fracasso via `ok` + `exitCode`.
   if (exitCode !== 0) {
     res.status(500).json({
       ok: false,
       exitCode,
       durationMs,
-      stdoutTail: stdout.slice(-3000),
-      stderrTail: stderr.slice(-3000),
     })
     return
   }
@@ -1633,6 +1636,5 @@ export const runDemoSeed = asyncHandler(async (req, res) => {
     ok: true,
     exitCode,
     durationMs,
-    stdoutTail: stdout.slice(-2000),
   })
 })
