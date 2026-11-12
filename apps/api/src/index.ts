@@ -208,6 +208,14 @@ app.use(
 // global converte para JSON e perdemos o Buffer original.
 app.use('/api/webhooks', webhooksRouter)
 
+// CVE-2026-111181: body-parser <1.20.9 (1.x) / <2.4.0 (2.x) leaves the
+// decompression stream piped with no error listener after reading a
+// compressed body, so trailing bytes after a valid gzip/deflate frame emit an
+// uncaught exception and crash the process. Fixed by pinning body-parser to
+// 1.20.9 via pnpm override (pnpm-workspace.yaml) — express 4.22.3's own
+// range (~1.20.5) already resolves to 1.20.9, but the override guarantees the
+// patched release even if the express range changes. inflate stays enabled
+// (default) so legitimate compressed requests keep working.
 app.use(express.json({ limit: '1mb' }))
 // cookie-parser: refresh_token vive em cookie httpOnly (ver auth.controller.ts).
 app.use(cookieParser())
