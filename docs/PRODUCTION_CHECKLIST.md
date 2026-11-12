@@ -37,7 +37,7 @@ JWT_REFRESH_SECRET=<64-char-random-string-different-from-above>
 
 # ---- Admin User ----
 ADMIN_EMAIL=admin@patacerta.pt
-ADMIN_PASSWORD=<strong-password-min-8-chars-upper-lower-number>
+ADMIN_PASSWORD=<strong-password-min-12-chars-upper-lower-number-symbol>
 
 # ---- MinIO ----
 MINIO_ROOT_PASSWORD=<strong-random-password>

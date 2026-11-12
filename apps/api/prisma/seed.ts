@@ -27,18 +27,20 @@ async function main() {
   console.log('🌱 Starting seed...\n')
 
   const isProd = process.env.NODE_ENV === 'production'
+  const isStage = process.env.NODE_ENV === 'stage'
+  const requiresAdminCreds = isProd || isStage
 
   // ---- Admin User ----
   console.log('Creating admin user...')
 
-  // In production, require explicit credentials — no fallback to known defaults
+  // In production/stage, require explicit credentials — no fallback to known defaults
   const adminEmail = process.env.ADMIN_EMAIL
   const adminPass = process.env.ADMIN_PASSWORD
 
-  if (isProd && (!adminEmail || !adminPass)) {
+  if (requiresAdminCreds && (!adminEmail || !adminPass)) {
     throw new Error(
-      '[SEED] FATAL: ADMIN_EMAIL and ADMIN_PASSWORD are required in production. ' +
-        'Set these environment variables in Dokploy before running seed.',
+      '[SEED] FATAL: ADMIN_EMAIL and ADMIN_PASSWORD are required in production/stage. ' +
+        'Set these environment variables in Dokploy/Coolify before running seed.',
     )
   }
 
@@ -46,16 +48,33 @@ async function main() {
   const finalEmail = adminEmail || 'admin@patacerta.pt'
   const finalPass = adminPass || 'AdminPass123!'
 
+  // Força password forte para o admin (min 12 chars + maiúsculas + minúsculas
+  // + números + símbolos). Evita que um operador defina uma password fraca
+  // que seria aceite silenciosamente (H-01).
+  const isAdminPasswordStrong = (pw: string): boolean =>
+    pw.length >= 12 &&
+    /[A-Z]/.test(pw) &&
+    /[a-z]/.test(pw) &&
+    /[0-9]/.test(pw) &&
+    /[^A-Za-z0-9]/.test(pw)
+
+  if (!isAdminPasswordStrong(finalPass)) {
+    throw new Error(
+      '[SEED] FATAL: ADMIN_PASSWORD must be at least 12 characters and contain ' +
+        'uppercase, lowercase, digits and a symbol (H-01).',
+    )
+  }
+
   if (!adminEmail || !adminPass) {
     console.warn(
-      '  ⚠ Using default admin credentials (dev only). Set ADMIN_EMAIL/ADMIN_PASSWORD in production.',
+      '  ⚠ Using default admin credentials (dev only). Set ADMIN_EMAIL/ADMIN_PASSWORD in production/stage.',
     )
   }
 
   const passwordHash = await bcrypt.hash(finalPass, 12)
   const admin = await prisma.user.upsert({
     where: { email: finalEmail },
-    update: { emailVerified: true, role: UserRole.ADMIN },
+    update: { emailVerified: true, role: UserRole.ADMIN, passwordHash },
     create: {
       email: finalEmail,
       passwordHash,

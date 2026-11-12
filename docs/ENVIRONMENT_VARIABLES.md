@@ -58,10 +58,10 @@
 
 ## 5. Admin (Seed)
 
-| Variável         | Obrigatória? | Ambiente | Serviço | Default              | Descrição                                                                     |
-| ---------------- | ------------ | -------- | ------- | -------------------- | ----------------------------------------------------------------------------- |
-| `ADMIN_EMAIL`    | Sim (prod)   | todos    | api     | `admin@patacerta.pt` | Email do super-admin criado no seed. **Em prod é obrigatório** (sem fallback) |
-| `ADMIN_PASSWORD` | Sim (prod)   | todos    | api     | —                    | Password do super-admin. **Em prod é obrigatório**                            |
+| Variável         | Obrigatória? | Ambiente | Serviço | Default              | Descrição                                                                                                                  |
+| ---------------- | ------------ | -------- | ------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_EMAIL`    | Sim (prod)   | todos    | api     | `admin@patacerta.pt` | Email do super-admin criado no seed. **Em prod é obrigatório** (sem fallback)                                              |
+| `ADMIN_PASSWORD` | Sim (prod)   | todos    | api     | —                    | Password do super-admin. **Em prod é obrigatório** (min 12 chars: maiúsculas, minúsculas, dígitos e um caractere especial) |
 
 ## 6. Email (Resend)
 

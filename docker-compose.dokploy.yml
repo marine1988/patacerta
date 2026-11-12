@@ -9,7 +9,7 @@
 #   JWT_SECRET           — random 64-char string
 #   JWT_REFRESH_SECRET   — random 64-char string
 #   ADMIN_EMAIL          — super-admin email
-#   ADMIN_PASSWORD       — super-admin password (min 8 chars, upper+lower+number)
+#   ADMIN_PASSWORD       — super-admin password (min 12 chars, upper+lower+number+symbol)
 #   MINIO_ROOT_PASSWORD  — strong random password for MinIO
 #   FRONTEND_URL         — your public URL (e.g. https://patacerta.pt)
 #
@@ -154,7 +154,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: patacerta-uploads
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@patacerta.pt}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AdminPass123!}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}
       # CORS_ORIGIN deve ser definido no painel Dokploy (Environment vars).
       # Se ausente, a API recai sobre FRONTEND_URL. '*' nao e' permitido
       # (credentials enabled — ver apps/api/src/index.ts).

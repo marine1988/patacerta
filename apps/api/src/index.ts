@@ -28,7 +28,7 @@ import { sitemapRouter } from './modules/sitemap/sitemap.router.js'
 import { paymentsRouter } from './modules/payments/payments.router.js'
 import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
 import { ensureBucket } from './lib/minio.js'
-import { isProd, isHttps } from './lib/env.js'
+import { isProd, isStage, isHttps } from './lib/env.js'
 import { maintenanceMode } from './middleware/maintenance.js'
 
 const app = express()
@@ -171,6 +171,26 @@ if (corsOrigins.includes('*')) {
   )
 }
 console.log(`[PataCerta API] CORS allowlist: ${corsOrigins.join(', ')}`)
+
+// ---- Admin password (H-01) ----
+// Em prod/stage, ADMIN_PASSWORD tem de estar definido e ser forte. Falha
+// cedo (boot) em vez de criar/aceitar um admin com password fraca/conhecida.
+if (isProd || isStage) {
+  const adminPass = process.env.ADMIN_PASSWORD
+  const strong =
+    !!adminPass &&
+    adminPass.length >= 12 &&
+    /[A-Z]/.test(adminPass) &&
+    /[a-z]/.test(adminPass) &&
+    /[0-9]/.test(adminPass) &&
+    /[^A-Za-z0-9]/.test(adminPass)
+  if (!strong) {
+    throw new Error(
+      '[PataCerta] ADMIN_PASSWORD obrigatorio em prod/stage e tem de ter >=12 chars ' +
+        'com maiusculas, minusculas, digitos e um caractere especial (H-01).',
+    )
+  }
+}
 app.use(
   cors({
     origin: (origin, cb) => {
