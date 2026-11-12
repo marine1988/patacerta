@@ -100,6 +100,7 @@ Cada `describe` (ou `test`, quando o caso é isolado) tem uma tag no título:
 | Spec                                | Tag                                                                                  |
 | ----------------------------------- | ------------------------------------------------------------------------------------ |
 | `api-contract.spec.ts`              | `@prod-safe`                                                                         |
+| `security-headers.spec.ts`          | `@prod-safe` — só corre contra nginx (stage/produção); skip em local, ver § abaixo   |
 | `seo-metadata.spec.ts`              | `@prod-safe`                                                                         |
 | `home-navigation.spec.ts`           | `@prod-safe`                                                                         |
 | `pesquisar.spec.ts`                 | `@prod-safe`                                                                         |
@@ -123,6 +124,21 @@ pnpm --filter @patacerta/web exec playwright test --grep @prod-safe
 pnpm --filter @patacerta/web exec playwright test --grep @destructive
 ```
 
+### `security-headers.spec.ts` — headers do documento servido
+
+Valida, no **wire**, o que o `nginx.conf.template` promete: `Strict-Transport-Security`
+(M-01), `Content-Security-Policy` em enforcing e não Report-Only (M-02), as directivas
+`style-src`/`font-src` para o Google Fonts (§8) e os complementares (`nosniff`,
+`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`). Cobre 3 das 4 locations de
+conteúdo do nginx (`/` + rotas SPA, `/manifest.webmanifest`, `/assets/*`), que é onde a
+armadilha do `add_header` (location substitui o do `server`) parte os headers em runtime.
+
+- **Em local faz skip**: `vite dev`/`vite preview` (o que o `e2e.yml` arranca em CI) não
+  tem nginx pelo meio, logo estes headers não existem por desenho. A prova vem dos runs
+  contra stage (`E2E (Stage)`) e produção (`--grep @prod-safe`).
+- Contra um servidor local que replique o nginx, força com
+  `E2E_EXPECT_SECURITY_HEADERS=1` (harness de referência no card `SECURITY-QA-UNBLOCK-2`).
+
 ## Variáveis de ambiente
 
 | Variável                                     | Default                                     | Para que serve                                                                                                                                 |
@@ -134,6 +150,8 @@ pnpm --filter @patacerta/web exec playwright test --grep @destructive
 | `E2E_ALLOW_DESTRUCTIVE`                      | —                                           | Override consciente do bloqueio automático de `@destructive` contra produção.                                                                  |
 | `E2E_PROBE_LOGINS`                           | on, excepto prod                            | `1` força sondar os logins demo/admin, `0` desliga. Em produção fica off (as contas demo não existem e cada tentativa gasta rate-limit).       |
 | `E2E_EXPECTED_PUBLIC_URL`                    | derivado do alvo                            | Override do domínio canónico esperado nas meta tags (`canonical`, `og:url`, sitemap).                                                          |
+| `E2E_EXPECT_SECURITY_HEADERS`                | —                                           | `1` corre o `security-headers.spec.ts` contra um alvo local (por defeito faz skip: `vite` não aplica os headers do nginx)                      |
+| `E2E_HSTS_MIN_MAX_AGE`                       | `15552000` (180 dias)                       | Piso de `max-age` do HSTS aceite pelo `security-headers.spec.ts` (o template publica 31536000)                                                 |
 | `E2E_RETRIES`                                | 0 local / 1 remoto / 2 CI                   | nº de retries                                                                                                                                  |
 | `E2E_OUTPUT_DIR`                             | `e2e/.artifacts`                            | Onde escrever traces/screenshots. Muda-o quando correres duas instâncias em paralelo, senão colidem e o Playwright rebenta na escrita (ENOENT) |
 | `E2E_IGNORE_RATE_LIMIT`                      | —                                           | `1` desliga o fail-fast do `caps` quando o ambiente devolve 429 (o resultado deixa de ser fiável)                                              |
