@@ -39,6 +39,15 @@ export const listFeedback = asyncHandler(async (req, res) => {
   res.json(paginatedResponse(feedback, total, page, limit))
 })
 
+export const getMyFeedback = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId
+  const feedback = await prisma.feedback.findFirst({
+    where: { userId },
+    select: FEEDBACK_SELECT,
+  })
+  res.json({ data: feedback ?? null })
+})
+
 export const createFeedback = asyncHandler(async (req, res) => {
   const data = req.body as CreateFeedbackInput
   const userId = req.user!.userId

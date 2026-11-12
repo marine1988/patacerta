@@ -31,7 +31,12 @@ vi.mock('../../lib/audit.js', () => ({
   logAudit: vi.fn(),
 }))
 
-import { listFeedback, createFeedback, exportFeedback } from './feedback.controller.js'
+import {
+  listFeedback,
+  getMyFeedback,
+  createFeedback,
+  exportFeedback,
+} from './feedback.controller.js'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 
@@ -161,6 +166,43 @@ describe('feedback.controller', () => {
         .calls[0]?.[0] as AppError
       expect(err.statusCode).toBe(409)
       expect(err.code).toBe('FEEDBACK_ALREADY_SUBMITTED')
+    })
+  })
+
+  describe('getMyFeedback', () => {
+    it('returns null data when user has no feedback', async () => {
+      mockedPrisma.feedback.findFirst.mockResolvedValue(null)
+
+      const req = { user: { userId: 1, role: 'OWNER' } } as unknown as Request
+      const res = createMockResponse()
+
+      await invoke(getMyFeedback, req, res, noopNext())
+
+      expect(res.json).toHaveBeenCalledWith({ data: null })
+    })
+
+    it('returns the user feedback when it exists', async () => {
+      const mockFeedback = {
+        id: 7,
+        userId: 1,
+        category: 'BUG',
+        title: 'Titulo',
+        body: 'Corpo suficiente',
+        votes: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: { id: 1, firstName: 'João', lastName: 'Silva', avatarUrl: null },
+      }
+      mockedPrisma.feedback.findFirst.mockResolvedValue(mockFeedback as never)
+
+      const req = { user: { userId: 1, role: 'OWNER' } } as unknown as Request
+      const res = createMockResponse()
+
+      await invoke(getMyFeedback, req, res, noopNext())
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ id: 7 }) }),
+      )
     })
   })
 

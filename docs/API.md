@@ -217,7 +217,12 @@ Todos os endpoints admin requerem `role: ADMIN`.
 | GET    | `/admin/feedback`              | Listar feedback (paginado, filtro categoria) |
 | GET    | `/admin/feedback/export.md`    | Exportar feedback em Markdown (anexo)        |
 
-### Health
+### Feedback
+
+| Metodo | Endpoint         | Descricao                                                |
+| ------ | ---------------- | -------------------------------------------------------- |
+| POST   | `/feedback`      | Submeter feedback (um por utilizador; 409 se repetido)   |
+| GET    | `/feedback/mine` | Feedback do utilizador autenticado (ou `{ data: null }`) |
 
 | Metodo | Endpoint  | Descricao                                 |
 | ------ | --------- | ----------------------------------------- |

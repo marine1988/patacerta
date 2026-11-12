@@ -78,6 +78,8 @@ export const queryKeys = {
       ['admin-user-detail', id ?? null] as const,
     breedersVerified: (search: string) => ['admin-breeders-verified', search] as const,
     breedsMini: () => ['breeds-mini'] as const,
+    feedback: (page: number, category: string | null) =>
+      ['admin-feedback', page, category ?? null] as const,
   },
 
   // ── Breeders ──────────────────────────────────────────────────────
@@ -135,8 +137,7 @@ export const queryKeys = {
   // ── Feedback ──────────────────────────────────────────────────────
   feedback: {
     all: () => ['feedback'] as const,
-    list: (page: number, sort: string, category: string | null) =>
-      ['feedback', 'list', page, sort, category] as const,
+    mine: () => ['feedback', 'mine'] as const,
   },
 
   // ── Payments / Sponsored Slots (lado criador) ──────────────────────

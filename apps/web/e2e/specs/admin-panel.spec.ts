@@ -31,6 +31,7 @@ const ADMIN_TABS = [
   'Moderação',
   'Patrocinados',
   'Auditoria',
+  'Feedback',
 ] as const
 
 test.describe('Painel de administração @prod-safe', () => {
