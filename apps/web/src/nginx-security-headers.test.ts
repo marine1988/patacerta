@@ -30,6 +30,7 @@ const SECURITY_HEADERS = [
   'add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
   'add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;',
   "add_header Content-Security-Policy-Report-Only \"default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'\" always;",
+  'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;',
 ]
 
 /**
@@ -106,6 +107,7 @@ describe('nginx.conf.template — headers de seguranca', () => {
       .map((part, i) => (i === 0 ? part : ''))
       .join('')
     expect(serverLevel).not.toContain('add_header X-Frame-Options')
+    expect(serverLevel).not.toContain('add_header Strict-Transport-Security')
   })
 
   it.each(contentLocations.map((b) => [b.header, b] as const))(
@@ -130,6 +132,7 @@ describe('nginx.conf.template — headers de seguranca', () => {
     for (const block of apiLocations) {
       expect(block.body).not.toContain('add_header X-Frame-Options')
       expect(block.body).not.toContain('Content-Security-Policy-Report-Only')
+      expect(block.body).not.toContain('add_header Strict-Transport-Security')
     }
   })
 })

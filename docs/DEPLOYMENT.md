@@ -190,10 +190,10 @@ age -d -i ~/patacerta-backup-key.txt backup.sql.age | \
 
 Duas camadas, com donos diferentes — nao duplicar uma na outra:
 
-| Quem responde                                                                        | Onde vive a config               | Headers                                                                                                                     |
-| ------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| API (`/api/*`, `/sitemap.xml`, redirects de `/criador/:id` e `/servicos/:id`)        | `apps/api/src/index.ts` (helmet) | CSP enforcada, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, ... |
-| Conteudo do nginx (HTML do SPA, manifest, robots/llms.txt, assets, uploads do MinIO) | `apps/web/nginx.conf.template`   | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP-Report-Only`                     |
+| Quem responde                                                                        | Onde vive a config               | Headers                                                                                                                                     |
+| ------------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| API (`/api/*`, `/sitemap.xml`, redirects de `/criador/:id` e `/servicos/:id`)        | `apps/api/src/index.ts` (helmet) | CSP enforcada, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, ...                 |
+| Conteudo do nginx (HTML do SPA, manifest, robots/llms.txt, assets, uploads do MinIO) | `apps/web/nginx.conf.template`   | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP-Report-Only`, `Strict-Transport-Security` (HSTS) |
 
 Antes do card PATA-BUG-4 o nginx nao enviava um unico header nestas
 respostas: o HTML era embutivel num iframe de terceiros (clickjacking em
@@ -205,7 +205,7 @@ browser.
 Um `add_header` dentro de um bloco `location` **substitui** todos os
 `add_header` herdados do `server` — nao ha' merge. Consequencias praticas:
 
-- O conjunto dos 5 headers, e o `${ROBOTS_HEADER}` (X-Robots-Tag do stage),
+- O conjunto dos 6 headers, e o `${ROBOTS_HEADER}` (X-Robots-Tag do stage),
   esta' repetido em cada `location` que serve conteudo proprio.
 - Se acrescentares um `location` novo que sirva conteudo, copia o bloco
   "Headers de seguranca" — e actualiza `LOCATION_COUNT` em

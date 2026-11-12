@@ -62,9 +62,12 @@ server {
     # contraditorios na mesma resposta (helmet manda `no-referrer`; aqui
     # seria `strict-origin-when-cross-origin`).
     #
-    # Nao inclui `Strict-Transport-Security`: o contentor so' fala HTTP e um
-    # max-age fixo no browser e' caro de reverter (a API ja' o envia em
-    # /api/*). Isso e' decisao do terminador TLS (Traefik/Dokploy).
+    # `Strict-Transport-Security` (HSTS) — incluido a partir do M-01. O
+    # contentor so' fala HTTP, mas o Traefik termina TLS e o header chega
+    # ao browser sobre HTTPS, por isso e' honrado. `includeSubDomains` +
+    # `preload` exige que TODOS os subdominios (stage, etc.) sejam HTTPS e
+    # a submissao em hstspreload.org para efeito real de preload. Reverter
+    # e' caro (max-age 1 ano) — decisao consciente de seguranca.
     #
     # A CSP vai em `Report-Only` de proposito: em modo enforcing parte
     # AdSense/Stripe. Promover para enforcing exige antes observar o
@@ -180,6 +183,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
         add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
     # SPA routing - fallback to index.html
@@ -194,6 +198,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
         add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
     # SEO/PWA: forçar Content-Type correcto para o manifest. O mime.types
@@ -209,6 +214,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
         add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
     # Cache static assets
@@ -227,6 +233,7 @@ server {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
         add_header Content-Security-Policy-Report-Only "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
     # Gzip
