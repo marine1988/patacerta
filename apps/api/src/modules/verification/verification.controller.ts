@@ -73,7 +73,17 @@ function truncateForAudit(text: string | null | undefined, max = 200): string {
 // Multer config: max 5MB, images + PDF
 const multerUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fieldNameSize: 100,
+    fieldSize: 1024,
+    fields: 10,
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    parts: 16,
+    headerPairs: 50,
+    fieldNestingDepth: 1,
+    fieldArrayIndexLimit: 100,
+  },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     if (allowed.includes(file.mimetype)) {
@@ -95,8 +105,12 @@ function runMulter(req: Request, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
     multerUpload(req, res, (err) => {
       if (err) {
-        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-          reject(new AppError(400, 'Ficheiro excede o limite de 5 MB', 'FILE_TOO_LARGE'))
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            reject(new AppError(400, 'Ficheiro excede o limite de 5 MB', 'FILE_TOO_LARGE'))
+          } else {
+            reject(new AppError(400, 'Pedido multipart inválido', 'INVALID_MULTIPART'))
+          }
         } else {
           reject(err)
         }

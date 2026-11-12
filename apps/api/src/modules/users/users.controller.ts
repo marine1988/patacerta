@@ -569,7 +569,17 @@ const AVATAR_UPLOAD_BYTES = 2 * 1024 * 1024
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: AVATAR_UPLOAD_BYTES },
+  limits: {
+    fieldNameSize: 100,
+    fieldSize: 1024,
+    fields: 10,
+    fileSize: AVATAR_UPLOAD_BYTES,
+    files: 1,
+    parts: 16,
+    headerPairs: 50,
+    fieldNestingDepth: 1,
+    fieldArrayIndexLimit: 100,
+  },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
     if (allowed.includes(file.mimetype)) {
@@ -590,8 +600,11 @@ function runAvatarMulter(req: Request, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
     avatarUpload(req, res, (err) => {
       if (err) {
-        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-          return reject(new AppError(400, 'Avatar pode ter no máximo 2 MB', 'FILE_TOO_LARGE'))
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return reject(new AppError(400, 'Avatar pode ter no máximo 2 MB', 'FILE_TOO_LARGE'))
+          }
+          return reject(new AppError(400, 'Pedido multipart inválido', 'INVALID_MULTIPART'))
         }
         return reject(err)
       }

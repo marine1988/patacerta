@@ -566,8 +566,15 @@ export const submitForVerification = asyncHandler(async (req, res) => {
 const photoUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
+    fieldNameSize: 100,
+    fieldSize: 1024,
+    fields: 10,
     fileSize: 2 * 1024 * 1024,
     files: MAX_PHOTOS_PER_BREEDER,
+    parts: 32,
+    headerPairs: 50,
+    fieldNestingDepth: 1,
+    fieldArrayIndexLimit: 100,
   },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
@@ -602,6 +609,7 @@ function runPhotoMulter(req: Request, res: Response): Promise<void> {
               ),
             )
           }
+          return reject(new AppError(400, 'Pedido multipart inválido', 'INVALID_MULTIPART'))
         }
         return reject(err)
       }
