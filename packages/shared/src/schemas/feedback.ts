@@ -16,7 +16,7 @@ export const listFeedbackSchema = z.object({
   category: feedbackCategorySchema.optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
-  sort: z.enum(['recent', 'votes']).default('votes'),
+  sort: z.enum(['recent', 'votes']).optional().default('recent'),
 })
 
 export type CreateFeedbackInput = z.infer<typeof createFeedbackSchema>

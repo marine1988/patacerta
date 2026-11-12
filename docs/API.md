@@ -194,26 +194,28 @@ Response:
 
 Todos os endpoints admin requerem `role: ADMIN`.
 
-| Metodo | Endpoint                       | Descricao              |
-| ------ | ------------------------------ | ---------------------- |
-| GET    | `/admin/stats`                 | Dashboard stats        |
-| GET    | `/admin/pending-counts`        | Contadores pendentes   |
-| GET    | `/admin/verifications/pending` | Fila de verificacoes   |
-| GET    | `/admin/users`                 | Listar utilizadores    |
-| GET    | `/admin/users/:id`             | Detalhe utilizador     |
-| PATCH  | `/admin/users/:id/suspend`     | Suspender utilizador   |
-| PATCH  | `/admin/users/:id/unsuspend`   | Reactivar utilizador   |
-| GET    | `/admin/breeders`              | Listar criadores       |
-| GET    | `/admin/breeders/:id`          | Detalhe criador        |
-| PATCH  | `/admin/breeders/:id/suspend`  | Suspender criador      |
-| GET    | `/admin/services`              | Listar servicos        |
-| POST   | `/admin/services/:id/suspend`  | Suspender servico      |
-| GET    | `/admin/reviews/flagged`       | Avaliacoes denunciadas |
-| GET    | `/admin/message-reports`       | Denuncias de mensagens |
-| GET    | `/admin/service-reports`       | Denuncias de servicos  |
-| GET    | `/admin/audit-logs`            | Logs de auditoria      |
-| GET    | `/admin/sponsored-slots`       | Slots patrocinados     |
-| POST   | `/admin/sponsored-slots`       | Criar slot (legacy)    |
+| Metodo | Endpoint                       | Descricao                                    |
+| ------ | ------------------------------ | -------------------------------------------- |
+| GET    | `/admin/stats`                 | Dashboard stats                              |
+| GET    | `/admin/pending-counts`        | Contadores pendentes                         |
+| GET    | `/admin/verifications/pending` | Fila de verificacoes                         |
+| GET    | `/admin/users`                 | Listar utilizadores                          |
+| GET    | `/admin/users/:id`             | Detalhe utilizador                           |
+| PATCH  | `/admin/users/:id/suspend`     | Suspender utilizador                         |
+| PATCH  | `/admin/users/:id/unsuspend`   | Reactivar utilizador                         |
+| GET    | `/admin/breeders`              | Listar criadores                             |
+| GET    | `/admin/breeders/:id`          | Detalhe criador                              |
+| PATCH  | `/admin/breeders/:id/suspend`  | Suspender criador                            |
+| GET    | `/admin/services`              | Listar servicos                              |
+| POST   | `/admin/services/:id/suspend`  | Suspender servico                            |
+| GET    | `/admin/reviews/flagged`       | Avaliacoes denunciadas                       |
+| GET    | `/admin/message-reports`       | Denuncias de mensagens                       |
+| GET    | `/admin/service-reports`       | Denuncias de servicos                        |
+| GET    | `/admin/audit-logs`            | Logs de auditoria                            |
+| GET    | `/admin/sponsored-slots`       | Slots patrocinados                           |
+| POST   | `/admin/sponsored-slots`       | Criar slot (legacy)                          |
+| GET    | `/admin/feedback`              | Listar feedback (paginado, filtro categoria) |
+| GET    | `/admin/feedback/export.md`    | Exportar feedback em Markdown (anexo)        |
 
 ### Health
 

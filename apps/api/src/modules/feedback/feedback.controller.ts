@@ -1,9 +1,11 @@
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
-import { asyncHandler, parseId, paginatedResponse } from '../../lib/helpers.js'
+import { asyncHandler, paginatedResponse } from '../../lib/helpers.js'
 import { logAudit } from '../../lib/audit.js'
 import type { CreateFeedbackInput, ListFeedbackInput } from '@patacerta/shared'
 import { Prisma } from '@prisma/client'
+import { buildFeedbackMarkdown } from './feedback.markdown.js'
+import type { FeedbackMarkdownItem } from './feedback.markdown.js'
 
 const FEEDBACK_SELECT = {
   id: true,
@@ -18,13 +20,10 @@ const FEEDBACK_SELECT = {
 } satisfies Prisma.FeedbackSelect
 
 export const listFeedback = asyncHandler(async (req, res) => {
-  const { category, page, limit, sort } = req.query as unknown as ListFeedbackInput
+  const { category, page, limit } = req.query as unknown as ListFeedbackInput
 
   const where: Prisma.FeedbackWhereInput = {}
   if (category) where.category = category
-
-  const orderBy: Prisma.FeedbackOrderByWithRelationInput =
-    sort === 'recent' ? { createdAt: 'desc' } : { votes: 'desc' }
 
   const [feedback, total] = await Promise.all([
     prisma.feedback.findMany({
@@ -32,35 +31,25 @@ export const listFeedback = asyncHandler(async (req, res) => {
       select: FEEDBACK_SELECT,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy,
+      orderBy: { createdAt: 'desc' },
     }),
     prisma.feedback.count({ where }),
   ])
 
-  // Check which items the current user has voted on
-  let votedIds: Set<number> = new Set()
-  if (req.user) {
-    const votes = await prisma.feedbackVote.findMany({
-      where: {
-        userId: req.user.userId,
-        feedbackId: { in: feedback.map((f) => f.id) },
-      },
-      select: { feedbackId: true },
-    })
-    votedIds = new Set(votes.map((v) => v.feedbackId))
-  }
-
-  const data = feedback.map((f) => ({
-    ...f,
-    hasVoted: votedIds.has(f.id),
-  }))
-
-  res.json(paginatedResponse(data, total, page, limit))
+  res.json(paginatedResponse(feedback, total, page, limit))
 })
 
 export const createFeedback = asyncHandler(async (req, res) => {
   const data = req.body as CreateFeedbackInput
   const userId = req.user!.userId
+
+  const existing = await prisma.feedback.findFirst({
+    where: { userId },
+    select: { id: true },
+  })
+  if (existing) {
+    throw new AppError(409, 'Já enviou o seu feedback. Obrigado!', 'FEEDBACK_ALREADY_SUBMITTED')
+  }
 
   const created = await prisma.feedback.create({
     data: {
@@ -84,72 +73,34 @@ export const createFeedback = asyncHandler(async (req, res) => {
   res.status(201).json({ ...created, hasVoted: false })
 })
 
-export const voteFeedback = asyncHandler(async (req, res) => {
-  const id = parseId(req.params.id)
-  const userId = req.user!.userId
-
-  const feedback = await prisma.feedback.findUnique({ where: { id } })
-  if (!feedback) throw new AppError(404, 'Feedback não encontrado', 'FEEDBACK_NOT_FOUND')
-  if (feedback.userId === userId)
-    throw new AppError(400, 'Não pode votar no seu próprio feedback', 'SELF_VOTE')
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.feedbackVote.create({ data: { feedbackId: id, userId } })
-      const updated = await tx.feedback.update({
-        where: { id },
-        data: { votes: { increment: 1 } },
-        select: FEEDBACK_SELECT,
-      })
-      return updated
-    })
-
-    await logAudit({
-      userId,
-      action: 'FEEDBACK_VOTED',
-      entity: 'feedback',
-      entityId: id,
-      ipAddress: req.ip,
-    })
-
-    res.json({ ...result, hasVoted: true })
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      throw new AppError(409, 'Já votou neste feedback', 'ALREADY_VOTED')
-    }
-    throw err
-  }
-})
-
-export const unvoteFeedback = asyncHandler(async (req, res) => {
-  const id = parseId(req.params.id)
-  const userId = req.user!.userId
-
-  const feedback = await prisma.feedback.findUnique({ where: { id } })
-  if (!feedback) throw new AppError(404, 'Feedback não encontrado', 'FEEDBACK_NOT_FOUND')
-
-  const result = await prisma.$transaction(async (tx) => {
-    const deleted = await tx.feedbackVote.deleteMany({
-      where: { feedbackId: id, userId },
-    })
-    if (deleted.count === 0) return null
-    const updated = await tx.feedback.update({
-      where: { id },
-      data: { votes: { decrement: 1 } },
-      select: FEEDBACK_SELECT,
-    })
-    return updated
+export const exportFeedback = asyncHandler(async (_req, res) => {
+  const feedback = await prisma.feedback.findMany({
+    select: {
+      id: true,
+      userId: true,
+      category: true,
+      title: true,
+      body: true,
+      createdAt: true,
+      user: { select: { id: true, firstName: true, lastName: true } },
+    },
+    orderBy: [{ category: 'asc' }, { createdAt: 'desc' }],
   })
 
-  if (!result) throw new AppError(400, 'Não votou neste feedback', 'NOT_VOTED')
+  const items: FeedbackMarkdownItem[] = feedback.map((f) => ({
+    id: f.id,
+    userId: f.userId,
+    category: f.category,
+    title: f.title,
+    body: f.body,
+    createdAt: f.createdAt,
+    user: f.user,
+  }))
 
-  await logAudit({
-    userId,
-    action: 'FEEDBACK_UNVOTED',
-    entity: 'feedback',
-    entityId: id,
-    ipAddress: req.ip,
-  })
+  const md = buildFeedbackMarkdown(items, new Date())
 
-  res.json({ ...result, hasVoted: false })
+  const dateStr = new Date().toISOString().slice(0, 10)
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
+  res.setHeader('Content-Disposition', `attachment; filename="patacerta-feedback-${dateStr}.md"`)
+  res.send(md)
 })

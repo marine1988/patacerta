@@ -17,9 +17,11 @@ import {
   flaggedReviewsQuerySchema,
   listReportsQuerySchema,
   auditLogsQuerySchema,
+  listFeedbackSchema,
 } from '@patacerta/shared'
 import * as ctrl from './admin.controller.js'
 import * as sponsoredCtrl from '../sponsored-slots/admin-sponsored-slots.controller.js'
+import * as feedbackCtrl from '../feedback/feedback.controller.js'
 
 export const adminRouter = Router()
 
@@ -139,6 +141,10 @@ adminRouter.patch(
   sponsoredCtrl.updateSponsoredSlot,
 )
 adminRouter.delete('/sponsored-slots/:id', sponsoredCtrl.deleteSponsoredSlot)
+
+// Feedback (admin-only): listagem paginada + export Markdown para o Hermes.
+adminRouter.get('/feedback', validate(listFeedbackSchema, 'query'), feedbackCtrl.listFeedback)
+adminRouter.get('/feedback/export.md', feedbackCtrl.exportFeedback)
 
 // Internal/maintenance — utilitarios admin para staging
 // (bloqueados em producao pelo controller via NODE_ENV check).

@@ -1,11 +1,6 @@
 // ============================================
 // PataCerta — Feedback Controller Tests
 // ============================================
-//
-// Convenção (igual a payments.controller.test.ts): asyncHandler propaga
-// erros via next(err) e é fire-and-forget (`fn(...).catch(next)`), por isso
-// não basta `await handler(...)`. Usamos `invoke()` para drenar microtasks
-// até `res.json` ou `next` terem sido chamados.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response, NextFunction } from 'express'
@@ -17,6 +12,7 @@ vi.mock('../../lib/prisma.js', () => {
       count: vi.fn(),
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
     },
     feedbackVote: {
@@ -25,7 +21,6 @@ vi.mock('../../lib/prisma.js', () => {
       findMany: vi.fn(),
     },
   }
-  // $transaction(callback) invoca o callback com o próprio prisma mock.
   prismaMock.$transaction = vi.fn(async (cb: (tx: unknown) => Promise<unknown>, _opts?: unknown) =>
     cb(prismaMock),
   )
@@ -36,12 +31,7 @@ vi.mock('../../lib/audit.js', () => ({
   logAudit: vi.fn(),
 }))
 
-import {
-  listFeedback,
-  createFeedback,
-  voteFeedback,
-  unvoteFeedback,
-} from './feedback.controller.js'
+import { listFeedback, createFeedback, exportFeedback } from './feedback.controller.js'
 import { prisma } from '../../lib/prisma.js'
 import { AppError } from '../../middleware/error-handler.js'
 
@@ -51,16 +41,16 @@ function createMockResponse() {
   return {
     status: vi.fn().mockReturnThis(),
     json: vi.fn(),
+    setHeader: vi.fn(),
+    send: vi.fn(),
   } as unknown as Response & {
     status: ReturnType<typeof vi.fn>
     json: ReturnType<typeof vi.fn>
+    setHeader: ReturnType<typeof vi.fn>
+    send: ReturnType<typeof vi.fn>
   }
 }
 
-/**
- * Invoca o handler (já envolvido em asyncHandler) e drena microtasks até
- * `res.json` ou `next` terem sido chamados.
- */
 async function invoke(
   handler: (req: Request, res: Response, next: NextFunction) => void,
   req: Request,
@@ -69,9 +59,15 @@ async function invoke(
 ): Promise<void> {
   handler(req, res, next)
   const resJson = (res as unknown as { json: ReturnType<typeof vi.fn> }).json
+  const resSend = (res as unknown as { send: ReturnType<typeof vi.fn> }).send
   const nextMock = next as unknown as { mock: { calls: unknown[][] } }
   for (let i = 0; i < 50; i++) {
-    if (nextMock.mock.calls.length > 0 || resJson.mock.calls.length > 0) return
+    if (
+      nextMock.mock.calls.length > 0 ||
+      resJson.mock.calls.length > 0 ||
+      resSend.mock.calls.length > 0
+    )
+      return
     await new Promise((r) => setImmediate(r))
   }
 }
@@ -84,7 +80,7 @@ describe('feedback.controller', () => {
   })
 
   describe('listFeedback', () => {
-    it('returns paginated feedback sorted by votes', async () => {
+    it('returns paginated feedback sorted by createdAt desc', async () => {
       const mockFeedback = [
         {
           id: 1,
@@ -102,8 +98,8 @@ describe('feedback.controller', () => {
       mockedPrisma.feedback.count.mockResolvedValue(1)
 
       const req = {
-        query: { page: '1', limit: '20', sort: 'votes' },
-        user: undefined,
+        query: { page: '1', limit: '20' },
+        user: { userId: 1, role: 'ADMIN' },
       } as unknown as Request
       const res = createMockResponse()
 
@@ -111,45 +107,8 @@ describe('feedback.controller', () => {
 
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.arrayContaining([expect.objectContaining({ id: 1, hasVoted: false })]),
+          data: expect.arrayContaining([expect.objectContaining({ id: 1 })]),
           meta: expect.objectContaining({ total: 1 }),
-        }),
-      )
-      // Anónimo: não consulta os votos do utilizador.
-      expect(mockedPrisma.feedbackVote.findMany).not.toHaveBeenCalled()
-    })
-
-    it('marks hasVoted=true for items the user voted on', async () => {
-      const mockFeedback = [
-        {
-          id: 1,
-          userId: 2,
-          category: 'BUG',
-          title: 'Test',
-          body: 'Test body',
-          votes: 5,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          user: { id: 2, firstName: 'João', lastName: 'Silva', avatarUrl: null },
-        },
-      ]
-      mockedPrisma.feedback.findMany.mockResolvedValue(mockFeedback as never)
-      mockedPrisma.feedback.count.mockResolvedValue(1)
-      mockedPrisma.feedbackVote.findMany.mockResolvedValue([
-        { id: 1, userId: 1, feedbackId: 1, createdAt: new Date() },
-      ] as never)
-
-      const req = {
-        query: { page: '1', limit: '20', sort: 'votes' },
-        user: { userId: 1, role: 'OWNER' },
-      } as unknown as Request
-      const res = createMockResponse()
-
-      await invoke(listFeedback, req, res, noopNext())
-
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.arrayContaining([expect.objectContaining({ id: 1, hasVoted: true })]),
         }),
       )
     })
@@ -157,6 +116,7 @@ describe('feedback.controller', () => {
 
   describe('createFeedback', () => {
     it('creates feedback and returns 201', async () => {
+      mockedPrisma.feedback.findFirst.mockResolvedValue(null)
       const mockCreated = {
         id: 1,
         userId: 1,
@@ -182,132 +142,42 @@ describe('feedback.controller', () => {
       expect(res.status).toHaveBeenCalledWith(201)
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ id: 1, hasVoted: false }))
     })
-  })
 
-  describe('voteFeedback', () => {
-    it('creates vote and increments count', async () => {
-      const mockUpdated = {
-        id: 1,
-        userId: 2,
-        category: 'BUG',
-        title: 'Test',
-        body: 'Test body',
-        votes: 6,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        user: { id: 2, firstName: 'João', lastName: 'Silva', avatarUrl: null },
-      }
-
-      mockedPrisma.feedback.findUnique.mockResolvedValue({ id: 1, userId: 2 } as never)
-      mockedPrisma.feedbackVote.create.mockResolvedValue({} as never)
-      mockedPrisma.feedback.update.mockResolvedValue(mockUpdated as never)
+    it('returns 409 when user already submitted feedback', async () => {
+      mockedPrisma.feedback.findFirst.mockResolvedValue({ id: 99 } as never)
 
       const req = {
-        params: { id: '1' },
-        user: { userId: 1, role: 'OWNER' },
-        ip: '127.0.0.1',
-      } as unknown as Request
-      const res = createMockResponse()
-
-      await invoke(voteFeedback, req, res, noopNext())
-
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, hasVoted: true, votes: 6 }),
-      )
-      expect(mockedPrisma.feedbackVote.create).toHaveBeenCalledWith({
-        data: { feedbackId: 1, userId: 1 },
-      })
-    })
-
-    it('propagates 404 when feedback not found', async () => {
-      mockedPrisma.feedback.findUnique.mockResolvedValue(null)
-
-      const req = {
-        params: { id: '999' },
+        body: { category: 'BUG', title: 'Outro feedback', body: 'Texto suficiente para validar' },
         user: { userId: 1, role: 'OWNER' },
         ip: '127.0.0.1',
       } as unknown as Request
       const res = createMockResponse()
       const next = vi.fn()
 
-      await invoke(voteFeedback, req, res, next as unknown as NextFunction)
+      await invoke(createFeedback, req, res, next as unknown as NextFunction)
 
       expect(next).toHaveBeenCalledWith(expect.any(AppError))
       const err = (next as unknown as { mock: { calls: unknown[][] } }).mock
         .calls[0]?.[0] as AppError
-      expect(err.statusCode).toBe(404)
-    })
-
-    it('propagates 400 when voting on own feedback', async () => {
-      mockedPrisma.feedback.findUnique.mockResolvedValue({ id: 1, userId: 1 } as never)
-
-      const req = {
-        params: { id: '1' },
-        user: { userId: 1, role: 'OWNER' },
-        ip: '127.0.0.1',
-      } as unknown as Request
-      const res = createMockResponse()
-      const next = vi.fn()
-
-      await invoke(voteFeedback, req, res, next as unknown as NextFunction)
-
-      expect(next).toHaveBeenCalledWith(expect.any(AppError))
-      const err = (next as unknown as { mock: { calls: unknown[][] } }).mock
-        .calls[0]?.[0] as AppError
-      expect(err.statusCode).toBe(400)
+      expect(err.statusCode).toBe(409)
+      expect(err.code).toBe('FEEDBACK_ALREADY_SUBMITTED')
     })
   })
 
-  describe('unvoteFeedback', () => {
-    it('removes vote and decrements count', async () => {
-      const mockUpdated = {
-        id: 1,
-        userId: 2,
-        category: 'BUG',
-        title: 'Test',
-        body: 'Test body',
-        votes: 4,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        user: { id: 2, firstName: 'João', lastName: 'Silva', avatarUrl: null },
-      }
+  describe('exportFeedback', () => {
+    it('sends markdown with headers', async () => {
+      mockedPrisma.feedback.findMany.mockResolvedValue([] as never)
 
-      mockedPrisma.feedback.findUnique.mockResolvedValue({ id: 1, userId: 2 } as never)
-      mockedPrisma.feedbackVote.deleteMany.mockResolvedValue({ count: 1 } as never)
-      mockedPrisma.feedback.update.mockResolvedValue(mockUpdated as never)
-
-      const req = {
-        params: { id: '1' },
-        user: { userId: 1, role: 'OWNER' },
-        ip: '127.0.0.1',
-      } as unknown as Request
+      const req = {} as unknown as Request
       const res = createMockResponse()
 
-      await invoke(unvoteFeedback, req, res, noopNext())
+      await invoke(exportFeedback, req, res, noopNext())
 
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, hasVoted: false, votes: 4 }),
-      )
-    })
-
-    it('propagates 400 when user has not voted', async () => {
-      mockedPrisma.feedback.findUnique.mockResolvedValue({ id: 1, userId: 2 } as never)
-      mockedPrisma.feedbackVote.deleteMany.mockResolvedValue({ count: 0 } as never)
-
-      const req = {
-        params: { id: '1' },
-        user: { userId: 1, role: 'OWNER' },
-        ip: '127.0.0.1',
-      } as unknown as Request
-      const res = createMockResponse()
-      const next = vi.fn()
-
-      await invoke(unvoteFeedback, req, res, next as unknown as NextFunction)
-
-      expect(next).toHaveBeenCalledWith(expect.any(AppError))
-      const err = (next as unknown as { mock: { calls: unknown[][] } }).mock
-        .calls[0]?.[0] as AppError
-      expect(err.statusCode).toBe(400)
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/markdown; charset=utf-8')
+      expect(res.send).toHaveBeenCalled()
+      const body = (res.send as unknown as { mock: { calls: unknown[][] } }).mock
+        .calls[0]?.[0] as string
+      expect(body).toContain('_Sem feedback registado._')
     })
   })
 })
