@@ -2,10 +2,21 @@ name: E2E
 
 on:
   push:
-    branches: [main]
+    # `dev` é a única branch onde a suite de stack completa corre com
+    # `@destructive` (pagamentos/sponsored slots) — o `E2E (Stage)` corre contra
+    # stage com `E2E_SKIP_DESTRUCTIVE` e o `CI` só faz typecheck/testes.
+    # Ver card SECURITY-QA-UNBLOCK-3.
+    branches: [main, dev]
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+# A suite arranca uma stack própria (Postgres + API + preview) e leva ~10-15
+# min: numa rajada de pushes para `dev` só a corrida do commit mais recente
+# interessa, por isso cancela-se a anterior. Em `main` nunca se cancela.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   NODE_VERSION: '20'

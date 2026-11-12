@@ -2,9 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `dev` é a branch de integração (deploy do stage) e é lá que a cadeia de
+    # segurança foi commitada. Sem este trigger, os commits directos em `dev`
+    # nunca passavam por typecheck/format/testes (ver card SECURITY-QA-UNBLOCK-3).
+    branches: [main, dev]
   pull_request:
     branches: [main]
+
+# Um push novo em `dev` torna a corrida anterior obsoleta: cancelá-la evita
+# multiplicar runners e serviços Postgres numa rajada de commits. Em `main`
+# nunca se cancela — a corrida é a evidência do commit que foi para produção.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   NODE_VERSION: '20'
