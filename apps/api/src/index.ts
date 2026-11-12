@@ -34,9 +34,71 @@ import { maintenanceMode } from './middleware/maintenance.js'
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
 
-// Trust the first reverse proxy (Dokploy/Traefik) so req.ip reflects the real client IP.
+// Trust the reverse proxy (Dokploy/Traefik) so req.ip reflects the real client IP.
 // Required for accurate rate-limiting and consent-log auditing.
-app.set('trust proxy', 1)
+//
+// CVE-2026-90711: proxy-addr <2.0.8 did not recognise IPv4-mapped IPv6
+// addresses in the trusted subnet, allowing an attacker to send
+// `X-Forwarded-For: ::ffff:127.0.0.1` and have it treated as a trusted/
+// loopback client IP, bypassing rate limits and corrupting audit logs.
+//
+// Hardening:
+//  1. proxy-addr bumped to >=2.0.8 (pnpm override in pnpm-workspace.yaml).
+//  2. Trust is a CUSTOM function instead of a hop count: we only trust the
+//     immediate proxy when its socket address is a known proxy (loopback or
+//     RFC1918/private range), and we NEVER trust an IPv4-mapped IPv6
+//     address (`::ffff:`) in any position.
+//  3. Any client IP that still resolves to an IPv4-mapped IPv6 is normalised
+//     back to the socket address by the middleware below, so it can never be
+//     used as a rate-limit key or stored in audit/consent logs.
+function isTrustedProxyAddress(ip: string): boolean {
+  if (typeof ip !== 'string' || ip.length === 0) return false
+  const lower = ip.toLowerCase()
+  // Never trust IPv4-mapped IPv6 (CVE-2026-90711).
+  if (lower.startsWith('::ffff:')) return false
+
+  // Loopback.
+  if (ip === '127.0.0.1' || ip === '::1') return true
+
+  // IPv4 private / link-local ranges (Traefik runs inside Docker).
+  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (m) {
+    const a = Number(m[1])
+    const b = Number(m[2])
+    if (a === 10) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    if (a === 127) return true
+    if (a === 169 && b === 254) return true
+  }
+
+  // IPv6 unique-local / link-local.
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true
+  if (lower.startsWith('fe80:')) return true
+
+  return false
+}
+
+app.set('trust proxy', (ip: string, i: number) => {
+  // Only the immediate reverse proxy (1 hop) may be trusted.
+  if (i > 0) return false
+  return isTrustedProxyAddress(ip)
+})
+
+// Strip any IPv4-mapped IPv6 that slipped through into req.ip so it can
+// never be used as a rate-limit key or persisted in audit/consent logs.
+app.use((req, _res, next) => {
+  const ip = req.ip
+  if (typeof ip === 'string' && ip.toLowerCase().startsWith('::ffff:')) {
+    const fallback = req.socket?.remoteAddress || ip
+    Object.defineProperty(req, 'ip', {
+      value: fallback,
+      writable: true,
+      configurable: true,
+    })
+  }
+  next()
+})
 
 // ---- Global Middleware ----
 // Security headers. CSP is API-focused (no HTML rendered), so we keep defaults
