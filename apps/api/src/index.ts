@@ -28,7 +28,7 @@ import { sitemapRouter } from './modules/sitemap/sitemap.router.js'
 import { paymentsRouter } from './modules/payments/payments.router.js'
 import { webhooksRouter } from './modules/webhooks/webhooks.router.js'
 import { ensureBucket } from './lib/minio.js'
-import { isProd, isStage, isHttps } from './lib/env.js'
+import { isProd, isStage, isDev, isHttps } from './lib/env.js'
 import { maintenanceMode } from './middleware/maintenance.js'
 
 const app = express()
@@ -303,6 +303,28 @@ app.listen(PORT, '0.0.0.0', () => {
         `[PataCerta API] FATAL: ${offending} cannot be enabled when NODE_ENV=production. Set ALLOW_INSECURE_FLAGS_IN_PROD=1 to override (NOT recommended). Exiting.`,
       )
       process.exit(1)
+    }
+  }
+
+  // Aviso em ambientes nao-dev (stage) quando as flags de conveniencia de
+  // testes estao activas. Stage corre com AUTH_SKIP_EMAIL_VERIFICATION=true e
+  // (por omissao) DISABLE_RATE_LIMITS=true para facilitar smoke tests, mas
+  // isso desactiva verificacao de email e rate limiting — inseguro se o stage
+  // for usado para demos/QA com dados reais. O aviso torna o risco visivel
+  // no boot em vez de silencioso.
+  if (!isDev && (skipOn || rlOff)) {
+    const offending = [skipOn && 'AUTH_SKIP_EMAIL_VERIFICATION', rlOff && 'DISABLE_RATE_LIMITS']
+      .filter(Boolean)
+      .join(', ')
+    console.warn(
+      `[PataCerta API] ⚠  Ambiente nao-dev (${isStage ? 'stage' : 'prod'}) com flags de teste activas: ${offending}. ` +
+        `Stage nao deve conter dados reais; para demos/QA com utilizadores reais desactivar estas flags ` +
+        `(AUTH_SKIP_EMAIL_VERIFICATION=false, DISABLE_RATE_LIMITS=false).`,
+    )
+    if (rlOff) {
+      console.warn(
+        '[PataCerta API] ⚠  DISABLE_RATE_LIMITS=true — todos os rate limiters sao no-ops (brute-force/abuso sem proteccao).',
+      )
     }
   }
 

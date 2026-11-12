@@ -12,6 +12,10 @@
  */
 export const isProd = process.env.NODE_ENV === 'production'
 export const isStage = process.env.NODE_ENV === 'stage'
+// 'dev' = qualquer ambiente que nao seja prod nem stage (inclui NODE_ENV
+// unset / 'development' / 'test'). Usado para gates de seguranca que so'
+// fazem sentido em ambientes nao-dev (stage/prod).
+export const isDev = !isProd && !isStage
 export const isHttps = isProd || isStage
 
 /**

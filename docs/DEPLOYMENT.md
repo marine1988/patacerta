@@ -74,6 +74,14 @@ Deploy via Dokploy (Docker Compose).
 | `RESET_DB_ON_BOOT`             | Apaga DB ao iniciar      |
 | `RUN_SEED_ON_BOOT`             | Corre seed ao iniciar    |
 
+**Postura do stage:** stage corre com `AUTH_SKIP_EMAIL_VERIFICATION=true` e
+`DISABLE_RATE_LIMITS=true` por conveniencia de testes automatizados (E2E). A API
+emite um **AVISO no boot** quando estas flags correm em ambiente nao-dev. Stage
+**nao deve conter dados reais** de utilizadores (contas, emails, pagamentos) —
+pode ser resetado/limpo a qualquer momento. Para demos/QA com dados reais,
+desactivar as flags (`AUTH_SKIP_EMAIL_VERIFICATION=false`,
+`DISABLE_RATE_LIMITS=false`) e configurar SMTP (`RESEND_API_KEY`).
+
 Com `NODE_ENV=production`, a API **recusa arrancar** (`process.exit(1)`) se
 `AUTH_SKIP_EMAIL_VERIFICATION` ou `DISABLE_RATE_LIMITS` estiverem activas, ou se
 `RESEND_API_KEY` faltar.
