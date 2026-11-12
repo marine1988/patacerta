@@ -142,7 +142,12 @@ test.describe('Painel de administração @prod-safe', () => {
     await expect(page.getByRole('heading', { name: 'Sem utilizadores' })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByText('Nenhum utilizador encontrado.')).toBeVisible()
+    // Copy actual do `EmptyState` em `UtilizadoresTab` (a antiga
+    // "Nenhum utilizador encontrado." já não existe — assert de copy obsoleta
+    // que só não rebentou antes porque a sessão morria em `/entrar`).
+    await expect(
+      page.getByText('Nenhum utilizador corresponde à pesquisa ou ao papel seleccionado.'),
+    ).toBeVisible()
     await expect(page.getByText(/Algo correu mal/i)).toBeHidden()
   })
 
@@ -162,7 +167,13 @@ test.describe('Painel de administração @prod-safe', () => {
 
     // Id obtido da própria lista — nunca hardcoded (em produção os ids de
     // seed não existem).
-    const link = page.locator('a[href^="/admin/utilizadores/"]').first()
+    //
+    // `:visible` é obrigatório: `UtilizadoresTab` renderiza a lista duas vezes
+    // (cards `md:hidden` para mobile + tabela para desktop), logo o primeiro
+    // `<a href="/admin/utilizadores/N">` do DOM é o do card mobile — presente
+    // mas escondido em viewport de desktop → `toBeVisible()` falhava com
+    // `unexpected value "hidden"`. Regra da skill: duplicado responsive.
+    const link = page.locator('a[href^="/admin/utilizadores/"]:visible').first()
     await expect(link).toBeVisible({ timeout: 15_000 })
     const href = await link.getAttribute('href')
     expect(href, 'lista devia ter links para o detalhe').toMatch(/^\/admin\/utilizadores\/.+/)

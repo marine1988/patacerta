@@ -142,8 +142,33 @@ jobs:
           exit 1
         shell: bash
 
+      # ⚠️ O job define `NODE_ENV: test` (semântica da API) e o `vite build`
+      # HERDA essa variável como *modo* de build. `NODE_ENV=test vite build`
+      # produz um bundle de DESENVOLVIMENTO do React (`react-vendor` 342 kB vs
+      # 144 kB, `process.env.NODE_ENV === 'development'`), onde o
+      # `<React.StrictMode>` de `src/main.tsx` invoca os efeitos duas vezes.
+      # Efeito medido (run 43206671403, 13 falhas): o efeito de mount do
+      # `AuthContext` dispara dois `POST /api/auth/refresh` simultâneos com o
+      # MESMO cookie; a rotação atómica da API detecta reuso, revoga a cadeia
+      # (`REFRESH_TOKEN_REUSED`) e a SPA aterra em `/entrar`. O artefacto sob
+      # teste tem de ser o build que a imagem serve — logo produção.
       - name: Build Web
+        env:
+          NODE_ENV: production
         run: pnpm --filter @patacerta/web build
+
+      # Rede de segurança: se o modo de build voltar a degradar para
+      # desenvolvimento, a suite mediria um artefacto que nunca é servido (e
+      # voltaria a partir-se pelo StrictMode). Falha aqui, com o motivo à vista,
+      # em vez de produzir 13 falhas de auth que parecem bug do produto.
+      - name: Verify Web bundle is a production build
+        run: |
+          if grep -lq 'react-dom.development\|React DevTools' apps/web/dist/assets/*.js; then
+            echo "::error::apps/web/dist é um build de DESENVOLVIMENTO do React (o modo do vite build não foi 'production'). O StrictMode corre efeitos duas vezes e a suite mede um artefacto que não é servido em stage/prod."
+            exit 1
+          fi
+          echo "OK: bundle de produção (sem react-dom.development)"
+        shell: bash
 
       - name: Start Web (vite preview, background)
         run: |

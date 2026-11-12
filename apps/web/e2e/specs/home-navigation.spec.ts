@@ -1,4 +1,22 @@
-import { test, expect } from '../fixtures/test'
+import { test, expect, type Page } from '../fixtures/test'
+
+/**
+ * Tab de TIPO da página de pesquisa (`/pesquisar`).
+ *
+ * ⚠️ Não usar `page.getByRole('button', { name: 'Serviços', exact: true })`
+ * sem âmbito: a homepage tem dois toggles com esse nome acessível
+ * (`home-search` e `sticky-search`), e logo a seguir a `click()` num link da
+ * homepage o DOM ainda pode conter os da página anterior → *strict mode
+ * violation* instantânea (não é retried, ao contrário de um `toBeVisible`).
+ * O `<nav aria-label="Tipo de pesquisa">` só existe em `/pesquisar`
+ * (`pages/pesquisar/PesquisarPage.tsx`), pelo que ancora o assert na página
+ * certa e mantém a mordida: sem `aria-current="page"` o teste falha.
+ */
+function tipoTab(page: Page, label: 'Criadores' | 'Serviços') {
+  return page
+    .getByRole('navigation', { name: 'Tipo de pesquisa' })
+    .getByRole('button', { name: label, exact: true })
+}
 
 /**
  * Smoke / navegação core do site.
@@ -37,19 +55,17 @@ test.describe('Homepage e navegação @prod-safe', () => {
 
     await page.getByRole('link', { name: /Pesquisar criadores/i }).click()
     await expect(page).toHaveURL(/\/pesquisar(\?|$)/)
-    // Default = criadores → tab Criadores deve estar selecionada
-    await expect(page.getByRole('button', { name: 'Criadores', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    // Default = criadores → tab Criadores deve estar selecionada.
+    // `tipoTab` ancora no `<nav aria-label="Tipo de pesquisa">`: sem âmbito,
+    // `getByRole('button', { name: 'Criadores' })` também casa com os toggles
+    // da homepage (`home-search`/`sticky-search`), que estão `aria-current`
+    // null → falha intermitente conforme o timing da navegação.
+    await expect(tipoTab(page, 'Criadores')).toHaveAttribute('aria-current', 'page')
 
     await page.goBack()
     await page.getByRole('link', { name: /Ver serviços/i }).click()
     await expect(page).toHaveURL(/\/pesquisar\?tipo=servicos/)
-    await expect(page.getByRole('button', { name: 'Serviços', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(tipoTab(page, 'Serviços')).toHaveAttribute('aria-current', 'page')
   })
 
   test('título do simulador é apelativo e orientado ao benefício', async ({ page }) => {
@@ -138,10 +154,11 @@ test.describe('Homepage e navegação @prod-safe', () => {
     await expect(btn).toBeVisible()
     await btn.click()
     await expect(page).toHaveURL(/\/pesquisar(\?|$)/)
-    await expect(page.getByRole('button', { name: 'Criadores', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    // Ancorar na tab de TIPO da própria página de pesquisa: a homepage tem
+    // toggles "Criadores"/"Serviços" com o mesmo nome acessível
+    // (`home-search` + `sticky-search`), e no instante logo a seguir à
+    // navegação o DOM ainda pode ter os da homepage → strict mode violation.
+    await expect(tipoTab(page, 'Criadores')).toHaveAttribute('aria-current', 'page')
   })
 
   test('botão "Ver todos os serviços" leva à pesquisa de serviços', async ({ page }) => {
@@ -154,10 +171,7 @@ test.describe('Homepage e navegação @prod-safe', () => {
     await expect(btn).toBeVisible()
     await btn.click()
     await expect(page).toHaveURL(/\/pesquisar\?tipo=servicos/)
-    await expect(page.getByRole('button', { name: 'Serviços', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(tipoTab(page, 'Serviços')).toHaveAttribute('aria-current', 'page')
   })
 
   test('dark mode alterna e mantém a classe no <html>', async ({ page }) => {

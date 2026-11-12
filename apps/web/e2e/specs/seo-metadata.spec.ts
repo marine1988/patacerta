@@ -358,9 +358,23 @@ test.describe('SEO / metadata @prod-safe', () => {
     }
   })
 
+  /**
+   * Onde pedir o `/sitemap.xml`.
+   *
+   * Em stage/produção o host canónico tem nginx, que proxya `/sitemap.xml`
+   * para a API. No stack local do `e2e.yml` o web é `vite preview` (sem proxy):
+   * pedir `/sitemap.xml` ali devolve o `index.html` da SPA (`text/html`), não o
+   * XML da API — era esse o falso vermelho do run 43206671403. Sem host
+   * canónico conhecido (`EXPECTED_PUBLIC_URL === null` ⇒ local), o sitemap
+   * pede-se à API, que é quem o gera.
+   */
+  const SITEMAP_URL = EXPECTED_PUBLIC_URL
+    ? `${EXPECTED_PUBLIC_URL}/sitemap.xml`
+    : `${API_BASE_URL.replace(/\/api$/, '')}/sitemap.xml`
+
   test('sitemap.xml é XML válido e só contém URLs do domínio canónico', async ({ request }) => {
-    const res = await request.get(`${EXPECTED_PUBLIC_URL ?? ''}/sitemap.xml`)
-    expect(res.status(), await rateLimitHint(res)).toBe(200)
+    const res = await request.get(SITEMAP_URL)
+    expect(res.status(), `${SITEMAP_URL} → ${await rateLimitHint(res)}`).toBe(200)
     expect((res.headers()['content-type'] ?? '').toLowerCase()).toContain('xml')
 
     const xml = await res.text()
@@ -372,12 +386,29 @@ test.describe('SEO / metadata @prod-safe', () => {
 
     for (const loc of locs) {
       expect(loc.startsWith('http'), `URL não absoluta no sitemap: ${loc}`).toBe(true)
-      if (EXPECTED_PUBLIC_URL) {
+    }
+
+    // Um sitemap NUNCA pode misturar ambientes (PATA-BUG-7/9/10): todas as
+    // `<loc>` partilham a mesma origem.
+    const origins = [...new Set(locs.map((l) => new URL(l).origin))]
+    expect(origins, `sitemap mistura domínios: ${origins.join(', ')}`).toHaveLength(1)
+
+    if (EXPECTED_PUBLIC_URL) {
+      for (const loc of locs) {
         expect(
           loc.startsWith(EXPECTED_PUBLIC_URL),
           `sitemap com URL de outro domínio: ${loc}`,
         ).toBe(true)
       }
+    } else {
+      // Sem host canónico configurado (local, sem proxy): o sitemap tem de
+      // anunciar o host do PRÓPRIO stack — loopback. Anunciar o domínio de
+      // outro ambiente é exactamente o defeito que este assert trava.
+      const host = new URL(origins[0]!).hostname
+      expect(
+        ['localhost', '127.0.0.1', '[::1]'],
+        `sitemap do stack local anuncia '${host}' — devia anunciar o host que o serve (${new URL(SITEMAP_URL).origin})`,
+      ).toContain(host)
     }
     expect(locs.some((l) => l.endsWith('/pesquisar'))).toBe(true)
   })

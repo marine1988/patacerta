@@ -140,7 +140,8 @@ test.describe('Contrato da API pública @prod-safe', () => {
     // Helmet está montado na API (confirmado em produção e stage).
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['x-frame-options']).toBeTruthy()
-    expect(headers['strict-transport-security']).toContain('max-age=')
+    // HSTS não se assere aqui: só existe quando a API corre em ambiente HTTPS
+    // (`isHttps` em apps/api/src/lib/env.ts). Ver o teste dedicado abaixo.
 
     // Rate-limit: os headers existem quando o limiter está ativo. Em stage
     // `DISABLE_RATE_LIMITS=true` desliga-o (é lá que corremos a suite inteira
@@ -154,6 +155,34 @@ test.describe('Contrato da API pública @prod-safe', () => {
       expect(Number(limit)).toBeGreaterThan(0)
       expect(Number(remaining)).toBeGreaterThanOrEqual(0)
     }
+  })
+
+  /**
+   * HSTS na resposta da API só faz sentido em ambiente HTTPS.
+   *
+   * `apps/api/src/index.ts` monta o helmet com
+   * `strictTransportSecurity: isHttps ? {...} : false`, e `isHttps` é
+   * `NODE_ENV === 'production' || 'stage'`. O stack do `e2e.yml` corre a API
+   * com `NODE_ENV=test` em HTTP puro (`localhost:3001`, sem nginx): a ausência
+   * do header é o comportamento CORRETO do produto, não uma regressão — e o
+   * HSTS que o browser vê no documento servido é coberto por
+   * `security-headers.spec.ts` (que também faz skip sem nginx).
+   *
+   * Skip só em `caps.env === 'local'`: em stage/produção o assert tem de
+   * continuar a morder (a API ali é HTTPS, e é essa a promessa do helmet).
+   */
+  test('API em ambiente HTTPS emite HSTS com max-age', async ({ request, caps }) => {
+    test.skip(
+      caps.env === 'local',
+      `O stack '${caps.env}' corre a API com NODE_ENV=test em HTTP (${caps.apiBaseUrl}), sem nginx e sem TLS: o helmet desliga o HSTS por desenho (isHttps=false em apps/api/src/lib/env.ts). O HSTS do documento servido ao browser é coberto por security-headers.spec.ts; aqui só se avalia o ambiente HTTPS real (stage/prod).`,
+    )
+
+    const res = await request.get(`${API_BASE_URL}/health`)
+    expect(res.status()).toBe(200)
+    expect(
+      res.headers()['strict-transport-security'],
+      'API em ambiente HTTPS devia emitir Strict-Transport-Security',
+    ).toContain('max-age=')
   })
 
   test('401 da API não expõe stacktrace e é JSON', async ({ request }) => {
