@@ -10,6 +10,10 @@ export const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
+  // H-05: nao seguir redirects cegamente — redirects podem vazar o header
+  // Authorization (Bearer) e o cookie de refresh para um host de atacante.
+  // A API e' same-origin (/api); nenhum redirect e' esperado.
+  maxRedirects: 0,
 })
 
 // Request interceptor — attach JWT
@@ -228,7 +232,11 @@ api.interceptors.response.use(
     try {
       // O refresh token vive no cookie httpOnly — basta enviar o pedido
       // com withCredentials (axios.create ja o tem). Body vazio.
-      const { data } = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+      const { data } = await axios.post(
+        `${API_URL}/auth/refresh`,
+        {},
+        { withCredentials: true, maxRedirects: 0 },
+      )
       localStorage.setItem('access_token', data.accessToken)
       sessionGaveUp = false
       originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
