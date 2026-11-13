@@ -319,7 +319,7 @@ export const serviceReportRateLimit = rateLimit({
 
 export const feedbackCreateRateLimit = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: 'Limite diário de feedback atingido. Tente novamente amanhã.',
   keyGenerator: userKey,
   bucket: 'feedback-create',

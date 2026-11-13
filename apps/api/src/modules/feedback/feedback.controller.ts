@@ -41,23 +41,22 @@ export const listFeedback = asyncHandler(async (req, res) => {
 
 export const getMyFeedback = asyncHandler(async (req, res) => {
   const userId = req.user!.userId
-  const feedback = await prisma.feedback.findFirst({
+  const limit = 5
+  const items = await prisma.feedback.findMany({
     where: { userId },
+    orderBy: { createdAt: 'desc' },
     select: FEEDBACK_SELECT,
   })
-  res.json({ data: feedback ?? null })
+  res.json({ data: items, limit, remaining: Math.max(0, limit - items.length) })
 })
 
 export const createFeedback = asyncHandler(async (req, res) => {
   const data = req.body as CreateFeedbackInput
   const userId = req.user!.userId
 
-  const existing = await prisma.feedback.findFirst({
-    where: { userId },
-    select: { id: true },
-  })
-  if (existing) {
-    throw new AppError(409, 'Já enviou o seu feedback. Obrigado!', 'FEEDBACK_ALREADY_SUBMITTED')
+  const count = await prisma.feedback.count({ where: { userId } })
+  if (count >= 5) {
+    throw new AppError(409, 'Atingiu o limite de 5 feedbacks. Obrigado!', 'FEEDBACK_LIMIT_REACHED')
   }
 
   const created = await prisma.feedback.create({

@@ -9,7 +9,13 @@
 
 import { test, expect } from '../fixtures/test'
 import { loginViaApi, dismissConsentBanner } from '../fixtures/auth'
-import { ADMIN_EMAIL, ADMIN_PASSWORD, API_BASE_URL } from '../fixtures/demo-data'
+import {
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
+  API_BASE_URL,
+  DEMO_CLIENT_EMAILS,
+  DEMO_PASSWORD,
+} from '../fixtures/demo-data'
 import { seedSkipReason } from '../fixtures/env'
 
 test.describe('Contrato da API de feedback @prod-safe', () => {
@@ -117,5 +123,36 @@ test.describe('Painel de admin — tab Feedback @prod-safe', () => {
     // Tabela (desktop) ou empty state.
     const emptyOrTable = page.getByText(/Ainda não há feedback\.|Data/i).first()
     await expect(emptyOrTable).toBeVisible({ timeout: 15_000 })
+  })
+})
+
+test.describe('Feedback — contador e lista privada @prod-safe', () => {
+  test('com sessão, página mostra formulário e contador N de 5', async ({ page, caps }) => {
+    test.skip(!caps.hasDemoClient, seedSkipReason(caps, 'utilizadores demo (cliente)'))
+    await dismissConsentBanner(page)
+    await loginViaApi(page.context().request, page, DEMO_CLIENT_EMAILS[0], DEMO_PASSWORD)
+    await page.goto('/feedback')
+    await expect(
+      page.getByRole('heading', { name: 'Feedback & Sugestões', level: 1 }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: /Enviar feedback/i })).toBeVisible()
+    await expect(page.getByText(/\d+ de \d+/)).toBeVisible()
+  })
+
+  test('GET /api/feedback/mine: remaining coerente com data.length', async ({ request, caps }) => {
+    test.skip(!caps.hasDemoClient, seedSkipReason(caps, 'utilizadores demo (cliente)'))
+    const login = await request.post(`${API_BASE_URL}/auth/login`, {
+      data: { email: DEMO_CLIENT_EMAILS[0], password: DEMO_PASSWORD },
+    })
+    expect(login.ok()).toBeTruthy()
+    const { accessToken } = (await login.json()) as { accessToken: string }
+
+    const res = await request.get(`${API_BASE_URL}/feedback/mine`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    expect(res.ok()).toBeTruthy()
+    const body = (await res.json()) as { data: unknown[]; limit: number; remaining: number }
+    expect(body.limit).toBe(5)
+    expect(body.remaining).toBe(Math.max(0, 5 - body.data.length))
   })
 })

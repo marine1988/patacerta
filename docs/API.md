@@ -219,10 +219,10 @@ Todos os endpoints admin requerem `role: ADMIN`.
 
 ### Feedback
 
-| Metodo | Endpoint         | Descricao                                                |
-| ------ | ---------------- | -------------------------------------------------------- |
-| POST   | `/feedback`      | Submeter feedback (um por utilizador; 409 se repetido)   |
-| GET    | `/feedback/mine` | Feedback do utilizador autenticado (ou `{ data: null }`) |
+| Metodo | Endpoint         | Descricao                                                                                              |
+| ------ | ---------------- | ------------------------------------------------------------------------------------------------------ |
+| POST   | `/feedback`      | Submeter feedback (até 5 por utilizador; 409 `FEEDBACK_LIMIT_REACHED` se atingir o limite)             |
+| GET    | `/feedback/mine` | Feedbacks do utilizador autenticado (mais recente primeiro): `{ data: [...], limit: 5, remaining: N }` |
 
 | Metodo | Endpoint  | Descricao                                 |
 | ------ | --------- | ----------------------------------------- |

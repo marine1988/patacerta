@@ -121,7 +121,7 @@ describe('feedback.controller', () => {
 
   describe('createFeedback', () => {
     it('creates feedback and returns 201', async () => {
-      mockedPrisma.feedback.findFirst.mockResolvedValue(null)
+      mockedPrisma.feedback.count.mockResolvedValue(0)
       const mockCreated = {
         id: 1,
         userId: 1,
@@ -148,52 +148,86 @@ describe('feedback.controller', () => {
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ id: 1, hasVoted: false }))
     })
 
-    it('returns 409 when user already submitted feedback', async () => {
-      mockedPrisma.feedback.findFirst.mockResolvedValue({ id: 99 } as never)
+    it('allows up to 5 feedbacks then rejects the 6th', async () => {
+      const mockCreated = {
+        id: 1,
+        userId: 1,
+        category: 'SUGESTAO',
+        title: 'Nova funcionalidade',
+        body: 'Gostaria de ver...',
+        votes: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: { id: 1, firstName: 'João', lastName: 'Silva', avatarUrl: null },
+      }
+      mockedPrisma.feedback.create.mockResolvedValue(mockCreated as never)
 
+      for (let i = 0; i < 5; i++) {
+        mockedPrisma.feedback.count.mockResolvedValue(i)
+        const req = {
+          body: { category: 'SUGESTAO', title: 'Nova funcionalidade', body: 'Gostaria de ver...' },
+          user: { userId: 1, role: 'OWNER' },
+          ip: '127.0.0.1',
+        } as unknown as Request
+        const res = createMockResponse()
+        await invoke(createFeedback, req, res, noopNext())
+        expect(res.status).toHaveBeenCalledWith(201)
+      }
+
+      mockedPrisma.feedback.count.mockResolvedValue(5)
       const req = {
-        body: { category: 'BUG', title: 'Outro feedback', body: 'Texto suficiente para validar' },
+        body: { category: 'SUGESTAO', title: 'Nova funcionalidade', body: 'Gostaria de ver...' },
         user: { userId: 1, role: 'OWNER' },
         ip: '127.0.0.1',
       } as unknown as Request
       const res = createMockResponse()
       const next = vi.fn()
-
       await invoke(createFeedback, req, res, next as unknown as NextFunction)
-
-      expect(next).toHaveBeenCalledWith(expect.any(AppError))
       const err = (next as unknown as { mock: { calls: unknown[][] } }).mock
         .calls[0]?.[0] as AppError
       expect(err.statusCode).toBe(409)
-      expect(err.code).toBe('FEEDBACK_ALREADY_SUBMITTED')
+      expect(err.code).toBe('FEEDBACK_LIMIT_REACHED')
     })
   })
 
   describe('getMyFeedback', () => {
-    it('returns null data when user has no feedback', async () => {
-      mockedPrisma.feedback.findFirst.mockResolvedValue(null)
+    it('returns empty list + remaining 5 when user has no feedback', async () => {
+      mockedPrisma.feedback.findMany.mockResolvedValue([] as never)
 
       const req = { user: { userId: 1, role: 'OWNER' } } as unknown as Request
       const res = createMockResponse()
 
       await invoke(getMyFeedback, req, res, noopNext())
 
-      expect(res.json).toHaveBeenCalledWith({ data: null })
+      expect(res.json).toHaveBeenCalledWith({ data: [], limit: 5, remaining: 5 })
     })
 
-    it('returns the user feedback when it exists', async () => {
-      const mockFeedback = {
-        id: 7,
-        userId: 1,
-        category: 'BUG',
-        title: 'Titulo',
-        body: 'Corpo suficiente',
-        votes: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        user: { id: 1, firstName: 'João', lastName: 'Silva', avatarUrl: null },
-      }
-      mockedPrisma.feedback.findFirst.mockResolvedValue(mockFeedback as never)
+    it('returns the user feedbacks sorted desc with remaining', async () => {
+      const items = [
+        {
+          id: 8,
+          userId: 1,
+          category: 'BUG',
+          title: 'Mais recente',
+          body: 'Corpo',
+          votes: 0,
+          createdAt: new Date('2026-01-02'),
+          updatedAt: new Date('2026-01-02'),
+          user: { id: 1, firstName: 'João', lastName: 'Silva', avatarUrl: null },
+        },
+        {
+          id: 7,
+          userId: 1,
+          category: 'SUGESTAO',
+          title: 'Mais antigo',
+          body: 'Corpo 2',
+          votes: 0,
+          createdAt: new Date('2026-01-01'),
+          updatedAt: new Date('2026-01-01'),
+          user: { id: 1, firstName: 'João', lastName: 'Silva', avatarUrl: null },
+        },
+      ]
+      mockedPrisma.feedback.findMany.mockResolvedValue(items as never)
 
       const req = { user: { userId: 1, role: 'OWNER' } } as unknown as Request
       const res = createMockResponse()
@@ -201,7 +235,11 @@ describe('feedback.controller', () => {
       await invoke(getMyFeedback, req, res, noopNext())
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ id: 7 }) }),
+        expect.objectContaining({
+          data: expect.arrayContaining([expect.objectContaining({ id: 8 })]),
+          limit: 5,
+          remaining: 3,
+        }),
       )
     })
   })
