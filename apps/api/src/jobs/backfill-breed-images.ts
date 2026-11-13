@@ -47,11 +47,35 @@ async function main(): Promise<void> {
     }
   }
 
+  // Raças presentes na DB mas ausentes do catálogo (ex.: slugs renomeados como
+  // `galgo-portugues` -> `podengo-portugues`) são removidas para não manter
+  // hotlinks órfãos. Só apaga se não houver referências (breeders/slots); caso
+  // contrário regista aviso e deixa a linha (evita perda de dados de utilizadores).
+  const catalogSlugs = new Set(Object.keys(BREED_IMAGES))
+  const stale = await prisma.breed.findMany({
+    where: { nameSlug: { notIn: [...catalogSlugs] } },
+    select: { id: true, nameSlug: true, imageUrl: true, breeders: { select: { breedId: true } }, sponsoredSlots: { select: { id: true } } },
+  })
+  let removed = 0
+  const staleReferenciadas: string[] = []
+  for (const row of stale) {
+    if (row.breeders.length > 0 || row.sponsoredSlots.length > 0) {
+      staleReferenciadas.push(row.nameSlug)
+      continue
+    }
+    await prisma.breed.delete({ where: { id: row.id } })
+    removed++
+  }
+  if (staleReferenciadas.length > 0) {
+    logger.warn({ staleReferenciadas }, '[backfill-breed-images] raças obsoletas com referências — não removidas')
+  }
+
   logger.info(
     {
       scanned,
       updated,
       ausentesNaDb: ausentes.length,
+      obsoletasRemovidas: removed,
       durationMs: Date.now() - start,
     },
     '[backfill-breed-images] concluido',
