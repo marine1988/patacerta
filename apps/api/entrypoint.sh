@@ -105,6 +105,19 @@ if [ "$goto_seeds" = "0" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
+# Backfill das imagens das raças.
+#
+# O seed abaixo está OFF por defeito em stage/produção, por isso uma alteração
+# ao catálogo (`prisma/breeds-data.ts` → BREED_IMAGES) não chegaria à DB e a
+# API continuaria a devolver os `imageUrl` antigos. Este job sincroniza só esse
+# campo. Best-effort: falhar aqui não impede o arranque (o frontend degrada
+# para o ImageFallback).
+# ──────────────────────────────────────────────────────────────────────────
+echo "[PataCerta] Backfill das imagens das raças..."
+npx tsx src/jobs/backfill-breed-images.ts \
+  || echo "[PataCerta] AVISO: backfill das imagens falhou (não fatal)"
+
+# ──────────────────────────────────────────────────────────────────────────
 # Seeds (opcionais, off por defeito em prod).
 # ──────────────────────────────────────────────────────────────────────────
 if [ "$RUN_SEED_ON_BOOT" = "true" ] || [ "$RUN_SEED_ON_BOOT" = "1" ]; then

@@ -1,0 +1,127 @@
+/**
+ * Mapa slug da raça -> caminho público da imagem (`/breeds/<slug>.jpg`).
+ *
+ * Vive em `src/lib` (e não em `prisma/breeds-data.ts`) porque o build `tsc` da
+ * API tem `rootDir: ./src` e `prisma/` fora do `include` — o job de backfill
+ * (`src/jobs/backfill-breed-images.ts`) precisa de importar este mapa.
+ *
+ * `prisma/breeds-data.ts` importa-o e aplica-o ao catálogo; o seed usa o
+ * catálogo já com `imageUrl`.
+ *
+ * `null` = raça sem imagem livre conhecida (usa o ImageFallback no frontend).
+ * Proveniência e licença de cada imagem: `docs/BREED_IMAGES.md`.
+ */
+export const BREED_IMAGES: Record<string, string | null> = {
+  // Auto-hospedadas em /breeds. Fonte e licenca de cada imagem:
+  // docs/BREED_IMAGES.md (autor, licenca, URL de origem).
+
+  'akita-inu': '/breeds/akita-inu.jpg',
+  beagle: '/breeds/beagle.jpg',
+  'bichon-maltes': '/breeds/bichon-maltes.jpg',
+  'border-collie': '/breeds/border-collie.jpg',
+  boxer: '/breeds/boxer.jpg',
+  'bulldog-frances': '/breeds/bulldog-frances.jpg',
+  'bulldog-ingles': '/breeds/bulldog-ingles.jpg',
+  'cao-da-serra-da-estrela': '/breeds/cao-da-serra-da-estrela.jpg',
+  'cao-de-agua-portugues': '/breeds/cao-de-agua-portugues.jpg',
+  'cavalier-king-charles': '/breeds/cavalier-king-charles.jpg',
+  chihuahua: '/breeds/chihuahua.jpg',
+  'cocker-spaniel-ingles': '/breeds/cocker-spaniel-ingles.jpg',
+  dalmata: '/breeds/dalmata.jpg',
+  dachshund: '/breeds/dachshund.jpg',
+  doberman: '/breeds/doberman.jpg',
+  'podengo-portugues': '/breeds/podengo-portugues.jpg',
+  'golden-retriever': '/breeds/golden-retriever.jpg',
+  'husky-siberiano': '/breeds/husky-siberiano.jpg',
+  'jack-russell-terrier': '/breeds/jack-russell-terrier.jpg',
+  'labrador-retriever': '/breeds/labrador-retriever.jpg',
+  'lulu-da-pomerania': '/breeds/lulu-da-pomerania.jpg',
+  'mastim-napolitano': '/breeds/mastim-napolitano.jpg',
+  'pastor-alemao': '/breeds/pastor-alemao.jpg',
+  'pastor-australiano': '/breeds/pastor-australiano.jpg',
+  'pequenino-papillon': '/breeds/pequenino-papillon.jpg',
+  'pinscher-miniatura': '/breeds/pinscher-miniatura.jpg',
+  'poodle-medio': '/breeds/poodle-medio.jpg',
+  pug: '/breeds/pug.jpg',
+  'rafeiro-do-alentejo': '/breeds/rafeiro-do-alentejo.jpg',
+  rottweiler: '/breeds/rottweiler.jpg',
+  samoiedo: '/breeds/samoiedo.jpg',
+  'sao-bernardo': '/breeds/sao-bernardo.jpg',
+  'schnauzer-miniatura': '/breeds/schnauzer-miniatura.jpg',
+  'shar-pei': '/breeds/shar-pei.jpg',
+  'shiba-inu': '/breeds/shiba-inu.jpg',
+  'shih-tzu': '/breeds/shih-tzu.jpg',
+  'staffordshire-bull-terrier': '/breeds/staffordshire-bull-terrier.jpg',
+  weimaraner: '/breeds/weimaraner.jpg',
+  'yorkshire-terrier': '/breeds/yorkshire-terrier.jpg',
+  'alaskan-malamute': '/breeds/alaskan-malamute.jpg',
+  'american-staffordshire-terrier': '/breeds/american-staffordshire-terrier.jpg',
+  'barbado-da-terceira': '/breeds/barbado-da-terceira.jpg',
+  basenji: '/breeds/basenji.jpg',
+  'basset-hound': '/breeds/basset-hound.jpg',
+  'bichon-frise': '/breeds/bichon-frise.jpg',
+  'bichon-havanes': '/breeds/bichon-havanes.jpg',
+  'biewer-terrier': '/breeds/biewer-terrier.jpg',
+  'boston-terrier': '/breeds/boston-terrier.jpg',
+  'braco-alemao-pelo-curto': '/breeds/braco-alemao-pelo-curto.jpg',
+  'braco-alemao-pelo-duro': '/breeds/braco-alemao-pelo-duro.jpg',
+  'braco-frances-pireneus': '/breeds/braco-frances-pireneus.jpg',
+  'bull-terrier-miniatura': '/breeds/bull-terrier-miniatura.jpg',
+  'bull-terrier-standard': '/breeds/bull-terrier-standard.jpg',
+  bullmastiff: '/breeds/bullmastiff.jpg',
+  'cane-corso': '/breeds/cane-corso.jpg',
+  'cao-boieiro-australiano': '/breeds/cao-boieiro-australiano.jpg',
+  'cao-boieiro-de-berna': '/breeds/cao-boieiro-de-berna.jpg',
+  'cao-castro-laboreiro': '/breeds/cao-castro-laboreiro.jpg',
+  'cao-da-terra-nova': '/breeds/cao-da-terra-nova.jpg',
+  'cao-de-fila-de-sao-miguel': '/breeds/cao-de-fila-de-sao-miguel.jpg',
+  'cao-de-gado-transmontano': '/breeds/cao-de-gado-transmontano.jpg',
+  'cao-de-montanha-dos-pirineus': '/breeds/cao-de-montanha-dos-pirineus.jpg',
+  'cao-do-barrocal-algarvio': null, // sem imagem livre conhecida; usa o ImageFallback
+  'cao-lobo-checoslovaco': '/breeds/cao-lobo-checoslovaco.jpg',
+  'cao-pastor-belga': '/breeds/cao-pastor-belga.jpg',
+  'cao-pastor-branco-suico': '/breeds/cao-pastor-branco-suico.jpg',
+  'cao-pastor-caucaso': '/breeds/cao-pastor-caucaso.jpg',
+  'cao-pastor-holandes': '/breeds/cao-pastor-holandes.jpg',
+  'cao-pastor-kangal': '/breeds/cao-pastor-kangal.jpg',
+  'cao-serra-de-aires': '/breeds/cao-serra-de-aires.jpg',
+  'cao-sem-pelo-mexico': '/breeds/cao-sem-pelo-mexico.jpg',
+  'chinese-crested-dog': '/breeds/chinese-crested-dog.jpg',
+  'chow-chow': '/breeds/chow-chow.jpg',
+  'cocker-spaniel-americano': '/breeds/cocker-spaniel-americano.jpg',
+  'collie-pelo-comprido': '/breeds/collie-pelo-comprido.jpg',
+  'dogue-alemao': '/breeds/dogue-alemao.jpg',
+  'dogue-argentino': '/breeds/dogue-argentino.jpg',
+  'dogue-bordeus': '/breeds/dogue-bordeus.jpg',
+  'dogue-tibete': '/breeds/dogue-tibete.jpg',
+  'english-springer-spaniel': '/breeds/english-springer-spaniel.jpg',
+  'epagneul-bretao': '/breeds/epagneul-bretao.jpg',
+  'fox-terrier-pelo-liso': '/breeds/fox-terrier-pelo-liso.jpg',
+  'galgo-italiano': '/breeds/galgo-italiano.jpg',
+  greyhound: '/breeds/greyhound.jpg',
+  'mastim-ingles': '/breeds/mastim-ingles.jpg',
+  'miniature-american-shepherd': '/breeds/miniature-american-shepherd.jpg',
+  'nova-scotia-duck-tolling-retriever': '/breeds/nova-scotia-duck-tolling-retriever.jpg',
+  pequines: '/breeds/pequines.jpg',
+  'perdigueiro-portugues': '/breeds/perdigueiro-portugues.jpg',
+  'pointer-ingles': '/breeds/pointer-ingles.jpg',
+  'presa-canario': '/breeds/presa-canario.jpg',
+  'ratonero-bodeguero-andaluz': '/breeds/ratonero-bodeguero-andaluz.jpg',
+  'rhodesian-ridgeback': '/breeds/rhodesian-ridgeback.jpg',
+  'sabujo-bavaro': '/breeds/sabujo-bavaro.jpg',
+  schipperke: '/breeds/schipperke.jpg',
+  'schnauzer-gigante': '/breeds/schnauzer-gigante.jpg',
+  'schnauzer-medio': '/breeds/schnauzer-medio.jpg',
+  'setter-ingles': '/breeds/setter-ingles.jpg',
+  'setter-irlandes-vermelho': '/breeds/setter-irlandes-vermelho.jpg',
+  vizsla: '/breeds/vizsla.jpg',
+  'welsh-corgi-cardigan': '/breeds/welsh-corgi-cardigan.jpg',
+  'welsh-corgi-pembroke': '/breeds/welsh-corgi-pembroke.jpg',
+  'west-highland-white-terrier': '/breeds/west-highland-white-terrier.jpg',
+  whippet: '/breeds/whippet.jpg',
+}
+
+/** URL de imagem para um slug, ou `null` se não houver. */
+export function breedImageFor(nameSlug: string): string | null {
+  return BREED_IMAGES[nameSlug] ?? null
+}
