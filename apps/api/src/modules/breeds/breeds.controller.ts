@@ -3,7 +3,7 @@ import { asyncHandler } from '../../lib/helpers.js'
 import { cacheGetOrSet } from '../../lib/cache.js'
 
 const TTL_MS = 3600_000 // 1h — catalogo de racas raramente muda
-const CACHE_KEY_BREEDS = 'breeds:list:v1'
+const CACHE_KEY_BREEDS = 'breeds:list:v2'
 const CACHE_KEY_DOG_SPECIES = 'breeds:dogSpeciesId:v1'
 
 interface BreedListItem {
