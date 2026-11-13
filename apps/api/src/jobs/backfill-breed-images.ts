@@ -54,7 +54,13 @@ async function main(): Promise<void> {
   const catalogSlugs = new Set(Object.keys(BREED_IMAGES))
   const stale = await prisma.breed.findMany({
     where: { nameSlug: { notIn: [...catalogSlugs] } },
-    select: { id: true, nameSlug: true, imageUrl: true, breeders: { select: { breedId: true } }, sponsoredSlots: { select: { id: true } } },
+    select: {
+      id: true,
+      nameSlug: true,
+      imageUrl: true,
+      breeders: { select: { breedId: true } },
+      sponsoredSlots: { select: { id: true } },
+    },
   })
   let removed = 0
   const staleReferenciadas: string[] = []
@@ -67,7 +73,10 @@ async function main(): Promise<void> {
     removed++
   }
   if (staleReferenciadas.length > 0) {
-    logger.warn({ staleReferenciadas }, '[backfill-breed-images] raças obsoletas com referências — não removidas')
+    logger.warn(
+      { staleReferenciadas },
+      '[backfill-breed-images] raças obsoletas com referências — não removidas',
+    )
   }
 
   logger.info(
