@@ -19,7 +19,6 @@
 import { prisma } from '../lib/prisma.js'
 import { logger } from '../lib/logger.js'
 import { BREED_IMAGES } from '../lib/breed-images.js'
-import { cacheDelPrefix } from '../lib/cache.js'
 
 async function main(): Promise<void> {
   const start = Date.now()
@@ -70,9 +69,6 @@ async function main(): Promise<void> {
   if (staleReferenciadas.length > 0) {
     logger.warn({ staleReferenciadas }, '[backfill-breed-images] raças obsoletas com referências — não removidas')
   }
-
-  // Invalida cache da lista de raças (Redis/in-memory) para refletir as mudanças.
-  await cacheDelPrefix('breeds:')
 
   logger.info(
     {
