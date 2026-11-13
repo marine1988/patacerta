@@ -259,7 +259,7 @@ async function probeAuthedApiBlocked(
     if (!body.accessToken) return false
 
     const res = await request.get(`${API_BASE_URL}/users/me`, {
-      headers: { Authorization: `Bearer ${body.accessToken}` },
+      headers: { 'X-Access-Token': body.accessToken },
     })
     if (res.status() !== 401 && res.status() !== 403) return false
 

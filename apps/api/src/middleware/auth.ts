@@ -12,15 +12,37 @@ declare global {
   }
 }
 
+/**
+ * Header dedicado ao access token.
+ *
+ * Em stage o host está atrás do basic auth do Traefik, que usa o header
+ * `Authorization`. Se o JWT viajasse também em `Authorization`, o Traefik
+ * interpretava o `Bearer` como credencial de basic auth e cortava o pedido
+ * antes de chegar à API (PATA-BUG-12). O JWT viaja em `X-Access-Token` e o
+ * `Authorization` fica livre para o basic auth; `Bearer` continua aceite
+ * como fallback (retrocompatível com clientes antigos e com produção).
+ */
+export const ACCESS_TOKEN_HEADER = 'x-access-token'
+
+/** Extrai o access token do header dedicado, com fallback para `Bearer`. */
+export function extractAccessToken(req: Request): string | null {
+  const dedicated = req.headers[ACCESS_TOKEN_HEADER]
+  if (typeof dedicated === 'string' && dedicated.trim()) return dedicated.trim()
+
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) return header.slice(7)
+
+  return null
+}
+
 /** Require valid JWT */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  const token = extractAccessToken(req)
+  if (!token) {
     throw new AppError(401, 'Token de autenticação em falta', 'UNAUTHORIZED')
   }
 
   try {
-    const token = header.slice(7)
     req.user = verifyAccessToken(token)
     next()
   } catch {
@@ -43,10 +65,10 @@ export function requireRole(...roles: string[]) {
 
 /** Attach user if a valid token is present; otherwise proceed anonymously. */
 export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
-  const header = req.headers.authorization
-  if (header?.startsWith('Bearer ')) {
+  const token = extractAccessToken(req)
+  if (token) {
     try {
-      req.user = verifyAccessToken(header.slice(7))
+      req.user = verifyAccessToken(token)
     } catch {
       // Ignore invalid tokens on optional auth; treat as anonymous.
     }

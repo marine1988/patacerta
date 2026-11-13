@@ -25,8 +25,8 @@ interface State {
   refreshCalls: number
   statusCalls: number
   refreshFails: boolean
-  /** Authorization recebido no /api/status de cada pedido, por ordem. */
-  seenAuthorization: (string | undefined)[]
+  /** `X-Access-Token` recebido no /api/status de cada pedido, por ordem. */
+  seenAccessToken: (string | undefined)[]
 }
 
 let server: http.Server
@@ -55,7 +55,7 @@ function handler(req: http.IncomingMessage, res: http.ServerResponse): void {
 
   if (url.endsWith('/api/status')) {
     state.statusCalls += 1
-    state.seenAuthorization.push(req.headers.authorization)
+    state.seenAccessToken.push(req.headers['x-access-token'] as string | undefined)
 
     if (state.mode === 'proxy-401') {
       // Exactamente o que o Traefik devolve em stage hoje.
@@ -125,7 +125,7 @@ beforeEach(async () => {
     refreshCalls: 0,
     statusCalls: 0,
     refreshFails: false,
-    seenAuthorization: [],
+    seenAccessToken: [],
   }
   server = http.createServer(handler)
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -171,10 +171,10 @@ describe('interceptor 401 — PATA-BUG-8', () => {
 
     expect(state.refreshCalls, 'o refresh nao pode ser chamado por um 401 de infra').toBe(0)
     expect(state.statusCalls).toBe(1)
-    // Pre-condicao do bug: o pedido da SPA leva mesmo o Bearer (e' por isso
-    // que o Traefik o rejeita) e o token continua guardado — nao deslogamos
-    // o utilizador por causa de um problema de infra.
-    expect(state.seenAuthorization).toEqual(['Bearer token-antigo'])
+    // PATA-BUG-12: o pedido da SPA leva o token em `X-Access-Token`, deixando
+    // o `Authorization` livre para o basic auth do Traefik. O token continua
+    // guardado — não deslogamos o utilizador por causa de um problema de infra.
+    expect(state.seenAccessToken).toEqual(['token-antigo'])
     expect(getAccessToken()).toBe('token-antigo')
     expect(currentLocationHref()).toBe('')
   })
@@ -189,7 +189,7 @@ describe('interceptor 401 — PATA-BUG-8', () => {
     expect(res.data).toEqual({ status: 'online' })
     expect(state.refreshCalls).toBe(1)
     expect(state.statusCalls).toBe(2)
-    expect(state.seenAuthorization).toEqual(['Bearer token-antigo', 'Bearer token-novo'])
+    expect(state.seenAccessToken).toEqual(['token-antigo', 'token-novo'])
     expect(getAccessToken()).toBe('token-novo')
     expect(currentLocationHref()).toBe('')
   })

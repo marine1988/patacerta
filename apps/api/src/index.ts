@@ -177,6 +177,10 @@ app.use(
       cb(new AppError(403, `CORS bloqueado: origem ${origin} nao autorizada`, 'CORS_BLOCKED'))
     },
     credentials: true,
+    // PATA-BUG-12: o JWT viaja em `X-Access-Token` para não colidir com o
+    // basic auth do Traefik (que ocupa o `Authorization`). O preflight tem de
+    // autorizar o header, senão o browser bloqueia o pedido em cross-origin.
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Access-Token'],
   }),
 )
 

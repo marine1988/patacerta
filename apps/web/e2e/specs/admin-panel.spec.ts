@@ -125,10 +125,6 @@ test.describe('Painel de administração @prod-safe', () => {
 
   test('admin: pesquisa sem resultados mostra empty state em pt-PT', async ({ page, caps }) => {
     test.skip(!caps.hasAdmin, seedSkipReason(caps, 'conta de administrador'))
-    test.skip(
-      caps.authedApiBlocked,
-      'PATA-BUG-8: o middleware de basic auth do Traefik em stage bloqueia pedidos autenticados da SPA (Authorization: Bearer) — a lista de utilizadores não carrega, logo o empty state não é testável neste ambiente.',
-    )
     await dismissConsentBanner(page)
 
     await loginViaApi(page.context().request, page, ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -153,10 +149,6 @@ test.describe('Painel de administração @prod-safe', () => {
 
   test('admin: deep-link de utilizador obtido da lista abre o detalhe', async ({ page, caps }) => {
     test.skip(!caps.hasAdmin, seedSkipReason(caps, 'conta de administrador'))
-    test.skip(
-      caps.authedApiBlocked,
-      'PATA-BUG-8: o middleware de basic auth do Traefik em stage bloqueia pedidos autenticados da SPA (Authorization: Bearer) — a lista de utilizadores não carrega, logo o deep-link não é testável neste ambiente.',
-    )
     await dismissConsentBanner(page)
 
     await loginViaApi(page.context().request, page, ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -202,7 +194,7 @@ test.describe('Painel de administração @prod-safe', () => {
 
     // Token inválido
     const bogus = await request.get(`${API_BASE_URL}/admin/users`, {
-      headers: { Authorization: 'Bearer token-invalido' },
+      headers: { 'X-Access-Token': 'token-invalido' },
     })
     expect([401, 403]).toContain(bogus.status())
 
@@ -214,7 +206,7 @@ test.describe('Painel de administração @prod-safe', () => {
       if (login.ok()) {
         const { accessToken } = (await login.json()) as { accessToken: string }
         const res = await request.get(`${API_BASE_URL}/admin/users`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { 'X-Access-Token': accessToken },
         })
         expect([401, 403], 'um utilizador comum recebeu 200 num endpoint de admin').toContain(
           res.status(),

@@ -4,6 +4,18 @@ import { safeRedirect } from './redirect'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
+/**
+ * PATA-BUG-12: o JWT viaja neste header, não no `Authorization`.
+ *
+ * Em stage o host está atrás do basic auth do Traefik, que ocupa o
+ * `Authorization`. Quando o axios lá punha `Bearer <jwt>`, o Traefik
+ * interpretava-o como credencial de basic auth, não reconhecia `Bearer` e
+ * respondia 401 antes do pedido chegar à API — a app autenticada ficava
+ * inutilizável. Com o token em `X-Access-Token`, o `Authorization` fica livre
+ * para o basic auth e os dois coexistem.
+ */
+export const ACCESS_TOKEN_HEADER = 'X-Access-Token'
+
 // Access token vive apenas em MEMÓRIA (nunca em localStorage) para mitigar
 // exfiltração via XSS. O refresh token continua em cookie httpOnly.
 // Migração one-shot de clientes antigos que ainda tenham `access_token` em
@@ -42,11 +54,11 @@ export const api = axios.create({
   maxRedirects: 0,
 })
 
-// Request interceptor — attach JWT
+// Request interceptor — attach JWT (header dedicado, ver PATA-BUG-12)
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers[ACCESS_TOKEN_HEADER] = token
   }
   return config
 })
@@ -95,6 +107,9 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean }
 
 /** Token que ESTE pedido levou no header (null se foi sem autenticacao). */
 function requestToken(config: RetriableConfig | undefined): string | null {
+  const dedicated = headerValue(config?.headers, ACCESS_TOKEN_HEADER.toLowerCase())
+  if (dedicated?.trim()) return dedicated.trim()
+
   const raw = headerValue(config?.headers, 'authorization')
   if (!raw) return null
   const match = /^\s*Bearer\s+(.+)$/i.exec(raw)
@@ -230,7 +245,7 @@ api.interceptors.response.use(
     const currentToken = getAccessToken()
     if (currentToken && currentToken !== requestToken(originalRequest)) {
       originalRequest._retry = true
-      originalRequest.headers.Authorization = `Bearer ${currentToken}`
+      originalRequest.headers[ACCESS_TOKEN_HEADER] = currentToken
       return api(originalRequest)
     }
 
@@ -244,7 +259,7 @@ api.interceptors.response.use(
             // 401 e a disparar OUTRO refresh — era este o ciclo observado em
             // stage (refresh -> 401 x7 -> refresh -> 401 x5 -> ...).
             originalRequest._retry = true
-            originalRequest.headers.Authorization = `Bearer ${token}`
+            originalRequest.headers[ACCESS_TOKEN_HEADER] = token
             resolve(api(originalRequest))
           },
           reject,
@@ -265,7 +280,7 @@ api.interceptors.response.use(
       )
       setAccessToken(data.accessToken)
       sessionGaveUp = false
-      originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
+      originalRequest.headers[ACCESS_TOKEN_HEADER] = data.accessToken
       processQueue(null, data.accessToken)
       return api(originalRequest)
     } catch (refreshErr) {

@@ -10,9 +10,9 @@ describe('isTrustedProxyAddress', () => {
 
   it('rejeita input inválido/vazio', () => {
     expect(isTrustedProxyAddress('')).toBe(false)
-    // @ts-expect-error
+    // @ts-expect-error null não é string — validar o guard em runtime
     expect(isTrustedProxyAddress(null)).toBe(false)
-    // @ts-expect-error
+    // @ts-expect-error undefined não é string — validar o guard em runtime
     expect(isTrustedProxyAddress(undefined)).toBe(false)
   })
 

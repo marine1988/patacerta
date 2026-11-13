@@ -42,7 +42,7 @@ test.describe('Contrato da API de feedback @prod-safe', () => {
     const { accessToken } = (await login.json()) as { accessToken: string }
 
     const res = await request.get(`${API_BASE_URL}/admin/feedback/export.md`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { 'X-Access-Token': accessToken },
     })
     expect(res.status()).toBe(200)
     expect(res.headers()['content-type']).toContain('text/markdown')
@@ -148,7 +148,7 @@ test.describe('Feedback — contador e lista privada @prod-safe', () => {
     const { accessToken } = (await login.json()) as { accessToken: string }
 
     const res = await request.get(`${API_BASE_URL}/feedback/mine`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { 'X-Access-Token': accessToken },
     })
     expect(res.ok()).toBeTruthy()
     const body = (await res.json()) as { data: unknown[]; limit: number; remaining: number }
