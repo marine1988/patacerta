@@ -20,6 +20,7 @@
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { BREEDS } from './breeds-data.js'
+import { shouldResetAdminPassword } from '../src/lib/seed-flags.js'
 
 const prisma = new PrismaClient()
 
@@ -71,10 +72,19 @@ async function main() {
     )
   }
 
+  // PATA-BUG-13: a password só é escrita no `create`. No `update` seria
+  // reposta a cada boot (RUN_SEED_ON_BOOT=true em stage), apagando qualquer
+  // alteração feita pelo utilizador. `RESET_ADMIN_PASSWORD_ON_BOOT` força-a
+  // quando for preciso recuperar acesso.
+  const resetPassword = shouldResetAdminPassword()
   const passwordHash = await bcrypt.hash(finalPass, 12)
   const admin = await prisma.user.upsert({
     where: { email: finalEmail },
-    update: { emailVerified: true, role: UserRole.ADMIN, passwordHash },
+    update: {
+      emailVerified: true,
+      role: UserRole.ADMIN,
+      ...(resetPassword ? { passwordHash } : {}),
+    },
     create: {
       email: finalEmail,
       passwordHash,
@@ -84,7 +94,10 @@ async function main() {
       emailVerified: true,
     },
   })
-  console.log(`  ✓ Admin user created (id: ${admin.id}, email: ${finalEmail})`)
+  console.log(
+    `  ✓ Admin user ready (id: ${admin.id}, email: ${finalEmail})` +
+      (resetPassword ? ' — password reposta (RESET_ADMIN_PASSWORD_ON_BOOT)' : ''),
+  )
 
   // ---- Districts ----
   // Centroides aproximados (capital de distrito / cidade principal da região)

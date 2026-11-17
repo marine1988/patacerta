@@ -67,12 +67,18 @@ Deploy via Dokploy (Docker Compose).
 
 ### Flags de Seguranca (NUNCA em producao)
 
-| Variavel                       | Descricao                |
-| ------------------------------ | ------------------------ |
-| `AUTH_SKIP_EMAIL_VERIFICATION` | Bypass verificacao email |
-| `DISABLE_RATE_LIMITS`          | Desactiva rate limiting  |
-| `RESET_DB_ON_BOOT`             | Apaga DB ao iniciar      |
-| `RUN_SEED_ON_BOOT`             | Corre seed ao iniciar    |
+| Variavel                       | Descricao                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `AUTH_SKIP_EMAIL_VERIFICATION` | Bypass verificacao email                                                                         |
+| `DISABLE_RATE_LIMITS`          | Desactiva rate limiting                                                                          |
+| `RESET_DB_ON_BOOT`             | Apaga DB ao iniciar                                                                              |
+| `RUN_SEED_ON_BOOT`             | Corre seed ao iniciar                                                                            |
+| `RESET_ADMIN_PASSWORD_ON_BOOT` | Repõe a password do admin com `ADMIN_PASSWORD` (só para recuperar acesso; desligado por omissão) |
+
+> **PATA-BUG-13:** o seed corre em cada boot com `RUN_SEED_ON_BOOT=true`, mas
+> **já não** reescreve a password de contas existentes. Mudar a password em
+> stage passou a durar. Se precisares de a forçar de volta ao valor do painel,
+> liga `RESET_ADMIN_PASSWORD_ON_BOOT=true`, faz um deploy e volta a desligar.
 
 **Postura do stage:** stage corre com `AUTH_SKIP_EMAIL_VERIFICATION=true` e
 `DISABLE_RATE_LIMITS=true` por conveniencia de testes automatizados (E2E). A API
