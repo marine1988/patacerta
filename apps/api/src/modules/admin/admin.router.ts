@@ -25,22 +25,25 @@ import * as feedbackCtrl from '../feedback/feedback.controller.js'
 
 export const adminRouter = Router()
 
-// All admin routes require:
+// All admin routes require, POR ESTA ORDEM:
 //  - JWT valido (requireAuth)
-//  - papel ADMIN (requireRole)
-//  - conta activa (requireActiveUser): fecha a janela em que um admin
-//    suspenso por um par mantinha acesso ate' o access token expirar
-//    (15 min). Embora suspendUser ja' revogue os refresh tokens, o
-//    access token JWT permanece criptograficamente valido ate' ao seu
-//    `exp` — sem este guard, o admin suspenso continuava a executar
-//    accoes administrativas sensiveis (suspensoes, moderacao, viewing
-//    de PII) durante esse intervalo. Cada request adiciona 1 findUnique
-//    (~1-3ms) que e' aceitavel para endpoints admin (baixo volume).
+//  - conta activa + role re-lido da BD (requireActiveUser)
+//  - papel ADMIN (requireRole) — avaliado sobre o role da BD, nunca sobre
+//    o do JWT: um admin despromovido perde o acesso no pedido seguinte,
+//    sem esperar os 15 min de TTL do access token (SEC-09).
+//  - requireActiveUser fecha também a janela em que um admin suspenso por
+//    um par mantinha acesso até o access token expirar (15 min). Embora
+//    suspendUser ja' revogue os refresh tokens, o access token JWT
+//    permanece criptograficamente valido ate' ao seu `exp` — sem este
+//    guard, o admin suspenso continuava a executar accoes administrativas
+//    sensiveis (suspensoes, moderacao, viewing de PII) durante esse
+//    intervalo. Cada request adiciona 1 findUnique (~1-3ms) que e'
+//    aceitavel para endpoints admin (baixo volume).
 //
 // Nota: `apiRateLimit` ja' esta aplicado globalmente em index.ts (200/15min
 // por IP), pelo que cobre todos os endpoints abaixo sem necessidade de
 // repeticao por-router.
-adminRouter.use(requireAuth, requireRole('ADMIN'), requireActiveUser)
+adminRouter.use(requireAuth, requireActiveUser, requireRole('ADMIN'))
 
 // Dashboard stats
 adminRouter.get('/stats', ctrl.getDashboardStats)

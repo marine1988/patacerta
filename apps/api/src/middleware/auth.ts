@@ -8,6 +8,12 @@ declare global {
   namespace Express {
     interface Request {
       user?: TokenPayload
+      /**
+       * Marca que `req.user.role` já foi substituído pelo valor lido da BD
+       * nesta request (SEC-09). Posto por `requireActiveUser` (e pelo
+       * fallback de `requireRole`); nunca pelo JWT.
+       */
+      roleRefreshedFromDb?: boolean
     }
   }
 }
@@ -50,17 +56,33 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
 }
 
-/** Require specific role(s) — must be used AFTER requireAuth */
+/**
+ * Require specific role(s).
+ *
+ * ORDEM OBRIGATÓRIA: `requireAuth` → `requireActiveUser` → `requireRole`.
+ *
+ * O JWT tem 15 min de TTL e carrega o `role` do momento do login: um admin
+ * despromovido continuaria a passar neste guard até o token expirar
+ * (SEC-09). Por isso o role NUNCA é lido do token: `requireActiveUser`
+ * re-lê-o da BD e sobrescreve `req.user.role` antes desta função correr.
+ *
+ * Fail-closed: se uma rota se esquecer do `requireActiveUser`, esta função
+ * re-lê o role da BD sozinha em vez de confiar no token. É uma query extra
+ * (~1-3ms) que só acontece nesse caso — as rotas correctas não a pagam.
+ */
 export function requireRole(...roles: string[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  return asyncHandler(async (req, _res, next) => {
     if (!req.user) {
       throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
+    }
+    if (!req.roleRefreshedFromDb) {
+      await refreshRoleFromDb(req)
     }
     if (!roles.includes(req.user.role)) {
       throw new AppError(403, 'Sem permissão para esta acção', 'FORBIDDEN')
     }
     next()
-  }
+  })
 }
 
 /** Attach user if a valid token is present; otherwise proceed anonymously. */
@@ -101,28 +123,23 @@ export const requireBreederProfile = asyncHandler(async (req, _res, next) => {
 })
 
 /**
- * Require que o utilizador autenticado nao esteja suspenso/inactivo.
+ * Lê `isActive`/`suspendedAt`/`role` da BD e aplica-os à request.
  *
- * O JWT vive ate' 15 minutos; durante essa janela um admin pode ter
- * suspendido a conta mas o token continua valido. Sem este guard, o
- * utilizador suspenso podia ainda fazer mutations (enviar mensagens,
- * criar threads, editar perfis) durante o resto da TTL do token.
- *
- * Usar SO em mutations (POST/PATCH/DELETE) onde a accao tem efeito
- * externo. GETs read-only podem ser permitidos para que o utilizador
- * suspenso ainda possa exportar/ver os seus dados (RGPD). Cada uso
- * adiciona um findUnique (~1-3ms); se isto se tornar gargalo, pode-se
- * cachear `isActive` no proprio JWT na altura do login.
+ * O `role` vem sempre da BD — nunca do JWT (SEC-09): sem isto, um admin
+ * despromovido mantinha poderes administrativos até o access token
+ * expirar (15 min). Sobrescrever em vez de rejeitar mantém a sessão viva
+ * para o utilizador (perde só as permissões que deixou de ter) e torna a
+ * despromoção efectiva no pedido seguinte.
  *
  * Must be used AFTER requireAuth.
  */
-export const requireActiveUser = asyncHandler(async (req, _res, next) => {
+async function refreshRoleFromDb(req: Request): Promise<void> {
   if (!req.user) {
     throw new AppError(401, 'Não autenticado', 'UNAUTHORIZED')
   }
   const user = await prisma.user.findUnique({
     where: { id: req.user.userId },
-    select: { isActive: true, suspendedAt: true },
+    select: { isActive: true, suspendedAt: true, role: true },
   })
   if (!user) {
     // Conta apagada entretanto — token e' valido mas utilizador foi-se.
@@ -135,5 +152,30 @@ export const requireActiveUser = asyncHandler(async (req, _res, next) => {
       'ACCOUNT_SUSPENDED',
     )
   }
+  req.user.role = user.role
+  req.roleRefreshedFromDb = true
+}
+
+/**
+ * Require que o utilizador autenticado nao esteja suspenso/inactivo.
+ *
+ * O JWT vive ate' 15 minutos; durante essa janela um admin pode ter
+ * suspendido a conta mas o token continua valido. Sem este guard, o
+ * utilizador suspenso podia ainda fazer mutations (enviar mensagens,
+ * criar threads, editar perfis) durante o resto da TTL do token.
+ *
+ * Também re-lê o `role` da BD (SEC-09): é ele que `requireRole` usa, nunca
+ * o do token — ver `requireRole` para a ordem obrigatória.
+ *
+ * Usar SO em mutations (POST/PATCH/DELETE) onde a accao tem efeito
+ * externo, e ANTES de `requireRole`. GETs read-only podem ser permitidos
+ * para que o utilizador suspenso ainda possa exportar/ver os seus dados
+ * (RGPD). Cada uso adiciona um findUnique (~1-3ms); se isto se tornar
+ * gargalo, pode-se cachear `isActive` no proprio JWT na altura do login.
+ *
+ * Must be used AFTER requireAuth.
+ */
+export const requireActiveUser = asyncHandler(async (req, _res, next) => {
+  await refreshRoleFromDb(req)
   next()
 })

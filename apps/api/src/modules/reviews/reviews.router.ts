@@ -98,7 +98,13 @@ reviewsRouter.patch(
   validate(moderateReviewSchema),
   ctrl.moderateReview,
 )
-reviewsRouter.get('/:id/flags', requireAuth, requireRole('ADMIN'), ctrl.listReviewFlags)
+reviewsRouter.get(
+  '/:id/flags',
+  requireAuth,
+  requireActiveUser,
+  requireRole('ADMIN'),
+  ctrl.listReviewFlags,
+)
 reviewsRouter.delete(
   '/:id/flags',
   requireAuth,

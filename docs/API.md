@@ -219,10 +219,10 @@ Todos os endpoints admin requerem `role: ADMIN`.
 
 ### Feedback
 
-| Metodo | Endpoint         | Descricao                                                                                              |
-| ------ | ---------------- | ------------------------------------------------------------------------------------------------------ |
-| POST   | `/feedback`      | Submeter feedback (até 5 por utilizador; 409 `FEEDBACK_LIMIT_REACHED` se atingir o limite)             |
-| GET    | `/feedback/mine` | Feedbacks do utilizador autenticado (mais recente primeiro): `{ data: [...], limit: 5, remaining: N }` |
+| Metodo | Endpoint         | Descricao                                                                                                                                                                         |
+| ------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/feedback`      | Submeter feedback (até 5 por utilizador, limite atómico; 409 `FEEDBACK_LIMIT_REACHED` se atingir o limite, 409 `FEEDBACK_WRITE_CONFLICT` em conflito persistente de concorrência) |
+| GET    | `/feedback/mine` | Feedbacks do utilizador autenticado (mais recente primeiro): `{ data: [...], limit: 5, remaining: N }`                                                                            |
 
 | Metodo | Endpoint  | Descricao                                 |
 | ------ | --------- | ----------------------------------------- |
@@ -241,7 +241,10 @@ throw new AppError(401, 'Token invalido ou expirado', 'INVALID_TOKEN')
 
 ### `requireRole(...roles)`
 
-Verifica se o utilizador tem um dos roles especificados.
+Verifica se o utilizador tem um dos roles especificados. O role vem **sempre** da BD,
+nunca do JWT: tem de ser precedido por `requireActiveUser` (ordem:
+`requireAuth` → `requireActiveUser` → `requireRole`). Sem esse guard, re-le o role
+por si proprio em vez de confiar no token (fail-closed).
 
 ```typescript
 requireRole('ADMIN') // Apenas admin
@@ -250,8 +253,10 @@ requireRole('BREEDER', 'ADMIN') // Criador ou admin
 
 ### `requireActiveUser`
 
-Verifica se a conta nao esta suspensa (query a DB).
-Usado em mutations para fechar a janela de 15min do JWT.
+Verifica se a conta nao esta suspensa **e** re-le o `role` da BD (query a DB),
+sobrescrevendo `req.user.role`.
+Usado em mutations para fechar a janela de 15min do JWT e como guard obrigatorio
+antes de `requireRole`.
 
 ### `requireBreederProfile`
 

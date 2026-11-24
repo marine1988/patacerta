@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
+import { requireAuth, requireRole, requireActiveUser } from '../../middleware/auth.js'
 import { validate } from '../../middleware/validate.js'
 import { updateUserSchema, changeUserRoleSchema, paginationQuerySchema } from '@patacerta/shared'
 import { uploadRateLimit, dataExportRateLimit } from '../../middleware/rate-limit.js'
@@ -33,17 +33,21 @@ usersRouter.post('/me/avatar', requireAuth, uploadRateLimit, ctrl.uploadMyAvatar
 usersRouter.delete('/me/avatar', requireAuth, uploadRateLimit, ctrl.deleteMyAvatar)
 
 // Admin: list/manage users
+// requireActiveUser ANTES de requireRole: re-lê o role da BD (SEC-09), para
+// que um admin despromovido perca o acesso imediatamente.
 usersRouter.get(
   '/',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   validate(listLegacyUsersQuerySchema, 'query'),
   ctrl.listUsers,
 )
-usersRouter.get('/:id', requireAuth, requireRole('ADMIN'), ctrl.getUserById)
+usersRouter.get('/:id', requireAuth, requireActiveUser, requireRole('ADMIN'), ctrl.getUserById)
 usersRouter.patch(
   '/:id/role',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   validate(changeUserRoleSchema),
   ctrl.changeUserRole,

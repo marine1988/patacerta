@@ -166,15 +166,23 @@ Buckets separados por endpoint com Redis (fallback in-memory):
 
 ### Autorizacao
 
-Middlewares compostos:
+Middlewares compostos. **Ordem obrigatoria: `requireAuth` → `requireActiveUser` → `requireRole`.**
 
 ```typescript
-// Requer JWT + role ADMIN + conta activa
-adminRouter.use(requireAuth, requireRole('ADMIN'), requireActiveUser)
+// Requer JWT + conta activa + role ADMIN (lido da BD, nao do JWT)
+adminRouter.use(requireAuth, requireActiveUser, requireRole('ADMIN'))
 
 // Requer JWT + perfil de criador
 breedersRouter.patch('/me', requireAuth, requireBreederProfile, ...)
 ```
+
+O access token vive 15 min e carrega o `role` do momento do login. `requireActiveUser`
+re-le `isActive`/`suspendedAt` **e** `role` da BD e sobrescreve `req.user.role`, logo
+`requireRole` decide sempre sobre o estado actual: um admin despromovido perde o acesso
+no pedido seguinte, sem esperar pela expiracao do token (SEC-09). `requireRole`
+re-le o role por si proprio se for usado sem `requireActiveUser` antes (fail-closed).
+O teste `apps/api/src/middleware/require-role-order.test.ts` falha se alguma cadeia
+de router violar esta ordem.
 
 ### File Uploads
 

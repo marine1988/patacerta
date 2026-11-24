@@ -91,6 +91,7 @@ serviceReviewsRouter.patch(
 serviceReviewsRouter.get(
   '/:id/flags',
   requireAuth,
+  requireActiveUser,
   requireRole('ADMIN'),
   ctrl.listServiceReviewFlags,
 )
