@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../../lib/prisma.js'
 import { asyncHandler } from '../../lib/helpers.js'
 import { getPublicBaseUrl } from '../../lib/env.js'
+import { cacheGetOrSet } from '../../lib/cache.js'
 
 export const sitemapRouter = Router()
 
@@ -100,86 +101,120 @@ function renderSitemap(entries: SitemapEntry[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
 }
 
+/*
+ * SEC-04: a sitemap é read-only e muda pouco (criadores VERIFIED e serviços
+ * ACTIVE), mas cada pedido fazia 2 `findMany` com `take: 10000` e a rota está
+ * isenta de rate limit — um crawler a pedir `/sitemap.xml` em ciclo forçava
+ * dois full scans à DB por pedido. O XML passa a ser servido por
+ * `cacheGetOrSet` (Redis quando disponível, Map in-process caso contrário).
+ *
+ * - A chave inclui a origem canónica (`getPublicBaseUrl()`): o mesmo processo
+ *   pode servir hosts diferentes e o XML de um host nunca pode ser servido a
+ *   outro (a sitemap anuncia sempre o host que a serve — PATA-BUG-7).
+ * - O TTL é a invalidação: conteúdo novo (criador verificado, serviço activo)
+ *   aparece em ≤5 min. O Redis sobrevive a restarts, por isso não há
+ *   invalidação no boot a contar com isso.
+ * - Os `<lastmod>` das entradas estáticas são o instante em que o XML foi
+ *   gerado: dentro de uma janela de cache ficam até 5 min "atrasados", o que
+ *   é irrelevante para o crawl.
+ * - `Cache-Control: public, max-age=3600` mantém-se inalterado — é para o
+ *   browser/proxy à frente, não substitui este cache (que é o que poupa a DB).
+ * - Se o `loader` falhar, `cacheGetOrSet` propaga o erro e nada fica em cache
+ *   (sem cache negativo): o próximo pedido volta a tentar.
+ */
+const SITEMAP_CACHE_TTL_MS = 5 * 60 * 1000
+
+function sitemapCacheKey(siteUrl: string): string {
+  return `sitemap:xml:v1:${siteUrl}`
+}
+
+async function buildSitemapXml(siteUrl: string): Promise<string> {
+  const now = new Date().toISOString()
+
+  const staticEntries: SitemapEntry[] = [
+    { loc: `${siteUrl}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
+    { loc: `${siteUrl}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
+    {
+      loc: `${siteUrl}/pesquisar?tipo=servicos`,
+      changefreq: 'daily',
+      priority: 0.9,
+      lastmod: now,
+    },
+    { loc: `${siteUrl}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
+    {
+      loc: `${siteUrl}/perguntas-frequentes`,
+      changefreq: 'monthly',
+      priority: 0.7,
+      lastmod: now,
+    },
+    { loc: `${siteUrl}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
+    {
+      loc: `${siteUrl}/politica-privacidade`,
+      changefreq: 'yearly',
+      priority: 0.3,
+      lastmod: now,
+    },
+  ]
+
+  const [breeders, services] = await Promise.all([
+    prisma.breeder.findMany({
+      // Apenas criadores VERIFIED cujo utilizador esta activo e nao
+      // suspenso. Sem este filtro, o sitemap incluia perfis que
+      // depois devolvem 404 em /criador/:slug — Google penaliza
+      // sitemaps com soft-404s (descredibiliza o sitemap inteiro)
+      // e, do lado UX, o utilizador clica num resultado SERP que
+      // nao existe. Coerente com getBreederById que ja exclui estes.
+      where: {
+        status: 'VERIFIED',
+        user: { isActive: true, suspendedAt: null },
+      },
+      select: { id: true, slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 10000,
+    }),
+    prisma.service.findMany({
+      // Idem para servicos: ACTIVE + provider activo nao-suspenso.
+      // Coerente com publicServicePublicSelect's where filter em
+      // services.controller.ts.
+      where: {
+        status: 'ACTIVE',
+        provider: { isActive: true, suspendedAt: null },
+      },
+      select: { id: true, slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 10000,
+    }),
+  ])
+
+  // Preferimos slug quando existe; fallback para id durante o
+  // período de backfill. Quando o backfill estiver completo, todos
+  // têm slug e o fallback nunca é exercido.
+  const breederEntries: SitemapEntry[] = breeders.map((b) => ({
+    loc: `${siteUrl}/criador/${b.slug ?? b.id}`,
+    lastmod: b.updatedAt.toISOString(),
+    changefreq: 'weekly',
+    priority: 0.8,
+  }))
+
+  const serviceEntries: SitemapEntry[] = services.map((s) => ({
+    loc: `${siteUrl}/servicos/${s.slug ?? s.id}`,
+    lastmod: s.updatedAt.toISOString(),
+    changefreq: 'weekly',
+    priority: 0.7,
+  }))
+
+  return renderSitemap([...staticEntries, ...breederEntries, ...serviceEntries])
+}
+
 sitemapRouter.get(
   '/sitemap.xml',
   asyncHandler(async (_req, res) => {
     try {
       const siteUrl = getPublicBaseUrl()
-      const now = new Date().toISOString()
 
-      const staticEntries: SitemapEntry[] = [
-        { loc: `${siteUrl}/`, changefreq: 'daily', priority: 1.0, lastmod: now },
-        { loc: `${siteUrl}/pesquisar`, changefreq: 'daily', priority: 0.9, lastmod: now },
-        {
-          loc: `${siteUrl}/pesquisar?tipo=servicos`,
-          changefreq: 'daily',
-          priority: 0.9,
-          lastmod: now,
-        },
-        { loc: `${siteUrl}/simulador-raca`, changefreq: 'monthly', priority: 0.7, lastmod: now },
-        {
-          loc: `${siteUrl}/perguntas-frequentes`,
-          changefreq: 'monthly',
-          priority: 0.7,
-          lastmod: now,
-        },
-        { loc: `${siteUrl}/termos`, changefreq: 'yearly', priority: 0.3, lastmod: now },
-        {
-          loc: `${siteUrl}/politica-privacidade`,
-          changefreq: 'yearly',
-          priority: 0.3,
-          lastmod: now,
-        },
-      ]
-
-      const [breeders, services] = await Promise.all([
-        prisma.breeder.findMany({
-          // Apenas criadores VERIFIED cujo utilizador esta activo e nao
-          // suspenso. Sem este filtro, o sitemap incluia perfis que
-          // depois devolvem 404 em /criador/:slug — Google penaliza
-          // sitemaps com soft-404s (descredibiliza o sitemap inteiro)
-          // e, do lado UX, o utilizador clica num resultado SERP que
-          // nao existe. Coerente com getBreederById que ja exclui estes.
-          where: {
-            status: 'VERIFIED',
-            user: { isActive: true, suspendedAt: null },
-          },
-          select: { id: true, slug: true, updatedAt: true },
-          orderBy: { updatedAt: 'desc' },
-          take: 10000,
-        }),
-        prisma.service.findMany({
-          // Idem para servicos: ACTIVE + provider activo nao-suspenso.
-          // Coerente com publicServicePublicSelect's where filter em
-          // services.controller.ts.
-          where: {
-            status: 'ACTIVE',
-            provider: { isActive: true, suspendedAt: null },
-          },
-          select: { id: true, slug: true, updatedAt: true },
-          orderBy: { updatedAt: 'desc' },
-          take: 10000,
-        }),
-      ])
-
-      // Preferimos slug quando existe; fallback para id durante o
-      // período de backfill. Quando o backfill estiver completo, todos
-      // têm slug e o fallback nunca é exercido.
-      const breederEntries: SitemapEntry[] = breeders.map((b) => ({
-        loc: `${siteUrl}/criador/${b.slug ?? b.id}`,
-        lastmod: b.updatedAt.toISOString(),
-        changefreq: 'weekly',
-        priority: 0.8,
-      }))
-
-      const serviceEntries: SitemapEntry[] = services.map((s) => ({
-        loc: `${siteUrl}/servicos/${s.slug ?? s.id}`,
-        lastmod: s.updatedAt.toISOString(),
-        changefreq: 'weekly',
-        priority: 0.7,
-      }))
-
-      const xml = renderSitemap([...staticEntries, ...breederEntries, ...serviceEntries])
+      const xml = await cacheGetOrSet(sitemapCacheKey(siteUrl), SITEMAP_CACHE_TTL_MS, () =>
+        buildSitemapXml(siteUrl),
+      )
 
       res.setHeader('Content-Type', 'application/xml; charset=utf-8')
       res.setHeader('Cache-Control', 'public, max-age=3600')

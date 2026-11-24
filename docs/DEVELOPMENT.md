@@ -53,6 +53,31 @@ Aceder a:
 | `pnpm format`    | Formatar codigo (Prettier)    |
 | `pnpm test`      | Correr testes                 |
 
+### Dependências: `pnpm audit --prod` e advisories aceites
+
+Corre `pnpm audit --prod` antes de uma release. Estado em 2026-11-24 (card SEC-08): de **8
+advisories**, 3 foram fechados; restam **5, todos transitivos de `minio@8.0.7`** — que é o SDK mais
+recente publicado no npm, pelo que não existe versão do SDK com as dependências corrigidas.
+
+Fechados (em `pnpm-workspace.yaml` → `overrides`): `fast-xml-parser` 5.7.0 → **5.12.1**, que arrasta
+`fast-xml-builder` 1.1.5 → 1.3.2 (CVE-2026-44665 / GHSA-5wm8-gmm8-39j9: atributos XML injectados ao
+serializar). `minio` declara `fast-xml-parser: ^5.3.4`, logo 5.12.1 está **dentro** do intervalo que
+ele próprio suporta — é um refresh de lockfile, não um salto de major. Prova de equivalência: os 15
+casos de `minio/dist/esm/internal/xml-parser.mjs` (`parseBucketRegion`, `parseError`,
+`parseListObjectsV2`, `parseInitiateMultipart`, `parseCompleteMultipart`, `removeObjectsParser`,
+`parseTagging`, …) produzem JSON **idêntico** byte a byte antes e depois.
+
+Aceites (não vale o risco de os forçar):
+
+| Pacote                 | Sev.            | Caminho                                | Porque fica                                                                                                                                                                                                                                       |
+| ---------------------- | --------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `decode-uri-component` | high + moderate | `minio > query-string@7.1.3 > …@0.2.2` | O fix exige `>=0.5.1`, fora do `^0.2.0` de `query-string@7`; o override obrigaria a subir `query-string` para v9 — e é ele que constrói as **URLs presigned**. O SDK só descodifica query strings que ele próprio gerou: sem input do utilizador. |
+| `stream-json`          | 3× moderate     | `minio > stream-json@1.9.1`            | O fix exige `>=3.6.0` (major jump, fora do `^1.8.0` do minio). No SDK só é usado por `dist/main/notification.js` (bucket notifications), feature que a app **não** usa.                                                                           |
+
+Regra ao mexer nisto: **não** faças override de uma dependência de `minio` fora do intervalo que ele
+declara sem provar o caminho que a usa (parser XML, URLs presigned, uploads) — o SDK não tem testes
+próprios no nosso CI. Quando o `minio` publicar uma versão nova, repetir `pnpm audit --prod` e subir.
+
 ### Base de Dados
 
 | Comando           | Descricao                                      |

@@ -17,6 +17,7 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import express from 'express'
+import { cacheDelPrefix } from '../../lib/cache.js'
 
 const breederFindMany = vi.fn()
 const serviceFindMany = vi.fn()
@@ -54,7 +55,13 @@ afterAll(() => {
   server?.close()
 })
 
-beforeEach(() => {
+beforeEach(async () => {
+  // O router guarda o XML em cache (`cacheGetOrSet`, Redis ou Map in-process).
+  // Sem Redis em testes cai no Map do módulo, que sobrevive entre casos deste
+  // ficheiro — limpar a família de chaves mantém cada caso independente.
+  await cacheDelPrefix('sitemap:xml:')
+  breederFindMany.mockReset()
+  serviceFindMany.mockReset()
   breederFindMany.mockResolvedValue([
     { id: 1, slug: 'canil-do-norte', updatedAt: new Date('2026-01-02T03:04:05.000Z') },
   ])
@@ -71,6 +78,7 @@ afterEach(() => {
 async function getSitemap(): Promise<{
   status: number
   contentType: string
+  cacheControl: string
   locs: string[]
   xml: string
 }> {
@@ -79,6 +87,7 @@ async function getSitemap(): Promise<{
   return {
     status: res.status,
     contentType: res.headers.get('content-type') ?? '',
+    cacheControl: res.headers.get('cache-control') ?? '',
     xml,
     locs: [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!.trim()),
   }
@@ -133,5 +142,70 @@ describe('GET /sitemap.xml — origem canónica dos <loc> (PATA-BUG-7)', () => {
       expect(loc).not.toContain(',')
       expect(loc.startsWith('https://stage.patacerta.pt')).toBe(true)
     }
+  })
+})
+
+// ============================================
+// SEC-04 — cache do XML
+// ============================================
+//
+// O endpoint fazia 2 `findMany` (take 10000) por pedido e está isento de rate
+// limit: um crawler em ciclo forçava dois full scans por pedido. O XML passa a
+// ser servido de um cache (Redis / Map in-process) com TTL curto.
+//
+// Invariantes que interessam:
+//  1. a segunda chamada NÃO consulta a DB e devolve XML byte-idêntico;
+//  2. `Cache-Control` não muda (é para o browser/proxy, não substitui o cache);
+//  3. hosts diferentes não partilham a entrada (a sitemap anuncia sempre o host
+//     que a serve — PATA-BUG-7 regressaria em silêncio com uma chave estática);
+//  4. uma falha do loader não fica cacheada (sem cache negativo).
+describe('GET /sitemap.xml — cache (SEC-04)', () => {
+  it('serve da cache e não repete as queries na segunda chamada', async () => {
+    setEnv('PUBLIC_URL', 'https://cache-hit.patacerta.test')
+    setEnv('FRONTEND_URL', undefined)
+
+    const first = await getSitemap()
+
+    expect(first.status).toBe(200)
+    expect(first.contentType.toLowerCase()).toContain('xml')
+    expect(first.cacheControl).toBe('public, max-age=3600')
+    expect(breederFindMany).toHaveBeenCalledTimes(1)
+    expect(serviceFindMany).toHaveBeenCalledTimes(1)
+
+    const second = await getSitemap()
+
+    expect(second.status).toBe(200)
+    expect(second.cacheControl).toBe('public, max-age=3600')
+    expect(second.xml).toBe(first.xml)
+    // O ponto do card: nenhuma query nova na segunda chamada.
+    expect(breederFindMany).toHaveBeenCalledTimes(1)
+    expect(serviceFindMany).toHaveBeenCalledTimes(1)
+  })
+
+  it('hosts diferentes não partilham a entrada de cache', async () => {
+    setEnv('PUBLIC_URL', 'https://host-a.patacerta.test')
+    setEnv('FRONTEND_URL', undefined)
+    const hostA = await getSitemap()
+
+    setEnv('PUBLIC_URL', 'https://host-b.patacerta.test')
+    const hostB = await getSitemap()
+
+    expect(breederFindMany).toHaveBeenCalledTimes(2)
+    expect(hostA.locs.every((l) => l.startsWith('https://host-a.patacerta.test'))).toBe(true)
+    expect(hostB.locs.every((l) => l.startsWith('https://host-b.patacerta.test'))).toBe(true)
+  })
+
+  it('falha do loader não fica em cache (o pedido seguinte volta a consultar)', async () => {
+    setEnv('PUBLIC_URL', 'https://cache-fail.patacerta.test')
+    setEnv('FRONTEND_URL', undefined)
+    breederFindMany.mockRejectedValueOnce(new Error('db indisponivel'))
+
+    const failed = await getSitemap()
+    expect(failed.status).toBe(500)
+
+    const retried = await getSitemap()
+    expect(retried.status).toBe(200)
+    expect(breederFindMany).toHaveBeenCalledTimes(2)
+    expect(retried.locs).toContain('https://cache-fail.patacerta.test/criador/canil-do-norte')
   })
 })

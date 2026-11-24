@@ -167,6 +167,75 @@ quando o build falhou, não é rollback).
 > **Não existe CLI `dokploy deploy`** no Dokploy v0.31.2. Se encontrares esse comando num runbook
 > antigo (ou neste documento antes do card PATA-OPS-FIX-1), está errado: o deploy é o push.
 
+### Promoção `dev` → `main`: por PR, não por push directo (REL-09)
+
+`main` está protegida no GitHub (prova: `gh api repos/marine1988/patacerta/branches/main/protection`
+→ 200):
+
+| Definição                         | Valor                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Required status checks (`strict`) | `Lint & Typecheck`, `Test API`, `Test Web`, `Build` (workflow `CI`) + `Playwright E2E` (workflow `E2E`) |
+| Inclui administradores            | sim (`enforce_admins: true`)                                                                            |
+| Force push / apagar branch        | proibidos / proibido                                                                                    |
+| Reviews obrigatórias              | 0 — ver nota abaixo                                                                                     |
+| Restrições de utilizadores        | nenhuma                                                                                                 |
+
+Os `contexts` são os **nomes dos jobs** (`jobs.<id>.name`), não os nomes dos workflows — se
+renomeares um job em `ci.yml`/`e2e.yml`, a proteção passa a esperar um check que já não existe e o
+PR fica bloqueado em "Expected".
+
+Consequência prática: **`git push origin main` deixa de funcionar** (mesmo como admin). A promoção é
+`dev` → PR → merge, e o Dokploy republica no merge (`autoDeploy` observa `main`):
+
+```bash
+git fetch origin
+gh pr create --base main --head dev --title "promote: dev → main" --body "<resumo + evidência>"
+gh pr checks --watch            # CI + E2E verdes no head do PR
+gh pr merge --merge             # merge commit; --squash cria commit que `dev` nunca terá
+```
+
+Se `origin/dev` for ancestral de `origin/main`, o merge é fast-forward e o historial fica alinhado
+(`git rev-list --count origin/main..origin/dev` → 0).
+
+> **Porque não há reviews obrigatórias:** o repositório tem **um único colaborador**
+> (`gh api repos/marine1988/patacerta/collaborators`) e o GitHub não permite aprovar o próprio PR.
+> Exigir 1 review com `enforce_admins: true` tornaria `main` permanentemente inmergeable e parava
+> todos os deploys. Quando existir um segundo colaborador:
+>
+> ```bash
+> gh api -X POST repos/marine1988/patacerta/branches/main/protection/required_pull_request_reviews \
+>   -F required_approving_review_count=1
+> ```
+
+`workflow_dispatch` não passa por proteção de branches: `gh workflow run "E2E (Stage)" --ref dev`
+continua a ser o caminho para provar specs sem esperar por um deploy.
+
+### Imagem do MinIO continua em `latest` (OPS-07) — decisão consciente
+
+`docker-compose.dokploy.yml` fixa `minio/minio:latest`. O desejável é uma tag `RELEASE.*` imutável,
+mas **não foi possível determinar com segurança a versão que está a correr**, e fixar às cegas é pior
+do que não fixar:
+
+- O Dokploy v0.31.2 não expõe inspecção de contentores: `docker.getContainerConfig`,
+  `docker.inspectContainer` e `docker.getContainerLogs` devolvem **404**, e
+  `docker.getContainersByAppNameMatch?appName=patacerta-monorepo-txulux` devolve apenas
+  `containerId`, `name`, `state` e `status` — **sem imagem nem digest**.
+- O MinIO não anuncia versão em endpoints públicos: `/minio/health/live` → `200` sem headers de
+  versão; `https://patacerta.pt/patacerta-uploads/` → XML `AccessDenied` sem versão.
+- As migrações de formato do MinIO são **one-way**: uma tag escolhida a adivinhar pode republicar um
+  binário mais antigo sobre um volume já migrado (ou saltar versões) e o serviço não volta atrás.
+  Um upgrade/downgrade acidental num deploy é um incidente, não um "pin".
+
+Como fechar (janela de manutenção, ~5 min):
+
+1. Ler a imagem real no host (`docker inspect --format '{{.Config.Image}}' <container>`) ou na UI do
+   Dokploy (container `minio` → Inspect).
+2. Substituir no compose por essa tag exacta: `image: minio/minio:RELEASE.2026-XX-XXTXX-XX-XXZ`.
+3. Deploy e verificar: contentor recriado (`getContainersByAppNameMatch`), `/minio/health/live` →
+   `200`, um objecto de `/patacerta-uploads/…` → `200`, e um **upload novo** (PUT) → `200`.
+4. A partir daí a actualização do MinIO é manual e deliberada (ler as release notes antes) — nem
+   Renovate nem Dependabot cobrem imagens de `docker-compose`.
+
 ## Migracoes
 
 As migracoes correm automaticamente no entrypoint do container `api`:
@@ -347,13 +416,16 @@ docker logs patacerta-cron -f
 # 1. Identificar o que está a correr
 git log --oneline -1 origin/main        # stage: origin/dev
 
-# 2. Reverter. Merge commit -> -m 1; commit simples (fast-forward) -> sem -m.
-git checkout main && git pull
-git revert -m 1 <merge_commit>          # ou: git revert <commit>
-git push origin main                    # autoDeploy -> Dokploy reconstrói (~3-5 min)
+# 2. Reverter num branch próprio — `main` está protegida, o push directo é recusado.
+git checkout -b rollback/$(date +%Y%m%d-%H%M) origin/main
+git revert -m 1 <merge_commit>          # ou: git revert <commit> (ff: sem -m)
+git push -u origin HEAD
+gh pr create --base main --title "rollback: <commit>" --body "<motivo + evidência>"
+gh pr checks --watch && gh pr merge --merge   # autoDeploy -> Dokploy reconstrói (~3-5 min)
 ```
 
-**Nunca `git push --force` em `main`.** Antes de reverter, pára deploys em curso no painel do
+**Nunca `git push --force` em `main`** — a proteção da branch recusa force push e apagar `main`
+(ver "Promoção `dev` → `main`: por PR"). Antes de reverter, pára deploys em curso no painel do
 Dokploy para não publicar o revert a meio de outro build.
 
 Passos e verificação:

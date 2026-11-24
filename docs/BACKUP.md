@@ -201,3 +201,90 @@ o tamanho passou a ser logado no sucesso e a falha continua ruidosa (**exit 5**,
 sucesso). O teste `apps/api/src/lib/backup-postgres-size-guard.test.ts` corre o script real contra
 stubs de `pg_dump`/`age`/`mc` e prova 200 B → falha · 4095 B → falha · 4096 B → passa · 153 568 B
 → passa. O objecto de 200 B **não** foi apagado: é evidência.
+
+## 10. Melhorias pendentes (proposta — NÃO aplicada)
+
+Fecha os pontos 1-3 de §9.1 (AUDIT-OPS OPS-09). **Nada disto está em produção**: cada item muda
+configuração do bucket R2 ou do `cron` e precisa de uma janela própria com verificação de leitura de
+volta. A ordem abaixo é deliberada — protegê-lo vem **antes** de apagar (um `--remove` sem
+versioning/object-lock é a forma mais rápida de perder o offsite).
+
+### 10.1. Versioning + object-lock no bucket R2 (fazer primeiro)
+
+Hoje um RCE no contentor `cron` (que tem `OFFSITE_ACCESS_KEY` no env e `mc` na mão) apaga a produção
+**e** a cópia offsite com um `mc rm --recursive` — o offsite não é imutável.
+
+Proposta: activar **versioning** e **object-lock** (modo _compliance_, retenção 30 dias) em
+`patacerta-backups-offsite`. Efeito: `DELETE` passa a criar um _delete marker_ e as versões ficam
+indeléveis durante 30 dias — o pior caso passa de "perdi tudo" a "perdi 30 dias de escrita
+maliciosa, tudo o resto está recuperável".
+
+Pontos a confirmar no painel da Cloudflare antes de aplicar:
+
+- O object-lock **pode ter de ser activado na criação do bucket** (R2 não o retro-instala em todos os
+  casos). Se o bucket actual não o aceitar, o caminho é criar `patacerta-backups-offsite-locked`,
+  `mc mirror` do actual para o novo (leitura, sem cortar o cron), trocar `OFFSITE_BUCKET` no Dokploy e
+  só depois apagar o antigo — nunca "criar em paralelo e esquecer o antigo" (passaria a haver duas
+  cópias a crescer).
+- **Compatibilidade do `mc mirror --overwrite` com object-lock**: escrever por cima de um objecto
+  retido cria uma versão nova (permitido); o que fica proibido é apagar/sobrescrever a versão retida.
+  Testar com um prefixo descartável (`mc cp` + `mc rm` + `mc ls --versions`) antes de confiar.
+
+### 10.2. Token separado para o `cron` (só-escrita) e para restauros (só-leitura)
+
+Hoje uma credencial única serve escrita (cron) e leitura (restauro). Proposta:
+
+| Token                    | Permissões no bucket offsite     | Onde vive                |
+| ------------------------ | -------------------------------- | ------------------------ |
+| `patacerta-cron-offsite` | Object Read & Write (sem delete) | env do contentor `cron`  |
+| `patacerta-restore-ro`   | Object Read only                 | **não** fica no servidor |
+
+Como R2 não tem IAM por prefixo, a separação efectiva é: o token do cron **não** pode apagar (o que
+torna o `--remove` de 10.3 impossível de executar a partir do servidor comprometido) e o de restauro
+só lê. Os dois tokens são criados no painel e guardados como secrets do Dokploy/cofre — nunca no
+repo.
+
+Nota: com o token do cron sem `delete`, a rotação offsite automática (10.3) deixa de correr a partir
+do `cron`; passa a ser um passo **manual mensal** (fora do servidor, com o token de administração).
+Esse é o compromisso consciente: retenção offsite não automática em troca de o offsite não ser
+apagável a partir do servidor.
+
+### 10.3. Retenção offsite — `--remove` mensal alinhado com a GFS
+
+O `push-offsite.sh` faz `mc mirror --overwrite` **sem** `--remove` (§9), por isso o offsite nunca
+perde nada: 187 objectos / 56,15 MiB em 92 dias (~220 MiB/ano). Não há urgência de espaço — há falta
+de política.
+
+Proposta (mensal, manual, a partir de uma máquina de confiança, **depois** de 10.1 e 10.2):
+
+```sh
+# 1. Espelhar o local (GFS já aplicada: ~17 objectos por categoria) para o offsite
+#    apagando o que já não existe na origem.
+mc mirror --overwrite --remove localbk/patacerta-backups offsite/patacerta-backups-offsite
+
+# 2. Antes de correr a sério, um ensaio com o mesmo comando:
+mc mirror --overwrite --remove --dry-run localbk/patacerta-backups offsite/patacerta-backups-offsite
+```
+
+Guardas obrigatórias antes de usar `--remove`:
+
+1. **Contagem mínima na origem**: `mc ls --recursive | wc -l` tem de ser ≥ 10 (5 por categoria). Um
+   bucket local vazio (bug, MinIO reinstalado) com `--remove` esvaziava o offsite.
+2. **`--dry-run` primeiro**, sempre, e ler a lista (`Removing …`) antes do run real.
+3. Nunca encadear com o `push-offsite.sh` diário (que continua `--overwrite` sem `--remove`): a
+   remoção é um acto separado, mensal.
+4. Healthcheck: se o passo for automatizado, tem de pingar `/start` e `/fail` como os outros
+   (`rotate-backups.sh` é o modelo).
+
+Alternativa sem código: lifecycle rule no R2 (ex.: expirar depois de 400 dias). É mais simples e
+impossível de esvaziar o bucket por engano, mas expressa pior a GFS (7 diários + 4 semanais + 6
+mensais) e, ao contrário do versioning de 10.1, **apaga sem rede**. Se for essa a escolha, manter
+400 dias (muito acima da GFS local de 6 meses) para nunca ficar sem cópia redundante.
+
+### 10.4. Checklist de aplicação (quando houver janela)
+
+- [ ] 10.1 aplicado e provado: `mc ls --versions` mostra versões; `mc rm` de um objecto retido falha
+- [ ] 10.2: dois tokens criados, `OFFSITE_*` do `cron` aponta ao só-escrita, teste `mc rm` → nega
+- [ ] 10.3: ensaio `--remove --dry-run` lido e comparado com `mc ls` dos dois lados
+- [ ] 10.3: `mc ls --recursive` do offsite ≤ ~40 objectos depois do primeiro mês
+- [ ] Restore drill seguinte (§6 / `docs/RESTORE.md`) feito **a partir do offsite**, não do local

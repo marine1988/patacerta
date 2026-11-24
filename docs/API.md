@@ -284,6 +284,26 @@ detectar manutencao, que le de `/api/status`. Um pedido isento nao incrementa o
 contador (nenhum balde e gasto, sem headers `X-RateLimit-*`). Os restantes
 limiters (auth, upload, mutacoes, etc.) nao sao afectados.
 
+### `/sitemap.xml` — servido de cache (SEC-04)
+
+Como o endpoint esta isento do rate limit, o XML passou a ser servido por
+`cacheGetOrSet` (`apps/api/src/lib/cache.ts`; Redis quando disponivel, `Map`
+in-process em fallback) com **TTL de 5 min**. Sem isso, um crawler em ciclo
+forcava dois `findMany` com `take: 10000` (criadores VERIFIED + servicos ACTIVE)
+por pedido.
+
+- A chave (`sitemap:xml:v1:<origem canonica>`) inclui o `PUBLIC_URL` resolvido:
+  hosts diferentes nunca partilham XML (a sitemap anuncia sempre o host que a
+  serve — PATA-BUG-7).
+- O TTL **e'** a invalidacao: um criador recem-verificado aparece em <=5 min. O
+  Redis sobrevive a restarts, por isso o boot nao invalida nada.
+- `Cache-Control: public, max-age=3600` mantem-se inalterado (e' para o
+  browser/proxy; o cache interno e' o que poupa a DB).
+- Os `<lastmod>` das entradas estaticas sao o instante em que o XML foi gerado
+  (ate 5 min "atrasados" dentro da janela de cache).
+- Erro do loader **nao** fica em cache (sem cache negativo): o pedido seguinte
+  volta a consultar a DB.
+
 ## Codigos de Erro
 
 | Codigo              | Significado                    |

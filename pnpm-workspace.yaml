@@ -5,3 +5,11 @@ packages:
 overrides:
   proxy-addr: 2.0.8
   body-parser: 1.20.9
+  # SEC-08: fast-xml-parser é dependência transitiva de minio@8.0.7 (o SDK mais
+  # recente publicado). 5.7.0 arrastava fast-xml-builder@1.1.5, vulnerável a
+  # CVE-2026-44665 / GHSA-5wm8-gmm8-39j9 (atributos XML injectados ao
+  # serializar). minio declara `fast-xml-parser: ^5.3.4`, pelo que 5.12.1 está
+  # dentro do intervalo que ele próprio suporta — é um refresh de lockfile, não
+  # um salto de major. Equivalência do parser provada com 15 casos do
+  # `internal/xml-parser` do SDK (JSON idêntico antes/depois).
+  fast-xml-parser: ^5.12.1
