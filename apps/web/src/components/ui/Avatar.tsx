@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 interface AvatarProps {
   name: string
   imageUrl?: string
@@ -39,12 +41,23 @@ function getColor(name: string): string {
   return colors[Math.abs(hash) % colors.length]
 }
 
+/**
+ * Avatar com iniciais + cor derivada do nome.
+ *
+ * Quando ha `imageUrl`, mostra a foto; se a foto falhar (404, MinIO limpo,
+ * URL HTML) cai nas iniciais em vez de deixar o icone de imagem partida do
+ * browser. A 40 px um empty state ilustrado nao cabe — as iniciais ja' sao
+ * o fallback editorial deste componente.
+ */
 export function Avatar({ name, imageUrl, size = 'md', className = '' }: AvatarProps) {
-  if (imageUrl) {
+  const [errored, setErrored] = useState(false)
+
+  if (imageUrl && !errored) {
     return (
       <img
         src={imageUrl}
         alt={name}
+        onError={() => setErrored(true)}
         className={`${sizes[size]} rounded-full object-cover ${className}`}
       />
     )
@@ -54,6 +67,7 @@ export function Avatar({ name, imageUrl, size = 'md', className = '' }: AvatarPr
     <div
       className={`${sizes[size]} ${getColor(name)} inline-flex items-center justify-center rounded-full font-semibold text-white ${className}`}
       title={name}
+      data-testid="avatar-initials"
     >
       {getInitials(name)}
     </div>

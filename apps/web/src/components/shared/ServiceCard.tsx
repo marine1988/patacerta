@@ -51,7 +51,13 @@ export function ServiceCard({
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
-        <ImageFallback src={cover} alt={title} variant="service" className="h-full w-full" />
+        <ImageFallback
+          src={cover}
+          alt={title}
+          variant="service"
+          label="Sem fotografia"
+          className="h-full w-full"
+        />
         {distanceKm != null && (
           <span className="absolute right-2 top-2 rounded-full bg-surface px-2 py-1 text-xs font-medium text-ink shadow-sm">
             {formatDistance(distanceKm)}

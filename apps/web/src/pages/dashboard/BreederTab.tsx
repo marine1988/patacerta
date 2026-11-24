@@ -16,6 +16,7 @@ import {
   Modal,
   Accordion,
   AccordionSection,
+  ImageFallback,
   useConfirm,
 } from '../../components/ui'
 import { VerificationBadge } from '../../components/shared/VerificationBadge'
@@ -852,12 +853,16 @@ export function BreederTab() {
                         </div>
                       )}
                       {url && (
-                        <img
+                        <ImageFallback
                           src={url}
                           alt={file.name}
-                          className={`h-full w-full object-cover transition-opacity ${
+                          variant="breeder"
+                          size="compact"
+                          className="h-full w-full"
+                          imgClassName={`transition-opacity ${
                             isLoaded ? 'opacity-100' : 'opacity-0'
                           }`}
+                          loading="eager"
                           onLoad={() =>
                             setLoadedThumbs((prev) => {
                               const next = new Set(prev)

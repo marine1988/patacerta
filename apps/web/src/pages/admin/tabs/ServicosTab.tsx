@@ -14,6 +14,7 @@ import {
   Select,
   Modal,
   Input,
+  ImageFallback,
   useConfirm,
 } from '../../../components/ui'
 import { FeatureToggle } from '../_components/FeatureToggle'
@@ -184,15 +185,14 @@ export function ServicosTab() {
             {data.data.map((s) => (
               <Card key={s.id} hover={false}>
                 <div className="flex items-start gap-3">
-                  {s.photos[0]?.url ? (
-                    <img
-                      src={s.photos[0].url}
-                      alt=""
-                      className="h-16 w-16 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 shrink-0 rounded bg-gray-100" />
-                  )}
+                  <ImageFallback
+                    src={s.photos[0]?.url ?? null}
+                    alt=""
+                    variant="service"
+                    size="compact"
+                    className="h-16 w-16 shrink-0 rounded"
+                    decorative
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={serviceStatusVariant[s.status] ?? 'gray'}>

@@ -6,6 +6,7 @@ import { SearchBar } from '../../components/shared/SearchBar'
 import { FeaturedCarousel, FeaturedBadge } from '../../components/home/FeaturedCarousel'
 import { BreedSlider } from '../../components/home/BreedSlider'
 import { Badge } from '../../components/ui/Badge'
+import { ImageFallback } from '../../components/ui/ImageFallback'
 import { formatPrice, type ServicePriceUnit } from '../../lib/format'
 import { usePageMeta } from '../../hooks/usePageMeta'
 
@@ -467,13 +468,13 @@ function FeaturedServiceItem({ service: s }: { service: FeaturedService }) {
       className={`${ITEM_CLASSES} group block border border-line bg-surface transition-colors hover:border-caramel-500`}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
-        {cover ? (
-          <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs italic text-muted">
-            Sem foto
-          </div>
-        )}
+        <ImageFallback
+          src={cover}
+          alt={s.title}
+          variant="service"
+          label="Sem fotografia"
+          className="h-full w-full"
+        />
         {isPromoted && <FeaturedBadge />}
       </div>
       <div className="p-4">
@@ -526,13 +527,13 @@ function FeaturedBreederItem({ breeder: b }: { breeder: FeaturedBreeder }) {
       className={`${ITEM_CLASSES} group block border border-line bg-surface transition-colors hover:border-caramel-500`}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
-        {cover ? (
-          <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs italic text-muted">
-            Sem foto
-          </div>
-        )}
+        <ImageFallback
+          src={cover}
+          alt={b.businessName}
+          variant="breeder"
+          label="Sem fotografia"
+          className="h-full w-full"
+        />
         {isPromoted && <FeaturedBadge />}
       </div>
       <div className="p-4">

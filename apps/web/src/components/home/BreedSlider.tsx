@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { ImageFallback } from '../ui/ImageFallback'
 
 // ─── Dados dos slides ──────────────────────────────────────────────
 // Raças populares e reconhecíveis, todas com imagem em /public/breeds/.
@@ -87,16 +88,21 @@ export function BreedSlider() {
       {/* Slides — fade transition */}
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line">
         {BREED_SLIDES.map((slide, idx) => (
-          <img
+          <div
             key={slide.name}
-            src={slide.image}
-            alt={slide.name}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            className={`absolute inset-0 transition-opacity duration-700 ${
               idx === active ? 'opacity-100' : 'opacity-0'
             }`}
             aria-hidden={idx !== active}
-            loading={idx === 0 ? 'eager' : 'lazy'}
-          />
+          >
+            <ImageFallback
+              src={slide.image}
+              alt={slide.name}
+              variant="breed"
+              className="h-full w-full"
+              loading={idx === 0 ? 'eager' : 'lazy'}
+            />
+          </div>
         ))}
 
         {/* Card de resultado sobreposto */}

@@ -20,6 +20,7 @@ import { VerificationBadge } from '../../components/shared/VerificationBadge'
 import { StarRating } from '../../components/shared/StarRating'
 import { YouTubeEmbed } from '../../components/shared/YouTubeEmbed'
 import { PhotoLightbox } from '../../components/shared/PhotoLightbox'
+import { ImageFallback } from '../../components/ui/ImageFallback'
 import { Avatar } from '../../components/ui/Avatar'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -536,19 +537,12 @@ export function BreederProfilePage() {
                 aria-label="Abrir galeria"
               >
                 <div className="aspect-[16/9] w-full bg-gray-100">
-                  <img
+                  <ImageFallback
                     src={breeder.photos[0].url}
                     alt={`${breeder.businessName} — foto principal`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      // Fotos orfas no MinIO (e.g. limpeza falhada num
-                      // delete anterior) renderizam o icon de imagem
-                      // partida do browser, que parece bug. Escondemos
-                      // o <img> e deixamos o bg-gray-100 visivel — UX
-                      // mais limpa enquanto a equipa investiga.
-                      ;(e.currentTarget as HTMLImageElement).style.visibility = 'hidden'
-                    }}
+                    variant="breeder"
+                    className="h-full w-full"
+                    label="Sem fotografia"
                   />
                 </div>
               </button>
@@ -574,14 +568,13 @@ export function BreederProfilePage() {
                         className="relative aspect-square overflow-hidden rounded-md bg-gray-100"
                         aria-label={label}
                       >
-                        <img
+                        <ImageFallback
                           src={photo.url}
                           alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            ;(e.currentTarget as HTMLImageElement).style.visibility = 'hidden'
-                          }}
+                          variant="breeder"
+                          size="compact"
+                          className="h-full w-full"
+                          decorative
                         />
                         {hasMore && (
                           <span

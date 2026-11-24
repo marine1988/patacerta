@@ -12,6 +12,7 @@
 
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from 'react'
 import { Card } from '../ui/Card'
+import { ImageFallback } from '../ui/ImageFallback'
 
 export interface GalleryPhoto {
   id: number
@@ -131,12 +132,13 @@ export function PhotoGalleryManager({
                     : 'border-gray-200'
               }`}
             >
-              <img
+              <ImageFallback
                 src={photo.url}
                 alt=""
-                className="h-full w-full cursor-move object-cover"
-                loading="lazy"
-                draggable={false}
+                variant="generic"
+                size="compact"
+                className="h-full w-full cursor-move"
+                decorative
               />
 
               {idx === 0 && (

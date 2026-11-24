@@ -36,7 +36,13 @@ export function BreederCard({
       className="card block overflow-hidden transition-transform hover:-translate-y-0.5"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-alt">
-        <ImageFallback src={cover} alt={businessName} variant="breeder" className="h-full w-full" />
+        <ImageFallback
+          src={cover}
+          alt={businessName}
+          variant="breeder"
+          label="Sem fotografia"
+          className="h-full w-full"
+        />
         {status === 'VERIFIED' && (
           <span className="absolute left-2 top-2">
             <Badge variant="green">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type TouchEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { ImageFallback } from '../ui/ImageFallback'
 
 interface PhotoLightboxProps {
   isOpen: boolean
@@ -25,8 +26,15 @@ const SWIPE_THRESHOLD = 60
  */
 export function PhotoLightbox({ isOpen, onClose, photos, startIndex, alt }: PhotoLightboxProps) {
   const [index, setIndex] = useState(startIndex)
+  // Foto actual falhou a carregar (404/HTML/timeout) → empty state em vez do
+  // icone de imagem partida. Reset a cada mudanca de foto.
+  const [imgErrored, setImgErrored] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number | null>(null)
+
+  useEffect(() => {
+    setImgErrored(false)
+  }, [index, isOpen])
 
   // Sync com prop quando reabre.
   useEffect(() => {
@@ -130,15 +138,29 @@ export function PhotoLightbox({ isOpen, onClose, photos, startIndex, alt }: Phot
         </button>
       )}
 
-      {/* Imagem */}
-      <img
-        src={current.url}
-        alt={alt}
-        className="max-h-[90vh] max-w-[90vw] select-none object-contain"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        draggable={false}
-      />
+      {/* Imagem — se a URL falhar (foto orfa no MinIO, 404, HTML),
+          mostra o empty state editorial em vez do icone de imagem partida */}
+      {imgErrored ? (
+        <div className="flex h-[70vh] w-[85vw] max-w-3xl items-center justify-center">
+          <ImageFallback
+            src={null}
+            alt={alt}
+            variant="generic"
+            label="Fotografia indisponível"
+            className="h-full w-full"
+          />
+        </div>
+      ) : (
+        <img
+          src={current.url}
+          alt={alt}
+          className="max-h-[90vh] max-w-[90vw] select-none object-contain"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onError={() => setImgErrored(true)}
+          draggable={false}
+        />
+      )}
 
       {/* Seguinte */}
       {canNext && (

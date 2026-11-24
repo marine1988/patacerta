@@ -44,6 +44,7 @@ import {
   AccordionSection,
 } from '../../components/ui'
 import { ServiceCard, type ServiceCardData } from '../../components/shared/ServiceCard'
+import { ImageFallback } from '../../components/ui/ImageFallback'
 
 // ── Types (espelham o que o backend devolve em /services/mine) ────────
 
@@ -628,18 +629,14 @@ export function ServicesTab() {
                         respiro em viewports tablet (640-1023px). */}
                     <div className="flex flex-col gap-4 lg:flex-row">
                       <div className="h-32 w-full overflow-hidden rounded-lg bg-gray-100 shrink-0 lg:h-20 lg:w-28">
-                        {cover ? (
-                          <img
-                            src={cover}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
-                            Sem foto
-                          </div>
-                        )}
+                        <ImageFallback
+                          src={cover}
+                          alt=""
+                          variant="service"
+                          size="compact"
+                          className="h-full w-full"
+                          decorative
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">

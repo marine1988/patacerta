@@ -11,6 +11,7 @@
 import { Link } from 'react-router-dom'
 import type { SponsoredBreederMini } from '@patacerta/shared'
 import { api } from '../../lib/api'
+import { ImageFallback } from '../ui/ImageFallback'
 import { StarRating } from './StarRating'
 
 interface Props {
@@ -53,25 +54,14 @@ export function SponsoredBreedersStrip({ breeders, breedId, breedNamePt }: Props
               className="group flex items-center gap-3 rounded border border-line bg-surface p-3 transition-colors hover:border-caramel-300 hover:bg-surface-alt"
               style={{ borderRadius: 2 }}
             >
-              {b.coverPhotoUrl ? (
-                <img
-                  src={b.coverPhotoUrl}
-                  alt=""
-                  className="h-12 w-12 shrink-0 object-cover"
-                  style={{ borderRadius: 2 }}
-                  loading="lazy"
-                />
-              ) : (
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center bg-surface-alt text-caramel-500"
-                  style={{ borderRadius: 2 }}
-                  aria-hidden="true"
-                >
-                  <span className="font-serif text-lg">
-                    {b.businessName.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
+              <ImageFallback
+                src={b.coverPhotoUrl ?? null}
+                alt=""
+                variant="breeder"
+                size="compact"
+                className="h-12 w-12 shrink-0 rounded"
+                decorative
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span
