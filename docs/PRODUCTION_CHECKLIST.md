@@ -1,6 +1,12 @@
 # PataCerta — Production Readiness Checklist
 
-Last updated: 2026-07-01
+Last updated: 2026-11-24 (release `8f39424`)
+
+## Estado do release
+
+- Produção: `main @ 8f39424` desde 2026-11-24 — deploy verificado, evidência em `docs/releases/2026-11-24.md`.
+- `main` protegido: promoção por PR com `CI` + `E2E` verdes, `enforce_admins`, sem force-push nem delete.
+- Pendências do operador (não bloqueiam o site): endpoint Stripe (webhook), drill de restauro com a chave `age` offline, dead-man-switch do envio offsite.
 
 ## Security Audit Status
 

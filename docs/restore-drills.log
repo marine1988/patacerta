@@ -1,0 +1,33 @@
+# Registo de restore drills — PataCerta
+
+**Backups não testados não são backups.** Um drill por trimestre, seguindo `docs/RESTORE.md` §6.
+
+Formato de cada entrada:
+
+```
+AAAA-MM-DD | dump=<objecto> | postgres=<contagens users/breeds/feedback> | minio=<ficheiros> |
+tempo=<min> | resultado=<ok|falha> | notas=<...>
+```
+
+## Estado
+
+- Nenhum drill registado com dados reais até 2026-11-24.
+- A mecânica ponta-a-ponta (descarregar do R2, validar o header `age`, desencriptar com um par de chaves sintético, `pg_restore` numa base descartável) foi validada em auditoria, mas **sem** a chave privada de produção — a chave está offline por desenho, pelo que o drill com dados reais exige o operador.
+
+## Como executar (resumo)
+
+```bash
+# 1. base descartável
+docker run -d --name pgtest -e POSTGRES_PASSWORD=*** -p 55432:5432 postgres:16-alpine
+
+# 2. descarregar e desencriptar o dump mais recente (ver RESTORE.md §4.1)
+age -d -i <chave-privada>.txt postgres-YYYY-MM-DD_HHMMSS.dump.age > dump.pg
+
+# 3. restaurar
+pg_restore --no-owner --no-privileges -d postgresql://postgres:***@localhost:55432/postgres dump.pg
+
+# 4. validar
+psql ... -c 'select count(*) from users; select count(*) from breeds; select count(*) from feedback;'
+```
+
+Registar a entrada acima mesmo quando falha — um drill falhado é a informação mais valiosa.

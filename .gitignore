@@ -34,6 +34,8 @@ Thumbs.db
 # ========== Logs ==========
 logs/
 *.log
+# Exceção: o registo de restore drills é documentação versionada, não log de runtime.
+!docs/restore-drills.log
 npm-debug.log*
 pnpm-debug.log*
 

@@ -126,15 +126,16 @@ listadas em `services.api.environment` dos composes (`docker-compose.dokploy.yml
 
 ## 11. Backups (produção)
 
-| Variável                        | Obrigatória?  | Ambiente | Serviço | Default | Descrição                                                                             |
-| ------------------------------- | ------------- | -------- | ------- | ------- | ------------------------------------------------------------------------------------- |
-| `AGE_RECIPIENT`                 | Sim (backups) | prod     | cron    | —       | Chave **pública** age para encriptar. Privada guardada OFFLINE. Ver `docs/RESTORE.md` |
-| `HEALTHCHECKS_URL_BACKUP`       | Recomendada   | prod     | cron    | —       | Dead-man-switch backup postgres                                                       |
-| `HEALTHCHECKS_URL_BACKUP_MINIO` | Recomendada   | prod     | cron    | —       | Dead-man-switch backup minio                                                          |
-| `HEALTHCHECKS_URL_ROTATE`       | Recomendada   | prod     | cron    | —       | Dead-man-switch rotação                                                               |
-| `RETENTION_DAILY`               | Não           | prod     | cron    | `7`     | Retenção diária (dias)                                                                |
-| `RETENTION_WEEKLY`              | Não           | prod     | cron    | `4`     | Retenção semanal (semanas)                                                            |
-| `RETENTION_MONTHLY`             | Não           | prod     | cron    | `6`     | Retenção mensal (meses)                                                               |
+| Variável                        | Obrigatória?  | Ambiente | Serviço | Default | Descrição                                                                                                   |
+| ------------------------------- | ------------- | -------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `AGE_RECIPIENT`                 | Sim (backups) | prod     | cron    | —       | Chave **pública** age para encriptar. Privada guardada OFFLINE. Ver `docs/RESTORE.md`                       |
+| `HEALTHCHECKS_URL_BACKUP`       | Recomendada   | prod     | cron    | —       | Dead-man-switch backup postgres                                                                             |
+| `HEALTHCHECKS_URL_BACKUP_MINIO` | Recomendada   | prod     | cron    | —       | Dead-man-switch backup minio                                                                                |
+| `HEALTHCHECKS_URL_ROTATE`       | Recomendada   | prod     | cron    | —       | Dead-man-switch rotação                                                                                     |
+| `HEALTHCHECKS_URL_OFFSITE`      | Recomendada   | prod     | cron    | —       | Dead-man-switch do `mc mirror` para o bucket offsite (R2). Sem ela o push corre sem ninguém saber se falhou |
+| `RETENTION_DAILY`               | Não           | prod     | cron    | `7`     | Retenção diária (dias)                                                                                      |
+| `RETENTION_WEEKLY`              | Não           | prod     | cron    | `4`     | Retenção semanal (semanas)                                                                                  |
+| `RETENTION_MONTHLY`             | Não           | prod     | cron    | `6`     | Retenção mensal (meses)                                                                                     |
 
 ## 12. SEO
 
