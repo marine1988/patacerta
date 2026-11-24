@@ -204,10 +204,10 @@ age -d -i ~/patacerta-backup-key.txt backup.sql.age | \
 
 Duas camadas, com donos diferentes — nao duplicar uma na outra:
 
-| Quem responde                                                                        | Onde vive a config               | Headers                                                                                                                                     |
-| ------------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| API (`/api/*`, `/sitemap.xml`, redirects de `/criador/:id` e `/servicos/:id`)        | `apps/api/src/index.ts` (helmet) | CSP enforcada, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, ...                 |
-| Conteudo do nginx (HTML do SPA, manifest, robots/llms.txt, assets, uploads do MinIO) | `apps/web/nginx.conf.template`   | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP-Report-Only`, `Strict-Transport-Security` (HSTS) |
+| Quem responde                                                                        | Onde vive a config               | Headers                                                                                                                                                         |
+| ------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API (`/api/*`, `/sitemap.xml`, redirects de `/criador/:id` e `/servicos/:id`)        | `apps/api/src/index.ts` (helmet) | CSP enforcada, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, ...                                     |
+| Conteudo do nginx (HTML do SPA, manifest, robots/llms.txt, assets, uploads do MinIO) | `apps/web/nginx.conf.template`   | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` (enforcing), `Strict-Transport-Security` (HSTS) |
 
 Antes do card PATA-BUG-4 o nginx nao enviava um unico header nestas
 respostas: o HTML era embutivel num iframe de terceiros (clickjacking em
@@ -233,6 +233,33 @@ Um `add_header` dentro de um bloco `location` **substitui** todos os
   nos uploads (era o comportamento antes deste fix) e o stage voltava a ser
   indexavel.
 
+### HSTS e CSP (o que esta' activo hoje)
+
+Os dois headers que mais depressa sao revertidos por engano — porque uma
+versao antiga deste documento dizia que nao existiam — estao **incluidos** no
+template, nas **quatro** locations de conteudo:
+
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+  (card M-01). O contentor so' fala HTTP, mas o Traefik termina TLS e o header
+  chega ao browser sobre HTTPS, por isso e' honrado. `includeSubDomains` +
+  `preload` exige que TODOS os subdominios sejam HTTPS; reverter e' caro
+  (`max-age` de 1 ano) — decisao consciente de seguranca. A API tambem envia
+  HSTS via helmet em `/api/*`.
+- `Content-Security-Policy` em modo **enforcing** (promovida de Report-Only no
+  card M-02). Directivas que nao podem ser removidas sem partir funcionalidade:
+  - `style-src`/`font-src` com `https://fonts.googleapis.com` e
+    `https://fonts.gstatic.com` — as Google Fonts carregam no `index.html`.
+  - `frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com`
+    (card PATA-REL-FIX-1 / REL-02) — o perfil do criador embebe o video do
+    YouTube (`YouTubeEmbed.tsx`). Sem esta directiva o iframe cai em
+    `default-src 'self'` e o video fica bloqueado **em silencio** (so' aparece
+    um erro na consola do browser).
+  - `img-src https:` cobre MinIO/uploads e tiles do mapa (Leaflet/OSM).
+
+Ao acrescentar um embed novo (Vimeo, mapa de terceiros, etc.) alargar a
+directiva correspondente nas quatro locations e em
+`apps/web/src/nginx-security-headers.test.ts`.
+
 ### Verificar depois de um deploy
 
 ```bash
@@ -240,14 +267,21 @@ curl -sI https://patacerta.pt/ | grep -iE 'x-frame-options|x-content-type-option
 # x-frame-options: SAMEORIGIN
 # x-content-type-options: nosniff
 
+# CSP enforcing e com frame-src do YouTube (o video do criador depende disto)
+curl -sI https://patacerta.pt/ | grep -i '^content-security-policy'
+# ... frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; ...
+
+# HSTS presente e com 1 ano
+curl -sI https://patacerta.pt/ | grep -i '^strict-transport-security'
+# strict-transport-security: max-age=31536000; includeSubDomains; preload
+
 curl -sI https://patacerta.pt/api/health | grep -ic x-frame-options
 # 1  <- nao 2: quem responde e' a API, o nginx nao acrescenta nada
 ```
 
-Nao incluido de proposito: `Strict-Transport-Security` no nginx (o
-container so' fala HTTP e um `max-age` errado fica fixo no browser; a API ja'
-o envia em `/api/*`) e CSP em modo enforcing (parte AdSense/Stripe — ver
-`docs/ADSENSE_SETUP.md`).
+AdSense continua **inativo**; antes de o ligar e' preciso alargar `script-src`
+(ver `docs/ADSENSE_SETUP.md`), o que e' uma alteracao a CSP — nao uma razao
+para a desligar.
 
 ## Modo Manutencao
 

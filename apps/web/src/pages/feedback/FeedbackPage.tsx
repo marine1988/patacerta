@@ -56,7 +56,8 @@ const FEEDBACK_LIMIT = 5
 export function FeedbackPage() {
   usePageMeta({
     title: 'Feedback & Sugestões',
-    description: 'Dê feedback e vote nas sugestões da comunidade PataCerta.',
+    description:
+      'Reporte problemas, sugira melhorias ou deixe uma ideia. Cada feedback é privado e ajuda-nos a melhorar o PataCerta.',
     canonicalPath: '/feedback',
   })
 
@@ -129,8 +130,8 @@ export function FeedbackPage() {
       <div className="mb-8 text-center">
         <h1 className="font-serif text-3xl font-bold text-ink sm:text-4xl">Feedback & Sugestões</h1>
         <p className="mt-2 text-muted">
-          Dê a sua opinião e vote nas sugestões da comunidade. O seu feedback ajuda-nos a melhorar o
-          PataCerta.
+          Dê a sua opinião: reporte um problema, sugira uma melhoria ou deixe uma ideia. As
+          mensagens são privadas — só o autor e a equipa as podem ler.
         </p>
       </div>
 

@@ -25,8 +25,8 @@ export function Footer() {
                 Feedback &amp; <em className="italic text-caramel-500">sugestões</em>
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-                Reporte problemas, sugira melhorias e vote nas ideias da comunidade. Cada sugestão
-                ajuda a construir o PataCerta.
+                Reporte problemas, sugira melhorias ou deixe uma ideia. Cada mensagem é privada: só
+                o autor e a equipa a podem ler.
               </p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-2 self-start border border-caramel-500 px-4 py-2.5 text-[10px] font-medium uppercase tracking-caps text-caramel-500 transition-colors group-hover:bg-caramel-500 group-hover:text-white sm:self-auto">

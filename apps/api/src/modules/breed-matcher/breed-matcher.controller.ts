@@ -22,7 +22,11 @@ import type { BreedMatchInput, BreedMatchResult, SponsoredBreederMini } from '@p
 import { scoreBreed, penaltyToScore, type BreedForMatch } from './scoring.js'
 
 const MAX_SPONSORED_PER_BREED = 3
-const BREEDS_CACHE_KEY = 'breed-matcher:breeds:v1'
+// Versão da chave: SUBIR SEMPRE que o catálogo mudar de slugs/conteúdo
+// (foi v1 -> v2 no rename `galgo-portugues` -> `podengo-portugues`, REL-05).
+// Sem o bump, uma entrada em cache com a raça antiga continua a ser servida
+// até 1 h depois do deploy e o matcher recomenda um link morto.
+export const BREEDS_CACHE_KEY = 'breed-matcher:breeds:v2'
 const BREEDS_TTL_MS = 3600_000 // 1h — racas mudam raramente
 
 // Apenas os campos que o algoritmo de scoring + a resposta JSON usam.

@@ -29,9 +29,18 @@ const SECURITY_HEADERS = [
   'add_header X-Frame-Options "SAMEORIGIN" always;',
   'add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
   'add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;',
-  "add_header Content-Security-Policy \"default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'\" always;",
+  "add_header Content-Security-Policy \"default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'\" always;",
   'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;',
 ]
+
+/**
+ * Directiva `frame-src` (card PATA-REL-FIX-1 / REL-02): o perfil do criador
+ * embebe o video do YouTube (`YouTubeEmbed.tsx` -> `youtube-nocookie.com`).
+ * Sem ela o iframe cai em `default-src 'self'` e o video desaparece em
+ * silencio — so' um erro de consola. E' assertada a directiva inteira (e nao
+ * so' a palavra) para o teste apanhar a lista de origens encolhida.
+ */
+const FRAME_SRC = "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com;"
 
 /**
  * Em stage o nginx injecta o `X-Robots-Tag` via envsubst (`ROBOTS_HEADER`).
@@ -125,6 +134,19 @@ describe('nginx.conf.template — headers de seguranca', () => {
     // 4 de conteudo + 5 que respondem por proxy do API.
     expect(contentLocations).toHaveLength(LOCATION_COUNT - API_OWNED.length)
   })
+
+  it.each(contentLocations.map((b) => [b.header, b] as const))(
+    '%s declara frame-src com as origens do YouTube',
+    (_header, block) => {
+      // REL-02: sem `frame-src` o iframe do YouTube no perfil do criador cai
+      // em `default-src 'self'` e e' bloqueado (video "desaparece").
+      expect(block.body).toContain(FRAME_SRC)
+      // Uma directiva por location: duas politicas no mesmo header sao
+      // intersectadas pelo browser, por isso um segundo `frame-src` mais
+      // restrito voltaria a matar o embed.
+      expect(block.body.match(/frame-src/g) ?? []).toHaveLength(1)
+    },
+  )
 
   it('nao injecta headers nos locations do API (helmet responde por eles)', () => {
     const apiLocations = locations.filter((b) => API_OWNED.some((p) => b.header.includes(p)))

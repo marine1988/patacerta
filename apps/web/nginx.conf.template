@@ -74,6 +74,14 @@ server {
     # e Stripe checkout (redirect, nao embed) nao sao afectados. Se no futuro
     # o AdSense for ligado, alargar script-src para pagead2.googlesyndication.com
     # e googleads.g.doubleclick.net antes de activar.
+    #
+    # `frame-src` (card PATA-REL-FIX-1 / REL-02): o perfil do criador embebe
+    # o video do YouTube (`YouTubeEmbed.tsx` -> `www.youtube-nocookie.com`).
+    # Sem a directiva o iframe cai em `default-src 'self'` e fica bloqueado
+    # em silencio — so' aparece um erro na consola, a pagina parece apenas
+    # "sem video". `www.youtube.com` esta' na lista porque e' o host usado
+    # pelo player em fluxos de redirect/relacionados. Ao acrescentar um embed
+    # novo (Vimeo, etc.), juntar o host aqui — nas QUATRO locations.
     # ─────────────────────────────────────────────────────────────────────
 
     # Proxy API requests to the backend service.
@@ -184,7 +192,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -199,7 +207,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -215,7 +223,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
@@ -234,7 +242,7 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
-        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     }
 
