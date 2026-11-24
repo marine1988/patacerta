@@ -7,9 +7,10 @@
 ## 1. Resumo (TL;DR)
 
 - **O quê:** PostgreSQL (dump `custom`) + uploads MinIO (tar), **encriptados com `age`**.
-- **Onde:** bucket MinIO `patacerta-backups` (mesmo servidor — Fase A).
-- **Quando:** diário — Postgres 02:00 UTC, MinIO 02:05 UTC, rotação 02:30 UTC.
-- **Retenção (GFS):** 7 diários + 4 semanais + 6 mensais.
+- **Onde:** **duas** cópias — bucket MinIO `patacerta-backups` (no servidor) **e** mirror offsite em
+  Cloudflare R2 `patacerta-backups-offsite` (diário, 02:45 UTC).
+- **Quando:** diário — Postgres 02:00 UTC, MinIO 02:05 UTC, rotação 02:30 UTC, push offsite 02:45 UTC.
+- **Retenção (GFS):** 7 diários + 4 semanais + 6 mensais — **só no bucket local** (o offsite acumula).
 - **Monitorização:** Healthchecks.io (dead-man-switch) — alerta se um backup falhar.
 - **Chave privada `age`:** **NUNCA no servidor** — guardada OFFLINE pelo operador.
 
@@ -19,12 +20,17 @@
 container cron (busybox crond)
   ├─ 02:00 UTC  backup-postgres.sh   pg_dump -Fc | age -r $AGE_RECIPIENT | mc pipe → bucket
   ├─ 02:05 UTC  backup-minio.sh      tar uploads | age -r $AGE_RECIPIENT | mc pipe → bucket
-  └─ 02:30 UTC  rotate-backups.sh    aplica política GFS (apaga excedente)
+  ├─ 02:30 UTC  rotate-backups.sh    aplica política GFS (apaga excedente)
+  └─ 02:45 UTC  push-offsite.sh      mc mirror (só .age) → Cloudflare R2
                                       │
                                       ▼
-                       MinIO bucket: patacerta-backups
+                       MinIO bucket: patacerta-backups        (mesmo host)
                          postgres/YYYY/MM/postgres-<ts>.dump.age
                          minio/YYYY/MM/minio-uploads-<ts>.tar.age
+                                      │
+                                      ▼ mc mirror --overwrite
+                       R2 bucket: patacerta-backups-offsite    (offsite)
+                         mesmos caminhos, mesmo nomes
 ```
 
 - **Streaming end-to-end**: sem plaintext em disco (o dump nunca toca o filesystem em claro).
@@ -59,6 +65,14 @@ MINIO_BACKUP_BUCKET=patacerta-backups   # (default; opcional)
 HEALTHCHECKS_URL_BACKUP=https://hc-ping.com/<uuid-postgres>
 HEALTHCHECKS_URL_BACKUP_MINIO=https://hc-ping.com/<uuid-minio>
 HEALTHCHECKS_URL_ROTATE=https://hc-ping.com/<uuid-rotate>
+# 4º check recomendado: o mirror offsite é a única cópia que sobrevive à perda do servidor
+HEALTHCHECKS_URL_OFFSITE=https://hc-ping.com/<uuid-offsite>
+
+# Offsite (Cloudflare R2) — sem estas vars o push-offsite.sh salta (exit 0)
+OFFSITE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+OFFSITE_ACCESS_KEY=<token com write no bucket>
+OFFSITE_SECRET_KEY=<secret do token>
+OFFSITE_BUCKET=patacerta-backups-offsite
 
 # Retenção (opcional — defaults sensatos)
 RETENTION_DAILY=7
@@ -101,7 +115,10 @@ docker exec -it <cron-container> sh -c \
    mc ls --recursive l/patacerta-backups/'
 ```
 
-Saída esperada do backup-postgres: `[backup-pg] … sucesso (X.XX MiB) → postgres/…`.
+Saída esperada do backup-postgres: `[backup-pg] … sucesso (153568 bytes / 0.15 MiB, minimo 4096) → postgres/…`.
+
+O tamanho **tem de** aparecer: o script recusa objectos abaixo de 4096 B (exit 5, sem ping de
+sucesso) porque um `.age` de poucas centenas de bytes é header de um dump falhado — ver §9.
 
 ## 5. Restauro
 
@@ -138,14 +155,49 @@ Total ≈ 17 backups por categoria (postgres + minio). A rotação (`rotate-back
 
 - [ ] `age-keygen` corrido; chave privada guardada OFFLINE (2-3 cópias)
 - [ ] `AGE_RECIPIENT` (pública) definido no Dokploy (prod **e** stage)
-- [ ] 3 checks criados em Healthchecks.io + URLs nas env vars
+- [ ] 3 checks criados em Healthchecks.io + URLs nas env vars (+ `HEALTHCHECKS_URL_OFFSITE`)
+- [ ] `OFFSITE_*` definido no Dokploy e `mc ls` do R2 mostra os objectos `.age` do dia
 - [ ] Backup manual forçado com sucesso (postgres + minio)
 - [ ] `mc ls` mostra os `.age` no bucket `patacerta-backups`
 - [ ] 1º restore drill feito e registado
-- [ ] (Fase B) push offsite configurado (ver `docs/RESTORE.md` §9)
 
-## 9. Fase B — offsite (roadmap)
+## 9. Offsite em produção (Cloudflare R2) — implementado
 
-Fase A guarda backups **no mesmo servidor** → se o servidor morrer, os backups
-morrem com ele. Mitigação futura em `docs/RESTORE.md` §9 (push para MinIO/rclone
-num Unraid via Cloudflare Tunnel). **Prioridade alta pós-lançamento.**
+O offsite **existe e está activo**: `push-offsite.sh` corre às 02:45 UTC e espelha o bucket local
+para o R2. Não é roadmap.
+
+| Item              | Valor                                                                    |
+| ----------------- | ------------------------------------------------------------------------ |
+| Bucket            | `patacerta-backups-offsite` (Cloudflare R2)                              |
+| Conteúdo          | só blobs `.age` (já encriptados) — o provider nunca vê plaintext         |
+| Comando           | `mc mirror --overwrite` (incremental, **sem** `--remove`)                |
+| Volumetria medida | 187 objectos / 56,15 MiB em 92 dias (2026-08-25 → 2026-11-24)            |
+| Retenção          | **nenhuma** — o offsite acumula (a GFS só corre no bucket local)         |
+| Healthcheck       | `HEALTHCHECKS_URL_OFFSITE` (opcional no código; **recomendado** em prod) |
+
+### 9.1. Limitações conhecidas
+
+1. **Sem object-lock nem versioning.** O token do R2 tem permissão de escrita e vive no env do
+   contentor `cron`: um RCE nesse contentor apaga a produção **e** a cópia offsite. Mitigação
+   recomendada (ainda não implementada): versioning + object-lock com retenção de 30 dias no R2.
+2. **Credencial única.** O mesmo token serve para escrever (cron) e ler (restauros); devia ser
+   só-escrita para o cron e só-leitura para restauros.
+3. **Sem retenção offsite.** Cresce ~220 MiB/ano — sem urgência de espaço, mas falta política
+   (lifecycle rule no R2 ou `--remove` mensal alinhado com a GFS local).
+4. **Sem validação de conteúdo no servidor.** O dump é encriptado em streaming e a chave privada
+   está offline por desenho: só o tamanho é verificável no servidor (§9.2). O drill trimestral
+   (`docs/RESTORE.md` §6) é o que valida o conteúdo.
+
+### 9.2. Incidente histórico — o objecto de 200 B
+
+`postgres/2026/08/postgres-2026-08-25_135207.dump.age` tem **200 bytes** (primeira execução manual).
+É o header `age` de um dump que morreu a meio da pipeline: `pg_dump` falhou, o `age` fechou o header
+e o `mc pipe` gravou o que recebeu. O guard antigo (`SIZE -lt 100`) aceitou-o, o objecto foi
+mirrorizado para o offsite e o dead-man-switch pingou **sucesso** — um dia de backups "verde" sem
+conteúdo.
+
+Correcção (AUDIT-OPS OPS-08): o limite passou a **4096 B** em `apps/api/scripts/backup-postgres.sh`,
+o tamanho passou a ser logado no sucesso e a falha continua ruidosa (**exit 5**, sem ping de
+sucesso). O teste `apps/api/src/lib/backup-postgres-size-guard.test.ts` corre o script real contra
+stubs de `pg_dump`/`age`/`mc` e prova 200 B → falha · 4095 B → falha · 4096 B → passa · 153 568 B
+→ passa. O objecto de 200 B **não** foi apagado: é evidência.

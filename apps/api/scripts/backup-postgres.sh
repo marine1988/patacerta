@@ -33,8 +33,37 @@
 #   2   pg_dump falhou
 #   3   encrypt falhou
 #   4   upload MinIO falhou
+#   5   objecto criado mas com tamanho abaixo do minimo (dump truncado/vazio)
 # ──────────────────────────────────────────────────────────────────────────
 set -eu
+
+# ── Guard de tamanho do objecto ──
+# Um dump real desta app ronda os 150 KB (medido no offsite: 136-154 KB em 92
+# dias consecutivos, mediana 153,5 KB). Abaixo de 4 KB so' cabe o header `age`
+# de um dump que morreu a meio do pipeline — foi exactamente o que passou a
+# 2026-08-25 (`postgres-2026-08-25_135207.dump.age`, 200 B): pg_dump falhou, o
+# `age` fechou o header na mesma e o `mc pipe` gravou os 200 B que recebeu. O
+# guard antigo (100 B) aceitava esse lixo, o objecto era mirrorizado para o
+# offsite e o dead-man-switch pingava SUCESSO — um dia de backups "verde" sem
+# conteudo. Anomalia detectada na auditoria AUDIT-OPS.md (OPS-08).
+#
+# Porque NAO validamos o TOC com `pg_restore --list`: o dump sai encriptado em
+# streaming (`pg_dump | age -r ... | mc pipe`) e a chave PRIVADA vive offline
+# por desenho (docs/BACKUP.md §1). Desencriptar aqui exigiria a chave no
+# servidor, que e' precisamente o que a arquitectura evita. O tamanho do
+# objecto e' o melhor sinal barato que o servidor consegue avaliar sozinho
+# (o drill trimestral, com a chave na mao, e' que valida o conteudo).
+MIN_BACKUP_BYTES=4096
+
+# Devolve 0 se o tamanho for plausivel, 1 caso contrario.
+check_backup_size() {
+  _size="${1:-}"
+  # mc stat pode devolver vazio (objecto inexistente) ou algo nao-numerico.
+  case "$_size" in
+    '' | *[!0-9]*) _size=0 ;;
+  esac
+  [ "$_size" -ge "$MIN_BACKUP_BYTES" ]
+}
 
 # ── Validacoes ──
 : "${DATABASE_URL:?[backup-pg] FATAL: DATABASE_URL nao definida}"
@@ -104,15 +133,17 @@ then
   exit 2
 fi
 
-# ── Verificacao: ficheiro existe e tem tamanho > 0 ──
+# ── Verificacao: objecto existe e tem tamanho plausivel ──
 SIZE=$(mc stat --json "${MC_ALIAS}/${MINIO_BACKUP_BUCKET}/${OBJECT_PATH}" 2>/dev/null | grep -o '"size":[0-9]*' | head -1 | cut -d: -f2)
-if [ -z "$SIZE" ] || [ "$SIZE" -lt 100 ]; then
-  echo "[backup-pg] FATAL: backup criado mas tamanho suspeito (${SIZE:-0} bytes)" >&2
-  exit 4
+if ! check_backup_size "${SIZE:-}"; then
+  echo "[backup-pg] FATAL: backup criado mas tamanho suspeito: ${SIZE:-0} bytes (minimo ${MIN_BACKUP_BYTES}) -> ${OBJECT_PATH}" >&2
+  echo "[backup-pg] O objecto foi criado (o pipeline nao devolveu erro) mas nao tem conteudo plausivel." >&2
+  echo "[backup-pg] Investigar pg_dump/age no log acima; o objecto fica no bucket como evidencia." >&2
+  exit 5
 fi
 
 SIZE_HUMAN=$(awk "BEGIN { printf \"%.2f MiB\", $SIZE/1024/1024 }")
-echo "[backup-pg] $(date -u +%FT%TZ) sucesso (${SIZE_HUMAN}) -> ${OBJECT_PATH}"
+echo "[backup-pg] $(date -u +%FT%TZ) sucesso (${SIZE} bytes / ${SIZE_HUMAN}, minimo ${MIN_BACKUP_BYTES}) -> ${OBJECT_PATH}"
 
 hc_ping ""
 trap - EXIT

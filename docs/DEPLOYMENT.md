@@ -49,12 +49,16 @@ Deploy via Dokploy (Docker Compose).
 
 ### Backups (Recomendado)
 
-| Variavel                        | Descricao                                |
-| ------------------------------- | ---------------------------------------- |
-| `AGE_RECIPIENT`                 | Chave publica age para encriptar backups |
-| `HEALTHCHECKS_URL_BACKUP`       | URL healthchecks.io para postgres        |
-| `HEALTHCHECKS_URL_BACKUP_MINIO` | URL healthchecks.io para minio           |
-| `HEALTHCHECKS_URL_ROTATE`       | URL healthchecks.io para rotacao         |
+| Variavel                        | Descricao                                    |
+| ------------------------------- | -------------------------------------------- |
+| `AGE_RECIPIENT`                 | Chave publica age para encriptar backups     |
+| `HEALTHCHECKS_URL_BACKUP`       | URL healthchecks.io para postgres            |
+| `HEALTHCHECKS_URL_BACKUP_MINIO` | URL healthchecks.io para minio               |
+| `HEALTHCHECKS_URL_ROTATE`       | URL healthchecks.io para rotacao             |
+| `HEALTHCHECKS_URL_OFFSITE`      | URL healthchecks.io para o mirror offsite    |
+| `OFFSITE_ENDPOINT`              | Endpoint S3 do R2 (sem isto nao ha' offsite) |
+| `OFFSITE_ACCESS_KEY`            | Token de escrita do R2                       |
+| `OFFSITE_SECRET_KEY`            | Secret do token do R2                        |
 
 ### Opcionais
 
@@ -146,11 +150,22 @@ www.patacerta.pt   CNAME patacerta.pt
 
 ### 6. Deploy
 
+O deploy é **automático no push** (Dokploy `autoDeploy=true`):
+
+| Branch | Ambiente | URL                        | Tempo até ficar visível |
+| ------ | -------- | -------------------------- | ----------------------- |
+| `dev`  | stage    | https://stage.patacerta.pt | ~3-5 min                |
+| `main` | produção | https://patacerta.pt       | ~3-5 min                |
+
 ```bash
-# Via Dokploy UI: Deploy > Rebuild
-# Ou via CLI:
-dokploy deploy patacerta
+git push origin dev     # ou origin main, via PR
 ```
+
+No painel do Dokploy existe também **Deploy > Rebuild** — reconstrói o **commit actual** (útil
+quando o build falhou, não é rollback).
+
+> **Não existe CLI `dokploy deploy`** no Dokploy v0.31.2. Se encontrares esse comando num runbook
+> antigo (ou neste documento antes do card PATA-OPS-FIX-1), está errado: o deploy é o push.
 
 ## Migracoes
 
@@ -176,11 +191,12 @@ npx prisma migrate deploy
 
 O container `cron` corre backups automaticos:
 
-| Job                  | Schedule  | Descricao          |
-| -------------------- | --------- | ------------------ |
-| `backup-postgres.sh` | 02:00 UTC | pg_dump encriptado |
-| `backup-minio.sh`    | 02:05 UTC | mc mirror uploads  |
-| `rotate-backups.sh`  | 02:30 UTC | Politica GFS       |
+| Job                  | Schedule  | Descricao                        |
+| -------------------- | --------- | -------------------------------- |
+| `backup-postgres.sh` | 02:00 UTC | pg_dump encriptado               |
+| `backup-minio.sh`    | 02:05 UTC | mc mirror uploads                |
+| `rotate-backups.sh`  | 02:30 UTC | Politica GFS (so' bucket local)  |
+| `push-offsite.sh`    | 02:45 UTC | mirror `.age` para Cloudflare R2 |
 
 ### Politica de Retencao (GFS)
 
@@ -192,12 +208,14 @@ O container `cron` corre backups automaticos:
 
 ### Restore
 
-Ver `docs/RESTORE.md` para procedimento completo.
+Ver `docs/RESTORE.md` para procedimento completo (incluindo o acesso ao offsite e ao MinIO
+interno, que não está publicado no host).
 
 ```bash
-# Exemplo: restore postgres
-age -d -i ~/patacerta-backup-key.txt backup.sql.age | \
-  psql postgresql://patacerta:$PG_PASS@localhost/patacerta
+# Exemplo: restore postgres (o dump e' --format=custom -> pg_restore, nunca psql)
+age -d -i ~/patacerta-backup-key.txt -o restore.dump restore.dump.age
+pg_restore --clean --if-exists --no-owner --no-privileges \
+  --dbname="postgresql://patacerta:***@postgres:5432/patacerta" restore.dump
 ```
 
 ## Headers de Seguranca
@@ -323,17 +341,42 @@ docker logs patacerta-cron -f
 
 ## Rollback
 
-1. No Dokploy, ir a Deployments
-2. Seleccionar versao anterior
-3. Click "Rollback"
-
-Ou manualmente:
+**Plano A (determinístico, ~5-8 min): `git revert` + push.** É o único caminho provado.
 
 ```bash
-# Fazer rebuild com commit especifico
-git checkout <commit>
-dokploy deploy patacerta
+# 1. Identificar o que está a correr
+git log --oneline -1 origin/main        # stage: origin/dev
+
+# 2. Reverter. Merge commit -> -m 1; commit simples (fast-forward) -> sem -m.
+git checkout main && git pull
+git revert -m 1 <merge_commit>          # ou: git revert <commit>
+git push origin main                    # autoDeploy -> Dokploy reconstrói (~3-5 min)
 ```
+
+**Nunca `git push --force` em `main`.** Antes de reverter, pára deploys em curso no painel do
+Dokploy para não publicar o revert a meio de outro build.
+
+Passos e verificação:
+
+1. Abortar deploys em fila no painel (Deployments).
+2. `git revert` como acima e `git push`.
+3. Confirmar que o build novo saiu: `curl -sI https://patacerta.pt/` → `last-modified` recente;
+   `curl -s https://patacerta.pt/api/status` → `uptimeSeconds` pequeno (processo reiniciado).
+4. **Migrações não revertem com `git revert`** — já correram na BD. Se a release reverte uma
+   migração destrutiva, escreve uma migração compensatória (nova, nunca editar a aplicada).
+   Migrações aditivas ficam aplicadas sem efeito no código antigo.
+
+### Plano B (NÃO provado) — botão "Rollback" do Dokploy
+
+O Dokploy v0.31.2 guarda `rollbackId` nos registos de deployment, mas **`GET
+/api/deployment.rollback` devolve 404** e os registos **não guardam o hash do commit** — não é
+possível mapear "deployment N" para um commit. O botão **Redeploy** também não é rollback:
+reconstrói o commit actual. Usar o botão só depois de o provar em stage com um commit descartável;
+até lá, não é um runbook.
+
+> Procura de emergência: `git log origin/main --oneline -5` + `curl -sI` do domínio dizem qual o
+> build a servir. Se não corresponder ao commit esperado, o deploy é que está atrasado — ver
+> "Verificar depois de um deploy".
 
 ## Volumes
 

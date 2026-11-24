@@ -192,8 +192,8 @@ docker logs <cron-container-id> --tail 100
 
 ### Rollback
 
-1. In Dokploy, go to Deployments
-2. Click "Redeploy" on the previous working version
+**Plano A: `git revert` do merge/commit + push** (ver `docs/DEPLOYMENT.md §Rollback`).
+O botão "Redeploy" do Dokploy **não** é rollback — reconstrói o commit actual.
 
 ### Database Restore
 

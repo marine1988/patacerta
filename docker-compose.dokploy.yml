@@ -83,7 +83,22 @@
 #
 #   Restore: ver docs/RESTORE.md (runbook completo).
 #
-#   TODO Fase B: push offsite para Unraid via Cloudflare Tunnel.
+#   Offsite (implementado): push-offsite.sh espelha o bucket local para um
+#   S3 externo (Cloudflare R2, bucket patacerta-backups-offsite) as 02:45 UTC,
+#   com os objectos ja' encriptados (.age). Definir OFFSITE_ENDPOINT,
+#   OFFSITE_ACCESS_KEY, OFFSITE_SECRET_KEY e (recomendado)
+#   HEALTHCHECKS_URL_OFFSITE. Sem OFFSITE_* o job salta (exit 0).
+#   Ver docs/BACKUP.md §9 e docs/RESTORE.md §9.
+#
+# Hardening (conservador — ver AUDIT-OPS.md §9): todos os servicos levam
+# `no-new-privileges` e rotacao de logs (10 MB x 3). So o `api` faz
+# `cap_drop: ALL` (corre como `app`, non-root). NAO aplicar cap_drop ao
+# `web` (nginx master precisa de CAP_NET_BIND_SERVICE para o :80) nem a
+# postgres/redis/minio (chown/setuid/dac_override).
+# `cron` fica sem cap_drop de proposito: corre como root e o busybox crond
+# escreve em /var/spool/cron/crontabs.
+# NAO ha' mem_limit: um limite mal calibrado em OOM-kill durante servicos
+# ou builds e' pior que a ausencia dele — fica para tuning posterior.
 
 services:
   # ── Frontend (nginx + SPA + /api reverse proxy) ──
@@ -113,6 +128,14 @@ services:
     networks:
       - dokploy-network
       - default
+    # nginx master corre como root (bind :80) -> SEM cap_drop.
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'wget --spider -q http://127.0.0.1:80/ || exit 1']
@@ -218,6 +241,17 @@ services:
       # Use MAINTENANCE_BYPASS_KEY for admin access via X-Maintenance-Bypass header.
       MAINTENANCE_MODE: ${MAINTENANCE_MODE:-0}
       MAINTENANCE_BYPASS_KEY: ${MAINTENANCE_BYPASS_KEY:-}
+    # Corre como `app` (non-root) e nao precisa de nenhuma capability:
+    # bind em 3001 (>1024), sem raw sockets, sem chown. Drop total.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       # start_period generoso: o entrypoint corre backfill-slugs + detector
@@ -282,14 +316,25 @@ services:
       RETENTION_DAILY: ${RETENTION_DAILY:-7}
       RETENTION_WEEKLY: ${RETENTION_WEEKLY:-4}
       RETENTION_MONTHLY: ${RETENTION_MONTHLY:-6}
-      # Offsite (Fase B) - mirror encriptado (.age) do bucket de backups para
-      # um S3/R2 externo. Sem estas vars, push-offsite.sh salta (sem offsite).
+      # Offsite - mirror encriptado (.age) do bucket de backups para um
+      # S3/R2 externo (Cloudflare R2 em producao). Sem estas vars,
+      # push-offsite.sh salta (sem offsite).
       OFFSITE_ENDPOINT: ${OFFSITE_ENDPOINT:-}
       OFFSITE_ACCESS_KEY: ${OFFSITE_ACCESS_KEY:-}
       OFFSITE_SECRET_KEY: ${OFFSITE_SECRET_KEY:-}
       OFFSITE_BUCKET: ${OFFSITE_BUCKET:-patacerta-backups-offsite}
       HEALTHCHECKS_URL_OFFSITE: ${HEALTHCHECKS_URL_OFFSITE:-}
     entrypoint: ['/app/cron-entrypoint.sh']
+    # SEM cap_drop: corre como root e o busybox crond escreve em
+    # /var/spool/cron/crontabs/root. no-new-privileges nao atrapalha o crond
+    # (nao ha' binario setuid no caminho) mas impede escalada a partir de um job.
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
   # ── PostgreSQL 16 ──
@@ -303,6 +348,15 @@ services:
       POSTGRES_DB: patacerta
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # SEM cap_drop: o entrypoint do postgres e' root e faz setuid/chown para
+    # o user `postgres` (precisa de SETUID/SETGID/CHOWN/DAC_OVERRIDE).
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U patacerta']
@@ -318,6 +372,15 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    # SEM cap_drop: a imagem oficial arranca como root e faz setuid para
+    # `redis` quando escreve AOF/RDB no volume.
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
@@ -336,6 +399,15 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    # SEM cap_drop: o entrypoint do MinIO corre como root e faz chown do
+    # volume /data para o user `minio` antes de baixar privilegios.
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'mc', 'ready', 'local']

@@ -1,6 +1,8 @@
 # Disaster Recovery — Restore Runbook
 
-> **TL;DR**: backups diários encriptados com `age`, guardados no MinIO bucket `patacerta-backups`, retidos via GFS (7d + 4w + 6m). Restore = descarregar `.age` → `age -d` → `pg_restore` ou `tar -x`. **Precisas da chave privada `age` que está OFFLINE — sem ela os backups são inúteis.**
+> **TL;DR**: backups diários encriptados com `age`, guardados em **duas** cópias — bucket MinIO `patacerta-backups` (no servidor) e o mirror offsite em Cloudflare R2 `patacerta-backups-offsite` — retidos via GFS (7d + 4w + 6m) no local. Restore = descarregar `.age` → `age -d` → `pg_restore` ou `tar -x`. **Precisas da chave privada `age` que está OFFLINE — sem ela os backups são inúteis.**
+>
+> **Não existe `minio.patacerta.pt`.** O MinIO não publica portas no host (por desenho): o único acesso local é de dentro do contentor `cron` (secção 3.2). Para DR real (servidor perdido) a fonte é o **offsite** (secção 3.1).
 
 ---
 
@@ -10,7 +12,8 @@
 | -------------------------------- | -------------------- | ---------------- | ------------------------------------------------------------------------------ |
 | Postgres dump (formato `custom`) | `backup-postgres.sh` | Diário 02:00 UTC | `s3://patacerta-backups/postgres/YYYY/MM/postgres-YYYY-MM-DD_HHMMSS.dump.age`  |
 | MinIO uploads (tar)              | `backup-minio.sh`    | Diário 02:05 UTC | `s3://patacerta-backups/minio/YYYY/MM/minio-uploads-YYYY-MM-DD_HHMMSS.tar.age` |
-| Rotação GFS                      | `rotate-backups.sh`  | Diário 02:30 UTC | aplica retenção 7d+4w+6m                                                       |
+| Rotação GFS                      | `rotate-backups.sh`  | Diário 02:30 UTC | aplica retenção 7d+4w+6m (só no bucket local)                                  |
+| **Mirror offsite**               | `push-offsite.sh`    | Diário 02:45 UTC | `s3://patacerta-backups-offsite/…` (Cloudflare R2) — mesmos nomes de objecto   |
 
 **Encriptação**: `age` com chave assimétrica.
 
@@ -34,26 +37,66 @@ Na tua máquina local (não no servidor):
 3. **`mc`** (MinIO client):
    - `winget install MinIO.Client` ou `brew install minio/stable/mc`
 4. **`pg_restore`** versão >= 16 (vem com cliente Postgres).
-5. **Acesso ao MinIO de produção** — precisa do `MINIO_ROOT_PASSWORD` que está no painel Dokploy.
+5. **Acesso aos backups** — um dos dois caminhos reais da secção 3:
+   - **offsite (recomendado)**: endpoint S3 do Cloudflare R2 + `OFFSITE_ACCESS_KEY`/`OFFSITE_SECRET_KEY`
+     (definidos no env do `cron` no Dokploy). É o único caminho que sobrevive à perda do servidor.
+     Se o token do R2 for só-escrita, gera um token de leitura no painel do R2 para o restauro.
+   - **local (servidor vivo)**: `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` + `docker exec` no contentor `cron`.
+     MinIO **não** está publicado no host — não há URL pública.
 
 ---
 
 ## 3. Listar backups disponíveis
 
+Há **duas** cópias e **nenhuma** está exposta à internet:
+
+| Cópia       | Onde                                              | Como se acede                                                                          |
+| ----------- | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Local**   | MinIO `minio:9000`, bucket `patacerta-backups`    | rede interna do compose — só de dentro do contentor `cron` (que tem `mc` + o env)      |
+| **Offsite** | Cloudflare R2, bucket `patacerta-backups-offsite` | endpoint S3 do R2 + credenciais `OFFSITE_*` (mirror diário às 02:45 UTC, blobs `.age`) |
+
+`minio.patacerta.pt` **não existe** — não há DNS, túnel nem porta publicada (decisão de
+segurança: o object storage nunca é exposto). Usa um dos caminhos abaixo.
+
+### 3.1. Offsite (R2) — a partir da tua máquina
+
 ```sh
-# Setup mc alias para o MinIO de produção (uma vez)
-# Substituir <password> pelo MINIO_ROOT_PASSWORD do Dokploy.
-# Acesso: precisa do MinIO console exposto OU túnel SSH para porta 9000.
-mc alias set patacerta-prod https://minio.patacerta.pt patacerta <password>
+# Endpoint S3 do R2 (painel Cloudflare > R2 > Manage API Tokens mostra o account id).
+mc alias set offsite "https://<account-id>.r2.cloudflarestorage.com" \
+  "$OFFSITE_ACCESS_KEY" "$OFFSITE_SECRET_KEY"
 
-# Listar todos os backups
-mc ls --recursive patacerta-prod/patacerta-backups/
+# Postgres mais recentes
+mc ls --recursive offsite/patacerta-backups-offsite/postgres/ | awk '{print $NF}' | sort | tail -10
 
-# Apenas Postgres mais recentes
-mc ls --recursive patacerta-prod/patacerta-backups/postgres/ | sort -k1 | tail -10
+# Uploads MinIO mais recentes
+mc ls --recursive offsite/patacerta-backups-offsite/minio/ | awk '{print $NF}' | sort | tail -10
+```
 
-# Apenas MinIO uploads mais recentes
-mc ls --recursive patacerta-prod/patacerta-backups/minio/ | sort -k1 | tail -10
+> O token `OFFSITE_*` do `cron` pode ser só-escrita (é o que basta ao mirror). Para restauro
+> gera no painel do R2 um token com **Object Read** e usa-o no `mc alias set`.
+
+### 3.2. Local (MinIO do servidor) — a partir do contentor `cron`
+
+O MinIO só existe na rede interna do compose. O contentor `cron` já tem `mc`, `MINIO_*` e
+`MINIO_BACKUP_BUCKET` no ambiente, por isso é o ponto de entrada:
+
+```sh
+CRON=$(docker ps --format '{{.Names}}' | grep cron | head -1)
+
+docker exec -it "$CRON" sh -c '
+  mc alias set l "http://$MINIO_ENDPOINT:$MINIO_PORT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null
+  mc ls --recursive l/patacerta-backups/postgres/ | awk "{print \$NF}" | sort | tail -10
+'
+```
+
+Para trazer um objecto para a tua máquina, copia primeiro para `/tmp` do contentor e depois
+`docker cp` (o `mc cp` não escreve no teu disco):
+
+```sh
+docker exec "$CRON" sh -c '
+  mc alias set l "http://$MINIO_ENDPOINT:$MINIO_PORT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null
+  mc cp "l/patacerta-backups/postgres/2026/11/postgres-2026-11-24_020009.dump.age" /tmp/restore.dump.age'
+docker cp "$CRON":/tmp/restore.dump.age ./postgres-restore.dump.age
 ```
 
 ---
@@ -63,17 +106,21 @@ mc ls --recursive patacerta-prod/patacerta-backups/minio/ | sort -k1 | tail -10
 ### 4.1. Descarregar e desencriptar
 
 ```sh
-# Escolher o backup pretendido (último por defeito)
-LATEST=$(mc ls --recursive patacerta-prod/patacerta-backups/postgres/ \
-  | sort -k1 | tail -1 | awk '{print $NF}')
+# Fonte: offsite (sobrevive à perda do servidor) ou local (servidor vivo, secção 3.2).
+SRC="offsite/patacerta-backups-offsite"
+# SRC="l/patacerta-backups"     # dentro do contentor cron
 
-# Descarregar
-mc cp "patacerta-prod/patacerta-backups/${LATEST}" ./postgres-restore.dump.age
+# Escolher o backup pretendido (último por defeito)
+LATEST=$(mc ls --recursive "$SRC/postgres/" | awk '{print $NF}' | sort | tail -1)
+
+# Descarregar (o $LATEST já inclui o prefixo postgres/, não o repetir)
+mc cp "$SRC/${LATEST}" ./postgres-restore.dump.age
 
 # Desencriptar (vai pedir/usar chave privada)
 age -d -i ~/patacerta-backup-key.txt -o postgres-restore.dump postgres-restore.dump.age
 
-# Verificar tamanho — deve ser >>0 e parecido ao original
+# Verificar tamanho — um dump saudável desta app tem ~150 KB desencriptado;
+# um .age de poucas centenas de bytes é header de um dump falhado (ver docs/BACKUP.md §9).
 ls -lh postgres-restore.dump
 ```
 
@@ -129,10 +176,12 @@ pg_restore --use-list=/tmp/toc.txt --dbname="$DATABASE_URL" postgres-restore.dum
 ### 5.1. Descarregar e desencriptar
 
 ```sh
-LATEST=$(mc ls --recursive patacerta-prod/patacerta-backups/minio/ \
-  | sort -k1 | tail -1 | awk '{print $NF}')
+SRC="offsite/patacerta-backups-offsite"
+# SRC="l/patacerta-backups"     # dentro do contentor cron
 
-mc cp "patacerta-prod/patacerta-backups/${LATEST}" ./minio-restore.tar.age
+LATEST=$(mc ls --recursive "$SRC/minio/" | awk '{print $NF}' | sort | tail -1)
+
+mc cp "$SRC/${LATEST}" ./minio-restore.tar.age
 age -d -i ~/patacerta-backup-key.txt -o minio-restore.tar minio-restore.tar.age
 
 # Inspeccionar conteúdo (deve ter pasta uploads/ na raiz)
@@ -149,14 +198,17 @@ mkdir -p /tmp/minio-restore
 tar -xf minio-restore.tar -C /tmp/minio-restore
 # Estrutura: /tmp/minio-restore/uploads/<keys do bucket>
 
-# Opção A: SUBSTITUIR bucket completo (apaga ficheiros novos)
-mc mirror --overwrite --remove /tmp/minio-restore/uploads patacerta-prod/patacerta-uploads
-
-# Opção B: MERGE (não apaga, só adiciona/substitui)
-mc mirror --overwrite /tmp/minio-restore/uploads patacerta-prod/patacerta-uploads
-
-# Verificar
-mc ls --recursive patacerta-prod/patacerta-uploads | wc -l
+# O destino é o MinIO do servidor, que não está publicado: o mirror tem de correr
+# de dentro do contentor `cron` (env MINIO_* já lá está) com o tar copiado para lá.
+docker cp /tmp/minio-restore "$CRON":/tmp/minio-restore
+docker exec -it "$CRON" sh -c '
+  mc alias set l "http://$MINIO_ENDPOINT:$MINIO_PORT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null
+  # Opção A: SUBSTITUIR bucket completo (apaga ficheiros novos)
+  mc mirror --overwrite --remove /tmp/minio-restore/uploads l/patacerta-uploads
+  # Opção B: MERGE (não apaga, só adiciona/substitui)
+  # mc mirror --overwrite /tmp/minio-restore/uploads l/patacerta-uploads
+  mc ls --recursive l/patacerta-uploads | wc -l
+'
 ```
 
 ---
@@ -180,9 +232,11 @@ mc ls --recursive patacerta-prod/patacerta-uploads | wc -l
 1. Provisionar novo servidor Dokploy.
 2. Restaurar `docker-compose.dokploy.yml` + env vars.
 3. Acesso à chave privada `age` offline.
-4. **Acesso aos backups**: se eram só locais (Fase A), os backups morreram com o servidor → **perda total**.
-   - Por isso a Fase B (push offsite Unraid) é crítica.
-5. Com offsite: descarregar do Unraid → seguir secções 4 e 5.
+4. **Acesso aos backups**: o bucket local e o MinIO morreram com o servidor → restaurar do
+   **offsite** (Cloudflare R2, `patacerta-backups-offsite`, secção 3.1). O offsite é o que impede
+   que a perda do servidor seja perda total de dados; o mirror diário às 02:45 UTC dá um RPO
+   de ~1 dia (24 h no pior caso: dump das 02:00 e mirror às 02:45).
+5. Descarregar do offsite → seguir secções 4 e 5.
 
 ### 7.2. BD corrompida mas servidor OK
 
@@ -234,21 +288,39 @@ docker exec -e DRY_RUN=1 -it patacerta-monorepo-<id>-cron-1 /app/scripts/rotate-
 
 ---
 
-## 9. TODO Fase B — push offsite Unraid
+## 9. Offsite (implementado — Cloudflare R2)
 
-Quando o Unraid + Cloudflare Tunnel estiverem prontos:
+O offsite **já está a correr em produção**; não é roadmap e não é "TODO Fase B".
 
-1. Instalar MinIO (ou rclone server) no Unraid.
-2. Cloudflare Tunnel: expor porta 9000 do MinIO Unraid via `minio-unraid.tunel.example`.
-3. Adicionar env vars no `cron` service:
-   - `OFFSITE_ENDPOINT`, `OFFSITE_ACCESS_KEY`, `OFFSITE_SECRET_KEY`, `OFFSITE_BUCKET`
-4. Criar `apps/api/scripts/push-offsite.sh`:
-   ```sh
-   mc alias set offsite "https://${OFFSITE_ENDPOINT}" ...
-   mc mirror --overwrite local/patacerta-backups offsite/${OFFSITE_BUCKET}
-   ```
-5. Adicionar entry no `cron-entrypoint.sh`:
-   ```
-   0 4 * * * . /app/.cron.env && /app/scripts/push-offsite.sh > /proc/1/fd/1 2>&1
-   ```
-6. Healthchecks.io: 4º check `patacerta-backup-offsite`.
+| Item              | Valor                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Provider / bucket | Cloudflare R2 · `patacerta-backups-offsite`                                                                            |
+| Script            | `apps/api/scripts/push-offsite.sh` (`mc mirror --overwrite`, só blobs `.age`)                                          |
+| Agendamento       | diário **02:45 UTC** (`apps/api/cron-entrypoint.sh`), 15 min depois da rotação                                         |
+| Origem → destino  | bucket local `patacerta-backups` (MinIO) → R2                                                                          |
+| Env vars          | `OFFSITE_ENDPOINT`, `OFFSITE_ACCESS_KEY`, `OFFSITE_SECRET_KEY`, `OFFSITE_BUCKET` (default), `HEALTHCHECKS_URL_OFFSITE` |
+| Volumetria medida | 187 objectos / 56,15 MiB em 92 dias (~0,6 MiB/dia)                                                                     |
+
+Sem `OFFSITE_*` definido o script sai com **0** e escreve `a saltar (sem copia offsite)` no log —
+é o que faz o stage não falhar. Em produção as vars estão definidas: os objectos chegam ao R2
+todos os dias.
+
+### 9.1. Limitações conhecidas (dívida, não bugs)
+
+1. **Sem retenção no offsite.** `mc mirror --overwrite` não usa `--remove`: o bucket só cresce
+   (~220 MiB/ano). Não há urgência de espaço — falta política (lifecycle rule no R2, ou
+   `--remove` mensal alinhado com o GFS local).
+2. **Sem versioning nem object-lock.** O token do R2 tem escrita e vive no env do `cron`; um RCE
+   no contentor apaga a produção **e** a cópia offsite.
+3. **Credencial única de escrita** no env do `cron`. O desenho correto é token só-escrita para o
+   `cron` + token só-leitura para restauros.
+4. **Dead-man-switch parcial** — `HEALTHCHECKS_URL_OFFSITE` não estava definido (ver
+   `AUDIT-OPS.md` OPS-04); sem ele uma falha do mirror é silenciosa.
+
+### 9.2. Incidente histórico: o objecto de 200 B
+
+`postgres/2026/08/postgres-2026-08-25_135207.dump.age` tem **200 bytes** — header `age` de um dump
+que morreu a meio da pipeline (primeira execução manual). O guard antigo (`SIZE -lt 100`) deixou-o
+passar, foi mirrorizado para o offsite e o healthchecks pingou sucesso. O objecto **mantém-se**
+como evidência; o limite passou a 4096 B em `apps/api/scripts/backup-postgres.sh`, com teste
+próprio (`apps/api/src/lib/backup-postgres-size-guard.test.ts`). Detalhe em `docs/BACKUP.md §9`.
