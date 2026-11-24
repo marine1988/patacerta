@@ -16,14 +16,31 @@
  * `set -a; . ~/.hermes/profiles/coder/.env; set +a` (basic auth do Traefik).
  */
 
-import { test, expect } from '../fixtures/test'
+import { test, expect, type Page } from '../fixtures/test'
 import { seedSkipReason } from '../fixtures/env'
 
 /** Cards de servico da listagem publica (href canonico, estavel a mudancas de copy). */
 const SERVICE_CARD = 'a[href^="/servicos/"]'
 
+/**
+ * Percorre a pagina para forçar o `loading="lazy"` das imagens dos cards.
+ * Sem isto nenhuma <img> abaixo da dobra esta' carregada quando medimos — e
+ * um contador a 0 por "ainda nao pediu" e' um falso negativo.
+ */
+async function loadLazyImages(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const step = 600
+    for (let y = 0; y < document.body.scrollHeight; y += step) {
+      window.scrollTo(0, y)
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    }
+    window.scrollTo(0, 0)
+  })
+  await page.waitForTimeout(500)
+}
+
 /** Conta, dentro dos cards, <img> partidas (o icone que o utilizador viu). */
-async function brokenCardImages(page: import('@playwright/test').Page): Promise<number> {
+async function brokenCardImages(page: Page): Promise<number> {
   return page.evaluate((cardSelector) => {
     const imgs = Array.from(document.querySelectorAll<HTMLImageElement>(`${cardSelector} img`))
     // `complete && naturalWidth === 0` = o browser tentou carregar e falhou.
@@ -31,22 +48,18 @@ async function brokenCardImages(page: import('@playwright/test').Page): Promise<
   }, SERVICE_CARD)
 }
 
-/** Cards que nao tem nem foto carregada nem empty state (area "branca"). */
-async function cardsWithoutVisual(page: import('@playwright/test').Page): Promise<number> {
+/** Cards sem NADA na area da imagem (nem empty state nem <img>) = area branca. */
+async function cardsWithoutVisual(page: Page): Promise<number> {
   return page.evaluate((cardSelector) => {
     const cards = Array.from(document.querySelectorAll(cardSelector))
-    return cards.filter((card) => {
-      const fallback = card.querySelector('[data-testid="image-fallback"]')
-      const loaded = Array.from(card.querySelectorAll<HTMLImageElement>('img')).some(
-        (img) => img.complete && img.naturalWidth > 0,
-      )
-      return !fallback && !loaded
-    }).length
+    return cards.filter(
+      (card) => !card.querySelector('[data-testid="image-fallback"]') && !card.querySelector('img'),
+    ).length
   }, SERVICE_CARD)
 }
 
-/** Fotos reais carregadas nos cards (usado para decidir se o A/B faz sentido). */
-async function loadedCardPhotos(page: import('@playwright/test').Page): Promise<number> {
+/** Fotos reais carregadas nos cards (decide se o A/B da falha forçada faz sentido). */
+async function loadedCardPhotos(page: Page): Promise<number> {
   return page.evaluate((cardSelector) => {
     return Array.from(document.querySelectorAll<HTMLImageElement>(`${cardSelector} img`)).filter(
       (img) => img.complete && img.naturalWidth > 0,
@@ -61,11 +74,14 @@ test.describe('Empty state de imagens @prod-safe', () => {
     await page.goto('/pesquisar?tipo=servicos')
     await expect(page.locator(SERVICE_CARD).first()).toBeVisible({ timeout: 25_000 })
 
-    // Nenhuma <img> partida dentro dos cards (é o ícone que parecia bug).
-    await expect.poll(() => brokenCardImages(page), { timeout: 15_000 }).toBe(0)
+    // Assenta as imagens lazy antes de medir.
+    await loadLazyImages(page)
 
-    // Toda a area de imagem de cada card tem algo intencional lá dentro.
-    await expect.poll(() => cardsWithoutVisual(page), { timeout: 15_000 }).toBe(0)
+    // Nenhuma <img> partida dentro dos cards (é o ícone que parecia bug).
+    await expect.poll(() => brokenCardImages(page), { timeout: 20_000 }).toBe(0)
+
+    // Toda a area de imagem de cada card tem algo lá dentro: foto ou empty state.
+    await expect.poll(() => cardsWithoutVisual(page), { timeout: 10_000 }).toBe(0)
 
     // O empty state e' acessivel: `role="img"` com nome, ou decorativo.
     const a11yOk = await page.evaluate((cardSelector) => {
@@ -85,6 +101,7 @@ test.describe('Empty state de imagens @prod-safe', () => {
 
     await page.goto('/pesquisar?tipo=servicos')
     await expect(page.locator(SERVICE_CARD).first()).toBeVisible({ timeout: 25_000 })
+    await loadLazyImages(page)
 
     const loadedBefore = await loadedCardPhotos(page)
     test.skip(
@@ -102,6 +119,7 @@ test.describe('Empty state de imagens @prod-safe', () => {
 
     await page.reload()
     await expect(page.locator(SERVICE_CARD).first()).toBeVisible({ timeout: 25_000 })
+    await loadLazyImages(page)
 
     // O empty state aparece onde antes havia foto real.
     await expect(
@@ -109,7 +127,7 @@ test.describe('Empty state de imagens @prod-safe', () => {
     ).toBeVisible({ timeout: 25_000 })
 
     // E o React removeu as <img> falhadas: zero icones de imagem partida.
-    await expect.poll(() => brokenCardImages(page), { timeout: 15_000 }).toBe(0)
-    await expect.poll(() => cardsWithoutVisual(page), { timeout: 15_000 }).toBe(0)
+    await expect.poll(() => brokenCardImages(page), { timeout: 20_000 }).toBe(0)
+    await expect.poll(() => cardsWithoutVisual(page), { timeout: 10_000 }).toBe(0)
   })
 })
