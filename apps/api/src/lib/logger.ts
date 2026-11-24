@@ -42,6 +42,34 @@ if (isDevLocal) {
   }
 }
 
+/**
+ * Caminhos redigidos pelo pino.
+ *
+ * Exportado para o teste correr uma instância de pino sobre a MESMA lista (uma
+ * cópia no teste podia divergir da configuração real).
+ *
+ * O JWT viaja em `X-Access-Token` (ver `ACCESS_TOKEN_HEADER` em
+ * middleware/auth.ts, PATA-BUG-12), não em `Authorization`. O `redact` do pino
+ * casa pelo nome EXATO do caminho — o genérico `token` não apanha a chave
+ * `x-access-token`, por isso ela é listada explicitamente (SEC-06). Hoje nenhum
+ * `logger.*` loga o objeto de headers; isto fecha o risco latente. `x-refresh-token`
+ * é defensivo: o refresh viaja no cookie `refresh_token` (já coberto por
+ * `req.headers.cookie`), mas qualquer header homónimo futuro fica coberto.
+ */
+export const REDACT_PATHS = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'req.headers["x-access-token"]',
+  'req.headers["x-refresh-token"]',
+  'req.headers["X-Access-Token"]',
+  'password',
+  'passwordHash',
+  'token',
+]
+
+/** Substituto aplicado a cada caminho sensível. */
+export const REDACT_CENSOR = '[REDACTED]'
+
 export const logger = pino({
   level: process.env.LOG_LEVEL || (isHttps ? 'info' : 'debug'),
   transport: prettyAvailable
@@ -56,7 +84,7 @@ export const logger = pino({
     : undefined,
   // Redact paths sensiveis caso passem por engano em metadata.
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'passwordHash', 'token'],
-    censor: '[REDACTED]',
+    paths: [...REDACT_PATHS],
+    censor: REDACT_CENSOR,
   },
 })

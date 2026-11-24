@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
 import { logger } from '../lib/logger.js'
+import { isDev } from '../lib/env.js'
 
 export class AppError extends Error {
   constructor(
@@ -75,11 +76,11 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   }
 
   // Unknown errors
-  // Em produção logamos apenas a mensagem + código (sem stack trace nem
-  // objecto de erro completo, que podem conter PII/stacks). Em dev (NODE_ENV
-  // !== 'production') incluímos o stack para facilitar o debug. O logger
-  // estruturado aplica redact (paths sensíveis) em ambos os casos.
-  const isDev = process.env.NODE_ENV !== 'production'
+  // Em produção E EM STAGE logamos apenas a mensagem + código (sem stack trace
+  // nem objecto de erro completo, que podem conter PII/stacks). Só em dev local
+  // (nem prod nem stage — ver `isDev` em lib/env.ts) incluímos o stack para
+  // facilitar o debug. O logger estruturado aplica redact (paths sensíveis) em
+  // ambos os casos. O corpo JSON devolvido ao cliente é sempre o mesmo.
   const loggedError: { message?: string; code?: string; stack?: string } = {
     message: err?.message,
     code: (err as { code?: string } | null)?.code,

@@ -14,7 +14,11 @@ export const createFeedbackSchema = z.object({
 
 export const listFeedbackSchema = z.object({
   category: feedbackCategorySchema.optional(),
-  page: z.coerce.number().int().positive().default(1),
+  // `skip = (page - 1) * limit` (feedback.controller.ts) alimenta o OFFSET do
+  // Prisma: sem bound, um `page` gigante vira erro de validação do Prisma e
+  // devolve 500 em vez de 400 (SEC-05). 10000 × limit 50 = 500k linhas, muito
+  // acima do catálogo real.
+  page: z.coerce.number().int().positive().max(10000).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   sort: z.enum(['recent', 'votes']).optional().default('recent'),
 })

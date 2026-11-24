@@ -13,8 +13,13 @@ build/
 .env.*.local
 .env.stage
 .env.production
+# Cobre qualquer sufixo de ambiente com segredos reais (.env.prod, .env.dev,
+# .env.development, .env.test, .env.local.bak, ...). Os ficheiros de exemplo
+# continuam versionados pelas negações abaixo (SEC-07).
+.env.*
 !.env.example
 !.env.stage.example
+!.env.*.example
 
 # ========== IDE ==========
 .vscode/
