@@ -5,6 +5,7 @@
  * correr também em scripts de build (sitemap, prerender) no futuro.
  */
 import { absoluteUrl, SITE_NAME, SITE_URL } from './seo'
+import { SOCIAL_LINKS } from './social'
 
 interface BreadcrumbItem {
   name: string
@@ -190,6 +191,16 @@ export function websiteJsonLd() {
   }
 }
 
+/**
+ * `Organization` global — injectado em todas as páginas pelo `<SiteJsonLd />`
+ * (`components/shared/SiteJsonLd.tsx`), que também emite o `WebSite`.
+ *
+ * `sameAs` vem de `lib/social.ts` (FONTE ÚNICA dos perfis oficiais) — é a
+ * mesma lista que o footer renderiza. Não duplicar URLs aqui: uma rede nova
+ * acrescenta-se a `SOCIAL_LINKS` e propaga-se ao footer e ao structured data.
+ * Para o Google (e para os LLMs), `sameAs` é o que liga o domínio aos perfis
+ * oficiais — um URL errado aqui desassocia-os sem falhar nenhum teste visual.
+ */
 export function organizationJsonLd() {
   return {
     '@context': 'https://schema.org',
@@ -200,6 +211,8 @@ export function organizationJsonLd() {
     description: 'Directório de criadores verificados e serviços para cães em Portugal.',
     areaServed: { '@type': 'Country', name: 'Portugal' },
     knowsLanguage: 'pt-PT',
+    // Fonte: `SOCIAL_LINKS` (`lib/social.ts`) — ordem preservada.
+    sameAs: SOCIAL_LINKS.map((link) => link.url),
   }
 }
 

@@ -89,6 +89,18 @@ const PUBLIC_ROUTES: RouteExpectation[] = [
 const HEAD_TIMEOUT = 20_000
 
 /**
+ * Perfis oficiais (PATA-SOCIAL-2). A fonte única em produção é
+ * `src/lib/social.ts`; aqui replica-se o contrato de propósito — um handle
+ * errado no `sameAs` desassocia os perfis do domínio no Google sem falhar
+ * nenhum teste visual.
+ */
+const EXPECTED_SOCIAL_URLS = [
+  'https://www.instagram.com/patacerta.pt/',
+  'https://www.youtube.com/@patacerta-pt',
+  'https://www.tiktok.com/@patacerta.pt',
+]
+
+/**
  * Espera que o `<title>` seja o da app (e não o estático do `index.html`).
  *
  * Sentinela escolhido com cuidado: o `index.html` já traz `<title>`,
@@ -218,6 +230,77 @@ test.describe('SEO / metadata @prod-safe', () => {
       expect(String(organization!.url).startsWith(EXPECTED_PUBLIC_URL)).toBe(true)
       expect(String(website!.url).startsWith(EXPECTED_PUBLIC_URL)).toBe(true)
     }
+  })
+
+  /**
+   * PATA-SOCIAL-2 — os perfis oficiais têm de estar no `Organization`
+   * JSON-LD (`sameAs`), para Google e LLMs ligarem o domínio às contas.
+   *
+   * O nó é injectado em runtime pelo `<SiteJsonLd />` (`App.tsx`), por isso
+   * `curl` ao HTML só vê o comentário do `index.html`: a prova tem de ser no
+   * DOM, depois de o React correr.
+   *
+   * Lê **todos** os `script[type="application/ld+json"]` da página (não só os
+   * `data-managed="patacerta-site"`): um `Organization` estático esquecido no
+   * `index.html` — ou um segundo injector — apareceria aqui como nó
+   * duplicado a divergir do runtime, que é exactamente o defeito que este
+   * teste tem de apanhar.
+   */
+  test('Organization JSON-LD expõe os 3 perfis oficiais em sameAs', async ({ page }) => {
+    // O injector vive no layout (App.tsx), logo o nó tem de aparecer em
+    // qualquer rota — não só na Home.
+    for (const path of ['/', '/pesquisar', '/termos']) {
+      await page.goto(path)
+      await expect(
+        page.locator('script[type="application/ld+json"][data-managed="patacerta-site"]'),
+        `SiteJsonLd não injectou os nós globais em ${path}`,
+      ).toHaveCount(2, { timeout: HEAD_TIMEOUT })
+
+      const raws = await page.locator('script[type="application/ld+json"]').allTextContents()
+      const blocks = raws
+        .filter((raw) => raw.trim().length > 0)
+        .map((raw) => JSON.parse(raw) as Record<string, unknown>)
+      expect(blocks.length, `nenhum bloco JSON-LD em ${path}`).toBeGreaterThan(0)
+
+      const organizations = blocks.filter((block) => {
+        const type = block['@type']
+        return Array.isArray(type) ? type.includes('Organization') : type === 'Organization'
+      })
+      expect(
+        organizations,
+        `esperado exactamente 1 nó Organization em ${path}; encontrados ${organizations.length}`,
+      ).toHaveLength(1)
+
+      expect(
+        organizations[0]!.sameAs,
+        `sameAs do Organization em ${path} não corresponde aos perfis oficiais`,
+      ).toEqual(EXPECTED_SOCIAL_URLS)
+      expect(organizations[0]!.name).toBe('PataCerta')
+
+      if (EXPECTED_PUBLIC_URL) {
+        expect(String(organizations[0]!.url).startsWith(EXPECTED_PUBLIC_URL)).toBe(true)
+      }
+    }
+
+    // Fonte única: o `sameAs` e os hrefs do footer têm de ser a MESMA lista
+    // (os dois vêm de `SOCIAL_LINKS`). Se alguém duplicar os URLs num dos
+    // lados, a igualdade quebra aqui — não no consumidor final.
+    const footerHrefs = await page
+      .locator('[data-testid="footer-social"] a')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    expect(footerHrefs.length, 'footer sem os links sociais').toBe(EXPECTED_SOCIAL_URLS.length)
+
+    const sameAsInDom = await page.evaluate(() => {
+      const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+      for (const script of scripts) {
+        const raw = script.textContent?.trim()
+        if (!raw) continue
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        if (parsed['@type'] === 'Organization') return parsed.sameAs
+      }
+      return null
+    })
+    expect(sameAsInDom).toEqual(footerHrefs)
   })
 
   test('JSON-LD de breadcrumbs existe em /pesquisar', async ({ page }) => {
