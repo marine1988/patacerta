@@ -78,7 +78,11 @@ export function Footer() {
                     onClick={() =>
                       window.dispatchEvent(new CustomEvent('patacerta:open-consent-settings'))
                     }
-                    className="text-left text-sm text-ink transition-colors hover:text-caramel-500"
+                    // Mesma affordance dos `FooterLink` vizinhos (PATA-UI-FOOTER-2):
+                    // o botão é um link por comportamento, não pode ser o único sem
+                    // sublinhado. `text-left` fica porque o texto quebra em 2 linhas
+                    // na coluna estreita.
+                    className="text-left text-sm text-ink underline decoration-caramel-500/40 underline-offset-4 transition-colors hover:text-caramel-500 hover:decoration-caramel-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                   >
                     Definições de cookies
                   </button>
