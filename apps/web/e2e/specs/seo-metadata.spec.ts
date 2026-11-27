@@ -285,9 +285,18 @@ test.describe('SEO / metadata @prod-safe', () => {
     // Fonte única: o `sameAs` e os hrefs do footer têm de ser a MESMA lista
     // (os dois vêm de `SOCIAL_LINKS`). Se alguém duplicar os URLs num dos
     // lados, a igualdade quebra aqui — não no consumidor final.
-    const footerHrefs = await page
-      .locator('[data-testid="footer-social"] a')
-      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    //
+    // O footer vive no `MainLayout`, DENTRO do `<Suspense>` (`App.tsx`); no
+    // `/termos` o chunk lazy suspende e o layout só monta depois (~50-160 ms
+    // a seguir aos JSON-LD globais, que estão FORA do Suspense). `evaluateAll`
+    // não tem auto-wait: ler aqui logo após o `goto` devolve 0 links e falha
+    // 3/3 contra alvos remotos. Esperar pela contagem (que faz retry) é a
+    // sincronização correcta — não enfraquece o assert.
+    const footerLinks = page.locator('[data-testid="footer-social"] a')
+    await expect(footerLinks).toHaveCount(EXPECTED_SOCIAL_URLS.length, { timeout: HEAD_TIMEOUT })
+    const footerHrefs = await footerLinks.evaluateAll((links) =>
+      links.map((link) => link.getAttribute('href')),
+    )
     expect(footerHrefs.length, 'footer sem os links sociais').toBe(EXPECTED_SOCIAL_URLS.length)
 
     const sameAsInDom = await page.evaluate(() => {
